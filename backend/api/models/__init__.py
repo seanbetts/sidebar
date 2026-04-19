@@ -5,6 +5,7 @@ from api.models.device_installation import DeviceInstallation, DeviceInstallatio
 from api.models.device_token import DeviceToken
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.note import Note
+from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
@@ -21,6 +22,7 @@ __all__ = [
     "DeviceInstallationUser",
     "DeviceToken",
     "Note",
+    "NotificationDiagnosticsAudit",
     "Website",
     "UserSettings",
     "UserMemory",

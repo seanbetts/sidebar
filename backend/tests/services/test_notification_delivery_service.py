@@ -3,8 +3,13 @@ from __future__ import annotations
 import logging
 from types import SimpleNamespace
 
+from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
+from api.services.notification_diagnostics_audit_service import (
+    NotificationDiagnosticsAuditService,
+)
 from api.services.notification_delivery_service import NotificationDeliveryService
 from api.services.notification_types import (
+    APNSNotificationOutcome,
     NotificationCategory,
     NotificationDeliveryMode,
     NotificationIntent,
@@ -14,7 +19,11 @@ from api.services.push_notification_service import PushNotificationService
 
 
 def _token(token: str = "token-123", *, platform: str = "ios") -> SimpleNamespace:
-    return SimpleNamespace(token=token, platform=platform)
+    return SimpleNamespace(
+        token=token,
+        platform=platform,
+        installation_id=f"install-{token}",
+    )
 
 
 def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch):
@@ -164,3 +173,73 @@ def test_no_target_tokens_logs_delivery_skip(caplog):
         "Notification delivery skipped category=task_reminder user_id=user-123 "
         "reason=no_target_tokens"
     ) in caplog.text
+
+
+def test_no_target_tokens_create_skipped_audit_row(test_db):
+    NotificationDeliveryService.deliver_intent(
+        NotificationIntent(
+            user_id="user-123",
+            category=NotificationCategory.TASK_REMINDER,
+            delivery_mode=NotificationDeliveryMode.ALERT,
+            title="Task reminder",
+            body="You have 2 tasks due today.",
+            route="sidebar://tasks/today",
+        ),
+        device_tokens=[],
+        db=test_db,
+    )
+    test_db.commit()
+
+    row = test_db.query(NotificationDiagnosticsAudit).one()
+    assert row.user_id == "user-123"
+    assert row.notification_kind == "task_reminder"
+    assert row.delivery_result == "skipped"
+    assert row.skip_reason == "no_target_tokens"
+
+
+def test_successful_alert_delivery_creates_sent_audit_rows(test_db, monkeypatch):
+    def _fake_send_requests(requests):
+        return PushNotificationSendResult(
+            attempted_count=len(requests),
+            sent_count=len(requests),
+            invalid_tokens=(),
+            outcomes=tuple(
+                APNSNotificationOutcome(
+                    token=request.token,
+                    installation_id=request.installation_id,
+                    platform=request.platform,
+                    topic="ai.sidebar.sidebar",
+                    environment="dev",
+                    status_code=200,
+                    reason=None,
+                    accepted=True,
+                )
+                for request in requests
+            ),
+        )
+
+    monkeypatch.setattr(
+        PushNotificationService,
+        "send_requests",
+        staticmethod(_fake_send_requests),
+    )
+
+    NotificationDeliveryService.deliver_intent(
+        NotificationIntent(
+            user_id="user-123",
+            category=NotificationCategory.TASK_REMINDER,
+            delivery_mode=NotificationDeliveryMode.ALERT,
+            title="Task reminder",
+            body="You have 2 tasks due today.",
+            route="sidebar://tasks/today",
+        ),
+        device_tokens=[_token("token-123")],
+        db=test_db,
+    )
+    test_db.commit()
+
+    row = test_db.query(NotificationDiagnosticsAudit).one()
+    assert row.installation_id == "install-token-123"
+    assert row.delivery_result == "sent"
+    assert row.apns_topic == "ai.sidebar.sidebar"
+    assert row.apns_env == "dev"

@@ -59,6 +59,21 @@ class APNSNotificationRequest:
     push_type: str
     priority: str
     topic: str | None = None
+    installation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class APNSNotificationOutcome:
+    """Per-request APNs outcome used for diagnostics auditing."""
+
+    token: str
+    platform: str
+    topic: str | None
+    environment: str
+    status_code: int | None
+    reason: str | None
+    accepted: bool
+    installation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +83,7 @@ class PushNotificationSendResult:
     attempted_count: int
     sent_count: int
     invalid_tokens: tuple[str, ...] = ()
+    outcomes: tuple[APNSNotificationOutcome, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

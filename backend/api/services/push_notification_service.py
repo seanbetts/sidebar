@@ -14,6 +14,7 @@ from api.db.session import SessionLocal
 from api.models.device_token import DeviceToken
 from api.services.device_token_service import DeviceTokenService
 from api.services.notification_types import (
+    APNSNotificationOutcome,
     APNSNotificationRequest,
     PushNotificationSendResult,
 )
@@ -48,6 +49,7 @@ class PushNotificationService:
                 },
                 push_type="background",
                 priority="5",
+                installation_id=getattr(token, "installation_id", None),
             )
             for token in tokens
         ]
@@ -60,18 +62,36 @@ class PushNotificationService:
     ) -> PushNotificationSendResult:
         """Send concrete APNs requests and clean up invalid tokens."""
         if not requests:
-            return PushNotificationSendResult(attempted_count=0, sent_count=0)
+            return PushNotificationSendResult(
+                attempted_count=0,
+                sent_count=0,
+                outcomes=(),
+            )
 
         auth_token = cls._get_auth_token()
+        normalized_environment = cls._normalize_environment(settings.apns_env)
         if not auth_token:
             cls.logger.error(
                 "APNs auth unavailable environment=%s attempted_count=%s",
-                cls._normalize_environment(settings.apns_env),
+                normalized_environment,
                 len(requests),
             )
             return PushNotificationSendResult(
                 attempted_count=len(requests),
                 sent_count=0,
+                outcomes=tuple(
+                    APNSNotificationOutcome(
+                        token=request.token,
+                        platform=request.platform,
+                        topic=request.topic,
+                        environment=normalized_environment,
+                        status_code=None,
+                        reason="auth_unavailable",
+                        accepted=False,
+                        installation_id=request.installation_id,
+                    )
+                    for request in requests
+                ),
             )
 
         environment = (settings.apns_env or "dev").lower()
@@ -82,6 +102,7 @@ class PushNotificationService:
         )
 
         invalid_tokens: list[str] = []
+        outcomes: list[APNSNotificationOutcome] = []
         sent_count = 0
         with httpx.Client(http2=True, timeout=5.0) as client:
             for request in requests:
@@ -93,6 +114,18 @@ class PushNotificationService:
                         cls._notification_category(request),
                         request.platform,
                         cls._token_suffix(request.token),
+                    )
+                    outcomes.append(
+                        APNSNotificationOutcome(
+                            token=request.token,
+                            platform=request.platform,
+                            topic=None,
+                            environment=cls._normalize_environment(environment),
+                            status_code=None,
+                            reason="missing_topic",
+                            accepted=False,
+                            installation_id=request.installation_id,
+                        )
                     )
                     continue
 
@@ -115,6 +148,18 @@ class PushNotificationService:
                         topic,
                         cls._token_suffix(request.token),
                         exc.__class__.__name__,
+                    )
+                    outcomes.append(
+                        APNSNotificationOutcome(
+                            token=request.token,
+                            platform=request.platform,
+                            topic=topic,
+                            environment=cls._normalize_environment(environment),
+                            status_code=None,
+                            reason=exc.__class__.__name__,
+                            accepted=False,
+                            installation_id=request.installation_id,
+                        )
                     )
                     continue
 
@@ -143,6 +188,18 @@ class PushNotificationService:
                         "DeviceTokenNotForTopic",
                     }:
                         invalid_tokens.append(request.token)
+                    outcomes.append(
+                        APNSNotificationOutcome(
+                            token=request.token,
+                            platform=request.platform,
+                            topic=topic,
+                            environment=cls._normalize_environment(environment),
+                            status_code=response.status_code,
+                            reason=reason,
+                            accepted=False,
+                            installation_id=request.installation_id,
+                        )
+                    )
                     continue
 
                 cls.logger.info(
@@ -156,6 +213,18 @@ class PushNotificationService:
                     cls._normalize_environment(environment),
                 )
                 sent_count += 1
+                outcomes.append(
+                    APNSNotificationOutcome(
+                        token=request.token,
+                        platform=request.platform,
+                        topic=topic,
+                        environment=cls._normalize_environment(environment),
+                        status_code=response.status_code,
+                        reason=None,
+                        accepted=True,
+                        installation_id=request.installation_id,
+                    )
+                )
 
         if invalid_tokens:
             cls._disable_invalid_tokens(invalid_tokens)
@@ -163,6 +232,7 @@ class PushNotificationService:
             attempted_count=len(requests),
             sent_count=sent_count,
             invalid_tokens=tuple(invalid_tokens),
+            outcomes=tuple(outcomes),
         )
 
     @classmethod

@@ -3,12 +3,16 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
+from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.models.task import Task
 from api.models.user_settings import UserSettings
 from api.services.device_token_service import DeviceTokenService
 from api.services.morning_digest_service import MorningDigestService
 from api.services.notification_schedule_service import NotificationScheduleService
-from api.services.notification_types import PushNotificationSendResult
+from api.services.notification_types import (
+    APNSNotificationOutcome,
+    PushNotificationSendResult,
+)
 from api.services.push_notification_service import PushNotificationService
 from api.services.task_reminder_service import TaskReminderService
 from workers.notification_schedule_worker import process_once
@@ -141,3 +145,83 @@ def test_successful_task_reminders_are_deduped_within_same_window(
     assert first_stats["task_reminders_dispatched"] == 1
     assert second_stats["task_reminders_dispatched"] == 0
     assert len(captured_requests) == 1
+
+
+def test_scheduled_reminder_dispatch_records_one_audit_row_per_installation(
+    test_db,
+    monkeypatch,
+):
+    NotificationScheduleService.clear_due_windows()
+    TaskReminderService.clear_emitted_days()
+    MorningDigestService.clear_emitted_days()
+
+    def _fake_send_requests(requests):
+        return PushNotificationSendResult(
+            attempted_count=len(requests),
+            sent_count=len(requests),
+            invalid_tokens=(),
+            outcomes=tuple(
+                APNSNotificationOutcome(
+                    token=request.token,
+                    installation_id=request.installation_id,
+                    platform=request.platform,
+                    topic="ai.sidebar.sidebar",
+                    environment="dev",
+                    status_code=200,
+                    reason=None,
+                    accepted=True,
+                )
+                for request in requests
+            ),
+        )
+
+    monkeypatch.setattr(
+        PushNotificationService,
+        "send_requests",
+        staticmethod(_fake_send_requests),
+    )
+    test_db.add(
+        UserSettings(
+            user_id="user-123",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    DeviceTokenService.register_token(
+        test_db,
+        "user-123",
+        installation_id="install-123",
+        token="token-123",
+        platform="ios",
+        environment="dev",
+        capabilities={},
+    )
+    DeviceTokenService.register_token(
+        test_db,
+        "user-123",
+        installation_id="install-456",
+        token="token-456",
+        platform="macos",
+        environment="dev",
+        capabilities={},
+    )
+    test_db.add(
+        _task(
+            user_id="user-123",
+            title="Pay rent",
+            deadline=date(2026, 1, 15),
+        )
+    )
+    test_db.commit()
+
+    process_once(
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        digest_dispatcher=lambda db, due_users, *, now=None: 0,
+    )
+
+    rows = test_db.query(NotificationDiagnosticsAudit).all()
+    assert len(rows) == 2
+    assert {row.installation_id for row in rows} == {"install-123", "install-456"}

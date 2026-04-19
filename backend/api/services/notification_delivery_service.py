@@ -5,6 +5,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from api.services.notification_diagnostics_audit_service import (
+    NotificationDiagnosticsAuditService,
+)
 from api.services.notification_types import (
     APNSNotificationRequest,
     NotificationDeliveryMode,
@@ -24,6 +29,7 @@ class NotificationDeliveryService:
         intent: NotificationIntent,
         *,
         device_tokens: list[Any] | tuple[Any, ...] | None = None,
+        db: Session | None = None,
     ) -> NotificationDeliveryResult:
         """Deliver one notification intent to the provided device tokens."""
         requests = NotificationDeliveryService.build_requests(
@@ -37,6 +43,13 @@ class NotificationDeliveryService:
                 intent.category.value,
                 intent.user_id,
             )
+            if db is not None:
+                NotificationDiagnosticsAuditService.record_skip(
+                    db,
+                    user_id=intent.user_id,
+                    notification_kind=intent.category.value,
+                    skip_reason="unsupported_delivery_mode",
+                )
             return NotificationDeliveryResult(
                 status="noop",
                 request_count=0,
@@ -50,6 +63,13 @@ class NotificationDeliveryService:
                 intent.category.value,
                 intent.user_id,
             )
+            if db is not None:
+                NotificationDiagnosticsAuditService.record_skip(
+                    db,
+                    user_id=intent.user_id,
+                    notification_kind=intent.category.value,
+                    skip_reason="no_target_tokens",
+                )
             return NotificationDeliveryResult(
                 status="noop",
                 request_count=0,
@@ -66,6 +86,13 @@ class NotificationDeliveryService:
             len(requests),
             result.sent_count,
         )
+        if db is not None and result.outcomes:
+            NotificationDiagnosticsAuditService.record_transport_outcomes(
+                db,
+                user_id=intent.user_id,
+                notification_kind=intent.category.value,
+                outcomes=result.outcomes,
+            )
         return NotificationDeliveryResult(
             status="sent",
             request_count=len(requests),
@@ -100,6 +127,7 @@ class NotificationDeliveryService:
                         "notification_category": intent.category.value,
                         "notification_metadata": intent.metadata,
                     },
+                    installation_id=getattr(token, "installation_id", None),
                 )
                 for token in tokens
             ]
@@ -119,6 +147,7 @@ class NotificationDeliveryService:
                             "badge": intent.badge_count,
                         }
                     },
+                    installation_id=getattr(token, "installation_id", None),
                 )
                 for token in tokens
             ]

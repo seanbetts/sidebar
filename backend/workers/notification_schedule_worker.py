@@ -88,6 +88,7 @@ def _dispatch_task_reminders(
         result = NotificationDeliveryService.deliver_intent(
             intent,
             device_tokens=list(decision.matched_tokens) or tokens,
+            db=db,
         )
         if result.sent_count > 0:
             _mark_recipient_delivered(recipient, current_time=current_time)
@@ -132,6 +133,7 @@ def _dispatch_morning_digests(
         result = NotificationDeliveryService.deliver_intent(
             intent,
             device_tokens=list(decision.matched_tokens) or tokens,
+            db=db,
         )
         if result.sent_count > 0:
             _mark_recipient_delivered(recipient, current_time=current_time)
@@ -168,6 +170,7 @@ def process_once(
             digest_due,
             now=current_time,
         )
+        db.commit()
         return {
             "task_reminders_due": len(task_due),
             "morning_digests_due": len(digest_due),

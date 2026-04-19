@@ -60,10 +60,11 @@ def test_send_requests_logs_apns_rejection(monkeypatch, caplog):
         ),
     )
 
-    PushNotificationService.send_requests(
+    result = PushNotificationService.send_requests(
         [
             APNSNotificationRequest(
                 token="abc1234567890",
+                installation_id="install-123",
                 platform="ios",
                 payload={
                     "aps": {"alert": {"title": "Title", "body": "Body"}},
@@ -75,6 +76,10 @@ def test_send_requests_logs_apns_rejection(monkeypatch, caplog):
         ]
     )
 
+    assert result.outcomes[0].installation_id == "install-123"
+    assert result.outcomes[0].status_code == 410
+    assert result.outcomes[0].reason == "Unregistered"
+    assert result.outcomes[0].accepted is False
     assert (
         "APNs request rejected category=task_reminder platform=ios "
         "status_code=410 reason=Unregistered token_suffix=34567890"
@@ -100,10 +105,11 @@ def test_send_requests_logs_apns_acceptance(monkeypatch, caplog):
         lambda **kwargs: _FakeClient([_FakeResponse(status_code=200)]),
     )
 
-    PushNotificationService.send_requests(
+    result = PushNotificationService.send_requests(
         [
             APNSNotificationRequest(
                 token="abc1234567890",
+                installation_id="install-123",
                 platform="macos",
                 payload={
                     "aps": {"alert": {"title": "Title", "body": "Body"}},
@@ -116,6 +122,11 @@ def test_send_requests_logs_apns_acceptance(monkeypatch, caplog):
         ]
     )
 
+    assert result.outcomes[0].installation_id == "install-123"
+    assert result.outcomes[0].topic == "ai.sidebar.sidebar"
+    assert result.outcomes[0].environment == "dev"
+    assert result.outcomes[0].status_code == 200
+    assert result.outcomes[0].accepted is True
     assert (
         "APNs request accepted category=task_reminder platform=macos "
         "status_code=200 topic=ai.sidebar.sidebar token_suffix=34567890"
