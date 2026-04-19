@@ -44,6 +44,12 @@ repos:
   # Frontend - Prettier formatting
   - repo: local
     hooks:
+      - id: sync-marketing-copy
+        name: sync-marketing-copy
+        entry: node scripts/sync-marketing-copy.mjs --check
+        language: system
+        files: ^(shared/marketingCopy\.json|shared/marketingCopy\.ts|ios/sideBar/sideBarShared/Utilities/MarketingCopy\.swift|scripts/sync-marketing-copy\.mjs)$
+        pass_filenames: false
       - id: prettier
         name: prettier
         entry: node frontend/node_modules/.bin/prettier --config frontend/.prettierrc --plugin ./frontend/node_modules/prettier-plugin-svelte/plugin.js --write
