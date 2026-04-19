@@ -31,6 +31,7 @@ describe('login form content', () => {
 		expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Privacy Policy' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Terms of Service' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'EULA' })).toBeInTheDocument();
 		expect(screen.queryByText(/Made with/i)).not.toBeInTheDocument();
 	});
 });

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import BrandLockup from '$lib/components/BrandLockup.svelte';
+	import PixelDivider from '$lib/components/PixelDivider.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Folder, FileText, Globe, CheckSquare, MessageSquare, Command } from 'lucide-svelte';
 	import { MARKETING_COPY } from '$lib/constants/marketingCopy';
@@ -59,7 +60,6 @@
 	<div class="login-container">
 		<div class="login-grid">
 			<section class="login-intro">
-				<BrandLockup size="large" />
 				<h2 class="login-tagline" aria-label={MARKETING_COPY.tagline}>
 					<span>Your work.</span>
 					<span>Your assistant.</span>
@@ -157,9 +157,29 @@
 		</div>
 
 		<footer class="login-footer" aria-label="Legal links">
-			<a href="/privacy">Privacy Policy</a>
-			<a href="/terms">Terms of Service</a>
-			<a href="mailto:support@trysidebar.ai">Contact</a>
+			<PixelDivider position="top" />
+			<div class="login-footer-inner">
+				<div class="login-footer-brand" aria-label="sideBar brand">
+					<BrandLockup size="compact" />
+				</div>
+				<p class="login-footer-copy">
+					&copy; {new Date().getFullYear()} sideBar Labs Limited. All rights reserved.
+				</p>
+				<div class="login-footer-meta">
+					<p class="login-footer-registered">
+						Registered in England and Wales, company number 17137829.
+					</p>
+					<p class="login-footer-registered">
+						Registered office: 66 Paul Street, London, EC2A 4NA.
+					</p>
+				</div>
+				<div class="login-footer-links">
+					<a href="/privacy">Privacy Policy</a>
+					<a href="/terms">Terms of Service</a>
+					<a href="/eula">EULA</a>
+					<a href="mailto:support@trysidebar.ai">Contact</a>
+				</div>
+			</div>
 		</footer>
 	</div>
 </div>
@@ -168,25 +188,28 @@
 	.login-shell {
 		min-height: 100vh;
 		display: flex;
-		align-items: center;
-		justify-content: center;
+		width: 100%;
 		padding: 3rem 1.5rem 2rem;
 		background: var(--color-background);
 	}
 
 	.login-container {
 		width: min(100%, 1120px);
+		min-height: calc(100dvh - 5rem);
+		margin: 0 auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
 	.login-grid {
+		flex: 1 1 auto;
 		width: 100%;
 		display: grid;
 		grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 25rem);
 		gap: clamp(2rem, 4vw, 4.5rem);
 		align-items: center;
+		align-content: center;
 	}
 
 	.login-intro {
@@ -362,26 +385,67 @@
 	}
 
 	.login-footer {
+		position: relative;
+		display: flex;
+		padding-top: 1.25rem;
+		margin-top: auto;
+	}
+
+	.login-footer-inner {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+		padding-top: 1.25rem;
+		text-align: center;
+	}
+
+	.login-footer-brand {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.login-footer-copy,
+	.login-footer-registered {
+		margin: 0;
+		max-width: 40rem;
+		font-size: 0.8125rem;
+		line-height: 1.6;
+		color: var(--color-muted-foreground);
+	}
+
+	.login-footer-meta {
+		display: grid;
+		gap: 0.125rem;
+	}
+
+	.login-footer-links {
 		display: flex;
 		flex-wrap: wrap;
-		justify-content: flex-start;
+		justify-content: center;
 		gap: 0.75rem 1.25rem;
 		font-size: 0.8125rem;
 		color: var(--color-muted-foreground);
 	}
 
-	.login-footer a {
+	.login-footer-links a {
 		color: inherit;
 		text-decoration: none;
 	}
 
-	.login-footer a:hover {
+	.login-footer-links a:hover {
 		color: var(--color-foreground);
 	}
 
 	@media (max-width: 900px) {
 		.login-shell {
 			padding: 1.5rem 1rem;
+		}
+
+		.login-container {
+			min-height: calc(100dvh - 3rem);
 		}
 
 		.login-grid {
@@ -408,7 +472,11 @@
 		}
 
 		.login-footer {
-			justify-content: center;
+			padding-top: 1rem;
+		}
+
+		.login-footer-inner {
+			padding-top: 1rem;
 		}
 	}
 </style>
