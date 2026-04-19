@@ -1,5 +1,6 @@
 <script lang="ts">
   import Seo from '$lib/components/Seo.svelte';
+  import { siteCopy } from '$lib/content/siteCopy';
   import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
   const screenshots = [
@@ -122,9 +123,9 @@
       <img class="logo-light" src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
       <img class="logo-dark" src="/logo-animated-dark.gif" alt="" aria-hidden="true" width="96" height="96" />
     </div>
-    <h1 class="hero-title">{MARKETING_COPY.tagline}</h1>
-    <p class="hero-subtitle">{MARKETING_COPY.subtitle}</p>
-    <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
+    <h1 class="hero-title">{siteCopy.home.hero.headline}</h1>
+    <p class="hero-subtitle">{siteCopy.home.hero.subhead}</p>
+    <a href="https://app.trysidebar.ai" class="hero-cta">{siteCopy.home.hero.primaryCta}</a>
     <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
   </div>
 </section>
