@@ -22,7 +22,7 @@
 <nav class="nav">
   <div class="nav-inner">
     <a href="/" class="brand" aria-label="sideBar home">
-      <img src="/logo.svg" alt="" width="28" height="28" />
+      <img src="/logo.svg" alt="" width="36" height="36" />
       <span class="brand-name">sideBar</span>
     </a>
 
@@ -58,10 +58,10 @@
   }
 
   .nav-inner {
-    max-width: 72rem;
+    max-width: 78rem;
     margin: 0 auto;
     padding: 0 1.5rem;
-    height: 3.5rem;
+    height: 4.25rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -70,16 +70,19 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.8rem;
     text-decoration: none;
     font-weight: 700;
-    font-size: 1rem;
-    letter-spacing: -0.02em;
+    font-size: 1.375rem;
+    letter-spacing: -0.03em;
     color: var(--color-foreground);
+    line-height: 1;
   }
 
   .brand img {
     display: block;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .brand-name {
@@ -153,7 +156,7 @@
     .nav-inner {
       padding: 0 1rem;
       height: auto;
-      min-height: 3.5rem;
+      min-height: 4.25rem;
       flex-wrap: wrap;
       row-gap: 0.75rem;
       padding-top: 0.75rem;
