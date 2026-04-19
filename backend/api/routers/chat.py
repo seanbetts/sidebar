@@ -101,6 +101,17 @@ def _set_cached_title(cache_key: str, title: str) -> None:
     TITLE_CACHE[cache_key] = {"title": title, "timestamp": time.time()}
 
 
+def _should_insert_synthetic_tool_newline(
+    assistant_content: str, token_content: str
+) -> bool:
+    """Mirror the client-side tool-boundary newline rule for persisted content."""
+    return (
+        bool(assistant_content)
+        and not assistant_content.endswith("\n")
+        and not token_content.startswith("\n")
+    )
+
+
 def _sanitize_title(raw_title: str) -> str:
     title = (raw_title or "").strip()
     if not title:
@@ -469,6 +480,7 @@ async def stream_chat(
     async def event_generator():
         """Generate SSE events."""
         assistant_content_parts: list[str] = []
+        needs_newline_before_next_token = False
         tool_call_order: list[str] = []
         tool_calls_by_id: dict[str, dict] = {}
 
@@ -493,7 +505,17 @@ async def stream_chat(
                     # Stream text token
                     token_content = event.get("content")
                     if isinstance(token_content, str) and token_content:
+                        current_content = "".join(assistant_content_parts)
+                        should_insert_newline = (
+                            needs_newline_before_next_token
+                            and _should_insert_synthetic_tool_newline(
+                                current_content, token_content
+                            )
+                        )
+                        if should_insert_newline:
+                            assistant_content_parts.append("\n\n")
                         assistant_content_parts.append(token_content)
+                        needs_newline_before_next_token = False
                     yield f"event: token\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "tool_call":
@@ -529,6 +551,12 @@ async def stream_chat(
                 elif event_type in CUSTOM_CHAT_STREAM_EVENT_TYPES or (
                     event_type in ONBOARDING_STREAM_EVENT_TYPES
                 ):
+                    if event_type == "tool_status":
+                        event_data = event.get("data", {})
+                        if isinstance(event_data, dict):
+                            status = event_data.get("status")
+                            if isinstance(status, str) and status.lower() != "running":
+                                needs_newline_before_next_token = True
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"
 

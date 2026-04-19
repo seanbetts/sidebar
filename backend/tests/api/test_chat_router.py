@@ -1752,6 +1752,93 @@ def test_stream_chat_persists_hidden_user_instruction_without_visible_count(
     assert updated.messages[2]["content"] == "Hi, I'm Voss."
 
 
+def test_stream_chat_persists_synthetic_tool_newline_after_completed_tool_status(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db, user_id, "Tool Boundary Persistence"
+    )
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {
+                "type": "token",
+                "content": "The checklist `list_item` blocks need a `checked` boolean field. Let me fix that.",
+            }
+            yield {
+                "type": "tool_call",
+                "id": "tool-1",
+                "name": "Create Note",
+                "parameters": {"title": "Test Note: Cosmic Observations"},
+                "status": "pending",
+            }
+            yield {
+                "type": "tool_result",
+                "id": "tool-1",
+                "name": "Create Note",
+                "result": {"success": True, "data": {"id": "note-1"}},
+                "status": "success",
+            }
+            yield {
+                "type": "tool_status",
+                "data": {
+                    "tool_call_id": "tool-1",
+                    "status": "success",
+                    "display_name": "Create Note",
+                },
+            }
+            yield {
+                "type": "token",
+                "content": 'Done — **"Test Note: Cosmic Observations"** is now in your notes.',
+            }
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={
+                "message": "Create a note and tell me when it's done",
+                "conversation_id": str(conversation.id),
+                "assistant_message_id": "assistant-msg-1",
+            },
+        )
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    test_db.expire_all()
+    updated = ConversationService.get_conversation(test_db, user_id, conversation.id)
+    assert updated.messages[2]["id"] == "assistant-msg-1"
+    assert updated.messages[2]["content"] == (
+        "The checklist `list_item` blocks need a `checked` boolean field. Let me fix that.\n\n"
+        'Done — **"Test Note: Cosmic Observations"** is now in your notes.'
+    )
+
+
 def test_stream_chat_emits_assistant_reply_notification_when_user_is_away(
     test_client, test_db, monkeypatch
 ):
