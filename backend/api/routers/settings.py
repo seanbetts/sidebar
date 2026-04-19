@@ -99,6 +99,7 @@ class SettingsResponse(BaseModel):
     assistant_soul: AssistantSoulPayload | None = None
     assistant_soul_meta: AgentFieldMetaPayload | None = None
     ai_primary_provider: str | None = None
+    can_access_internal_diagnostics: bool = False
     ai_primary_provider_has_key: bool = False
     ai_primary_provider_key_last4: str | None = None
 

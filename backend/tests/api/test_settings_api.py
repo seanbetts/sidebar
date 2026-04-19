@@ -110,6 +110,19 @@ def test_get_settings_includes_notification_preference_defaults(test_client):
     }
 
 
+def test_get_settings_includes_internal_diagnostics_capability(test_client, monkeypatch):
+    monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
+    monkeypatch.setenv("INTERNAL_DIAGNOSTIC_USER_IDS", settings.require_test_user_id())
+
+    response = test_client.get(
+        "/api/settings",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["can_access_internal_diagnostics"] is True
+
+
 def test_update_settings_accepts_notification_preferences(test_client):
     response = test_client.patch(
         "/api/settings",

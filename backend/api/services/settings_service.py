@@ -12,6 +12,7 @@ from api.config import settings
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
+from api.services.internal_access_service import InternalAccessService
 from api.services.settings_agent_fields import (
     ASSISTANT_IDENTITY_FIELDS,
     ASSISTANT_SOUL_FIELDS,
@@ -438,6 +439,9 @@ class SettingsService:
                 )
                 if settings_record
                 else None
+            ),
+            "can_access_internal_diagnostics": (
+                InternalAccessService.can_access_internal_diagnostics(user_id)
             ),
             "ai_primary_provider_has_key": False,
             "ai_primary_provider_key_last4": None,

@@ -197,6 +197,12 @@ class Settings(BaseSettings):
     apns_topic: str | None = os.getenv("APNS_TOPIC") or None
     apns_topic_ios: str | None = os.getenv("APNS_TOPIC_IOS") or None
     apns_topic_macos: str | None = os.getenv("APNS_TOPIC_MACOS") or None
+    internal_diagnostics_enabled: bool = os.getenv(
+        "INTERNAL_DIAGNOSTICS_ENABLED", "false"
+    ).lower() in {"1", "true", "yes", "on"}
+    internal_diagnostic_user_ids_raw: str = os.getenv(
+        "INTERNAL_DIAGNOSTIC_USER_IDS", ""
+    )
 
     # Observability
     sentry_dsn: str | None = os.getenv("SENTRY_DSN") or None
@@ -260,6 +266,22 @@ class Settings(BaseSettings):
     def default_user_id(self) -> str:
         """Deprecated alias; use TEST_USER_ID instead."""
         return self.get_test_user_id()
+
+    @property
+    def runtime_internal_diagnostics_enabled(self) -> bool:
+        """Return the current internal diagnostics kill-switch value."""
+        raw_value = os.getenv("INTERNAL_DIAGNOSTICS_ENABLED")
+        if raw_value is None:
+            return self.internal_diagnostics_enabled
+        return raw_value.lower() in {"1", "true", "yes", "on"}
+
+    @property
+    def runtime_internal_diagnostic_user_ids_raw(self) -> str:
+        """Return the current allowlist env value for internal diagnostics."""
+        raw_value = os.getenv("INTERNAL_DIAGNOSTIC_USER_IDS")
+        if raw_value is None:
+            return self.internal_diagnostic_user_ids_raw
+        return raw_value
 
 
 # Singleton settings instance
