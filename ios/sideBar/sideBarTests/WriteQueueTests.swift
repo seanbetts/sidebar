@@ -263,11 +263,11 @@ final class WriteQueueTests: XCTestCase {
         )
 
         let first = SettingsMutationPayload(
-            name: "Ada Lovelace",
-            jobTitle: "Mathematician"
+            communicationStyle: "Concise",
+            name: "Ada Lovelace"
         )
         let second = SettingsMutationPayload(
-            name: "Grace Hopper",
+            workingRelationship: "Operator",
             jobTitle: "Rear Admiral"
         )
 
@@ -291,7 +291,9 @@ final class WriteQueueTests: XCTestCase {
 
         let saved = try XCTUnwrap(writes.first)
         let decoded = try JSONDecoder().decode(SettingsMutationPayload.self, from: saved.payload)
-        XCTAssertEqual(decoded.name, "Grace Hopper")
+        XCTAssertEqual(decoded.communicationStyle, "Concise")
+        XCTAssertEqual(decoded.workingRelationship, "Operator")
+        XCTAssertEqual(decoded.name, "Ada Lovelace")
         XCTAssertEqual(decoded.jobTitle, "Rear Admiral")
         XCTAssertEqual(decoded.kind, .settingsPatch)
     }

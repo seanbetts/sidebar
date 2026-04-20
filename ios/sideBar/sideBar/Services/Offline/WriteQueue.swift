@@ -522,8 +522,11 @@ extension WriteQueue {
             )
             request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
             request.fetchLimit = 1
-            guard let write = try context.fetch(request).first else { return false }
-            write.payload = payload
+            guard let write = try context.fetch(request).first,
+                  let existing = try? decoder.decode(SettingsMutationPayload.self, from: write.payload),
+                  existing.kind == .settingsPatch else { return false }
+            let merged = existing.mergingSettingsPatch(with: incoming)
+            write.payload = try JSONEncoder().encode(merged)
             write.createdAt = Date()
             write.status = WriteQueueStatus.pending.rawValue
             write.attempts = 0
@@ -800,5 +803,26 @@ extension WriteQueue {
         } catch {
             logger.error("Failed to auto-resolve write conflict: \(error.localizedDescription, privacy: .public)")
         }
+    }
+}
+
+private extension SettingsMutationPayload {
+    func mergingSettingsPatch(with incoming: SettingsMutationPayload) -> SettingsMutationPayload {
+        SettingsMutationPayload(
+            communicationStyle: incoming.communicationStyle ?? communicationStyle,
+            workingRelationship: incoming.workingRelationship ?? workingRelationship,
+            name: incoming.name ?? name,
+            jobTitle: incoming.jobTitle ?? jobTitle,
+            employer: incoming.employer ?? employer,
+            dateOfBirth: incoming.includeDateOfBirth ? incoming.dateOfBirth : dateOfBirth,
+            gender: incoming.gender ?? gender,
+            pronouns: incoming.pronouns ?? pronouns,
+            location: incoming.location ?? location,
+            notificationPreferences: incoming.notificationPreferences ?? notificationPreferences,
+            assistantIdentity: incoming.assistantIdentity ?? assistantIdentity,
+            aiPrimaryProvider: incoming.aiPrimaryProvider ?? aiPrimaryProvider,
+            enabledSkills: incoming.enabledSkills ?? enabledSkills,
+            includeDateOfBirth: includeDateOfBirth || incoming.includeDateOfBirth
+        )
     }
 }
