@@ -192,6 +192,12 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl -c fly.toml scale count 1 --yes --process-group website --region lhr
 
+      - name: Ensure notification worker machine is running
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl -c fly.toml scale count 1 --yes --process-group notification --region lhr
+
       - name: Verify ingestion worker machine state
         working-directory: backend
         env:
@@ -262,4 +268,40 @@ jobs:
           if not has_started_website:
               print(json.dumps(machines, indent=2))
               raise SystemExit("No started website machine found after deploy")
+          PY
+
+      - name: Verify notification worker machine state
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          result = subprocess.run(
+              ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          machines = json.loads(result.stdout)
+          def machine_process_group(machine: dict[str, object]) -> str | None:
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              env = config.get("env") or {}
+              return (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or env.get("FLY_PROCESS_GROUP")
+              )
+
+          has_started_notification = any(
+              machine_process_group(machine) == "notification"
+              and machine.get("state") == "started"
+              for machine in machines
+          )
+          if not has_started_notification:
+              print(json.dumps(machines, indent=2))
+              raise SystemExit("No started notification machine found after deploy")
           PY
