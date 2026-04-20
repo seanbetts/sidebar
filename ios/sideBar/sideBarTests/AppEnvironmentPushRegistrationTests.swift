@@ -229,6 +229,39 @@ final class AppEnvironmentPushRegistrationTests: XCTestCase {
         XCTAssertNil(environment.pushDiagnosticsState.lastDevicePresenceUpdateAt)
     }
 
+    func testRefreshAuthStateHydratesInstallationIdAndRequestsRemoteRegistration() {
+        let authSession = PushMutableAuthSession(authState: .signedOut, userId: "user-123")
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        isolatedDefaults.defaults.set("install-123", forKey: deviceInstallationIdKey)
+        let environment = AppEnvironment(
+            container: container,
+            storage: AppEnvironmentStorage(userDefaults: isolatedDefaults.defaults)
+        )
+        retainedEnvironments.append(environment)
+        let registrationCount = LockedCounter()
+        environment.remoteNotificationRegistrar = {
+            _ = registrationCount.increment()
+        }
+
+        XCTAssertEqual(
+            environment.pushDiagnosticsState.currentDeviceInstallationId,
+            "install-123"
+        )
+
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        XCTAssertEqual(registrationCount.value, 1)
+        XCTAssertEqual(
+            environment.pushDiagnosticsState.currentDeviceInstallationId,
+            "install-123"
+        )
+    }
+
     private func makeEnvironment(userId: String) -> AppEnvironment {
         let authSession = PushMutableAuthSession(authState: .active, userId: userId)
         let config = APIClientConfig(

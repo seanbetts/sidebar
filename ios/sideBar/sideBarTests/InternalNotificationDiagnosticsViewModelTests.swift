@@ -7,6 +7,7 @@ final class InternalDiagnosticsViewModelTests: XCTestCase {
         let snapshot = InternalNotificationDiagnosticsSnapshot(
             canAccessInternalDiagnostics: true,
             accountSummary: NotificationDiagnosticsAccountSummary(userId: "user-123"),
+            scheduler: nil,
             installations: [
                 NotificationDiagnosticsInstallationRow(
                     installationId: "install-123",
@@ -77,6 +78,17 @@ final class InternalDiagnosticsViewModelTests: XCTestCase {
         let snapshot = InternalNotificationDiagnosticsSnapshot(
             canAccessInternalDiagnostics: true,
             accountSummary: NotificationDiagnosticsAccountSummary(userId: "user-123"),
+            scheduler: NotificationDiagnosticsSchedulerStatus(
+                workerName: "notification_schedule",
+                lastStartedAt: "2026-04-20T08:00:00Z",
+                lastCompletedAt: "2026-04-20T08:00:01Z",
+                lastStatus: "completed",
+                lastError: nil,
+                lastTaskRemindersDue: 2,
+                lastTaskRemindersDispatched: 2,
+                lastMorningDigestsDue: 0,
+                lastMorningDigestsDispatched: 0
+            ),
             installations: [
                 NotificationDiagnosticsInstallationRow(
                     installationId: "install-123",
@@ -122,6 +134,8 @@ final class InternalDiagnosticsViewModelTests: XCTestCase {
         XCTAssertTrue(summary.contains("user_id: user-123"))
         XCTAssertTrue(summary.contains("current_installation_id: install-123"))
         XCTAssertTrue(summary.contains("last_registration_result: success"))
+        XCTAssertTrue(summary.contains("scheduler_last_status: completed"))
+        XCTAssertTrue(summary.contains("scheduler_task_reminders_dispatched: 2"))
         XCTAssertTrue(summary.contains("recent_delivery_count: 1"))
         XCTAssertTrue(summary.contains("notification_kind=test_push"))
     }

@@ -150,6 +150,7 @@ public final class AppEnvironment: ObservableObject {
     var inFlightDeviceTokenUserId: String?
     var devicePresenceReporter: DevicePresenceReporter?
     var hasConfiguredDevicePresenceReporting = false
+    var remoteNotificationRegistrar: (@MainActor @Sendable () -> Void)?
     #endif
 
     // swiftlint:disable function_body_length
@@ -284,6 +285,7 @@ public final class AppEnvironment: ObservableObject {
         self.isBiometricUnlocked = authState != .signedOut && !isBiometricUnlockEnabled
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
+        hydratePushDiagnosticsStateFromStorage()
         #endif
         #if os(iOS)
         AppSceneDelegate.flushQueuedDeepLinks(using: self)

@@ -62,6 +62,28 @@ public struct NotificationDiagnosticsAccountSummary: Codable, Equatable {
     public let userId: String
 }
 
+/// Latest scheduler heartbeat returned by the internal diagnostics snapshot.
+public struct NotificationDiagnosticsSchedulerStatus: Codable, Equatable {
+    /// The stable worker name backing the scheduler loop.
+    public let workerName: String
+    /// When the latest scheduler iteration started.
+    public let lastStartedAt: String?
+    /// When the latest scheduler iteration completed or failed.
+    public let lastCompletedAt: String?
+    /// The latest persisted worker status.
+    public let lastStatus: String
+    /// Optional error captured for the latest failed iteration.
+    public let lastError: String?
+    /// Count of task reminders due in the latest iteration.
+    public let lastTaskRemindersDue: Int
+    /// Count of task reminders dispatched in the latest iteration.
+    public let lastTaskRemindersDispatched: Int
+    /// Count of morning digests due in the latest iteration.
+    public let lastMorningDigestsDue: Int
+    /// Count of morning digests dispatched in the latest iteration.
+    public let lastMorningDigestsDispatched: Int
+}
+
 /// Installation row returned by the internal diagnostics snapshot.
 public struct NotificationDiagnosticsInstallationRow: Codable, Equatable {
     /// The stable installation id.
@@ -110,6 +132,8 @@ public struct InternalNotificationDiagnosticsSnapshot: Codable, Equatable {
     public let canAccessInternalDiagnostics: Bool
     /// Current account summary.
     public let accountSummary: NotificationDiagnosticsAccountSummary?
+    /// Latest global scheduler heartbeat available to internal diagnostics users.
+    public let scheduler: NotificationDiagnosticsSchedulerStatus?
     /// Active installations owned by the current user.
     public let installations: [NotificationDiagnosticsInstallationRow]
     /// Recent delivery audit rows, newest first.

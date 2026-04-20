@@ -32,6 +32,13 @@ def test_fly_declares_dedicated_website_process_group() -> None:
     assert 'website = "python -m workers.website_processing_worker"' in contents
 
 
+def test_fly_declares_dedicated_notification_process_group() -> None:
+    """Fly should run scheduled notifications in a dedicated process group."""
+    contents = FLY_TOML.read_text(encoding="utf-8")
+
+    assert 'notification = "python -m workers.notification_schedule_worker"' in contents
+
+
 def test_fly_sets_initial_website_worker_concurrency_to_two() -> None:
     """Fly should cap initial website worker concurrency at two."""
     contents = FLY_TOML.read_text(encoding="utf-8")

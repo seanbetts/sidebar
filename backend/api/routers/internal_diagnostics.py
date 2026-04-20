@@ -50,11 +50,26 @@ class InternalNotificationDiagnosticsDeliveryResponse(BaseModel):
     apns_environment: str | None = None
 
 
+class InternalNotificationSchedulerStatusResponse(BaseModel):
+    """Latest scheduler heartbeat returned in the diagnostics snapshot."""
+
+    worker_name: str
+    last_started_at: str | None = None
+    last_completed_at: str | None = None
+    last_status: str
+    last_error: str | None = None
+    last_task_reminders_due: int
+    last_task_reminders_dispatched: int
+    last_morning_digests_due: int
+    last_morning_digests_dispatched: int
+
+
 class InternalNotificationDiagnosticsSnapshotResponse(BaseModel):
     """Snapshot payload for the signed-in user's diagnostics view."""
 
     can_access_internal_diagnostics: bool
     account_summary: InternalNotificationDiagnosticsAccountSummaryResponse | None = None
+    scheduler: InternalNotificationSchedulerStatusResponse | None = None
     installations: list[InternalNotificationDiagnosticsInstallationResponse]
     recent_delivery: list[InternalNotificationDiagnosticsDeliveryResponse]
 

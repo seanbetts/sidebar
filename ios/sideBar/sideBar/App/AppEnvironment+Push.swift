@@ -15,6 +15,10 @@ extension AppEnvironment {
     }
 
     func registerForRemoteNotificationsIfNeeded() {
+        if let remoteNotificationRegistrar {
+            remoteNotificationRegistrar()
+            return
+        }
 #if os(iOS)
 #if targetEnvironment(simulator)
         pushLogger.debug(
@@ -278,6 +282,12 @@ extension AppEnvironment {
         let generated = UUID().uuidString.lowercased()
         defaults.set(generated, forKey: AppStorageKeys.deviceInstallationId)
         return generated
+    }
+
+    func hydratePushDiagnosticsStateFromStorage() {
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            currentDeviceInstallationId: deviceInstallationId
+        )
     }
 
     private func clearDeviceRegistrationState() {

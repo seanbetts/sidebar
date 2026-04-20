@@ -63,6 +63,31 @@ struct InternalNotificationDiagnosticsView: View {
                 }
             }
 
+            Section("Scheduler") {
+                if let scheduler = snapshot?.scheduler {
+                    LabeledContent("Worker", value: scheduler.workerName)
+                    LabeledContent("Status", value: scheduler.lastStatus)
+                    LabeledContent("Task Due", value: String(scheduler.lastTaskRemindersDue))
+                    LabeledContent(
+                        "Task Dispatched",
+                        value: String(scheduler.lastTaskRemindersDispatched)
+                    )
+                    if let lastStartedAt = scheduler.lastStartedAt {
+                        LabeledContent("Last Started", value: lastStartedAt)
+                    }
+                    if let lastCompletedAt = scheduler.lastCompletedAt {
+                        LabeledContent("Last Completed", value: lastCompletedAt)
+                    }
+                    if let lastError = scheduler.lastError, !lastError.isEmpty {
+                        Text(lastError)
+                            .foregroundStyle(DesignTokens.Colors.error)
+                    }
+                } else {
+                    Text("No scheduler heartbeat yet.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Backend View") {
                 if installations.isEmpty {
                     Text("No active installations.")

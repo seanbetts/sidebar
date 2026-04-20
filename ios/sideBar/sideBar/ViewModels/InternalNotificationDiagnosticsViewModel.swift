@@ -79,6 +79,19 @@ public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
             "recent_delivery_count: \(recentDelivery.count)"
         ]
 
+        if let scheduler = snapshot?.scheduler {
+            lines.append("scheduler_last_status: \(scheduler.lastStatus)")
+            lines.append("scheduler_last_started_at: \(scheduler.lastStartedAt ?? "unknown")")
+            lines.append("scheduler_last_completed_at: \(scheduler.lastCompletedAt ?? "unknown")")
+            lines.append("scheduler_task_reminders_due: \(scheduler.lastTaskRemindersDue)")
+            lines.append(
+                "scheduler_task_reminders_dispatched: \(scheduler.lastTaskRemindersDispatched)"
+            )
+            if let lastError = scheduler.lastError, !lastError.isEmpty {
+                lines.append("scheduler_last_error: \(lastError)")
+            }
+        }
+
         for row in recentDelivery.prefix(5) {
             lines.append(
                 "delivery[\(row.createdAt)] notification_kind=\(row.notificationKind) result=\(row.deliveryResult)"

@@ -166,6 +166,9 @@ from api.models.user_memory import UserMemory  # noqa: F401, E402
 from api.models.user_ai_provider_key import UserAIProviderKey  # noqa: F401, E402
 from api.models.user_skill_state import UserSkillState  # noqa: F401, E402
 from api.models.user_settings import UserSettings  # noqa: F401, E402
+from api.models.notification_scheduler_heartbeat import (  # noqa: F401, E402
+    NotificationSchedulerHeartbeat,
+)
 from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
 
@@ -254,6 +257,22 @@ def _ensure_user_settings_columns(connection) -> None:
             "created_at timestamptz NOT NULL, "
             "updated_at timestamptz NOT NULL, "
             "disabled_at timestamptz NULL"
+            ")"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS notification_scheduler_heartbeat ("
+            "worker_name text PRIMARY KEY, "
+            "last_started_at timestamptz NULL, "
+            "last_completed_at timestamptz NULL, "
+            "last_status text NOT NULL DEFAULT 'idle', "
+            "last_error text NULL, "
+            "last_task_reminders_due integer NOT NULL DEFAULT 0, "
+            "last_task_reminders_dispatched integer NOT NULL DEFAULT 0, "
+            "last_morning_digests_due integer NOT NULL DEFAULT 0, "
+            "last_morning_digests_dispatched integer NOT NULL DEFAULT 0, "
+            "updated_at timestamptz NOT NULL DEFAULT now()"
             ")"
         )
     )

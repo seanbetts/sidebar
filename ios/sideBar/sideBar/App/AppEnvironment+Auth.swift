@@ -62,6 +62,8 @@ extension AppEnvironment {
             }
             #if os(iOS) || os(macOS)
             if authState == .active {
+                hydratePushDiagnosticsStateFromStorage()
+                registerForRemoteNotificationsIfNeeded()
                 registerDeviceTokenIfNeeded()
             }
             #endif

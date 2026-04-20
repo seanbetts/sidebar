@@ -15,12 +15,16 @@ from api.services.morning_digest_service import MorningDigestService
 from api.services.notification_delivery_service import NotificationDeliveryService
 from api.services.notification_policy_service import NotificationPolicyService
 from api.services.notification_schedule_service import NotificationScheduleService
+from api.services.notification_scheduler_heartbeat_service import (
+    NotificationSchedulerHeartbeatService,
+)
 from api.services.notification_types import NotificationCategory
 from api.services.task_reminder_service import TaskReminderService
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger("notification_schedule.worker")
 SLEEP_SECONDS = 30
+FAILURE_SLEEP_SECONDS = 2
 
 
 def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
@@ -179,10 +183,72 @@ def process_once(
         }
 
 
+def execute_once(
+    *,
+    now: datetime | None = None,
+    task_dispatcher: Callable[..., int] = _dispatch_task_reminders,
+    digest_dispatcher: Callable[..., int] = _dispatch_morning_digests,
+) -> dict[str, int]:
+    """Run one scheduler cycle and persist its latest heartbeat state."""
+    current_time = now or datetime.now(UTC)
+    with SessionLocal() as db:
+        NotificationSchedulerHeartbeatService.mark_started(
+            db,
+            started_at=current_time,
+        )
+        db.commit()
+
+    try:
+        stats = process_once(
+            now=current_time,
+            task_dispatcher=task_dispatcher,
+            digest_dispatcher=digest_dispatcher,
+        )
+    except Exception as exc:
+        failed_at = datetime.now(UTC)
+        with SessionLocal() as db:
+            NotificationSchedulerHeartbeatService.mark_failed(
+                db,
+                started_at=current_time,
+                failed_at=failed_at,
+                error_message=str(exc) or exc.__class__.__name__,
+            )
+            db.commit()
+        raise
+
+    completed_at = datetime.now(UTC)
+    with SessionLocal() as db:
+        NotificationSchedulerHeartbeatService.mark_completed(
+            db,
+            started_at=current_time,
+            completed_at=completed_at,
+            stats=stats,
+        )
+        db.commit()
+    return stats
+
+
 def worker_loop(sleep_seconds: int = SLEEP_SECONDS) -> None:
     """Run scheduled notification evaluation forever."""
     while True:
-        stats = process_once()
-        if stats["task_reminders_due"] or stats["morning_digests_due"]:
-            logger.info("Scheduled notification evaluation: %s", stats)
-        time.sleep(sleep_seconds)
+        try:
+            stats = execute_once()
+            if stats["task_reminders_due"] or stats["morning_digests_due"]:
+                logger.info("Scheduled notification evaluation: %s", stats)
+            time.sleep(sleep_seconds)
+        except Exception:
+            logger.exception("Notification schedule worker crashed, retrying")
+            time.sleep(FAILURE_SLEEP_SECONDS)
+
+
+def main() -> None:
+    """Run the dedicated scheduled-notification worker process."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    worker_loop()
+
+
+if __name__ == "__main__":
+    main()

@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
+from api.models.notification_scheduler_heartbeat import NotificationSchedulerHeartbeat
 from api.models.task import Task
 from api.models.user_settings import UserSettings
 from api.services.device_token_service import DeviceTokenService
@@ -15,7 +16,7 @@ from api.services.notification_types import (
 )
 from api.services.push_notification_service import PushNotificationService
 from api.services.task_reminder_service import TaskReminderService
-from workers.notification_schedule_worker import process_once
+from workers.notification_schedule_worker import execute_once, process_once
 
 
 def _task(
@@ -225,3 +226,59 @@ def test_scheduled_reminder_dispatch_records_one_audit_row_per_installation(
     rows = test_db.query(NotificationDiagnosticsAudit).all()
     assert len(rows) == 2
     assert {row.installation_id for row in rows} == {"install-123", "install-456"}
+
+
+def test_execute_once_persists_scheduler_heartbeat_on_success(test_db):
+    NotificationScheduleService.clear_due_windows()
+    TaskReminderService.clear_emitted_days()
+    MorningDigestService.clear_emitted_days()
+
+    stats = execute_once(
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        task_dispatcher=lambda db, due_users, *, now=None: 0,
+        digest_dispatcher=lambda db, due_users, *, now=None: 0,
+    )
+
+    heartbeat = test_db.get(
+        NotificationSchedulerHeartbeat,
+        "notification_schedule",
+    )
+    assert stats == {
+        "task_reminders_due": 0,
+        "morning_digests_due": 0,
+        "task_reminders_dispatched": 0,
+        "morning_digests_dispatched": 0,
+    }
+    assert heartbeat is not None
+    assert heartbeat.last_status == "completed"
+    assert heartbeat.last_started_at == datetime(2026, 1, 15, 9, 0, tzinfo=UTC)
+    assert heartbeat.last_task_reminders_due == 0
+    assert heartbeat.last_task_reminders_dispatched == 0
+
+
+def test_execute_once_persists_scheduler_heartbeat_on_failure(test_db):
+    def _boom(db, due_users, *, now=None):
+        _ = db
+        _ = due_users
+        _ = now
+        raise RuntimeError("scheduler exploded")
+
+    try:
+        execute_once(
+            now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+            task_dispatcher=_boom,
+            digest_dispatcher=lambda db, due_users, *, now=None: 0,
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "scheduler exploded"
+    else:
+        raise AssertionError("execute_once should re-raise worker errors")
+
+    heartbeat = test_db.get(
+        NotificationSchedulerHeartbeat,
+        "notification_schedule",
+    )
+    assert heartbeat is not None
+    assert heartbeat.last_status == "failed"
+    assert heartbeat.last_started_at == datetime(2026, 1, 15, 9, 0, tzinfo=UTC)
+    assert heartbeat.last_error == "scheduler exploded"

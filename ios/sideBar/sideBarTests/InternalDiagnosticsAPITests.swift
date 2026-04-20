@@ -34,6 +34,17 @@ final class InternalDiagnosticsAPITests: XCTestCase {
               "account_summary": {
                 "user_id": "user-123"
               },
+              "scheduler": {
+                "worker_name": "notification_schedule",
+                "last_started_at": "2026-04-20T08:00:00Z",
+                "last_completed_at": "2026-04-20T08:00:01Z",
+                "last_status": "completed",
+                "last_error": null,
+                "last_task_reminders_due": 2,
+                "last_task_reminders_dispatched": 2,
+                "last_morning_digests_due": 0,
+                "last_morning_digests_dispatched": 0
+              },
               "installations": [
                 {
                   "installation_id": "install-123",
@@ -63,6 +74,8 @@ final class InternalDiagnosticsAPITests: XCTestCase {
 
         XCTAssertTrue(snapshot.canAccessInternalDiagnostics)
         XCTAssertEqual(snapshot.accountSummary?.userId, "user-123")
+        XCTAssertEqual(snapshot.scheduler?.workerName, "notification_schedule")
+        XCTAssertEqual(snapshot.scheduler?.lastTaskRemindersDispatched, 2)
         XCTAssertEqual(snapshot.installations.count, 1)
         XCTAssertEqual(snapshot.recentDelivery.count, 1)
         XCTAssertEqual(snapshot.installations.first?.tokenSuffix, "abcdef")

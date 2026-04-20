@@ -6,6 +6,9 @@ from api.exceptions import NotFoundError
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.services.device_installation_service import DeviceInstallationService
 from api.services.notification_delivery_service import NotificationDeliveryService
+from api.services.notification_scheduler_heartbeat_service import (
+    NotificationSchedulerHeartbeatService,
+)
 from api.services.notification_types import (
     NotificationCategory,
     NotificationDeliveryMode,
@@ -32,9 +35,37 @@ class NotificationDiagnosticsService:
             .limit(NotificationDiagnosticsService.RECENT_DELIVERY_LIMIT)
             .all()
         )
+        scheduler = NotificationSchedulerHeartbeatService.get_status(db)
         return {
             "can_access_internal_diagnostics": True,
             "account_summary": {"user_id": user_id},
+            "scheduler": (
+                {
+                    "worker_name": scheduler.worker_name,
+                    "last_started_at": (
+                        scheduler.last_started_at.isoformat()
+                        if scheduler.last_started_at
+                        else None
+                    ),
+                    "last_completed_at": (
+                        scheduler.last_completed_at.isoformat()
+                        if scheduler.last_completed_at
+                        else None
+                    ),
+                    "last_status": scheduler.last_status,
+                    "last_error": scheduler.last_error,
+                    "last_task_reminders_due": scheduler.last_task_reminders_due,
+                    "last_task_reminders_dispatched": (
+                        scheduler.last_task_reminders_dispatched
+                    ),
+                    "last_morning_digests_due": scheduler.last_morning_digests_due,
+                    "last_morning_digests_dispatched": (
+                        scheduler.last_morning_digests_dispatched
+                    ),
+                }
+                if scheduler is not None
+                else None
+            ),
             "installations": [
                 {
                     "installation_id": installation.installation_id,

@@ -1,5 +1,10 @@
+from datetime import UTC, datetime
+
 from api.config import settings
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
+from api.services.notification_scheduler_heartbeat_service import (
+    NotificationSchedulerHeartbeatService,
+)
 from api.services.device_installation_service import DeviceInstallationService
 from api.services.notification_diagnostics_audit_service import (
     NotificationDiagnosticsAuditService,
@@ -68,6 +73,17 @@ def test_internal_notification_diagnostics_returns_user_scoped_snapshot(
         notification_kind="task_reminder",
         skip_reason="no_target_tokens",
     )
+    NotificationSchedulerHeartbeatService.mark_completed(
+        test_db,
+        started_at=datetime(2026, 4, 20, 8, 0, tzinfo=UTC),
+        completed_at=datetime(2026, 4, 20, 8, 0, 1, tzinfo=UTC),
+        stats={
+            "task_reminders_due": 2,
+            "morning_digests_due": 0,
+            "task_reminders_dispatched": 2,
+            "morning_digests_dispatched": 0,
+        },
+    )
     test_db.commit()
 
     response = test_client.get(
@@ -79,6 +95,9 @@ def test_internal_notification_diagnostics_returns_user_scoped_snapshot(
     body = response.json()
     assert body["can_access_internal_diagnostics"] is True
     assert body["account_summary"] == {"user_id": user_id}
+    assert body["scheduler"]["worker_name"] == "notification_schedule"
+    assert body["scheduler"]["last_status"] == "completed"
+    assert body["scheduler"]["last_task_reminders_due"] == 2
     assert [row["installation_id"] for row in body["installations"]] == ["install-123"]
     assert [row["user_id"] for row in body["installations"]] == [user_id]
     assert len(body["recent_delivery"]) == 1
