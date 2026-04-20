@@ -1882,10 +1882,11 @@ extension NotesEditorViewModelTests {
         XCTAssertNil(context.viewModel.lastSavedAt)
 
         context.viewModel.handleNoteUpdate(acknowledged)
-        XCTAssertTrue(context.viewModel.isQueuedForSync)
-        XCTAssertNil(context.viewModel.lastSavedAt)
+        let didClearQueuedState = await waitUntil(timeoutSeconds: 2.0, failOnTimeout: false) {
+            context.viewModel.isQueuedForSync == false && context.viewModel.lastSavedAt != nil
+        }
 
-        context.viewModel.handleNoteUpdate(acknowledged)
+        XCTAssertTrue(didClearQueuedState)
         XCTAssertFalse(context.viewModel.isQueuedForSync)
         XCTAssertNotNil(context.viewModel.lastSavedAt)
     }
