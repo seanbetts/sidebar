@@ -84,7 +84,8 @@ private final class ChatViewModelTeardownBag {
 /// - `ChatViewModel.swift`: Core state and initialization
 /// - `ChatViewModel+Conversations.swift`: Conversation CRUD operations
 /// - `ChatViewModel+Streaming.swift`: Message sending and stream handling
-/// - `ChatViewModel+Realtime.swift`: Real-time event processing
+/// - `ChatStreamSyncDispatch.swift`: Primitive stream sync event handling
+/// - `ChatViewModel+Realtime.swift`: Shared chat sync helpers and payload utilities
 ///
 /// ## Usage
 /// ```swift

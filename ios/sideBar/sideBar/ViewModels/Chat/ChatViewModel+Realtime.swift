@@ -1,27 +1,6 @@
-import Combine
-import sideBarShared
 import Foundation
 import OSLog
-
-private enum DecodedRealtimeField<Value> {
-    case missing
-    case value(Value?)
-    case invalid
-
-    var decodedValue: Value? {
-        if case let .value(value) = self {
-            return value
-        }
-        return nil
-    }
-
-    var isInvalid: Bool {
-        if case .invalid = self {
-            return true
-        }
-        return false
-    }
-}
+import sideBarShared
 
 // MARK: - ChatViewModel+Realtime
 
@@ -41,137 +20,6 @@ extension ChatViewModel {
 
     func requestOnboardingStateRefresh() {
         onOnboardingStateRefreshRequested?()
-    }
-
-    func handleAssistantIdentityUpdated(_ event: ChatStreamEvent) {
-        guard let payload = dictionaryValue(from: event.data) else {
-            onAssistantSettingsUpdated?(
-                AssistantSettingsRealtimeUpdate(
-                    assistantIdentity: nil,
-                    assistantIdentityMeta: nil,
-                    assistantSoul: nil,
-                    assistantSoulMeta: nil,
-                    requiresRefresh: true
-                )
-            )
-            return
-        }
-        let hasIdentityPayload = payload.keys.contains("assistant_identity")
-            || payload.keys.contains("assistant_identity_meta")
-        let identity = decodeRealtimeField(
-            payload["assistant_identity"],
-            as: AssistantIdentitySettings.self
-        )
-        let meta = decodeRealtimeField(
-            payload["assistant_identity_meta"],
-            as: AgentFieldMeta.self
-        )
-        onAssistantSettingsUpdated?(
-            AssistantSettingsRealtimeUpdate(
-                assistantIdentity: identity.decodedValue,
-                assistantIdentityMeta: meta.decodedValue,
-                assistantSoul: nil,
-                assistantSoulMeta: nil,
-                requiresRefresh: !hasIdentityPayload || identity.isInvalid || meta.isInvalid
-            )
-        )
-    }
-
-    func handleAssistantSoulUpdated(_ event: ChatStreamEvent) {
-        guard let payload = dictionaryValue(from: event.data) else {
-            onAssistantSettingsUpdated?(
-                AssistantSettingsRealtimeUpdate(
-                    assistantIdentity: nil,
-                    assistantIdentityMeta: nil,
-                    assistantSoul: nil,
-                    assistantSoulMeta: nil,
-                    requiresRefresh: true
-                )
-            )
-            return
-        }
-        let hasSoulPayload = payload.keys.contains("assistant_soul")
-            || payload.keys.contains("assistant_soul_meta")
-        let soul = decodeRealtimeField(
-            payload["assistant_soul"],
-            as: AssistantSoulSettings.self
-        )
-        let meta = decodeRealtimeField(
-            payload["assistant_soul_meta"],
-            as: AgentFieldMeta.self
-        )
-        onAssistantSettingsUpdated?(
-            AssistantSettingsRealtimeUpdate(
-                assistantIdentity: nil,
-                assistantIdentityMeta: nil,
-                assistantSoul: soul.decodedValue,
-                assistantSoulMeta: meta.decodedValue,
-                requiresRefresh: !hasSoulPayload || soul.isInvalid || meta.isInvalid
-            )
-        )
-    }
-
-    func handleNoteCreate(_ event: ChatStreamEvent) {
-        guard let id = stringValue(from: event.data, key: "id") else {
-            return
-        }
-        if boolValue(from: event.data, key: "open_in_workspace") == true {
-            onOpenNoteRequested?(id)
-        }
-        refreshContext(for: .notes(noteId: id))
-    }
-
-    func handleNoteUpdate(_ event: ChatStreamEvent) {
-        guard let id = stringValue(from: event.data, key: "id") else {
-            return
-        }
-        refreshContext(for: .notes(noteId: id))
-    }
-
-    func handleNoteDelete(_ event: ChatStreamEvent) {
-        guard let id = stringValue(from: event.data, key: "id") else {
-            return
-        }
-        refreshContext(for: .notes(noteId: id))
-    }
-
-    func handleNotePinned(_ event: ChatStreamEvent) {
-        guard let id = stringValue(from: event.data, key: "id") else {
-            return
-        }
-        refreshContext(for: .notes(noteId: id))
-    }
-
-    func handleNoteMoved(_ event: ChatStreamEvent) {
-        guard let id = stringValue(from: event.data, key: "id") else {
-            return
-        }
-        refreshContext(for: .notes(noteId: id))
-    }
-
-    func handleWebsiteSaved(_ event: ChatStreamEvent) {
-        let id = stringValue(from: event.data, key: "id")
-        refreshContext(for: .websites(id: id))
-    }
-
-    func handleWebsitePinned(_ event: ChatStreamEvent) {
-        let id = stringValue(from: event.data, key: "id")
-        refreshContext(for: .websites(id: id))
-    }
-
-    func handleWebsiteArchived(_ event: ChatStreamEvent) {
-        let id = stringValue(from: event.data, key: "id")
-        refreshContext(for: .websites(id: id))
-    }
-
-    func handleWebsiteDeleted(_ event: ChatStreamEvent) {
-        let id = stringValue(from: event.data, key: "id")
-        refreshContext(for: .websites(id: id))
-    }
-
-    func handleIngestionUpdated(_ event: ChatStreamEvent) {
-        let fileId = stringValue(from: event.data, key: "file_id")
-        refreshContext(for: .ingestion(fileId: fileId))
     }
 
     func refreshContext(for target: ContextRefreshTarget) {
@@ -208,64 +56,11 @@ extension ChatViewModel {
         }
     }
 
-    func handleThemeSet(_ event: ChatStreamEvent) {
-        guard let themeRaw = stringValue(from: event.data, key: "theme"),
-              let mode = ThemeMode(rawValue: themeRaw) else {
-            return
-        }
-        themeManager.mode = mode
-    }
-
     func handlePromptPreview(_ event: ChatStreamEvent) {
         let payload = dictionaryValue(from: event.data) ?? [:]
         let preview = PromptPreviewPayloadParser.parseEventPayload(payload)
         promptPreview = preview
         dispatchPromptPreviewToWorkspace(preview)
-    }
-
-    func handleOtherPreferencesUpdated(_ event: ChatStreamEvent) {
-        if let weatherUnit = stringValue(from: event.data, key: "weather_unit"),
-           weatherUnit == "celsius" || weatherUnit == "fahrenheit" {
-            UserDefaults.standard.set(
-                weatherUnit == "fahrenheit",
-                forKey: AppStorageKeys.weatherUsesFahrenheit
-            )
-        }
-
-        if let biometricUnlockEnabled = boolValue(
-            from: event.data,
-            key: "biometric_unlock_enabled"
-        ) {
-            UserDefaults.standard.set(
-                biometricUnlockEnabled,
-                forKey: AppStorageKeys.biometricUnlockEnabled
-            )
-        }
-    }
-
-    func handleToolStart(_ event: ChatStreamEvent) {
-        guard let name = stringValue(from: event.data, key: "name") else {
-            return
-        }
-        clearActiveToolTask?.cancel()
-        activeTool = ChatActiveTool(name: name, status: .running, startedAt: self.clock())
-    }
-
-    func handleToolEnd(_ event: ChatStreamEvent) {
-        guard let name = stringValue(from: event.data, key: "name") else {
-            return
-        }
-        let statusRaw = stringValue(from: event.data, key: "status")
-        let status = statusRaw == ToolActivityStatus.error.rawValue ? ToolActivityStatus.error : ToolActivityStatus.success
-        activeTool = ChatActiveTool(name: name, status: status, startedAt: activeTool?.startedAt ?? self.clock())
-        markNeedsNewline()
-        clearActiveToolTask?.cancel()
-        clearActiveToolTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 4_500_000_000)
-            if self?.activeTool?.name == name {
-                self?.activeTool = nil
-            }
-        }
     }
 
     func markNeedsNewline() {
@@ -382,29 +177,6 @@ extension ChatViewModel {
             }
         }
         return nil
-    }
-
-    private func decodeRealtimeField<T: Decodable>(
-        _ value: Any?,
-        as type: T.Type
-    ) -> DecodedRealtimeField<T> {
-        guard let value else {
-            return .missing
-        }
-        if value is NSNull {
-            return .value(nil)
-        }
-        guard JSONSerialization.isValidJSONObject(value) else {
-            return .invalid
-        }
-        do {
-            let data = try JSONSerialization.data(withJSONObject: value)
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return .value(try decoder.decode(type, from: data))
-        } catch {
-            return .invalid
-        }
     }
 
     func persistMessage(conversationId: String, message: Message) async {
