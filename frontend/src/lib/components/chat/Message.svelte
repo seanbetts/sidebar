@@ -20,12 +20,17 @@
 	} | null = null;
 
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+	let completionTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 	let tooltipsEnabled = false;
+	let showCompletionIndicator = false;
+	let lastMessageId = message.id;
+	let lastMessageStatus = message.status;
 
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
 	$: isToolActive = activeTool?.messageId === message.id;
+	$: trimmedContent = message.content?.trim() ?? '';
 	$: toolLabel = (() => {
 		const name = activeTool?.name || 'a tool';
 		if (activeTool?.status === 'success') {
@@ -36,6 +41,25 @@
 		}
 		return `Using ${name}`;
 	})();
+	$: if (message.id !== lastMessageId) {
+		lastMessageId = message.id;
+		lastMessageStatus = message.status;
+		clearCompletionIndicator();
+	}
+	$: if (message.status !== lastMessageStatus) {
+		if (message.role === 'assistant' && message.status === 'complete' && trimmedContent) {
+			showCompletionIndicator = true;
+			if (completionTimeout) clearTimeout(completionTimeout);
+			completionTimeout = setTimeout(() => {
+				showCompletionIndicator = false;
+				completionTimeout = null;
+			}, 1500);
+		} else if (message.status !== 'complete') {
+			clearCompletionIndicator();
+		}
+		lastMessageStatus = message.status;
+	}
+
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 	});
@@ -63,8 +87,17 @@
 		}
 	}
 
+	function clearCompletionIndicator() {
+		showCompletionIndicator = false;
+		if (completionTimeout) {
+			clearTimeout(completionTimeout);
+			completionTimeout = null;
+		}
+	}
+
 	onDestroy(() => {
 		if (copyTimeout) clearTimeout(copyTimeout);
+		if (completionTimeout) clearTimeout(completionTimeout);
 	});
 </script>
 
@@ -72,10 +105,16 @@
 	<div class="flex items-center justify-between gap-2 mb-2">
 		<div class="flex items-center gap-2">
 			<Badge variant={message.role === 'user' ? 'default' : 'outline'}>{roleName}</Badge>
-			{#if message.status === 'streaming'}
+			{#if message.status === 'streaming' && !trimmedContent}
 				<span class="streaming-indicator">
 					<span class="streaming-dot">●</span>
-					<span class="streaming-text">Working...</span>
+					<span class="streaming-text">Thinking...</span>
+				</span>
+			{/if}
+			{#if showCompletionIndicator}
+				<span class="completion-indicator">
+					<Check size={12} />
+					<span>Complete</span>
 				</span>
 			{/if}
 			{#if isToolActive}
@@ -174,6 +213,14 @@
 		background-clip: text;
 		color: transparent;
 		animation: shimmer 1.5s ease-in-out infinite;
+	}
+
+	.completion-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+		color: var(--color-muted-foreground);
 	}
 
 	@keyframes shimmer {

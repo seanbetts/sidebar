@@ -49,6 +49,8 @@ struct ChatMessageRow: View {
     @State private var thinkingText = ChatMessagePresentation.thinkingPlaceholderText
     @State private var isAnimatingThinkingDismissal = false
     @State private var thinkingDismissalTask: Task<Void, Never>?
+    @State private var showCompletionIndicator = false
+    @State private var completionIndicatorTask: Task<Void, Never>?
     private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
     private let headerPillMinHeight: CGFloat = 22
     private var lookupToken: String { Self.lookupToken(for: message.content) }
@@ -62,6 +64,10 @@ struct ChatMessageRow: View {
             HStack(spacing: 6) {
                 if showsHeaderThinkingIndicator {
                     LoadingIndicatorView(size: 14)
+                        .padding(.trailing, DesignTokens.Spacing.xxs)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                } else if showCompletionIndicator {
+                    SuccessCheckBadge(size: 14, symbolSize: 8)
                         .padding(.trailing, DesignTokens.Spacing.xxs)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -106,6 +112,7 @@ struct ChatMessageRow: View {
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
             .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
+            .animation(Motion.quick(reduceMotion: reduceMotion), value: showCompletionIndicator)
 
             if showsThinkingBody {
                 Text(thinkingText)
@@ -149,6 +156,8 @@ struct ChatMessageRow: View {
             resetCopyFeedbackTask = nil
             thinkingDismissalTask?.cancel()
             thinkingDismissalTask = nil
+            completionIndicatorTask?.cancel()
+            completionIndicatorTask = nil
         }
         .onAppear {
             syncThinkingPlaceholder()
@@ -156,10 +165,11 @@ struct ChatMessageRow: View {
         .onChange(of: messageContentIsEffectivelyEmpty) { wasEmpty, isEmpty in
             handleMessageContentEmptinessChange(from: wasEmpty, to: isEmpty)
         }
-        .onChange(of: message.status) { _, newStatus in
+        .onChange(of: message.status) { oldStatus, newStatus in
             if newStatus != .streaming {
                 stopThinkingDismissalAnimation(resetText: true)
             }
+            handleMessageStatusChange(from: oldStatus, to: newStatus)
         }
     }
 
@@ -278,16 +288,42 @@ struct ChatMessageRow: View {
     }
 
     private func handleMessageContentEmptinessChange(from wasEmpty: Bool, to isEmpty: Bool) {
-        if message.role == .assistant,
-           message.status == .streaming,
-           wasEmpty,
-           !isEmpty {
+        if ChatMessagePresentation.shouldAnimateThinkingDismissal(
+            for: message,
+            previousContent: wasEmpty ? "" : "content",
+            newContent: isEmpty ? "" : "content",
+            reduceMotion: reduceMotion
+        ) {
             startThinkingDismissalAnimationIfNeeded()
             return
         }
 
         if isEmpty {
             syncThinkingPlaceholder()
+        } else {
+            stopThinkingDismissalAnimation(resetText: true)
+        }
+    }
+
+    private func handleMessageStatusChange(from oldStatus: MessageStatus, to newStatus: MessageStatus) {
+        guard oldStatus != newStatus else {
+            return
+        }
+
+        guard newStatus == .complete,
+              ChatMessagePresentation.showsCompletionIndicator(for: message) else {
+            hideCompletionIndicator()
+            return
+        }
+
+        showCompletionIndicator = true
+        completionIndicatorTask?.cancel()
+        completionIndicatorTask = Task { @MainActor in
+            try? await Task.sleep(
+                nanoseconds: ChatMessagePresentation.completionIndicatorDisplayNanoseconds
+            )
+            showCompletionIndicator = false
+            completionIndicatorTask = nil
         }
     }
 
@@ -328,6 +364,12 @@ struct ChatMessageRow: View {
         if resetText {
             thinkingText = ChatMessagePresentation.thinkingPlaceholderText
         }
+    }
+
+    private func hideCompletionIndicator() {
+        completionIndicatorTask?.cancel()
+        completionIndicatorTask = nil
+        showCompletionIndicator = false
     }
 
     private func copyMessage() {
@@ -378,6 +420,7 @@ struct ChatMessageRow: View {
 enum ChatMessagePresentation {
     static let thinkingPlaceholderText = "Thinking..."
     static let thinkingDismissalFrameIntervalNanoseconds: UInt64 = 20_000_000
+    static let completionIndicatorDisplayNanoseconds: UInt64 = 1_500_000_000
 
     static func showsThinkingPlaceholder(for message: Message) -> Bool {
         guard isAssistantStreaming(message) else {
@@ -390,11 +433,21 @@ enum ChatMessagePresentation {
         isAssistantStreaming(message)
     }
 
+    static func showsCompletionIndicator(for message: Message) -> Bool {
+        message.role == .assistant &&
+            message.status == .complete &&
+            !isContentEffectivelyEmpty(message.content)
+    }
+
     static func shouldAnimateThinkingDismissal(
         for message: Message,
         previousContent: String,
-        newContent: String
+        newContent: String,
+        reduceMotion: Bool
     ) -> Bool {
+        guard !reduceMotion else {
+            return false
+        }
         guard isAssistantStreaming(message) else {
             return false
         }

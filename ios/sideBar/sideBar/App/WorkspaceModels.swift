@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// High-level workspace capability envelope.
 public enum WorkspaceMode: String, Equatable {
@@ -82,6 +83,72 @@ public struct AgentWorkspaceSurfaceCapabilities: Equatable {
     }
 }
 
+public struct AgentWorkspaceChartPoint: Equatable, Identifiable {
+    public let id: String
+    public let label: String
+    public let value: Double
+
+    public init(id: String? = nil, label: String, value: Double) {
+        let normalizedId = id?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.id = normalizedId?.isEmpty == false ? normalizedId! : "\(label)-\(value)"
+        self.label = label
+        self.value = value
+    }
+}
+
+public struct AgentWorkspaceMapLocation: Equatable, Identifiable {
+    public let id: String
+    public let latitude: Double
+    public let longitude: Double
+    public let label: String?
+
+    public init(id: String? = nil, latitude: Double, longitude: Double, label: String? = nil) {
+        let normalizedId = id?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.id = normalizedId?.isEmpty == false ? normalizedId! : "\(latitude),\(longitude)"
+        self.latitude = latitude
+        self.longitude = longitude
+        self.label = label
+    }
+}
+
+public struct AgentWorkspaceFormField: Equatable, Identifiable {
+    public let id: String
+    public let label: String
+    public let value: String
+    public let placeholder: String?
+
+    public init(id: String, label: String, value: String, placeholder: String? = nil) {
+        self.id = id
+        self.label = label
+        self.value = value
+        self.placeholder = placeholder
+    }
+}
+
+public struct AgentWorkspaceActionItem: Equatable, Identifiable {
+    public enum Style: String, Equatable {
+        case primary
+        case secondary
+    }
+
+    public let id: String
+    public let title: String
+    public let systemImage: String?
+    public let style: Style
+
+    public init(
+        id: String,
+        title: String,
+        systemImage: String? = nil,
+        style: Style = .secondary
+    ) {
+        self.id = id
+        self.title = title
+        self.systemImage = systemImage
+        self.style = style
+    }
+}
+
 public struct AgentWorkspaceSurfaceDescriptor: Equatable {
     public let type: String
     public let surfaceId: String
@@ -151,6 +218,101 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
             capabilities: capabilities,
             isPinned: isPinned
         )
+    }
+
+    public var chartPoints: [AgentWorkspaceChartPoint] {
+        if let points: [ChartPointPayload] = payload.decodeJSON(
+            [ChartPointPayload].self,
+            forKeys: ["points", "data_points", "series"]
+        ) {
+            let resolved = points.compactMap(\.resolvedPoint)
+            if !resolved.isEmpty {
+                return resolved
+            }
+        }
+
+        let labels = payload.stringArray(forKeys: ["x_values", "xValues", "labels"])
+        let values = payload.doubleArray(forKeys: ["y_values", "yValues", "values"])
+        guard !labels.isEmpty, !values.isEmpty else {
+            return []
+        }
+
+        return Array(zip(labels, values)).map { label, value in
+            AgentWorkspaceChartPoint(label: label, value: value)
+        }
+    }
+
+    public var mapLocation: AgentWorkspaceMapLocation? {
+        guard let latitude = payload.doubleValue(forKeys: ["latitude", "lat"]),
+              let longitude = payload.doubleValue(forKeys: ["longitude", "lon", "lng"]) else {
+            return nil
+        }
+
+        return AgentWorkspaceMapLocation(
+            id: surfaceId,
+            latitude: latitude,
+            longitude: longitude,
+            label: payload.firstTrimmedString(forKeys: ["label", "location", "title"])
+        )
+    }
+
+    public var formFields: [AgentWorkspaceFormField] {
+        if let fields: [FormFieldPayload] = payload.decodeJSON([FormFieldPayload].self, forKeys: ["fields"]) {
+            let resolved = fields.compactMap(\.resolvedField)
+            if !resolved.isEmpty {
+                return resolved
+            }
+        }
+
+        let fallbackKeys = payload.keys
+            .filter { $0.hasPrefix("field_") && !$0.hasSuffix("_label") && !$0.hasSuffix("_placeholder") }
+            .sorted()
+
+        return fallbackKeys.compactMap { key in
+            let value = payload[key] ?? ""
+            let label = payload["\(key)_label"]?.trimmedOrNil ?? humanizedLabel(from: key)
+            return AgentWorkspaceFormField(
+                id: key,
+                label: label,
+                value: value,
+                placeholder: payload["\(key)_placeholder"]?.trimmedOrNil
+            )
+        }
+    }
+
+    public var actionItems: [AgentWorkspaceActionItem] {
+        if let items: [ActionItemPayload] = payload.decodeJSON(
+            [ActionItemPayload].self,
+            forKeys: ["actions", "buttons"]
+        ) {
+            let resolved = items.compactMap(\.resolvedItem)
+            if !resolved.isEmpty {
+                return resolved
+            }
+        }
+
+        var fallback: [AgentWorkspaceActionItem] = []
+        if let primary = payload["primary_action"]?.trimmedOrNil {
+            fallback.append(
+                AgentWorkspaceActionItem(id: "primary_action", title: primary, style: .primary)
+            )
+        }
+        if let secondary = payload["secondary_action"]?.trimmedOrNil {
+            fallback.append(
+                AgentWorkspaceActionItem(id: "secondary_action", title: secondary, style: .secondary)
+            )
+        }
+        return fallback
+    }
+
+    public var supportsEphemeralInteraction: Bool {
+        surfaceClass == .interactiveBlock && authorityMode != .readOnly
+    }
+
+    private func humanizedLabel(from rawKey: String) -> String {
+        rawKey
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
     }
 }
 
@@ -292,74 +454,4 @@ public enum WorkspaceAction: Equatable {
     case closePane(WorkspacePane)
     case setAgentSurfacePinned(surfaceId: String, isPinned: Bool)
     case swapPanes
-}
-
-struct WorkspaceParityProjection: Equatable {
-    let layout: WorkspaceLayoutMode
-    let primaryDescriptor: WorkspaceContentDescriptor
-    let secondaryDescriptor: WorkspaceContentDescriptor?
-    let sidebarSelection: AppSection?
-    let activeSection: AppSection?
-    let focusedSection: AppSection?
-    let lastNonChatSection: AppSection?
-    let isLeftPanelExpanded: Bool
-    let isWorkspaceExpanded: Bool
-    let isWorkspaceExpandedByRotation: Bool
-    let isSettingsPresented: Bool
-}
-
-extension WorkspaceState {
-    static func fromLegacySnapshot(_ snapshot: WorkspaceLegacySnapshot) -> WorkspaceState {
-        let layout: WorkspaceLayoutMode = snapshot.isCompactLayout ? .compact : .split
-        let compactSection = snapshot.phoneSelection ?? snapshot.sidebarSelection ?? snapshot.activeSection ?? .chat
-        let primaryDescriptor: WorkspaceContentDescriptor = snapshot.isCompactLayout
-            ? .builtIn(compactSection)
-            : .fromOptionalBuiltInSection(snapshot.primarySection)
-        let secondaryPane: WorkspacePaneState? = snapshot.isCompactLayout
-            ? nil
-            : WorkspacePaneState(
-                pane: .secondary,
-                descriptor: .fromOptionalBuiltInSection(snapshot.secondarySection)
-            )
-
-        return WorkspaceState(
-            mode: snapshot.mode,
-            layout: layout,
-            primaryPane: WorkspacePaneState(
-                pane: .primary,
-                descriptor: primaryDescriptor
-            ),
-            secondaryPane: secondaryPane,
-            sidebarSelection: snapshot.sidebarSelection,
-            activeSection: snapshot.activeSection,
-            focusedSection: snapshot.focusedSection,
-            lastNonChatSection: snapshot.lastNonChatSection,
-            isLeftPanelExpanded: snapshot.isLeftPanelExpanded,
-            isWorkspaceExpanded: snapshot.isWorkspaceExpanded,
-            isWorkspaceExpandedByRotation: snapshot.isWorkspaceExpandedByRotation,
-            isSettingsPresented: snapshot.isSettingsPresented
-        )
-    }
-
-    var parityProjection: WorkspaceParityProjection {
-        WorkspaceParityProjection(
-            layout: layout,
-            primaryDescriptor: primaryPane.descriptor,
-            secondaryDescriptor: secondaryPane?.descriptor,
-            sidebarSelection: sidebarSelection,
-            activeSection: activeSection,
-            focusedSection: focusedSection,
-            lastNonChatSection: lastNonChatSection,
-            isLeftPanelExpanded: isLeftPanelExpanded,
-            isWorkspaceExpanded: isWorkspaceExpanded,
-            isWorkspaceExpandedByRotation: isWorkspaceExpandedByRotation,
-            isSettingsPresented: isSettingsPresented
-        )
-    }
-
-    static func expectedParityProjection(
-        from snapshot: WorkspaceLegacySnapshot
-    ) -> WorkspaceParityProjection {
-        fromLegacySnapshot(snapshot).parityProjection
-    }
 }

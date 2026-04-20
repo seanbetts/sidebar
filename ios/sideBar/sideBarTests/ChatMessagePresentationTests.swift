@@ -44,7 +44,8 @@ final class ChatMessagePresentationTests: XCTestCase {
             ChatMessagePresentation.shouldAnimateThinkingDismissal(
                 for: message,
                 previousContent: " \n ",
-                newContent: "Hello"
+                newContent: "Hello",
+                reduceMotion: false
             )
         )
     }
@@ -56,7 +57,8 @@ final class ChatMessagePresentationTests: XCTestCase {
             ChatMessagePresentation.shouldAnimateThinkingDismissal(
                 for: message,
                 previousContent: "Hello",
-                newContent: "Hello again"
+                newContent: "Hello again",
+                reduceMotion: false
             )
         )
     }
@@ -68,7 +70,33 @@ final class ChatMessagePresentationTests: XCTestCase {
             ChatMessagePresentation.shouldAnimateThinkingDismissal(
                 for: message,
                 previousContent: "",
-                newContent: "Hello"
+                newContent: "Hello",
+                reduceMotion: false
+            )
+        )
+    }
+
+    func testShowsCompletionIndicatorForCompletedAssistantMessage() {
+        let message = makeMessage(role: .assistant, status: .complete, content: "Done")
+
+        XCTAssertTrue(ChatMessagePresentation.showsCompletionIndicator(for: message))
+    }
+
+    func testDoesNotShowCompletionIndicatorForEmptyCompletedAssistantMessage() {
+        let message = makeMessage(role: .assistant, status: .complete, content: " \n ")
+
+        XCTAssertFalse(ChatMessagePresentation.showsCompletionIndicator(for: message))
+    }
+
+    func testReduceMotionDisablesThinkingDismissalAnimation() {
+        let message = makeMessage(role: .assistant, status: .streaming, content: "Hello")
+
+        XCTAssertFalse(
+            ChatMessagePresentation.shouldAnimateThinkingDismissal(
+                for: message,
+                previousContent: "",
+                newContent: "Hello",
+                reduceMotion: true
             )
         )
     }

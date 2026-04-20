@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
@@ -9,5 +10,91 @@ final class ToolCallPopoverTests: XCTestCase {
 
     func testChatErrorPopoverUsesCompactPopoverPanelType() {
         XCTAssertEqual(chatErrorPopoverPanelType(), .compactPopover)
+    }
+
+    func testSingleToolSummaryUsesHumanReadableSummary() {
+        let toolCall = ToolCall(
+            id: "tool-1",
+            name: "create-note",
+            parameters: [:],
+            status: .success,
+            result: AnyCodable([
+                "success": true,
+                "summary": "Created note: Shopping List",
+                "entities_touched": [
+                    [
+                        "entity_type": "note",
+                        "entity_id": "note-1",
+                        "change": "created"
+                    ]
+                ]
+            ])
+        )
+
+        let summary = ChatToolPresentation.summary(for: toolCall)
+
+        XCTAssertEqual(summary.primaryText, "Created note: Shopping List")
+        XCTAssertEqual(summary.secondaryText, "Created note")
+        XCTAssertFalse(summary.showsToolList)
+    }
+
+    func testPromptPreviewIsSecondaryDetail() {
+        let sections = ChatToolPresentation.detailSections(for: makePromptPreviewToolCall())
+
+        XCTAssertEqual(
+            sections.map(\.kind),
+            [.summary, .workspaceActions, .promptPreview, .technicalDetail]
+        )
+    }
+
+    func testTechnicalDetailFallsBackWhenResultIsNotNormalized() {
+        let toolCall = ToolCall(
+            id: "tool-2",
+            name: "lookup-weather",
+            parameters: [
+                "city": AnyCodable("London")
+            ],
+            status: .success,
+            result: AnyCodable([
+                "data": [
+                    "temperature": "18C"
+                ]
+            ])
+        )
+
+        let summary = ChatToolPresentation.summary(for: toolCall)
+        let sections = ChatToolPresentation.detailSections(for: toolCall)
+
+        XCTAssertEqual(summary.primaryText, "lookup-weather")
+        XCTAssertEqual(summary.secondaryText, nil)
+        XCTAssertEqual(sections.map(\.kind), [.summary, .technicalDetail])
+    }
+
+    private func makePromptPreviewToolCall() -> ToolCall {
+        ToolCall(
+            id: "prompt-preview",
+            name: "Generate Prompts",
+            parameters: [
+                "assistant_id": AnyCodable("assistant-1")
+            ],
+            status: .success,
+            result: AnyCodable([
+                "success": true,
+                "summary": "Prepared prompt preview for Sean",
+                "data": [
+                    "system_prompt": "You are concise.",
+                    "system_prompt_sections": [
+                        [
+                            "id": "system",
+                            "title": "System",
+                            "source": "system",
+                            "chars": 16
+                        ]
+                    ]
+                ]
+            ]),
+            skillId: "prompt-preview",
+            iconKey: "prompt-preview"
+        )
     }
 }

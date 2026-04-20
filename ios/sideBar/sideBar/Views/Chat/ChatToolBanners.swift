@@ -40,12 +40,26 @@ struct ChatActiveToolBanner: View {
 
 struct PromptPreviewView: View {
     let promptPreview: ChatPromptPreview
+    let showsHeader: Bool
+    let showsBackground: Bool
+
+    init(
+        promptPreview: ChatPromptPreview,
+        showsHeader: Bool = true,
+        showsBackground: Bool = true
+    ) {
+        self.promptPreview = promptPreview
+        self.showsHeader = showsHeader
+        self.showsBackground = showsBackground
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Prompt Preview")
-                .appFont(.captionSemibold)
-                .foregroundStyle(.secondary)
+            if showsHeader {
+                Text("Prompt Preview")
+                    .appFont(.captionSemibold)
+                    .foregroundStyle(.secondary)
+            }
 
             if let report = promptPreview.promptReport {
                 if let system = report.systemPrompt {
@@ -95,7 +109,11 @@ struct PromptPreviewView: View {
             }
         }
         .padding(DesignTokens.Spacing.xsPlus)
-        .background(promptBackground)
+        .background {
+            if showsBackground {
+                promptBackground
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 

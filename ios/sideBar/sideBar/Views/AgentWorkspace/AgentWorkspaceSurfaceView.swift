@@ -1,4 +1,6 @@
 import SwiftUI
+import Charts
+import MapKit
 import UniformTypeIdentifiers
 import sideBarShared
 #if os(iOS)
@@ -8,18 +10,20 @@ import AppKit
 #endif
 
 struct AgentWorkspaceSurfaceView: View {
-    @EnvironmentObject private var environment: AppEnvironment
-    @Environment(\.workspaceColumn) private var workspaceColumn
-    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    @EnvironmentObject var environment: AppEnvironment
+    @Environment(\.workspaceColumn) var workspaceColumn
+    @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
     #if os(iOS)
-    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) var isWorkspaceExpandedByRotation: Bool = false
     #endif
 
     let surface: AgentWorkspaceSurfaceDescriptor
 
-    @State private var exportDocument: MarkdownFileDocument?
-    @State private var exportFilename = "agent-surface.md"
-    @State private var isExporting = false
+    @State var exportDocument: MarkdownFileDocument?
+    @State var exportFilename = "agent-surface.md"
+    @State var isExporting = false
+    @State var ephemeralFieldValues: [String: String] = [:]
+    @State var lastTriggeredActionTitle: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -87,7 +91,7 @@ struct AgentWorkspaceSurfaceView: View {
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 
-    private var contextMenuItems: [SidebarMenuItem] {
+    var contextMenuItems: [SidebarMenuItem] {
         var items: [SidebarMenuItem] = []
 
         for action in surface.contextMenuActions {
@@ -186,267 +190,135 @@ struct AgentWorkspaceSurfaceView: View {
 
     private var chartSurface: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                .fill(DesignTokens.Colors.surface)
-                .overlay {
-                    Image(systemName: "chart.xyaxis.line")
-                        .appFont(.size32Semibold)
-                        .foregroundStyle(.secondary)
+            if chartPoints.isEmpty {
+                EmptyStateView(
+                    title: "No chart data",
+                    subtitle: surfaceSummaryText ?? "The assistant has not supplied chart points yet."
+                )
+            } else {
+                Chart(chartPoints) { point in
+                    LineMark(
+                        x: .value("Label", point.label),
+                        y: .value("Value", point.value)
+                    )
+                    PointMark(
+                        x: .value("Label", point.label),
+                        y: .value("Value", point.value)
+                    )
                 }
-                .frame(height: 220)
+                .frame(height: 240)
+                .padding(DesignTokens.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                        .fill(DesignTokens.Colors.surface)
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                         .stroke(DesignTokens.Colors.border, lineWidth: 1)
                 )
-            Text(surface.payload["summary"] ?? "No chart data provided.")
-                .appFont(.body)
-                .foregroundStyle(.secondary)
+            }
+
+            if let summary = surfaceSummaryText {
+                Text(summary)
+                    .appFont(.body)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     private var mapSurface: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                .fill(DesignTokens.Colors.surface)
-                .overlay {
-                    VStack(spacing: DesignTokens.Spacing.xsPlus) {
-                        Image(systemName: "map")
-                            .appFont(.size32Semibold)
-                        Text(surface.payload["location"] ?? "Map preview")
-                            .appFont(.caption)
-                    }
-                    .foregroundStyle(.secondary)
+            if let mapLocation {
+                Map(position: .constant(mapCameraPosition(for: mapLocation))) {
+                    Marker(mapMarkerTitle(for: mapLocation), coordinate: mapCoordinate(for: mapLocation))
                 }
-                .frame(height: 220)
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                         .stroke(DesignTokens.Colors.border, lineWidth: 1)
                 )
-            Text(surface.payload["summary"] ?? "No map payload provided.")
-                .appFont(.body)
-                .foregroundStyle(.secondary)
+            } else {
+                EmptyStateView(
+                    title: "No map location",
+                    subtitle: surfaceSummaryText ?? "The assistant has not supplied map coordinates yet."
+                )
+            }
+
+            if let summary = surfaceSummaryText {
+                Text(summary)
+                    .appFont(.body)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     private var formSurface: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            TextField("Field one", text: .constant(surface.payload["field_one"] ?? ""))
-                .textFieldStyle(.roundedBorder)
-                .disabled(true)
-            TextField("Field two", text: .constant(surface.payload["field_two"] ?? ""))
-                .textFieldStyle(.roundedBorder)
-                .disabled(true)
-            Text(surface.payload["summary"] ?? "No form payload provided.")
-                .appFont(.body)
-                .foregroundStyle(.secondary)
+            if let summary = surfaceSummaryText {
+                Text(summary)
+                    .appFont(.body)
+                    .foregroundStyle(.secondary)
+            }
+
+            if formFields.isEmpty {
+                EmptyStateView(
+                    title: "No form fields",
+                    subtitle: "The assistant has not supplied form field metadata yet."
+                )
+            } else {
+                ForEach(formFields) { field in
+                    TextField(
+                        field.label,
+                        text: binding(for: field),
+                        prompt: field.placeholder.map { Text($0) }
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(!surface.supportsEphemeralInteraction)
+                }
+            }
+
+            if let note = interactionNote {
+                Text(note)
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     private var actionPanelSurface: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            Text(surface.payload["summary"] ?? "No action panel payload provided.")
-                .appFont(.body)
-                .foregroundStyle(.secondary)
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Button(surface.payload["primary_action"] ?? "Primary Action") {}
-                    .buttonStyle(.borderedProminent)
-                Button(surface.payload["secondary_action"] ?? "Secondary Action") {}
-                    .buttonStyle(.bordered)
+            if let summary = surfaceSummaryText {
+                Text(summary)
+                    .appFont(.body)
+                    .foregroundStyle(.secondary)
+            }
+
+            if actionItems.isEmpty {
+                EmptyStateView(
+                    title: "No actions available",
+                    subtitle: "The assistant has not supplied action metadata yet."
+                )
+            } else {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                    ForEach(actionItems) { action in
+                        actionButton(for: action)
+                    }
+                }
+            }
+
+            if let lastTriggeredActionTitle {
+                Text("Last local action: \(lastTriggeredActionTitle)")
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let note = interactionNote {
+                Text(note)
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    private var resolvedTitle: String {
-        let title = surface.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if title.isEmpty {
-            return "Agent Workspace"
-        }
-        return title
-    }
-
-    private var surfaceLabel: String {
-        var label = surface.surfaceType.rawValue
-        label = label.replacingOccurrences(of: "([A-Z])", with: " $1", options: .regularExpression)
-        return label.prefix(1).uppercased() + label.dropFirst()
-    }
-
-    private var shouldShowExpandButton: Bool {
-        WorkspaceBehaviorPolicy.shouldShowExpandButton(
-            workspaceColumn: workspaceColumn,
-            isPhoneIdiom: {
-                #if os(iOS)
-                isPhone
-                #else
-                false
-                #endif
-            }()
-        )
-    }
-
-    private var expandButton: some View {
-        HeaderActionButton(
-            systemName: expandButtonIconName,
-            accessibilityLabel: expandButtonLabel,
-            action: expandWorkspaceView
-        )
-    }
-
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded
-            ? "arrow.up.right.and.arrow.down.left"
-            : "arrow.down.left.and.arrow.up.right"
-    }
-
-    private var expandButtonLabel: String {
-        isWorkspaceExpanded ? "Exit expanded mode" : "Expand workspace"
-    }
-
-    private func expandWorkspaceView() {
-        #if os(iOS)
-        if !isPhone {
-            isWorkspaceExpandedByRotation = false
-        }
-        #endif
-        isWorkspaceExpanded.toggle()
-    }
-
-    #if os(iOS)
-    private var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
-    }
-    #endif
-
-    private func refreshSurface() {
-        environment.toastCenter.show(message: "Agent surface refreshed.", style: .success)
-    }
-
-    private func closeSurface() {
-        environment.closeWorkspacePane(workspacePane, source: "agent_surface_close")
-    }
-
-    private func copyMarkdownPayload() {
-        guard let markdown = markdownPayload else { return }
-        #if os(iOS)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = markdown
-        #elseif os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(markdown, forType: .string)
-        #endif
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(iOS)
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == markdown {
-                pasteboard.string = ""
-            }
-            #elseif os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == markdown {
-                pasteboard.clearContents()
-            }
-            #endif
-        }
-    }
-
-    private func shareSurfaceText() {
-        guard let text = sharableTextPayload else { return }
-        SystemSharePresenter.share(
-            text: text,
-            anchorID: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId)
-        )
-    }
-
-    private func downloadMarkdownPayload() {
-        guard let markdown = markdownPayload else { return }
-        exportFilename = exportMarkdownFilename
-        exportDocument = MarkdownFileDocument(text: markdown)
-        isExporting = true
-    }
-
-    private var markdownPayload: String? {
-        if let markdown = surface.payload["markdown"]?.trimmedOrNil {
-            return markdown
-        }
-        if let text = surface.payload["text"]?.trimmedOrNil {
-            return text
-        }
-        return nil
-    }
-
-    private var sharableTextPayload: String? {
-        if let markdown = markdownPayload {
-            return markdown
-        }
-        if let summary = surface.payload["summary"]?.trimmedOrNil {
-            return summary
-        }
-        return nil
-    }
-
-    private var exportMarkdownFilename: String {
-        let base = (surface.title?.trimmedOrNil ?? surface.surfaceId).replacingOccurrences(of: " ", with: "-")
-        let sanitized = base.replacingOccurrences(
-            of: #"[^A-Za-z0-9._-]"#,
-            with: "-",
-            options: .regularExpression
-        )
-        if sanitized.hasSuffix(".md") {
-            return sanitized
-        }
-        return "\(sanitized).md"
-    }
-
-    private func iconName(for type: AgentWorkspaceSurfaceType) -> String {
-        switch type {
-        case .markdown:
-            return "doc.plaintext"
-        case .table:
-            return "tablecells"
-        case .chart:
-            return "chart.bar.xaxis"
-        case .map:
-            return "map"
-        case .form:
-            return "list.bullet.clipboard"
-        case .actionPanel:
-            return "slider.horizontal.3"
-        }
-    }
-
-    private var workspacePane: WorkspacePane {
-        switch workspaceColumn {
-        case .primary:
-            return .primary
-        case .secondary:
-            return .secondary
-        }
-    }
-}
-
-private extension AgentWorkspaceSurfaceView {
-    @ViewBuilder
-    var surfaceActionsMenu: some View {
-        #if os(macOS)
-        Menu {
-            sidebarMenuItemsView(contextMenuItems)
-        } label: {
-            HeaderActionIcon(systemName: "ellipsis")
-        }
-        .buttonStyle(.plain)
-        .systemShareAnchor(id: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId))
-        .accessibilityLabel("Workspace options")
-        .disabled(contextMenuItems.isEmpty)
-        #else
-        HeaderActionMenuButton(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Workspace options",
-            items: contextMenuItems,
-            isCompact: true
-        )
-        .systemShareAnchor(id: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId))
-        .disabled(contextMenuItems.isEmpty)
-        #endif
-    }
 }

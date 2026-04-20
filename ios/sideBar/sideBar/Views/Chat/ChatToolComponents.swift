@@ -209,11 +209,11 @@ struct ToolCallPopoverContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Skills Used")
-                    .appFont(.captionSemibold)
-                    .foregroundStyle(.secondary)
-
                 if toolCalls.count > 1 {
+                    Text("Skills Used")
+                        .appFont(.captionSemibold)
+                        .foregroundStyle(.secondary)
+
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(toolCalls) { toolCall in
                             Button {
@@ -249,189 +249,68 @@ struct ToolCallPopoverContent: View {
 
 struct ToolCallDetailView: View {
     let toolCall: ToolCall
+    @State private var isPromptPreviewExpanded = false
+    @State private var isTechnicalDetailExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ToolCallRow(toolCall: toolCall, isSelected: true)
-                .allowsHitTesting(false)
-            if let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result) {
-                PromptPreviewView(promptPreview: promptPreview)
-            } else {
-                fallbackDetail
-            }
-            if !workspaceSurfaceTargets.isEmpty {
-                WorkspaceSurfaceActionGroup(targets: workspaceSurfaceTargets)
-            }
-        }
-    }
-
-    private var fallbackDetail: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !toolCall.parameters.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Parameters")
-                        .appFont(.captionSemibold)
-                        .foregroundStyle(.secondary)
-                    ForEach(parameterRows, id: \.key) { item in
-                        Text("\(item.key): \(item.value)")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
+            ForEach(detailSections) { section in
+                switch section.kind {
+                case .summary:
+                    ToolCallSummaryCard(
+                        summary: summaryPresentation,
+                        status: toolCall.status
+                    )
+                case .workspaceActions:
+                    if !workspaceSurfaceTargets.isEmpty {
+                        WorkspaceSurfaceActionGroup(targets: workspaceSurfaceTargets)
+                    }
+                case .promptPreview:
+                    if let promptPreview {
+                        ToolCallDisclosureCard(
+                            title: section.title,
+                            subtitle: section.subtitle,
+                            isExpanded: $isPromptPreviewExpanded
+                        ) {
+                            PromptPreviewView(
+                                promptPreview: promptPreview,
+                                showsHeader: false,
+                                showsBackground: false
+                            )
+                        }
+                    }
+                case .technicalDetail:
+                    if let technicalDetail {
+                        ToolCallDisclosureCard(
+                            title: section.title,
+                            subtitle: section.subtitle,
+                            isExpanded: $isTechnicalDetailExpanded
+                        ) {
+                            ToolCallTechnicalDetailView(detail: technicalDetail)
+                        }
                     }
                 }
             }
-
-            if let summary = resultSummaryText {
-                Text(summary)
-                    .appFont(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
         }
-        .padding(DesignTokens.Spacing.xsPlus)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
-        )
     }
 
-    private var parameterRows: [(key: String, value: String)] {
-        toolCall.parameters
-            .map { (key: $0.key, value: formattedValue($0.value.value)) }
-            .sorted { $0.key < $1.key }
+    private var detailSections: [ChatToolDetailSection] {
+        ChatToolPresentation.detailSections(for: toolCall)
     }
 
-    private var resultSummaryText: String? {
-        guard let resultValue = toolCall.result?.value else {
-            return nil
-        }
-        guard let resultPayload = resultValue as? [String: Any] else {
-            return formattedValue(resultValue)
-        }
-        if let error = resultPayload["error"] as? String, !error.isEmpty {
-            return error
-        }
-        if let success = resultPayload["success"] as? Bool {
-            return success ? "Skill completed successfully." : "Skill failed."
-        }
-        if let data = resultPayload["data"] {
-            return formattedValue(data)
-        }
-        return formattedValue(resultPayload)
+    private var summaryPresentation: ChatToolPresentation.Summary {
+        ChatToolPresentation.summary(for: toolCall)
+    }
+
+    private var promptPreview: ChatPromptPreview? {
+        PromptPreviewPayloadParser.parseToolResult(toolCall.result)
+    }
+
+    private var technicalDetail: ChatToolTechnicalDetail? {
+        ChatToolPresentation.technicalDetail(for: toolCall)
     }
 
     private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {
         ToolResultWorkspaceSurfaceParser.parse(toolCall)
-    }
-
-    private func formattedValue(_ value: Any) -> String {
-        if let stringValue = value as? String {
-            return stringValue
-        }
-        if let data = try? JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted]),
-           let jsonString = String(data: data, encoding: .utf8) {
-            return jsonString
-        }
-        return String(describing: value)
-    }
-}
-
-struct WorkspaceSurfaceActionGroup: View {
-    @EnvironmentObject private var environment: AppEnvironment
-    let targets: [ToolResultWorkspaceSurfaceTarget]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Workspace")
-                .appFont(.captionSemibold)
-                .foregroundStyle(.secondary)
-
-            ForEach(targets) { target in
-                Button {
-                    environment.presentAgentSurface(
-                        target.surface,
-                        in: target.pane,
-                        source: "chat_workspace_surface_link"
-                    )
-                } label: {
-                    Label(target.label, systemImage: target.iconName)
-                        .appFont(.captionSemibold)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding(DesignTokens.Spacing.xsPlus)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
-        )
-    }
-}
-
-struct WorkspaceSurfaceInlineActionsBar: View {
-    @EnvironmentObject private var environment: AppEnvironment
-    let targets: [ToolResultWorkspaceSurfaceTarget]
-
-    var body: some View {
-        Group {
-            if targets.count == 1, let target = targets.first {
-                HStack {
-                    Spacer(minLength: 0)
-                    actionButton(target, prominent: true)
-                        .frame(maxWidth: 280)
-                    Spacer(minLength: 0)
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        ForEach(targets) { target in
-                            actionButton(target, prominent: false)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    @ViewBuilder
-    private func actionButton(
-        _ target: ToolResultWorkspaceSurfaceTarget,
-        prominent: Bool
-    ) -> some View {
-        if prominent {
-            Button {
-                environment.presentAgentSurface(
-                    target.surface,
-                    in: target.pane,
-                    source: "chat_workspace_surface_inline"
-                )
-            } label: {
-                Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 10))
-            .controlSize(.regular)
-        } else {
-            Button {
-                environment.presentAgentSurface(
-                    target.surface,
-                    in: target.pane,
-                    source: "chat_workspace_surface_inline"
-                )
-            } label: {
-                Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
-                    .lineLimit(1)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: 10))
-            .controlSize(.regular)
-        }
     }
 }
