@@ -127,42 +127,32 @@ enum ChatWorkspacePatchParser {
             return nil
         }
 
-        var capabilities = AgentWorkspaceSurfaceCapabilities()
-        if let rawCapabilities = dictionaryValue(
-            from: rawSurface,
-            keys: ["capabilities"]
-        ) {
-            if let canRefresh = firstBool(
-                in: rawCapabilities,
-                keys: ["can_refresh", "canRefresh"]
-            ) {
-                capabilities.canRefresh = canRefresh
-            }
-            if let canClose = firstBool(
-                in: rawCapabilities,
-                keys: ["can_close", "canClose"]
-            ) {
-                capabilities.canClose = canClose
-            }
-            if let canPin = firstBool(
-                in: rawCapabilities,
-                keys: ["can_pin", "canPin"]
-            ) {
-                capabilities.canPin = canPin
-            }
-            if let canInspectData = firstBool(
-                in: rawCapabilities,
-                keys: ["can_inspect_data", "canInspectData"]
-            ) {
-                capabilities.canInspectData = canInspectData
-            }
-        }
-
         let title = firstString(in: rawSurface, keys: ["title"])
+        let capabilities = capabilities(from: rawSurface)
         let isPinned = firstBool(
             in: rawSurface,
             keys: ["is_pinned", "isPinned"]
         ) ?? false
+        let surfaceClass = AgentWorkspaceSurfaceClass(
+            rawValue: firstString(
+                in: rawSurface,
+                keys: ["surface_class", "surfaceClass"]
+            ) ?? ""
+        ) ?? .display
+        let authorityMode = AgentWorkspaceAuthorityMode(
+            rawValue: firstString(
+                in: rawSurface,
+                keys: ["authority_mode", "authorityMode"]
+            ) ?? ""
+        ) ?? .readOnly
+        let boundEntity = boundEntityReference(
+            from: rawSurface,
+            keys: ["bound_entity", "boundEntity"]
+        )
+        let collaborationScope = collaborationScope(
+            from: rawSurface,
+            keys: ["collaboration_scope", "collaborationScope"]
+        )
         let payload = payloadStrings(
             from: dictionaryValue(from: rawSurface, keys: ["payload"]) ?? [:]
         )
@@ -174,9 +164,104 @@ enum ChatWorkspacePatchParser {
             title: title,
             payload: payload,
             contextMenuActions: contextMenuActions,
+            surfaceClass: surfaceClass,
+            authorityMode: authorityMode,
+            boundEntity: boundEntity,
+            collaborationScope: collaborationScope,
             capabilities: capabilities,
             isPinned: isPinned
         )
+    }
+
+    private static func capabilities(
+        from rawSurface: [String: Any]
+    ) -> AgentWorkspaceSurfaceCapabilities {
+        guard let rawCapabilities = dictionaryValue(
+            from: rawSurface,
+            keys: ["capabilities"]
+        ) else {
+            return AgentWorkspaceSurfaceCapabilities()
+        }
+
+        var capabilities = AgentWorkspaceSurfaceCapabilities()
+        if let canRefresh = firstBool(
+            in: rawCapabilities,
+            keys: ["can_refresh", "canRefresh"]
+        ) {
+            capabilities.canRefresh = canRefresh
+        }
+        if let canClose = firstBool(
+            in: rawCapabilities,
+            keys: ["can_close", "canClose"]
+        ) {
+            capabilities.canClose = canClose
+        }
+        if let canPin = firstBool(
+            in: rawCapabilities,
+            keys: ["can_pin", "canPin"]
+        ) {
+            capabilities.canPin = canPin
+        }
+        if let canInspectData = firstBool(
+            in: rawCapabilities,
+            keys: ["can_inspect_data", "canInspectData"]
+        ) {
+            capabilities.canInspectData = canInspectData
+        }
+        return capabilities
+    }
+
+    private static func boundEntityReference(
+        from payload: [String: Any],
+        keys: [String]
+    ) -> AgentWorkspaceBoundEntityReference? {
+        guard let rawBoundEntity = dictionaryValue(from: payload, keys: keys),
+              let entityType = firstString(
+                  in: rawBoundEntity,
+                  keys: ["type", "entity_type", "entityType"]
+              ),
+              let entityId = firstString(
+                  in: rawBoundEntity,
+                  keys: ["id", "entity_id", "entityId"]
+              ) else {
+            return nil
+        }
+
+        return AgentWorkspaceBoundEntityReference(
+            entityType: entityType,
+            entityId: entityId
+        )
+    }
+
+    private static func collaborationScope(
+        from payload: [String: Any],
+        keys: [String]
+    ) -> AgentWorkspaceCollaborationScope {
+        guard let rawScope = dictionaryValue(from: payload, keys: keys),
+              let mode = firstString(in: rawScope, keys: ["mode"]) else {
+            return .none
+        }
+
+        switch mode {
+        case "conversation_bound_entity":
+            guard let entityType = firstString(
+                in: rawScope,
+                keys: ["entity_type", "entityType", "type"]
+            ),
+            let entityId = firstString(
+                in: rawScope,
+                keys: ["entity_id", "entityId", "id"]
+            ) else {
+                return .none
+            }
+            return .conversationBoundEntity(
+                entityType: entityType,
+                entityId: entityId
+            )
+
+        default:
+            return .none
+        }
     }
 
     private static func contextMenuActions(

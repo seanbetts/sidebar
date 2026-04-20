@@ -28,6 +28,33 @@ public enum AgentWorkspaceSurfaceType: String, CaseIterable, Equatable {
     case actionPanel
 }
 
+public enum AgentWorkspaceSurfaceClass: String, Equatable {
+    case display = "display"
+    case boundEntity = "bound_entity"
+    case interactiveBlock = "interactive_block"
+}
+
+public enum AgentWorkspaceAuthorityMode: String, Equatable {
+    case readOnly = "read_only"
+    case userEditable = "user_editable"
+    case collaborative = "collaborative"
+}
+
+public struct AgentWorkspaceBoundEntityReference: Equatable {
+    public let entityType: String
+    public let entityId: String
+
+    public init(entityType: String, entityId: String) {
+        self.entityType = entityType
+        self.entityId = entityId
+    }
+}
+
+public enum AgentWorkspaceCollaborationScope: Equatable {
+    case none
+    case conversationBoundEntity(entityType: String, entityId: String)
+}
+
 /// Context-menu actions surfaced for agent-rendered content.
 public enum AgentWorkspaceContextMenuAction: String, CaseIterable, Equatable {
     case copyMarkdown = "copy_markdown"
@@ -61,6 +88,10 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
     public let title: String?
     public let payload: [String: String]
     public let contextMenuActions: [AgentWorkspaceContextMenuAction]
+    public let surfaceClass: AgentWorkspaceSurfaceClass
+    public let authorityMode: AgentWorkspaceAuthorityMode
+    public let boundEntity: AgentWorkspaceBoundEntityReference?
+    public let collaborationScope: AgentWorkspaceCollaborationScope
     public var capabilities: AgentWorkspaceSurfaceCapabilities
     public var isPinned: Bool
 
@@ -74,6 +105,10 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         title: String? = nil,
         payload: [String: String] = [:],
         contextMenuActions: [AgentWorkspaceContextMenuAction] = [],
+        surfaceClass: AgentWorkspaceSurfaceClass = .display,
+        authorityMode: AgentWorkspaceAuthorityMode = .readOnly,
+        boundEntity: AgentWorkspaceBoundEntityReference? = nil,
+        collaborationScope: AgentWorkspaceCollaborationScope = .none,
         capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
         isPinned: Bool = false
     ) {
@@ -82,6 +117,10 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         self.title = title
         self.payload = payload
         self.contextMenuActions = contextMenuActions
+        self.surfaceClass = surfaceClass
+        self.authorityMode = authorityMode
+        self.boundEntity = boundEntity
+        self.collaborationScope = collaborationScope
         self.capabilities = capabilities
         self.isPinned = isPinned
     }
@@ -92,6 +131,10 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         title: String? = nil,
         payload: [String: String] = [:],
         contextMenuActions: [AgentWorkspaceContextMenuAction] = [],
+        surfaceClass: AgentWorkspaceSurfaceClass = .display,
+        authorityMode: AgentWorkspaceAuthorityMode = .readOnly,
+        boundEntity: AgentWorkspaceBoundEntityReference? = nil,
+        collaborationScope: AgentWorkspaceCollaborationScope = .none,
         capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
         isPinned: Bool = false
     ) {
@@ -101,6 +144,10 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
             title: title,
             payload: payload,
             contextMenuActions: contextMenuActions,
+            surfaceClass: surfaceClass,
+            authorityMode: authorityMode,
+            boundEntity: boundEntity,
+            collaborationScope: collaborationScope,
             capabilities: capabilities,
             isPinned: isPinned
         )
