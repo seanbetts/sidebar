@@ -10,6 +10,7 @@ included:
   - sideBarWidgets
 
 excluded:
+  - ../.worktrees
   - sideBar.xcodeproj
   - .build
   - .swiftpm

@@ -22,79 +22,7 @@ final class InternalDiagnosticsAPITests: XCTestCase {
         router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("notification-diagnostics") == true)
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let payload = """
-            {
-              "can_access_internal_diagnostics": true,
-              "account_summary": {
-                "user_id": "user-123"
-              },
-              "scheduler": {
-                "worker_name": "notification_schedule",
-                "last_started_at": "2026-04-20T08:00:00Z",
-                "last_completed_at": "2026-04-20T08:00:01Z",
-                "last_status": "completed",
-                "last_error": null,
-                "last_task_reminders_due": 2,
-                "last_task_reminders_dispatched": 2,
-                "last_morning_digests_due": 0,
-                "last_morning_digests_dispatched": 0
-              },
-              "scheduler_runs": [
-                {
-                  "worker_name": "notification_schedule",
-                  "started_at": "2026-04-20T08:00:00Z",
-                  "completed_at": "2026-04-20T08:00:01Z",
-                  "status": "completed",
-                  "error": null,
-                  "task_reminders_due": 2,
-                  "task_reminders_dispatched": 2,
-                  "morning_digests_due": 0,
-                  "morning_digests_dispatched": 0
-                }
-              ],
-              "installations": [
-                {
-                  "installation_id": "install-123",
-                  "user_id": "user-123",
-                  "platform": "ios",
-                  "token_suffix": "abcdef",
-                  "is_foreground": true
-                }
-              ],
-              "recent_delivery": [
-                {
-                  "created_at": "2026-04-19T10:00:00Z",
-                  "user_id": "user-123",
-                  "installation_id": "install-123",
-                  "notification_kind": "reminder",
-                  "platform": "ios",
-                  "token_suffix": "abcdef",
-                  "delivery_result": "sent"
-                }
-              ],
-              "recent_scheduler_decisions": [
-                {
-                  "created_at": "2026-04-20T08:00:00Z",
-                  "run_started_at": "2026-04-20T08:00:00Z",
-                  "user_id": "user-123",
-                  "notification_kind": "task_reminder",
-                  "decision_stage": "dispatch",
-                  "decision_reason": "no_reminder_intent",
-                  "scheduled_time": "09:00",
-                  "schedule_timezone": "Europe/London",
-                  "local_now": "2026-04-20T09:00:00+01:00",
-                  "detail": "no_due_tasks"
-                }
-              ]
-            }
-            """
-            return (response, Data(payload.utf8))
+            return try snapshotResponse(for: request.url)
         }
 
         let snapshot = try await api.getSnapshot()
@@ -140,5 +68,84 @@ final class InternalDiagnosticsAPITests: XCTestCase {
             ),
             session: router.makeSession()
         )
+    }
+
+    private func snapshotResponse(for url: URL?) throws -> (HTTPURLResponse, Data) {
+        let response = HTTPURLResponse(
+            url: try XCTUnwrap(url),
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (response, Data(snapshotPayload.utf8))
+    }
+
+    private var snapshotPayload: String {
+        """
+        {
+          "can_access_internal_diagnostics": true,
+          "account_summary": {
+            "user_id": "user-123"
+          },
+          "scheduler": {
+            "worker_name": "notification_schedule",
+            "last_started_at": "2026-04-20T08:00:00Z",
+            "last_completed_at": "2026-04-20T08:00:01Z",
+            "last_status": "completed",
+            "last_error": null,
+            "last_task_reminders_due": 2,
+            "last_task_reminders_dispatched": 2,
+            "last_morning_digests_due": 0,
+            "last_morning_digests_dispatched": 0
+          },
+          "scheduler_runs": [
+            {
+              "worker_name": "notification_schedule",
+              "started_at": "2026-04-20T08:00:00Z",
+              "completed_at": "2026-04-20T08:00:01Z",
+              "status": "completed",
+              "error": null,
+              "task_reminders_due": 2,
+              "task_reminders_dispatched": 2,
+              "morning_digests_due": 0,
+              "morning_digests_dispatched": 0
+            }
+          ],
+          "installations": [
+            {
+              "installation_id": "install-123",
+              "user_id": "user-123",
+              "platform": "ios",
+              "token_suffix": "abcdef",
+              "is_foreground": true
+            }
+          ],
+          "recent_delivery": [
+            {
+              "created_at": "2026-04-19T10:00:00Z",
+              "user_id": "user-123",
+              "installation_id": "install-123",
+              "notification_kind": "reminder",
+              "platform": "ios",
+              "token_suffix": "abcdef",
+              "delivery_result": "sent"
+            }
+          ],
+          "recent_scheduler_decisions": [
+            {
+              "created_at": "2026-04-20T08:00:00Z",
+              "run_started_at": "2026-04-20T08:00:00Z",
+              "user_id": "user-123",
+              "notification_kind": "task_reminder",
+              "decision_stage": "dispatch",
+              "decision_reason": "no_reminder_intent",
+              "scheduled_time": "09:00",
+              "schedule_timezone": "Europe/London",
+              "local_now": "2026-04-20T09:00:00+01:00",
+              "detail": "no_due_tasks"
+            }
+          ]
+        }
+        """
     }
 }

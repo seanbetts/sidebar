@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Foundation
 import XCTest
 import WidgetKit
@@ -348,6 +349,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(refreshed.websites.first?.faviconUrl, "https://example.com/favicon.ico")
     }
 
+    // swiftlint:disable function_body_length
     func testFilesRefreshMapsPinnedFilesIntoWidgetFileData() async throws {
         let client = makeAPIClient { request in
             XCTAssertEqual(request.url?.path, "/api/v1/files")
@@ -435,6 +437,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(refreshed.totalCount, 1)
         XCTAssertEqual(refreshed.files.first?.recommendedViewer, "pdf")
     }
+    // swiftlint:enable function_body_length
 
     func testTaskOverlayHidesTasksWithPendingLocalCompletionOperations() {
         let snapshot = WidgetTaskData(
@@ -1021,11 +1024,11 @@ final class WidgetProviderRefreshTests: XCTestCase {
 private final class WidgetRefreshURLProtocolMock: URLProtocol {
     static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
 
-    override class func canInit(with request: URLRequest) -> Bool {
+    override static func canInit(with request: URLRequest) -> Bool {
         true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 

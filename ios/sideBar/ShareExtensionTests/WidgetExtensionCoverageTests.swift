@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Foundation
 import AppIntents
 import WidgetKit
@@ -610,13 +611,25 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(websitesSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
 
         XCTAssertTrue(lockScreenTasksSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
-        XCTAssertTrue(lockScreenTasksSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
+        XCTAssertTrue(
+            lockScreenTasksSource.contains(
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+            )
+        )
 
         XCTAssertTrue(lockScreenFilesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
-        XCTAssertTrue(lockScreenFilesSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
+        XCTAssertTrue(
+            lockScreenFilesSource.contains(
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+            )
+        )
 
         XCTAssertTrue(lockScreenSitesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
-        XCTAssertTrue(lockScreenSitesSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
+        XCTAssertTrue(
+            lockScreenSitesSource.contains(
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+            )
+        )
     }
 
     func testLockScreenTaskPreviewUsesInteractiveCompletionButtons() throws {
