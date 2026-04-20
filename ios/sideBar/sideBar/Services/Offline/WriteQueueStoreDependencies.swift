@@ -15,6 +15,7 @@ protocol SettingsWriteQueueEnqueuing: AnyObject {
 @MainActor
 protocol SettingsWriteQueueApplying: AnyObject {
     func applySettings(_ settings: UserSettings, persist: Bool)
+    func applyProfileImageData(_ data: Data?, persist: Bool)
 }
 
 @MainActor

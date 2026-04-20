@@ -65,7 +65,6 @@ final class SettingsViewModelSessionScopeSaveTests: XCTestCase {
         XCTAssertEqual(api.updateSettingsCallCount, 1)
         XCTAssertEqual(viewModel.settings?.communicationStyle, "Detailed")
         XCTAssertNil(viewModel.systemSaveError)
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
     }
 
     func testSaveUserSettingsMapsUpdateAuthFailureIntoSessionExpiredMessage() async {
@@ -107,7 +106,6 @@ final class SettingsViewModelSessionScopeSaveTests: XCTestCase {
         XCTAssertEqual(api.getSettingsCallCount, 0)
         XCTAssertEqual(api.updateSettingsCallCount, 1)
         XCTAssertEqual(viewModel.systemSaveError, "Session expired. Please sign in again.")
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 }
 

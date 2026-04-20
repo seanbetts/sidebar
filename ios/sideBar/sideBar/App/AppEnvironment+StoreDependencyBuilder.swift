@@ -20,6 +20,8 @@ extension AppEnvironment {
             core: CoreDependencyBuilder.Output,
             widgetDataManager: WidgetDataManager
         ) -> Output {
+            let pendingSecretStore = SettingsPendingSecretStore()
+            let pendingAssetStore = SettingsPendingAssetStore()
             let chatStore = ChatStore(
                 conversationsAPI: container.conversationsAPI,
                 cache: container.cacheClient,
@@ -58,7 +60,12 @@ extension AppEnvironment {
                 networkStatus: core.connectivityMonitor
             )
             notesStore.spotlightIndexer = core.spotlightIndexer
-            let settingsStore = makeSettingsStore(container: container, core: core)
+            let settingsStore = makeSettingsStore(
+                container: container,
+                core: core,
+                pendingSecretStore: pendingSecretStore,
+                pendingAssetStore: pendingAssetStore
+            )
             let writeQueue = makeWriteQueue(
                 container: container,
                 core: core,
@@ -66,7 +73,9 @@ extension AppEnvironment {
                 tasksStore: tasksStore,
                 websitesStore: websitesStore,
                 ingestionStore: ingestionStore,
-                settingsStore: settingsStore
+                settingsStore: settingsStore,
+                pendingSecretStore: pendingSecretStore,
+                pendingAssetStore: pendingAssetStore
             )
 
             return Output(
@@ -88,11 +97,10 @@ extension AppEnvironment {
             tasksStore: TasksStore,
             websitesStore: WebsitesStore,
             ingestionStore: IngestionStore,
-            settingsStore: SettingsStore
+            settingsStore: SettingsStore,
+            pendingSecretStore: SettingsPendingSecretStore,
+            pendingAssetStore: SettingsPendingAssetStore
         ) -> WriteQueue {
-            let pendingSecretStore = SettingsPendingSecretStore()
-            let pendingAssetStore = SettingsPendingAssetStore()
-
             let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
             let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
             let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
@@ -127,12 +135,16 @@ extension AppEnvironment {
 
         private static func makeSettingsStore(
             container: ServiceContainer,
-            core: CoreDependencyBuilder.Output
+            core: CoreDependencyBuilder.Output,
+            pendingSecretStore: SettingsPendingSecretStore,
+            pendingAssetStore: SettingsPendingAssetStore
         ) -> SettingsStore {
             SettingsStore(
                 settingsAPI: container.settingsAPI,
                 cache: container.cacheClient,
                 offlineStore: core.offlineStore,
+                pendingSecretStore: pendingSecretStore,
+                pendingAssetStore: pendingAssetStore,
                 currentAuthUserIdProvider: {
                     ViewModelDependencyBuilder.settingsRequestUserId(
                         authSession: container.authSession,

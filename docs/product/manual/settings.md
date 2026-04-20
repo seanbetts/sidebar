@@ -13,9 +13,14 @@ surfaces: [app, website, internal-knowledge]
 </Frame>
 
 Settings is where you manage your profile, shape how sideBar works with you,
-and configure the app. It's divided into six tabs — **Profile**, **User**,
-**sideBar**, **Skills**, **Memories**, and **App** — each covering a distinct
+and configure the app. It's divided into six tabs, **Profile**, **User**,
+**sideBar**, **Skills**, **Memories**, and **App**, each covering a distinct
 area.
+
+Changes apply right away on the current device and sync automatically in the
+background. If you are offline, sideBar keeps the change locally and syncs it
+when the device reconnects. If a settings sync fails, review it in queued
+changes and retry from there.
 
 ## Profile
 
@@ -41,10 +46,6 @@ however you like, from casual and conversational to formal and precise.
 
 **Working relationship**: the dynamic between you. Whether sideBar acts as a
 collaborative partner, a coach, a teacher, or something else is yours to define.
-
-If you made changes while offline, a **Sync status** panel appears here showing
-how many queued changes are waiting. They sync automatically once your
-connection returns. Tap **View queued changes** to see exactly what's waiting.
 
 ## sideBar
 

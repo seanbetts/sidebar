@@ -44,6 +44,20 @@ public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
                 store?.applySettings(refreshed, persist: true)
             }
             try pendingSecretStore.delete(reference: secretRef)
+        case .providerKeyDelete:
+            _ = try await api.deleteProviderKey(provider: payload.provider)
+            if let refreshed = try? await api.getSettings() {
+                store?.applySettings(refreshed, persist: true)
+            }
+        case .providerKeyDisconnect:
+            _ = try await api.disconnectProviderConsumer(
+                provider: payload.provider ?? "",
+                source: payload.disconnectSource ?? .aiProvider,
+                skillId: payload.skillId
+            )
+            if let refreshed = try? await api.getSettings() {
+                store?.applySettings(refreshed, persist: true)
+            }
         case .profileImageUpload:
             let assetRef = try requireAssetReference(from: payload)
             let asset = try pendingAssetStore.lookup(reference: assetRef)
@@ -52,7 +66,11 @@ public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
                 contentType: payload.contentType ?? asset.contentType,
                 filename: payload.filename ?? asset.filename
             )
+            store?.applyProfileImageData(asset.data, persist: true)
             try pendingAssetStore.delete(reference: assetRef)
+        case .profileImageDelete:
+            try await api.deleteProfileImage()
+            store?.applyProfileImageData(nil, persist: true)
         }
     }
 
@@ -77,33 +95,14 @@ private enum SettingsWriteQueueExecutorError: Error {
     case invalidSecretEncoding
 }
 
-private extension SettingsMutationPayload {
-    func makeSettingsUpdate() -> SettingsUpdate {
-        SettingsUpdate(
-            communicationStyle: communicationStyle,
-            workingRelationship: workingRelationship,
-            name: name,
-            jobTitle: jobTitle,
-            employer: employer,
-            dateOfBirth: dateOfBirth,
-            gender: gender,
-            pronouns: pronouns,
-            location: location,
-            notificationPreferences: notificationPreferences,
-            assistantIdentity: assistantIdentity,
-            aiPrimaryProvider: aiPrimaryProvider,
-            enabledSkills: enabledSkills,
-            includeDateOfBirth: includeDateOfBirth
-        )
-    }
-}
-
 protocol SettingsPendingSecretStoring: AnyObject {
+    func stage(_ secret: Data) throws -> String
     func lookup(reference: String) throws -> Data
     func delete(reference: String) throws
 }
 
 protocol SettingsPendingAssetStoring: AnyObject {
+    func stageProfileImage(data: Data, contentType: String, filename: String) throws -> String
     func lookup(reference: String) throws -> SettingsPendingAssetRecord
     func delete(reference: String) throws
 }

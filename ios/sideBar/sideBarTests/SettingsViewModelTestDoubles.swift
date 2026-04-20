@@ -170,3 +170,32 @@ final class SkillsUninstallRecorder {
 final class SkillsListRecorder {
     var listCallCount: Int = 0
 }
+
+@MainActor
+final class SettingsMutationQueueSpy {
+    private(set) var enqueuedWrites: [PendingWriteRecord] = []
+
+    func enqueue<T: Encodable>(
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String?,
+        payload: T,
+        serverSnapshot: ServerSnapshot?
+    ) async throws {
+        _ = serverSnapshot
+        let encodedPayload = try JSONEncoder().encode(payload)
+        enqueuedWrites.append(
+            PendingWriteRecord(
+                id: UUID(),
+                operationType: operation.rawValue,
+                entityType: entityType.rawValue,
+                entityId: entityId,
+                payload: encodedPayload,
+                serverSnapshot: nil,
+                attempts: 0
+            )
+        )
+    }
+}
+
+extension SettingsMutationQueueSpy: SettingsWriteQueueEnqueuing {}

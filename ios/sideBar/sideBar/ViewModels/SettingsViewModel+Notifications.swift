@@ -71,8 +71,8 @@ extension SettingsViewModel {
             timezoneUpdate == nil ? nil : "notification_preferences.schedule_timezone"
         ].compactMap { $0 })
         do {
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(
+            try await commitSettingsPatch(
+                SettingsMutationPayload(
                     notificationPreferences: NotificationPreferencesUpdate(
                         taskRemindersEnabled: enabledUpdate,
                         taskReminderTime: reminderTimeUpdate,
@@ -80,8 +80,6 @@ extension SettingsViewModel {
                     )
                 )
             )
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = recordSettingsSaveFailure(
                 error,
@@ -125,15 +123,13 @@ extension SettingsViewModel {
             changedFields: ["notification_preferences.assistant_reply_notifications_enabled"]
         )
         do {
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(
+            try await commitSettingsPatch(
+                SettingsMutationPayload(
                     notificationPreferences: NotificationPreferencesUpdate(
                         assistantReplyNotificationsEnabled: enabledUpdate
                     )
                 )
             )
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = recordSettingsSaveFailure(
                 error,
@@ -206,8 +202,8 @@ extension SettingsViewModel {
             timezoneUpdate == nil ? nil : "notification_preferences.schedule_timezone"
         ].compactMap { $0 })
         do {
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(
+            try await commitSettingsPatch(
+                SettingsMutationPayload(
                     notificationPreferences: NotificationPreferencesUpdate(
                         morningDigestEnabled: enabledUpdate,
                         morningDigestTime: digestTimeUpdate,
@@ -215,8 +211,6 @@ extension SettingsViewModel {
                     )
                 )
             )
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = recordSettingsSaveFailure(
                 error,

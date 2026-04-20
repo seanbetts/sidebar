@@ -4,7 +4,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
     public enum Kind: String, Codable {
         case settingsPatch
         case providerKeyUpsert
+        case providerKeyDelete
+        case providerKeyDisconnect
         case profileImageUpload
+        case profileImageDelete
     }
 
     public let kind: Kind
@@ -24,7 +27,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
     public let includeDateOfBirth: Bool
     public let provider: String?
     public let rawSecretReference: String?
+    public let providerKeyLast4: String?
     public let selectAsPrimaryProvider: Bool
+    public let disconnectSource: ProviderKeyDisconnectSource?
+    public let skillId: String?
     public let assetRef: String?
     public let contentType: String?
     public let filename: String?
@@ -62,7 +68,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
         self.includeDateOfBirth = includeDateOfBirth
         self.provider = nil
         self.rawSecretReference = nil
+        self.providerKeyLast4 = nil
         self.selectAsPrimaryProvider = false
+        self.disconnectSource = nil
+        self.skillId = nil
         self.assetRef = nil
         self.contentType = nil
         self.filename = nil
@@ -71,13 +80,35 @@ public struct SettingsMutationPayload: Codable, Equatable {
     public static func providerKey(
         provider: String,
         rawSecretReference: String,
+        providerKeyLast4: String? = nil,
         selectAsPrimaryProvider: Bool = false
     ) -> Self {
         Self(
             kind: .providerKeyUpsert,
             provider: provider,
             rawSecretReference: rawSecretReference,
+            providerKeyLast4: providerKeyLast4,
             selectAsPrimaryProvider: selectAsPrimaryProvider
+        )
+    }
+
+    public static func providerKeyDelete(provider: String) -> Self {
+        Self(
+            kind: .providerKeyDelete,
+            provider: provider
+        )
+    }
+
+    public static func providerKeyDisconnect(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String? = nil
+    ) -> Self {
+        Self(
+            kind: .providerKeyDisconnect,
+            provider: provider,
+            disconnectSource: source,
+            skillId: skillId
         )
     }
 
@@ -94,14 +125,24 @@ public struct SettingsMutationPayload: Codable, Equatable {
         )
     }
 
+    public static var profileImageDelete: Self {
+        Self(kind: .profileImageDelete)
+    }
+
     public var entityId: String {
         switch kind {
         case .settingsPatch:
             return "settings"
         case .providerKeyUpsert:
             return provider ?? "provider-key"
+        case .providerKeyDelete:
+            return provider ?? "provider-key-delete"
+        case .providerKeyDisconnect:
+            return provider ?? "provider-key"
         case .profileImageUpload:
             return assetRef ?? "profile-image"
+        case .profileImageDelete:
+            return "profile-image"
         }
     }
 
@@ -123,7 +164,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
         case includeDateOfBirth
         case provider
         case rawSecretReference
+        case providerKeyLast4
         case selectAsPrimaryProvider
+        case disconnectSource
+        case skillId
         case assetRef
         case contentType
         case filename
@@ -157,7 +201,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
         includeDateOfBirth: Bool = false,
         provider: String? = nil,
         rawSecretReference: String? = nil,
+        providerKeyLast4: String? = nil,
         selectAsPrimaryProvider: Bool = false,
+        disconnectSource: ProviderKeyDisconnectSource? = nil,
+        skillId: String? = nil,
         assetRef: String? = nil,
         contentType: String? = nil,
         filename: String? = nil
@@ -179,7 +226,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
         self.includeDateOfBirth = includeDateOfBirth
         self.provider = provider
         self.rawSecretReference = rawSecretReference
+        self.providerKeyLast4 = providerKeyLast4
         self.selectAsPrimaryProvider = selectAsPrimaryProvider
+        self.disconnectSource = disconnectSource
+        self.skillId = skillId
         self.assetRef = assetRef
         self.contentType = contentType
         self.filename = filename
@@ -203,7 +253,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
         try container.encode(includeDateOfBirth, forKey: .includeDateOfBirth)
         try container.encodeIfPresent(provider, forKey: .provider)
         try container.encodeIfPresent(rawSecretReference, forKey: .rawSecretReference)
+        try container.encodeIfPresent(providerKeyLast4, forKey: .providerKeyLast4)
         try container.encode(selectAsPrimaryProvider, forKey: .selectAsPrimaryProvider)
+        try container.encodeIfPresent(disconnectSource, forKey: .disconnectSource)
+        try container.encodeIfPresent(skillId, forKey: .skillId)
         try container.encodeIfPresent(assetRef, forKey: .assetRef)
         try container.encodeIfPresent(contentType, forKey: .contentType)
         try container.encodeIfPresent(filename, forKey: .filename)
@@ -262,7 +315,13 @@ public struct SettingsMutationPayload: Codable, Equatable {
         let includeDateOfBirth = try container.decodeIfPresent(Bool.self, forKey: .includeDateOfBirth) ?? false
         let provider = try container.decodeIfPresent(String.self, forKey: .provider)
         let rawSecretReference = try container.decodeIfPresent(String.self, forKey: .rawSecretReference)
+        let providerKeyLast4 = try container.decodeIfPresent(String.self, forKey: .providerKeyLast4)
         let selectAsPrimaryProvider = try container.decodeIfPresent(Bool.self, forKey: .selectAsPrimaryProvider) ?? false
+        let disconnectSource = try container.decodeIfPresent(
+            ProviderKeyDisconnectSource.self,
+            forKey: .disconnectSource
+        )
+        let skillId = try container.decodeIfPresent(String.self, forKey: .skillId)
         let assetRef = try container.decodeIfPresent(String.self, forKey: .assetRef)
         let contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
         let filename = try container.decodeIfPresent(String.self, forKey: .filename)
@@ -287,7 +346,10 @@ public struct SettingsMutationPayload: Codable, Equatable {
             includeDateOfBirth: includeDateOfBirth,
             provider: provider,
             rawSecretReference: rawSecretReference,
+            providerKeyLast4: providerKeyLast4,
             selectAsPrimaryProvider: selectAsPrimaryProvider,
+            disconnectSource: disconnectSource,
+            skillId: skillId,
             assetRef: assetRef,
             contentType: contentType,
             filename: filename
@@ -352,6 +414,27 @@ public struct SettingsMutationPayload: Codable, Equatable {
             assistantReplyNotificationsEnabled: assistantReplyNotificationsEnabled,
             assistantProactiveNotificationsEnabled: assistantProactiveNotificationsEnabled,
             scheduleTimezone: scheduleTimezone
+        )
+    }
+}
+
+extension SettingsMutationPayload {
+    func makeSettingsUpdate() -> SettingsUpdate {
+        SettingsUpdate(
+            communicationStyle: communicationStyle,
+            workingRelationship: workingRelationship,
+            name: name,
+            jobTitle: jobTitle,
+            employer: employer,
+            dateOfBirth: dateOfBirth,
+            gender: gender,
+            pronouns: pronouns,
+            location: location,
+            notificationPreferences: notificationPreferences,
+            assistantIdentity: assistantIdentity,
+            aiPrimaryProvider: aiPrimaryProvider,
+            enabledSkills: enabledSkills,
+            includeDateOfBirth: includeDateOfBirth
         )
     }
 }

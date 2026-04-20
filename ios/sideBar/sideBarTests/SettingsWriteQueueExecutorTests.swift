@@ -56,6 +56,7 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
     func testExecuteProfileImageReferenceReplaysStagedAssetIntoUploadProfileImage() async throws {
         let secretStore = SettingsPendingSecretStoreSpy()
         let assetStore = SettingsPendingAssetStoreSpy()
+        let store = SettingsWriteQueueExecutorStoreSpy()
         let payload = SettingsMutationPayload.profileImageUpload(
             assetRef: "asset-ref-1",
             contentType: "image/png",
@@ -70,6 +71,7 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
         let api = SettingsWriteQueueExecutorAPISpy()
         let executor = SettingsWriteQueueExecutor(
             api: api,
+            store: store,
             pendingSecretStore: secretStore,
             pendingAssetStore: assetStore
         )
@@ -82,6 +84,59 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(api.uploadedProfileImages.first?.data, Data([0x89, 0x50, 0x4E, 0x47]))
         XCTAssertEqual(api.uploadedProfileImages.first?.contentType, "image/png")
         XCTAssertEqual(api.uploadedProfileImages.first?.filename, "profile.png")
+        XCTAssertEqual(store.appliedProfileImageData, Data([0x89, 0x50, 0x4E, 0x47]))
+    }
+
+    func testExecuteProfileImageDeleteClearsLocallyCachedImage() async throws {
+        let secretStore = SettingsPendingSecretStoreSpy()
+        let assetStore = SettingsPendingAssetStoreSpy()
+        let store = SettingsWriteQueueExecutorStoreSpy()
+        let api = SettingsWriteQueueExecutorAPISpy()
+        let executor = SettingsWriteQueueExecutor(
+            api: api,
+            store: store,
+            pendingSecretStore: secretStore,
+            pendingAssetStore: assetStore
+        )
+
+        try await executor.execute(write: try queuedSettingsWrite(.profileImageDelete))
+
+        XCTAssertEqual(api.deleteProfileImageCallCount, 1)
+        XCTAssertEqual(store.appliedProfileImageData, nil)
+    }
+
+    func testExecuteProviderKeyDisconnectRefreshesSettingsSnapshotWhenAvailable() async throws {
+        let secretStore = SettingsPendingSecretStoreSpy()
+        let assetStore = SettingsPendingAssetStoreSpy()
+        let store = SettingsWriteQueueExecutorStoreSpy()
+        let api = SettingsWriteQueueExecutorAPISpy(
+            getSettingsResult: .success(
+                makeUserSettings(
+                    aiPrimaryProvider: nil,
+                    enabledSkills: [],
+                    installedStoreSkills: []
+                )
+            )
+        )
+        let executor = SettingsWriteQueueExecutor(
+            api: api,
+            store: store,
+            pendingSecretStore: secretStore,
+            pendingAssetStore: assetStore
+        )
+        let payload = SettingsMutationPayload.providerKeyDisconnect(
+            provider: "openai",
+            source: .skill,
+            skillId: "planner"
+        )
+
+        try await executor.execute(write: try queuedSettingsWrite(payload))
+
+        XCTAssertEqual(api.disconnectRequests.count, 1)
+        XCTAssertEqual(api.disconnectRequests.first?.provider, "openai")
+        XCTAssertEqual(api.disconnectRequests.first?.source, .skill)
+        XCTAssertEqual(api.disconnectRequests.first?.skillId, "planner")
+        XCTAssertEqual(store.appliedSettings?.enabledSkills, [])
     }
 }
 
@@ -100,13 +155,22 @@ private func queuedSettingsWrite(_ payload: SettingsMutationPayload) throws -> P
 
 @MainActor
 private final class SettingsWriteQueueExecutorAPISpy: SettingsProviding {
+    let getSettingsResult: Result<UserSettings, Error>
     private(set) var upsertedProviderKeys: [(String, String)] = []
     private(set) var updatedSettings: [SettingsUpdate] = []
     private(set) var updateSettingsCallCount = 0
     private(set) var uploadedProfileImages: [UploadedProfileImageRecord] = []
+    private(set) var disconnectRequests: [DisconnectRequestRecord] = []
+    private(set) var deleteProfileImageCallCount = 0
+
+    init(
+        getSettingsResult: Result<UserSettings, Error> = .failure(SettingsWriteQueueExecutorTestError.forced)
+    ) {
+        self.getSettingsResult = getSettingsResult
+    }
 
     func getSettings() async throws -> UserSettings {
-        throw SettingsWriteQueueExecutorTestError.forced
+        try getSettingsResult.get()
     }
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
@@ -139,10 +203,31 @@ private final class SettingsWriteQueueExecutorAPISpy: SettingsProviding {
         source: ProviderKeyDisconnectSource,
         skillId: String?
     ) async throws -> ProviderKeyDisconnectResponse {
-        _ = provider
-        _ = source
-        _ = skillId
-        throw SettingsWriteQueueExecutorTestError.forced
+        disconnectRequests.append(
+            DisconnectRequestRecord(
+                provider: provider,
+                source: source,
+                skillId: skillId
+            )
+        )
+        return ProviderKeyDisconnectResponse(
+            provider: provider,
+            source: source,
+            actions: ProviderKeyDisconnectActions(
+                disabledSkillIds: source == .skill ? [skillId].compactMap { $0 } : [],
+                detachedAIProvider: source == .aiProvider,
+                deletedProviderKey: true
+            ),
+            remainingConsumers: ProviderKeyDisconnectRemainingConsumers(
+                aiProvider: false,
+                skillIds: []
+            ),
+            settings: ProviderKeyDisconnectSettings(
+                enabledSkills: [],
+                installedStoreSkills: [],
+                aiPrimaryProvider: nil
+            )
+        )
     }
 
     func getShortcutsToken() async throws -> ShortcutsTokenResponse {
@@ -168,7 +253,23 @@ private final class SettingsWriteQueueExecutorAPISpy: SettingsProviding {
     }
 
     func deleteProfileImage() async throws {
-        throw SettingsWriteQueueExecutorTestError.forced
+        deleteProfileImageCallCount += 1
+    }
+}
+
+@MainActor
+private final class SettingsWriteQueueExecutorStoreSpy: SettingsWriteQueueApplying {
+    private(set) var appliedSettings: UserSettings?
+    private(set) var appliedProfileImageData: Data?
+
+    func applySettings(_ settings: UserSettings, persist: Bool) {
+        _ = persist
+        appliedSettings = settings
+    }
+
+    func applyProfileImageData(_ data: Data?, persist: Bool) {
+        _ = persist
+        appliedProfileImageData = data
     }
 }
 
@@ -177,6 +278,12 @@ private final class SettingsPendingSecretStoreSpy {
     private var secrets: [String: Data] = [:]
     private(set) var lookupReferences: [String] = []
     private(set) var deletedReferences: [String] = []
+
+    func stage(_ secret: Data) throws -> String {
+        let reference = UUID().uuidString
+        stage(rawSecret: secret, reference: reference)
+        return reference
+    }
 
     func stage(rawSecret: Data, reference: String) {
         secrets[reference] = rawSecret
@@ -203,6 +310,17 @@ private final class SettingsPendingAssetStoreSpy {
     private var assets: [String: SettingsPendingAssetRecord] = [:]
     private(set) var lookupReferences: [String] = []
     private(set) var deletedReferences: [String] = []
+
+    func stageProfileImage(data: Data, contentType: String, filename: String) throws -> String {
+        let reference = UUID().uuidString
+        stage(
+            reference: reference,
+            data: data,
+            contentType: contentType,
+            filename: filename
+        )
+        return reference
+    }
 
     func stage(reference: String, data: Data, contentType: String, filename: String) {
         assets[reference] = SettingsPendingAssetRecord(
@@ -238,10 +356,19 @@ private struct UploadedProfileImageRecord: Equatable {
     let filename: String
 }
 
+private struct DisconnectRequestRecord: Equatable {
+    let provider: String
+    let source: ProviderKeyDisconnectSource
+    let skillId: String?
+}
+
 private func makeUserSettings(
     name: String? = nil,
     jobTitle: String? = nil,
-    employer: String? = nil
+    employer: String? = nil,
+    aiPrimaryProvider: String? = nil,
+    enabledSkills: [String] = [],
+    installedStoreSkills: [String] = []
 ) -> UserSettings {
     UserSettings(
         userId: "user-1",
@@ -255,6 +382,8 @@ private func makeUserSettings(
         pronouns: nil,
         location: nil,
         profileImageUrl: nil,
-        enabledSkills: []
+        aiPrimaryProvider: aiPrimaryProvider,
+        enabledSkills: enabledSkills,
+        installedStoreSkills: installedStoreSkills
     )
 }

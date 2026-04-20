@@ -11,18 +11,24 @@ public final class SettingsStore: ObservableObject {
     let cache: CacheClient
     let offlineStore: OfflineStore?
     let currentAuthUserIdProvider: () -> String?
+    let pendingSecretStore: (any SettingsPendingSecretStoring)?
+    let pendingAssetStore: (any SettingsPendingAssetStoring)?
     weak var writeQueue: (any SettingsWriteQueueEnqueuing)?
 
     init(
         settingsAPI: any SettingsProviding,
         cache: CacheClient,
         offlineStore: OfflineStore? = nil,
+        pendingSecretStore: (any SettingsPendingSecretStoring)? = nil,
+        pendingAssetStore: (any SettingsPendingAssetStoring)? = nil,
         currentAuthUserIdProvider: @escaping () -> String? = { nil },
         writeQueue: (any SettingsWriteQueueEnqueuing)? = nil
     ) {
         self.settingsAPI = settingsAPI
         self.cache = cache
         self.offlineStore = offlineStore
+        self.pendingSecretStore = pendingSecretStore
+        self.pendingAssetStore = pendingAssetStore
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.writeQueue = writeQueue
     }
@@ -91,4 +97,6 @@ public final class SettingsStore: ObservableObject {
 enum SettingsStoreError: Error {
     case missingCurrentSnapshot
     case missingWriteQueue
+    case missingPendingSecretStore
+    case missingPendingAssetStore
 }

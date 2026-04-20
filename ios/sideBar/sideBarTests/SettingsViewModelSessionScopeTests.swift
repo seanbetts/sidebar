@@ -71,7 +71,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(updateRecorder.callCount, 1)
         XCTAssertEqual(viewModel.settings?.userId, "user-2")
         XCTAssertEqual(viewModel.settings?.communicationStyle, "Detailed")
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
         XCTAssertNil(viewModel.systemSaveError)
     }
 
@@ -113,7 +112,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(readRecorder.getSettingsCallCount, 2)
         XCTAssertEqual(recorder.callCount, 0)
         XCTAssertNotNil(viewModel.systemSaveError)
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
     func testSaveProfileSettingsReloadsCurrentUserSettingsWhenLoadedSettingsBelongToDifferentAuthenticatedUser() async {
@@ -189,7 +187,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(updateRecorder.callCount, 1)
         XCTAssertEqual(viewModel.settings?.userId, "user-2")
         XCTAssertEqual(viewModel.settings?.location, "London")
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
         XCTAssertNil(viewModel.profileSaveError)
     }
 
@@ -231,7 +228,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(readRecorder.getSettingsCallCount, 1)
         XCTAssertEqual(updateRecorder.callCount, 0)
         XCTAssertNotNil(viewModel.systemSaveError)
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
     func testSaveUserSettingsRefreshesAuthorizedSessionBeforeReloadingWhenAuthScopeExistsWithoutToken() async {
@@ -311,7 +307,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(viewModel.settings?.userId, "user-2")
         XCTAssertEqual(viewModel.settings?.communicationStyle, "Detailed")
         XCTAssertNil(viewModel.systemSaveError)
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
     }
 
     func testSaveUserSettingsSurfacesSessionExpiredWithoutReloadingWhenAuthorizedSessionCannotBeRecovered() async {
@@ -362,7 +357,6 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(api.updateSettingsCallCount, 0)
         XCTAssertEqual(viewModel.systemSaveError, "Session expired. Please sign in again.")
         XCTAssertEqual(viewModel.settings?.userId, "user-1")
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 }
 

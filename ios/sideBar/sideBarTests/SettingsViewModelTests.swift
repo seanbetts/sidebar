@@ -64,7 +64,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.shortcutsError, "Server is busy right now. Please try again.")
     }
 
-    func testSetSkillEnabledInvalidatesCachesAndForceRefreshesSettingsAndSkills() async {
+    func testSetSkillEnabledUpdatesLocalStateWithoutForcingSettingsOrSkillsReload() async {
         let initial = UserSettings(
             userId: "user-1",
             communicationStyle: nil,
@@ -97,7 +97,6 @@ final class SettingsViewModelTests: XCTestCase {
         let skillsListRecorder = SkillsListRecorder()
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.userSettings, value: initial, ttlSeconds: 60)
-        cache.set(key: CacheKeys.skillsList, value: SkillsResponse(skills: []), ttlSeconds: 60)
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
                 result: .success(refreshed),
@@ -117,14 +116,14 @@ final class SettingsViewModelTests: XCTestCase {
 
         viewModel.applySettingsResponse(initial)
         await viewModel.loadSkills()
-        XCTAssertEqual(skillsListRecorder.listCallCount, 0)
+        XCTAssertEqual(skillsListRecorder.listCallCount, 1)
         await viewModel.setSkillEnabled(id: "s1", enabled: true)
 
-        XCTAssertEqual(settingsReadRecorder.getSettingsCallCount, 1)
+        XCTAssertEqual(settingsReadRecorder.getSettingsCallCount, 0)
         XCTAssertEqual(skillsListRecorder.listCallCount, 1)
         let removedKeys = cache.removedKeysSnapshot()
-        XCTAssertTrue(removedKeys.contains(CacheKeys.userSettings))
-        XCTAssertTrue(removedKeys.contains(CacheKeys.skillsList))
+        XCTAssertFalse(removedKeys.contains(CacheKeys.userSettings))
+        XCTAssertFalse(removedKeys.contains(CacheKeys.skillsList))
         XCTAssertEqual(viewModel.settings?.enabledSkills, ["s1"])
     }
 
@@ -347,7 +346,6 @@ final class SettingsViewModelTests: XCTestCase {
         )
 
         XCTAssertEqual(recorder.callCount, 0)
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
     func testSaveUserSettingsSendsPromptUpdates() async throws {
@@ -414,7 +412,6 @@ final class SettingsViewModelTests: XCTestCase {
         let payload = try encodedPayload(update)
         XCTAssertEqual(payload["communication_style"] as? String, "Detailed")
         XCTAssertFalse(payload.keys.contains("assistant_identity"))
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
     }
 
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {

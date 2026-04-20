@@ -118,9 +118,95 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(decodedPayload.assistantIdentity, patch.assistantIdentity)
         XCTAssertEqual(api.updateSettingsCallCount, 0)
     }
+
+    func testCommitProviderKeyUpsertStagesSecretAndEnqueuesQueueSafeMutation() async throws {
+        let initialSettings = makeSettings(name: "Initial")
+        let persistence = PersistenceController(inMemory: true)
+        let cache = SettingsPersistenceSpy()
+        let secretStore = SettingsPendingSecretStore(useInMemoryStore: true)
+        let api = SettingsStoreAPISpy(getSettingsResult: .success(initialSettings))
+        let writeQueue = SettingsWriteQueueSpy()
+        let store = SettingsStore(
+            settingsAPI: api,
+            cache: cache,
+            offlineStore: OfflineStore(container: persistence.container),
+            pendingSecretStore: secretStore,
+            writeQueue: writeQueue
+        )
+        store.replace(initialSettings, persist: true)
+
+        let status = try await store.commitProviderKeyUpsert(
+            provider: "openai",
+            apiKey: "sk-openai-1234",
+            selectAsPrimaryProvider: true
+        )
+
+        XCTAssertEqual(status.provider, "openai")
+        XCTAssertTrue(status.hasKey)
+        XCTAssertEqual(status.keyLast4, "1234")
+        XCTAssertEqual(store.settings?.aiPrimaryProvider, "openai")
+        XCTAssertTrue(store.settings?.aiPrimaryProviderHasKey == true)
+        XCTAssertEqual(store.settings?.aiPrimaryProviderKeyLast4, "1234")
+        XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
+        let queuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
+        let payload = try JSONDecoder().decode(SettingsMutationPayload.self, from: queuedWrite.payload)
+        XCTAssertEqual(payload.kind, .providerKeyUpsert)
+        XCTAssertEqual(payload.provider, "openai")
+        XCTAssertEqual(payload.providerKeyLast4, "1234")
+        XCTAssertTrue(payload.selectAsPrimaryProvider)
+        let secretReference = try XCTUnwrap(payload.rawSecretReference)
+        XCTAssertEqual(try secretStore.lookup(reference: secretReference), Data("sk-openai-1234".utf8))
+        XCTAssertEqual(api.updateSettingsCallCount, 0)
+    }
+
+    func testCommitProfileImageUploadCachesDataAndEnqueuesAssetReference() async throws {
+        let initialSettings = makeSettings(name: "Initial")
+        let persistence = PersistenceController(inMemory: true)
+        let cache = SettingsPersistenceSpy()
+        let assetRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let assetStore = SettingsPendingAssetStore(
+            fileManager: .default,
+            rootDirectory: assetRoot
+        )
+        let api = SettingsStoreAPISpy(getSettingsResult: .success(initialSettings))
+        let writeQueue = SettingsWriteQueueSpy()
+        let store = SettingsStore(
+            settingsAPI: api,
+            cache: cache,
+            offlineStore: OfflineStore(container: persistence.container),
+            pendingAssetStore: assetStore,
+            writeQueue: writeQueue
+        )
+        store.replace(initialSettings, persist: true)
+
+        try await store.commitProfileImageUpload(
+            data: Data([0x89, 0x50, 0x4E, 0x47]),
+            contentType: "image/png",
+            filename: "profile.png"
+        )
+
+        XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
+        let queuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
+        let payload = try JSONDecoder().decode(SettingsMutationPayload.self, from: queuedWrite.payload)
+        XCTAssertEqual(payload.kind, .profileImageUpload)
+        let assetReference = try XCTUnwrap(payload.assetRef)
+        let stagedAsset = try assetStore.lookup(reference: assetReference)
+        XCTAssertEqual(stagedAsset.data, Data([0x89, 0x50, 0x4E, 0x47]))
+        XCTAssertEqual(stagedAsset.contentType, "image/png")
+        XCTAssertEqual(stagedAsset.filename, "profile.png")
+        XCTAssertEqual(store.settings?.profileImageUrl, "sidebar://settings/profile-image/pending")
+        let cachedImage: Data? = try cache.snapshot(for: CacheKeys.profileImage)
+        XCTAssertEqual(cachedImage, Data([0x89, 0x50, 0x4E, 0x47]))
+    }
 }
 
-private func makeSettings(name: String?) -> UserSettings {
+private func makeSettings(
+    name: String?,
+    profileImageUrl: String? = nil,
+    aiPrimaryProvider: String? = nil,
+    aiPrimaryProviderHasKey: Bool = false,
+    aiPrimaryProviderKeyLast4: String? = nil
+) -> UserSettings {
     UserSettings(
         userId: "user-1",
         communicationStyle: nil,
@@ -132,7 +218,10 @@ private func makeSettings(name: String?) -> UserSettings {
         gender: nil,
         pronouns: nil,
         location: nil,
-        profileImageUrl: nil,
+        profileImageUrl: profileImageUrl,
+        aiPrimaryProvider: aiPrimaryProvider,
+        aiPrimaryProviderHasKey: aiPrimaryProviderHasKey,
+        aiPrimaryProviderKeyLast4: aiPrimaryProviderKeyLast4,
         enabledSkills: []
     )
 }

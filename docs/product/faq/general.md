@@ -90,14 +90,15 @@ during conversations when they are relevant. See
 Your content syncs across every device where you are signed in. When the device
 that made the change is online, updates usually appear on your other devices
 within seconds. If you make changes while offline, they stay local to that
-device until it reconnects, then sync automatically. You can see queued changes
-in Settings under the User tab.
+device until it reconnects, then sync automatically. If something cannot sync,
+you can review it in queued changes and retry from there.
 
 ## Does sideBar work offline?
 
-Cached notes, tasks, websites, files, and chat history work offline. New notes,
-tasks, website saves, and file imports queue locally and sync when the device
-reconnects. Sending chat messages still requires a connection.
+Cached notes, tasks, websites, files, chat history, and settings work offline.
+New notes, tasks, website saves, file imports, and settings changes queue
+locally and sync when the device reconnects. Sending chat messages still
+requires a connection.
 
 If something is missing on the current device because it was never cached there,
 sideBar shows that directly.

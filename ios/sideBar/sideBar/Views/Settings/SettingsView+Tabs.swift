@@ -15,7 +15,6 @@ struct SidebarToggleHider: ViewModifier {
 struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
-    let savePillState: SettingsSavePillState?
     @State private var hasLoaded = false
     @AppStorage(AppStorageKeys.settingsSelectedTab) private var selectedTabRaw = Tab.profile.rawValue
 
@@ -74,15 +73,6 @@ struct SettingsTabsView: View {
     private func settingsTabContent<Content: View>(_ content: Content) -> some View {
         content
             .appFont(.subheadline)
-            .overlay(alignment: .bottom) {
-                if let savePillState {
-                    SettingsSaveStatusPill(state: savePillState)
-                        .padding(.horizontal, DesignTokens.Spacing.lg)
-                        .padding(.bottom, DesignTokens.Spacing.sm)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                }
-            }
     }
 }
 

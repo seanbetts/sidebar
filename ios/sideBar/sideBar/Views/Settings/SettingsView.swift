@@ -16,11 +16,6 @@ public enum SettingsPresentationStyle: Equatable {
 
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @State private var savePillState: SettingsSavePillState?
-    @State private var wasSaving = false
-    @State private var lastObservedSaveCompletionCount = 0
-    @State private var savingDelayTask: Task<Void, Never>?
-    @State private var hideSavedTask: Task<Void, Never>?
     private let presentationStyle: SettingsPresentationStyle
     private let onClose: (() -> Void)?
 
@@ -44,22 +39,11 @@ public struct SettingsView: View {
             #else
             SettingsTabsView(
                 viewModel: environment.settingsViewModel,
-                memoriesViewModel: environment.memoriesViewModel,
-                savePillState: savePillState
+                memoriesViewModel: environment.memoriesViewModel
             )
             #endif
         }
         .appTextSize()
-        .onAppear {
-            updateSavePillState()
-        }
-        .onChange(of: saveStatusSignature) { _, _ in
-            updateSavePillState()
-        }
-        .onDisappear {
-            savingDelayTask?.cancel()
-            hideSavedTask?.cancel()
-        }
 
         #if os(macOS)
         switch presentationStyle {
@@ -111,171 +95,8 @@ public struct SettingsView: View {
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.appHeaderMinHeight)
-        .overlay(alignment: .trailing) {
-            inlineSaveStatusView
-                .padding(.trailing, settingsHeaderSavePillTrailingInset)
-        }
-    }
-
-    @ViewBuilder
-    private var inlineSaveStatusView: some View {
-        if let savePillState {
-            SettingsSaveStatusPill(state: savePillState)
-                .transition(.opacity)
-                .allowsHitTesting(false)
-        }
-    }
-
-    private var settingsHeaderSavePillTrailingInset: CGFloat {
-        DesignTokens.Spacing.lg + DesignTokens.Icon.md + DesignTokens.Spacing.md
     }
     #endif
-
-    private var isSavingAnySettings: Bool {
-        let viewModel = environment.settingsViewModel
-        return viewModel.isSavingProfile
-            || viewModel.isSavingSystem
-            || viewModel.isSavingSkills
-            || viewModel.isSavingPrimaryProvider
-    }
-
-    private var currentSavePillError: String? {
-        let viewModel = environment.settingsViewModel
-        return SettingsSaveErrorPresentation.pillError(
-            profileSaveError: viewModel.profileSaveError,
-            systemSaveError: viewModel.systemSaveError,
-            skillsError: viewModel.skillsError,
-            primaryProviderError: viewModel.primaryProviderError
-        )
-    }
-
-    private var saveStatusSignature: String {
-        "\(isSavingAnySettings)|\(currentSavePillError ?? "")|\(environment.settingsViewModel.settingsSaveCompletionCount)"
-    }
-
-    private func updateSavePillState() {
-        let isSaving = isSavingAnySettings
-        let saveError = currentSavePillError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let completionCount = environment.settingsViewModel.settingsSaveCompletionCount
-        let didCompleteSaveSinceLastObservation = completionCount != lastObservedSaveCompletionCount
-        defer { wasSaving = isSaving }
-        defer { lastObservedSaveCompletionCount = completionCount }
-
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: wasSaving,
-            isSaving: isSaving,
-            saveError: saveError,
-            didCompleteSaveSinceLastObservation: didCompleteSaveSinceLastObservation
-        )
-
-        switch timeline.immediateState {
-        case .error(let message):
-            savingDelayTask?.cancel()
-            hideSavedTask?.cancel()
-            withAnimation { savePillState = .error(message) }
-        case .saving:
-            startSavingDelay()
-        case .saved:
-            showSavedPill()
-        case nil:
-            savingDelayTask?.cancel()
-            if savePillState != nil {
-                withAnimation { savePillState = nil }
-            }
-        }
-    }
-
-    private func startSavingDelay() {
-        hideSavedTask?.cancel()
-        if case .saving = savePillState {
-            return
-        }
-        savingDelayTask?.cancel()
-        savingDelayTask = Task {
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            guard !Task.isCancelled else { return }
-            guard isSavingAnySettings, currentSavePillError == nil else { return }
-            await MainActor.run {
-                withAnimation {
-                    savePillState = .saving
-                }
-            }
-        }
-    }
-
-    private func showSavedPill() {
-        hideSavedTask?.cancel()
-        savingDelayTask?.cancel()
-        withAnimation {
-            savePillState = .saved
-        }
-        hideSavedTask = Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                withAnimation {
-                    if case .saved = savePillState {
-                        savePillState = nil
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct SettingsSaveStatusLogic {
-    struct Timeline {
-        let immediateState: SettingsSavePillState?
-    }
-
-    static func timeline(
-        wasSaving: Bool,
-        isSaving: Bool,
-        saveError: String?,
-        didCompleteSaveSinceLastObservation: Bool
-    ) -> Timeline {
-        let trimmedError = saveError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let trimmedError, !trimmedError.isEmpty {
-            return .init(immediateState: .error(trimmedError))
-        }
-        if isSaving {
-            return .init(immediateState: .saving)
-        }
-        if didCompleteSaveSinceLastObservation {
-            return .init(immediateState: .saved)
-        }
-        if wasSaving {
-            return .init(immediateState: .saved)
-        }
-        return .init(immediateState: nil)
-    }
-}
-
-enum SettingsSaveErrorPresentation {
-    static func pillError(
-        profileSaveError: String?,
-        systemSaveError: String?,
-        skillsError: String?,
-        primaryProviderError: String?
-    ) -> String? {
-        let profileError = profileSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let profileError, !profileError.isEmpty {
-            return profileError
-        }
-        let systemError = systemSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let systemError, !systemError.isEmpty {
-            return systemError
-        }
-        let skillError = skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let skillError, !skillError.isEmpty {
-            return skillError
-        }
-        let providerError = primaryProviderError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let providerError, !providerError.isEmpty {
-            return providerError
-        }
-        return nil
-    }
 }
 
 #if os(macOS)

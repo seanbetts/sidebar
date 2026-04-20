@@ -190,7 +190,6 @@ final class SettingsViewModelProfileTests: XCTestCase {
 
         XCTAssertEqual(api.updateCallCount, 1)
         XCTAssertEqual(viewModel.profileSaveError, "Session expired. Please sign in again.")
-        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {

@@ -44,7 +44,8 @@ extension SettingsViewModel {
 
     public func saveProviderKey(
         provider: String,
-        apiKey: String
+        apiKey: String,
+        selectAsPrimaryProvider: Bool = false
     ) async throws -> ProviderKeyStatusResponse {
         let normalizedProvider = try normalizedProviderIdentifier(provider)
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -52,33 +53,55 @@ extension SettingsViewModel {
             throw ProviderKeyOperationError.missingApiKey
         }
 
-        let status = try await settingsAPI.upsertProviderKey(
-            provider: normalizedProvider,
-            apiKey: trimmedKey
-        )
-        let refreshed = try await settingsAPI.getSettings()
-        applySettingsResponse(refreshed)
+        let status: ProviderKeyStatusResponse
+        do {
+            status = try await settingsStore.commitProviderKeyUpsert(
+                provider: normalizedProvider,
+                apiKey: trimmedKey,
+                selectAsPrimaryProvider: selectAsPrimaryProvider
+            )
+        } catch SettingsStoreError.missingCurrentSnapshot,
+                SettingsStoreError.missingWriteQueue,
+                SettingsStoreError.missingPendingSecretStore {
+            let directStatus = try await settingsAPI.upsertProviderKey(
+                provider: normalizedProvider,
+                apiKey: trimmedKey
+            )
+            let refreshed = try await settingsAPI.getSettings()
+            applySettingsResponse(refreshed)
+            if selectAsPrimaryProvider, refreshed.aiPrimaryProvider != normalizedProvider {
+                let response = try await settingsAPI.updateSettings(
+                    SettingsUpdate(aiPrimaryProvider: normalizedProvider)
+                )
+                applySettingsResponse(response)
+            }
+            status = ProviderKeyStatusResponse(
+                provider: directStatus.provider ?? normalizedProvider,
+                hasKey: directStatus.hasKey,
+                keyLast4: directStatus.keyLast4
+            )
+        }
         await loadOnboarding(force: true)
-        recordCompletedSettingsSave()
-        return ProviderKeyStatusResponse(
-            provider: status.provider ?? normalizedProvider,
-            hasKey: status.hasKey,
-            keyLast4: status.keyLast4
-        )
+        return status
     }
 
     public func deleteProviderKey(provider: String) async throws -> ProviderKeyStatusResponse {
         let normalizedProvider = try normalizedProviderIdentifier(provider)
-        let status = try await settingsAPI.deleteProviderKey(provider: normalizedProvider)
-        let refreshed = try await settingsAPI.getSettings()
-        applySettingsResponse(refreshed)
+        let status: ProviderKeyStatusResponse
+        do {
+            status = try await settingsStore.commitProviderKeyDelete(provider: normalizedProvider)
+        } catch SettingsStoreError.missingCurrentSnapshot, SettingsStoreError.missingWriteQueue {
+            let directStatus = try await settingsAPI.deleteProviderKey(provider: normalizedProvider)
+            let refreshed = try await settingsAPI.getSettings()
+            applySettingsResponse(refreshed)
+            status = ProviderKeyStatusResponse(
+                provider: directStatus.provider ?? normalizedProvider,
+                hasKey: directStatus.hasKey,
+                keyLast4: directStatus.keyLast4
+            )
+        }
         await loadOnboarding(force: true)
-        recordCompletedSettingsSave()
-        return ProviderKeyStatusResponse(
-            provider: status.provider ?? normalizedProvider,
-            hasKey: status.hasKey,
-            keyLast4: status.keyLast4
-        )
+        return status
     }
 
     public func disconnectProviderConsumer(
@@ -98,15 +121,23 @@ extension SettingsViewModel {
             normalizedSkillId = nil
         }
 
-        let response = try await settingsAPI.disconnectProviderConsumer(
-            provider: normalizedProvider,
-            source: source,
-            skillId: normalizedSkillId
-        )
-        let refreshed = try await settingsAPI.getSettings()
-        applySettingsResponse(refreshed)
+        let response: ProviderKeyDisconnectResponse
+        do {
+            response = try await settingsStore.commitProviderKeyDisconnect(
+                provider: normalizedProvider,
+                source: source,
+                skillId: normalizedSkillId
+            )
+        } catch SettingsStoreError.missingCurrentSnapshot, SettingsStoreError.missingWriteQueue {
+            response = try await settingsAPI.disconnectProviderConsumer(
+                provider: normalizedProvider,
+                source: source,
+                skillId: normalizedSkillId
+            )
+            let refreshed = try await settingsAPI.getSettings()
+            applySettingsResponse(refreshed)
+        }
         await loadOnboarding(force: true)
-        recordCompletedSettingsSave()
         return response
     }
 

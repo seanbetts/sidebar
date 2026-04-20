@@ -19,11 +19,9 @@ extension SettingsViewModel {
                 operation: "primary_provider",
                 changedFields: ["ai_primary_provider"]
             )
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(aiPrimaryProvider: provider.rawValue)
+            try await commitSettingsPatch(
+                SettingsMutationPayload(aiPrimaryProvider: provider.rawValue)
             )
-            applySettingsResponse(response)
-            recordCompletedSettingsSave()
         } catch {
             setPrimaryProviderError(
                 recordSettingsSaveFailure(
@@ -42,14 +40,11 @@ extension SettingsViewModel {
         setPrimaryProviderSaving(true)
         setPrimaryProviderError(nil)
         do {
-            _ = try await saveProviderKey(provider: provider.rawValue, apiKey: apiKey)
-            if settings?.aiPrimaryProvider != provider.rawValue {
-                let response = try await settingsAPI.updateSettings(
-                    SettingsUpdate(aiPrimaryProvider: provider.rawValue)
-                )
-                applySettingsResponse(response)
-                await loadOnboarding(force: true)
-            }
+            _ = try await saveProviderKey(
+                provider: provider.rawValue,
+                apiKey: apiKey,
+                selectAsPrimaryProvider: true
+            )
             setPrimaryProviderSaving(false)
             return true
         } catch {

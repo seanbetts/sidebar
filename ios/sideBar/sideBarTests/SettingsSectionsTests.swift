@@ -1045,13 +1045,16 @@ final class SettingsSectionsTests: XCTestCase {
     func testSettingsSectionsUseAutosaveFlushHooksInsteadOfSavePillState() throws {
         let profileNormalized = try profileSupportSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-        let systemNormalized = try systemSettingsSource()
+        let systemViewNormalized = try systemSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let systemNotificationsNormalized = try systemNotificationsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(profileNormalized.contains("funcflushPendingProfileAutosave()"))
         XCTAssertTrue(profileNormalized.contains("staticfuncshouldFlushAutosaveOnDisappear("))
-        XCTAssertTrue(systemNormalized.contains("funcflushPendingSystemAutosave()"))
-        XCTAssertTrue(systemNormalized.contains("staticfuncshouldFlushAutosaveOnDisappear("))
+        XCTAssertTrue(systemViewNormalized.contains(".onDisappear{flushPendingSystemAutosave()"))
+        XCTAssertTrue(systemNotificationsNormalized.contains("funcflushPendingSystemAutosave()"))
+        XCTAssertTrue(systemViewNormalized.contains("staticfuncshouldFlushAutosaveOnDisappear("))
     }
 }
 
@@ -1197,6 +1200,13 @@ private func systemSettingsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsSections+System.swift", file: file, line: line)
+}
+
+private func systemNotificationsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+SystemNotifications.swift", file: file, line: line)
 }
 
 private func settingsTabsSource(

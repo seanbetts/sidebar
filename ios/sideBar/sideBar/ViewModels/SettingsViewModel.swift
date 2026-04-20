@@ -24,7 +24,6 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var profileSaveError: String?
     @Published public internal(set) var isSavingSystem: Bool = false
     @Published public internal(set) var systemSaveError: String?
-    @Published public internal(set) var settingsSaveCompletionCount: Int = 0
     @Published public private(set) var isSavingPrimaryProvider: Bool = false
     @Published public private(set) var primaryProviderError: String?
     @Published public private(set) var onboardingState: OnboardingState?
@@ -34,6 +33,7 @@ public final class SettingsViewModel: LoadableViewModel {
     var inFlightProfileImageLoad: Task<Data?, Never>?
     var internalDiagnosticsRevealTapCount: Int = 0
     var lastInternalDiagnosticsUserId: String?
+    private var cancellables = Set<AnyCancellable>()
 
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
@@ -79,6 +79,7 @@ public final class SettingsViewModel: LoadableViewModel {
             forKey: AppStorageKeys.internalDiagnosticsUnlocked
         )
         super.init()
+        bindSettingsStore()
     }
 
     public func load(force: Bool = false) async {
@@ -88,9 +89,7 @@ public final class SettingsViewModel: LoadableViewModel {
         primaryProviderError = nil
         setLoading(true)
         do {
-            let response = try await settingsStore.load(force: force)
-            synchronizeInternalDiagnosticsSessionScope(with: response)
-            settings = response
+            _ = try await settingsStore.load(force: force)
         } catch {
             setError(error)
         }
@@ -175,11 +174,20 @@ public final class SettingsViewModel: LoadableViewModel {
     }
 
     public func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
-        try await settingsAPI.uploadProfileImage(data: data, contentType: contentType, filename: filename)
-        profileImageData = data
-        cache.set(key: profileImageCacheKey, value: data, ttlSeconds: CachePolicy.profileImage)
-        if settings?.profileImageUrl == nil {
-            await load()
+        do {
+            try await settingsStore.commitProfileImageUpload(
+                data: data,
+                contentType: contentType,
+                filename: filename
+            )
+            profileImageData = data
+        } catch SettingsStoreError.missingWriteQueue, SettingsStoreError.missingPendingAssetStore {
+            try await settingsAPI.uploadProfileImage(data: data, contentType: contentType, filename: filename)
+            profileImageData = data
+            cache.set(key: profileImageCacheKey, value: data, ttlSeconds: CachePolicy.profileImage)
+            if settings?.profileImageUrl == nil {
+                await load()
+            }
         }
     }
 
@@ -228,8 +236,8 @@ public final class SettingsViewModel: LoadableViewModel {
             locationUpdate == nil ? nil : "location"
         ].compactMap { $0 })
         do {
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(
+            try await commitSettingsPatch(
+                SettingsMutationPayload(
                     name: nameUpdate,
                     jobTitle: jobTitleUpdate,
                     employer: employerUpdate,
@@ -240,8 +248,6 @@ public final class SettingsViewModel: LoadableViewModel {
                     includeDateOfBirth: didChangeDateOfBirth
                 )
             )
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
         } catch {
             profileSaveError = recordSettingsSaveFailure(
                 error,
@@ -277,14 +283,12 @@ public final class SettingsViewModel: LoadableViewModel {
             workingRelationshipUpdate == nil ? nil : "working_relationship"
         ].compactMap { $0 })
         do {
-            let response = try await settingsAPI.updateSettings(
-                SettingsUpdate(
+            try await commitSettingsPatch(
+                SettingsMutationPayload(
                     communicationStyle: communicationStyleUpdate,
                     workingRelationship: workingRelationshipUpdate
                 )
             )
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = recordSettingsSaveFailure(
                 error,
@@ -326,47 +330,20 @@ public final class SettingsViewModel: LoadableViewModel {
     private func updateEnabledSkills(_ enabledSkills: [String]) async {
         skillsError = nil
         isSavingSkills = true
-        let previous = settings
         let normalized = normalizeEnabledSkills(enabledSkills)
-        if let current = settings {
-            settings = UserSettings(
-                userId: current.userId,
-                communicationStyle: current.communicationStyle,
-                workingRelationship: current.workingRelationship,
-                name: current.name,
-                jobTitle: current.jobTitle,
-                employer: current.employer,
-                dateOfBirth: current.dateOfBirth,
-                gender: current.gender,
-                pronouns: current.pronouns,
-                location: current.location,
-                profileImageUrl: current.profileImageUrl,
-                notificationPreferences: current.notificationPreferences,
-                assistantIdentity: current.assistantIdentity,
-                assistantIdentityMeta: current.assistantIdentityMeta,
-                assistantSoul: current.assistantSoul,
-                assistantSoulMeta: current.assistantSoulMeta,
-                aiPrimaryProvider: current.aiPrimaryProvider,
-                aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
-                aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
-                enabledSkills: normalized,
-                installedStoreSkills: current.installedStoreSkills
-            )
+        guard settings?.enabledSkills != normalized else {
+            isSavingSkills = false
+            return
         }
         do {
-            let update = SettingsUpdate(
-                enabledSkills: normalized
-            )
             logSettingsSaveAttempt(
                 operation: "skills",
                 changedFields: ["enabled_skills"]
             )
-            let response = try await settingsAPI.updateSettings(update)
-            applySettingsResponse(response)
-            settingsSaveCompletionCount += 1
-            await invalidateAndRefreshSkillsState()
+            try await commitSettingsPatch(
+                SettingsMutationPayload(enabledSkills: normalized)
+            )
         } catch {
-            settings = previous
             skillsError = recordSettingsSaveFailure(
                 error,
                 operation: "skills"
@@ -379,7 +356,14 @@ public final class SettingsViewModel: LoadableViewModel {
 
     func setPrimaryProviderError(_ error: String?) { primaryProviderError = error }
 
-    func recordCompletedSettingsSave() { settingsSaveCompletionCount += 1 }
+    func commitSettingsPatch(_ patch: SettingsMutationPayload) async throws {
+        do {
+            try await settingsStore.commitUserPatch(patch)
+        } catch SettingsStoreError.missingWriteQueue {
+            let response = try await settingsAPI.updateSettings(patch.makeSettingsUpdate())
+            applySettingsResponse(response)
+        }
+    }
 
     func reset() {
         setLoading(false)
@@ -404,7 +388,6 @@ public final class SettingsViewModel: LoadableViewModel {
 
         isSavingSystem = false
         systemSaveError = nil
-        settingsSaveCompletionCount = 0
 
         isSavingPrimaryProvider = false
         primaryProviderError = nil
@@ -415,8 +398,18 @@ public final class SettingsViewModel: LoadableViewModel {
 
     func applySettingsResponse(_ response: UserSettings) {
         settingsStore.replace(response, persist: true)
-        synchronizeInternalDiagnosticsSessionScope(with: response)
-        settings = response
+    }
+
+    private func bindSettingsStore() {
+        settingsStore.$settings
+            .sink { [weak self] nextSettings in
+                guard let self else { return }
+                if let nextSettings {
+                    synchronizeInternalDiagnosticsSessionScope(with: nextSettings)
+                }
+                settings = nextSettings
+            }
+            .store(in: &cancellables)
     }
 }
 
