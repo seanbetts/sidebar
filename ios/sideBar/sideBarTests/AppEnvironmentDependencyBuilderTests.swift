@@ -39,6 +39,7 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertTrue(dependencies.ingestionStore.offlineStore === dependencies.offlineStore)
         XCTAssertTrue(dependencies.settingsStore.offlineStore === dependencies.offlineStore)
         XCTAssertTrue(dependencies.settingsViewModel.settingsStore === dependencies.settingsStore)
+        XCTAssertTrue(dependencies.settingsStore.writeQueue === dependencies.writeQueue)
     }
 
     func testBuildDependenciesCreateIsolatedOfflineStoresPerTestEnvironment() {

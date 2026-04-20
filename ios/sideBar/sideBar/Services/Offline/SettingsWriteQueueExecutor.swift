@@ -5,13 +5,13 @@ import sideBarShared
 /// Replays queued settings mutations against the settings API and local staging stores.
 public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
     private let api: any SettingsProviding
-    private let store: SettingsStore?
+    private let store: (any SettingsWriteQueueApplying)?
     private let pendingSecretStore: any SettingsPendingSecretStoring
     private let pendingAssetStore: any SettingsPendingAssetStoring
 
     init(
         api: any SettingsProviding,
-        store: SettingsStore? = nil,
+        store: (any SettingsWriteQueueApplying)? = nil,
         pendingSecretStore: any SettingsPendingSecretStoring,
         pendingAssetStore: any SettingsPendingAssetStoring
     ) {
@@ -26,7 +26,7 @@ public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
         switch payload.kind {
         case .settingsPatch:
             let response = try await api.updateSettings(payload.makeSettingsUpdate())
-            store?.replace(response, persist: true)
+            store?.applySettings(response, persist: true)
         case .providerKeyUpsert:
             let secretRef = try requireSecretReference(from: payload)
             let apiKey = try pendingSecretStore.lookup(reference: secretRef)
@@ -41,7 +41,7 @@ public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
                 let refreshed = try await api.updateSettings(
                     SettingsUpdate(aiPrimaryProvider: payload.provider)
                 )
-                store?.replace(refreshed, persist: true)
+                store?.applySettings(refreshed, persist: true)
             }
             try pendingSecretStore.delete(reference: secretRef)
         case .profileImageUpload:

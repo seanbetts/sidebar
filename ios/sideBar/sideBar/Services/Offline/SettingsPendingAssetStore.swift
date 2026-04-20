@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// File-backed staging record for a pending profile-image upload.
 public struct SettingsPendingAssetRecord: Codable, Equatable {
@@ -12,14 +13,10 @@ public final class SettingsPendingAssetStore {
     private let fileManager: FileManager
     private let rootDirectory: URL
 
-    public init(fileManager: FileManager = .default) {
+    public init(fileManager: FileManager = .default, rootDirectory: URL? = nil) {
         self.fileManager = fileManager
-        self.rootDirectory = fileManager.temporaryDirectory
-            .appendingPathComponent("SettingsPendingAssets", isDirectory: true)
-        try? fileManager.createDirectory(
-            at: rootDirectory,
-            withIntermediateDirectories: true
-        )
+        self.rootDirectory = rootDirectory ?? Self.defaultRootDirectory(fileManager: fileManager)
+        try? fileManager.createDirectory(at: self.rootDirectory, withIntermediateDirectories: true)
     }
 
     public func stageProfileImage(
@@ -35,7 +32,7 @@ public final class SettingsPendingAssetStore {
         )
         let url = fileURL(for: reference)
         let payload = try JSONEncoder().encode(record)
-        try payload.write(to: url, options: .atomic)
+        fileManager.createFile(atPath: url.path, contents: payload)
         return reference
     }
 
@@ -57,7 +54,15 @@ public final class SettingsPendingAssetStore {
     }
 
     private func fileURL(for reference: String) -> URL {
-        rootDirectory.appendingPathComponent(reference).appendingPathExtension("json")
+        rootDirectory.appendingPathComponent("\(reference).json", isDirectory: false)
+    }
+
+    private static func defaultRootDirectory(fileManager: FileManager) -> URL {
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        return base
+            .appendingPathComponent("sideBar", isDirectory: true)
+            .appendingPathComponent("SettingsPendingAssets", isDirectory: true)
     }
 }
 

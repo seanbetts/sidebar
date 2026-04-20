@@ -95,6 +95,16 @@ public final class WriteQueue: ObservableObject {
             }
             return
         }
+        if operation == .update, entityType == .settings,
+           try await coalesceSettingsUpdate(payload: payloadData) {
+            await loadQueueCounts()
+            if autoProcessEnabled, executor != nil, canAttemptServerWrite {
+                Task { [weak self] in
+                    await self?.processQueue()
+                }
+            }
+            return
+        }
 
         let currentCount = try await countQueuedWrites()
         if currentCount >= maxPendingWrites {
@@ -352,6 +362,8 @@ public final class WriteQueue: ObservableObject {
     }
 }
 
+extension WriteQueue: SettingsWriteQueueEnqueuing {}
+
 extension WriteQueue {
     // MARK: - Private
 
@@ -490,6 +502,35 @@ extension WriteQueue {
                   existing.op.lowercased() == "notes" else { return false }
             write.payload = payload; write.createdAt = Date(); write.status = WriteQueueStatus.pending.rawValue
             write.attempts = 0; write.lastError = nil; write.lastAttemptAt = nil
+            return true
+        }
+    }
+
+    private func coalesceSettingsUpdate(payload: Data) async throws -> Bool {
+        let decoder = JSONDecoder()
+        guard let incoming = try? decoder.decode(SettingsMutationPayload.self, from: payload),
+              incoming.kind == .settingsPatch else { return false }
+        return try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
+                WriteOperation.update.rawValue,
+                WriteEntityType.settings.rawValue,
+                incoming.entityId,
+                WriteQueueStatus.pending.rawValue,
+                WriteQueueStatus.failed.rawValue
+            )
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
+            request.fetchLimit = 1
+            guard let write = try context.fetch(request).first else { return false }
+            write.payload = payload
+            write.createdAt = Date()
+            write.status = WriteQueueStatus.pending.rawValue
+            write.attempts = 0
+            write.lastError = nil
+            write.lastAttemptAt = nil
+            write.conflictReason = nil
+            write.serverSnapshot = nil
             return true
         }
     }

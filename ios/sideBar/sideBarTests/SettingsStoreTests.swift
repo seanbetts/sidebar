@@ -74,19 +74,39 @@ final class SettingsStoreTests: XCTestCase {
             offlineStore: offlineStore,
             writeQueue: writeQueue
         )
-        let patch = SettingsMutationPayload(name: "Ada Lovelace")
+        let patch = SettingsMutationPayload(
+            name: "Ada Lovelace",
+            notificationPreferences: NotificationPreferencesUpdate(
+                taskRemindersEnabled: true,
+                assistantReplyNotificationsEnabled: false
+            ),
+            assistantIdentity: AssistantIdentitySettings(
+                name: "Ada",
+                tone: "Warm",
+                values: "Precision",
+                boundaries: "No fluff"
+            )
+        )
 
         try await store.commitUserPatch(patch)
 
         XCTAssertEqual(store.settings?.name, "Ada Lovelace")
+        XCTAssertEqual(store.settings?.notificationPreferences.taskRemindersEnabled, true)
+        XCTAssertEqual(store.settings?.notificationPreferences.assistantReplyNotificationsEnabled, false)
+        XCTAssertEqual(store.settings?.assistantIdentity?.name, "Ada")
+        XCTAssertEqual(store.settings?.assistantIdentity?.tone, "Warm")
         XCTAssertEqual(cache.setCallCount, 1)
         let updatedCacheSnapshot: UserSettings? = try cache.snapshot(for: CacheKeys.userSettings)
         XCTAssertEqual(updatedCacheSnapshot?.name, "Ada Lovelace")
+        XCTAssertEqual(updatedCacheSnapshot?.notificationPreferences.taskRemindersEnabled, true)
+        XCTAssertEqual(updatedCacheSnapshot?.assistantIdentity?.values, "Precision")
         let persistedOffline: UserSettings? = offlineStore.get(
             key: CacheKeys.userSettings,
             as: UserSettings.self
         )
         XCTAssertEqual(persistedOffline?.name, "Ada Lovelace")
+        XCTAssertEqual(persistedOffline?.notificationPreferences.taskRemindersEnabled, true)
+        XCTAssertEqual(persistedOffline?.assistantIdentity?.boundaries, "No fluff")
         XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
         let enqueuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
         XCTAssertEqual(enqueuedWrite.operationType, WriteOperation.update.rawValue)
@@ -94,6 +114,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(enqueuedWrite.entityId, patch.entityId)
         let decodedPayload = try JSONDecoder().decode(SettingsMutationPayload.self, from: enqueuedWrite.payload)
         XCTAssertEqual(decodedPayload.name, patch.name)
+        XCTAssertEqual(decodedPayload.notificationPreferences, patch.notificationPreferences)
+        XCTAssertEqual(decodedPayload.assistantIdentity, patch.assistantIdentity)
         XCTAssertEqual(api.updateSettingsCallCount, 0)
     }
 }
@@ -255,6 +277,28 @@ private final class SettingsStoreAPISpy: SettingsProviding {
 @MainActor
 private final class SettingsWriteQueueSpy {
     private(set) var enqueuedWrites: [PendingWriteRecord] = []
+
+    func enqueue<T: Encodable>(
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String?,
+        payload: T,
+        serverSnapshot: ServerSnapshot?
+    ) async throws {
+        _ = serverSnapshot
+        let encodedPayload = try JSONEncoder().encode(payload)
+        enqueuedWrites.append(
+            PendingWriteRecord(
+                id: UUID(),
+                operationType: operation.rawValue,
+                entityType: entityType.rawValue,
+                entityId: entityId,
+                payload: encodedPayload,
+                serverSnapshot: nil,
+                attempts: 0
+            )
+        )
+    }
 
     func enqueue(_ write: PendingWriteRecord) async throws {
         enqueuedWrites.append(write)

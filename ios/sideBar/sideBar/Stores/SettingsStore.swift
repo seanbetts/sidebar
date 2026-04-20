@@ -50,35 +50,19 @@ public final class SettingsStore: ObservableObject {
         }
     }
 
-    public func commitUserPatch(_ patch: SettingsMutationPayload) async throws {
-        guard let current = currentSnapshotForMutation() else {
-            throw SettingsStoreError.missingCurrentSnapshot
-        }
-
-        let next = current.applying(patch: patch)
-        apply(next, persist: true)
-
-        let write = PendingWriteRecord(
-            id: UUID(),
-            operationType: WriteOperation.update.rawValue,
-            entityType: WriteEntityType.settings.rawValue,
-            entityId: patch.entityId,
-            payload: try JSONEncoder().encode(patch),
-            serverSnapshot: nil,
-            attempts: 0
-        )
-        try await writeQueue?.enqueue(write)
-    }
-
     func reset() {
         settings = nil
+    }
+
+    func attachWriteQueue<Queue: SettingsWriteQueueEnqueuing>(_ writeQueue: Queue) {
+        self.writeQueue = writeQueue
     }
 
     func replace(_ settings: UserSettings, persist: Bool) {
         apply(settings, persist: persist)
     }
 
-    private func currentSnapshotForMutation() -> UserSettings? {
+    func currentSnapshotForMutation() -> UserSettings? {
         if let settings {
             return settings
         }
@@ -106,9 +90,5 @@ public final class SettingsStore: ObservableObject {
 
 enum SettingsStoreError: Error {
     case missingCurrentSnapshot
-}
-
-@MainActor
-protocol SettingsWriteQueueEnqueuing: AnyObject {
-    func enqueue(_ write: PendingWriteRecord) async throws
+    case missingWriteQueue
 }

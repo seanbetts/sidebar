@@ -59,29 +59,15 @@ extension AppEnvironment {
             )
             notesStore.spotlightIndexer = core.spotlightIndexer
             let settingsStore = makeSettingsStore(container: container, core: core)
-
-            let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
-            let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
-            let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
-            let filesExecutor = FilesWriteQueueExecutor(api: container.ingestionAPI, store: ingestionStore)
-            let writeQueueExecutor = CompositeWriteQueueExecutor(
-                executors: [
-                    .note: notesExecutor,
-                    .noteFolder: notesExecutor,
-                    .task: tasksExecutor,
-                    .website: websitesExecutor,
-                    .file: filesExecutor
-                ]
+            let writeQueue = makeWriteQueue(
+                container: container,
+                core: core,
+                notesStore: notesStore,
+                tasksStore: tasksStore,
+                websitesStore: websitesStore,
+                ingestionStore: ingestionStore,
+                settingsStore: settingsStore
             )
-            let writeQueue = WriteQueue(
-                container: core.persistenceContainer,
-                connectivityMonitor: core.connectivityMonitor,
-                executor: writeQueueExecutor
-            )
-            notesStore.attachWriteQueue(writeQueue)
-            tasksStore.attachWriteQueue(writeQueue)
-            websitesStore.attachWriteQueue(writeQueue)
-            ingestionStore.attachWriteQueue(writeQueue)
 
             return Output(
                 chatStore: chatStore,
@@ -93,6 +79,50 @@ extension AppEnvironment {
                 settingsStore: settingsStore,
                 writeQueue: writeQueue
             )
+        }
+
+        private static func makeWriteQueue(
+            container: ServiceContainer,
+            core: CoreDependencyBuilder.Output,
+            notesStore: NotesStore,
+            tasksStore: TasksStore,
+            websitesStore: WebsitesStore,
+            ingestionStore: IngestionStore,
+            settingsStore: SettingsStore
+        ) -> WriteQueue {
+            let pendingSecretStore = SettingsPendingSecretStore()
+            let pendingAssetStore = SettingsPendingAssetStore()
+
+            let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
+            let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
+            let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
+            let filesExecutor = FilesWriteQueueExecutor(api: container.ingestionAPI, store: ingestionStore)
+            let settingsExecutor = SettingsWriteQueueExecutor(
+                api: container.settingsAPI,
+                store: settingsStore,
+                pendingSecretStore: pendingSecretStore,
+                pendingAssetStore: pendingAssetStore
+            )
+            let writeQueue = WriteQueue(
+                container: core.persistenceContainer,
+                connectivityMonitor: core.connectivityMonitor,
+                executor: CompositeWriteQueueExecutor(
+                    executors: [
+                        .note: notesExecutor,
+                        .noteFolder: notesExecutor,
+                        .task: tasksExecutor,
+                        .website: websitesExecutor,
+                        .file: filesExecutor,
+                        .settings: settingsExecutor
+                    ]
+                )
+            )
+            notesStore.attachWriteQueue(writeQueue)
+            tasksStore.attachWriteQueue(writeQueue)
+            websitesStore.attachWriteQueue(writeQueue)
+            ingestionStore.attachWriteQueue(writeQueue)
+            settingsStore.attachWriteQueue(writeQueue)
+            return writeQueue
         }
 
         private static func makeSettingsStore(

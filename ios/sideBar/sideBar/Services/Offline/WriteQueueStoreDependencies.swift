@@ -2,6 +2,22 @@ import Foundation
 import sideBarShared
 
 @MainActor
+protocol SettingsWriteQueueEnqueuing: AnyObject {
+    func enqueue<T: Encodable>(
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String?,
+        payload: T,
+        serverSnapshot: ServerSnapshot?
+    ) async throws
+}
+
+@MainActor
+protocol SettingsWriteQueueApplying: AnyObject {
+    func applySettings(_ settings: UserSettings, persist: Bool)
+}
+
+@MainActor
 protocol FilesWriteQueueApplying {
     func applySyncFile(_ file: IngestedFileMeta)
 }

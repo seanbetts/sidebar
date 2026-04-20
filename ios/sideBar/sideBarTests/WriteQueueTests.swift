@@ -250,6 +250,52 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertEqual(queue.pendingCount, 2)
     }
 
+    func testEnqueueSettingsPatchCoalescesLatestPendingWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let first = SettingsMutationPayload(
+            name: "Ada Lovelace",
+            jobTitle: "Mathematician"
+        )
+        let second = SettingsMutationPayload(
+            name: "Grace Hopper",
+            jobTitle: "Rear Admiral"
+        )
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .settings,
+            entityId: "settings",
+            payload: first
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .settings,
+            entityId: "settings",
+            payload: second
+        )
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 1)
+        XCTAssertEqual(queue.pendingCount, 1)
+
+        let saved = try XCTUnwrap(writes.first)
+        let decoded = try JSONDecoder().decode(SettingsMutationPayload.self, from: saved.payload)
+        XCTAssertEqual(decoded.name, "Grace Hopper")
+        XCTAssertEqual(decoded.jobTitle, "Rear Admiral")
+        XCTAssertEqual(decoded.kind, .settingsPatch)
+    }
+
     func testQueueRespectsMaxPendingWrites() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
