@@ -31,7 +31,11 @@ extension AppEnvironment {
         let becameProtectedContentReady = !wasProtectedContentReady && isProtectedContentReady
 
         let storedCacheScopeUserId = storage.userDefaults.string(forKey: AppStorageKeys.cacheScopeUserId)
+        let hasRecoverableSignedOutSession =
+            authState == .signedOut &&
+            container.offlineAccessRestorer?.canRestoreOfflineSession == true
         let requiresSignedOutReset = authState == .signedOut
+            && !hasRecoverableSignedOutSession
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         let becameStale = previousAuthState != .stale && authState == .stale
         let recoveredFromStale = previousAuthState == .stale && authState != .stale

@@ -128,6 +128,25 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataCleared(environment)
     }
 
+    func testRefreshAuthStatePreservesCachedDataWhenSignedOutStateIsOfflineRecoverable() {
+        isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
+        isolatedDefaults.defaults.set("person@example.com", forKey: lastSignInEmailKey)
+        isolatedDefaults.defaults.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        let environment = makeEnvironment(
+            authState: .signedOut,
+            userId: nil,
+            canRestoreOfflineSession: true
+        )
+        primeCachedData(environment)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(isolatedDefaults.defaults.string(forKey: cacheScopeKey), "user-old")
+        XCTAssertEqual(isolatedDefaults.defaults.string(forKey: lastSignInEmailKey), "person@example.com")
+        XCTAssertNotNil(isolatedDefaults.defaults.object(forKey: lastAuthTimestampKey))
+        assertCachedDataPresent(environment)
+    }
+
     func testRefreshAuthStateClearsSettingsViewModelWhenUserScopeChanges() {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         let environment = makeEnvironment(authState: .active, userId: "user-new")
@@ -157,10 +176,15 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
     private func makeEnvironment(
         authState: AuthState,
         userId: String?,
+        canRestoreOfflineSession: Bool = false,
         websitesAPI: (any WebsitesProviding)? = nil,
         deviceTokensAPI: DeviceTokensAPI? = nil
     ) -> AppEnvironment {
-        let authSession = MutableAuthSession(authState: authState, userId: userId)
+        let authSession = MutableAuthSession(
+            authState: authState,
+            userId: userId,
+            canRestoreOfflineSession: canRestoreOfflineSession
+        )
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
@@ -231,6 +255,7 @@ private final class MutableAuthSession: AuthSession {
     var accessToken: String?
     var userId: String?
     var authState: AuthState
+    let canRestoreOfflineSession: Bool
 
     var authorizationToken: String? {
         authState == .active ? accessToken : nil
@@ -240,9 +265,10 @@ private final class MutableAuthSession: AuthSession {
         nil
     }
 
-    init(authState: AuthState, userId: String?) {
+    init(authState: AuthState, userId: String?, canRestoreOfflineSession: Bool = false) {
         self.authState = authState
         self.userId = userId
+        self.canRestoreOfflineSession = canRestoreOfflineSession
     }
 
     func signIn(email: String, password: String) async throws {
@@ -271,5 +297,11 @@ private final class MutableAuthSession: AuthSession {
         accessToken = nil
         userId = nil
         authState = .signedOut
+    }
+}
+
+extension MutableAuthSession: OfflineAccessRestoring {
+    func restoreOfflineSession() -> Bool {
+        canRestoreOfflineSession
     }
 }
