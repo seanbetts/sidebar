@@ -149,6 +149,17 @@ def test_fly_deploy_workflow_collects_notification_diagnostics_on_verify_failure
     assert '"notification"' in run_script
 
 
+def test_fly_deploy_workflow_restricts_manual_prod_deploys_to_main() -> None:
+    """Manual dispatch should not deploy the production Fly app from non-main branches."""
+    workflow = _workflow()
+    deploy_job = workflow["jobs"]["deploy"]
+
+    deploy_condition = deploy_job["if"]
+    assert "github.event_name == 'push'" in deploy_condition
+    assert "github.event_name == 'workflow_dispatch'" in deploy_condition
+    assert "github.ref == 'refs/heads/main'" in deploy_condition
+
+
 def test_fly_deploy_workflow_authenticates_with_flyctl_before_push() -> None:
     """Fly deploy should refresh registry auth right before pushing the image."""
     workflow = _workflow()
