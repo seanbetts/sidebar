@@ -1203,6 +1203,18 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains(".onDisappear{flushPendingSystemAutosave()"))
     }
+
+    func testSettingsSectionsUseAutosaveFlushHooksInsteadOfSavePillState() throws {
+        let profileNormalized = try profileSupportSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let systemNormalized = try systemSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(profileNormalized.contains("funcflushPendingProfileAutosave()"))
+        XCTAssertTrue(profileNormalized.contains("staticfuncshouldFlushAutosaveOnDisappear("))
+        XCTAssertTrue(systemNormalized.contains("funcflushPendingSystemAutosave()"))
+        XCTAssertTrue(systemNormalized.contains("staticfuncshouldFlushAutosaveOnDisappear("))
+    }
 }
 
 private final class LockedFlag: @unchecked Sendable {
