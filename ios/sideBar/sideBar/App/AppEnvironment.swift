@@ -36,7 +36,6 @@ public struct AppEnvironmentStorage {
         self.taskBadgeUpdater = taskBadgeUpdater ?? LiveTaskBadgeUpdater()
     }
 }
-
 @MainActor
 /// Coordinates app-wide stores, view models, and lifecycle wiring for the signed-in experience.
 public final class AppEnvironment: ObservableObject {
@@ -62,9 +61,8 @@ public final class AppEnvironment: ObservableObject {
     public let tasksStore: TasksStore
     /// Store backing scratchpad content state.
     public let scratchpadStore: ScratchpadStore
-    /// Offline persistence store used for snapshots and queued operations.
+    public let settingsStore: SettingsStore
     public let offlineStore: OfflineStore
-    /// Central toast presenter used for transient user-facing feedback.
     public let toastCenter: ToastCenter
     /// View model coordinating chat UI actions and streaming state.
     public let chatViewModel: ChatViewModel
@@ -214,6 +212,7 @@ public final class AppEnvironment: ObservableObject {
         self.ingestionStore = dependencies.ingestionStore
         self.tasksStore = dependencies.tasksStore
         self.scratchpadStore = dependencies.scratchpadStore
+        self.settingsStore = dependencies.settingsStore
         self.offlineStore = dependencies.offlineStore
         self.toastCenter = dependencies.toastCenter
         self.chatViewModel = dependencies.chatViewModel

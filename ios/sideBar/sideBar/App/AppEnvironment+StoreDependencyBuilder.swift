@@ -11,6 +11,7 @@ extension AppEnvironment {
             let ingestionStore: IngestionStore
             let tasksStore: TasksStore
             let scratchpadStore: ScratchpadStore
+            let settingsStore: SettingsStore
             let writeQueue: WriteQueue
         }
 
@@ -57,6 +58,11 @@ extension AppEnvironment {
                 networkStatus: core.connectivityMonitor
             )
             notesStore.spotlightIndexer = core.spotlightIndexer
+            let settingsStore = SettingsStore(
+                settingsAPI: container.settingsAPI,
+                cache: container.cacheClient,
+                offlineStore: core.offlineStore
+            )
 
             let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
             let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
@@ -88,6 +94,7 @@ extension AppEnvironment {
                 ingestionStore: ingestionStore,
                 tasksStore: tasksStore,
                 scratchpadStore: scratchpadStore,
+                settingsStore: settingsStore,
                 writeQueue: writeQueue
             )
         }

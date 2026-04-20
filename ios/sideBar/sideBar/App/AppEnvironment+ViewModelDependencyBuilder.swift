@@ -23,12 +23,16 @@ extension AppEnvironment {
             let currentLocationViewModel: CurrentLocationViewModel
         }
 
-        private static func makeSettingsViewModel(container: ServiceContainer) -> SettingsViewModel {
+        private static func makeSettingsViewModel(
+            container: ServiceContainer,
+            settingsStore: SettingsStore
+        ) -> SettingsViewModel {
             SettingsViewModel(
                 settingsAPI: container.settingsAPI,
                 skillsAPI: container.skillsAPI,
                 onboardingAPI: container.onboardingAPI,
                 cache: container.cacheClient,
+                settingsStore: settingsStore,
                 currentAuthUserIdProvider: {
                     settingsRequestUserId(
                         authSession: container.authSession,
@@ -273,7 +277,10 @@ extension AppEnvironment {
             widgetDataManager: WidgetDataManager,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
         ) -> Output {
-            let settingsViewModel = makeSettingsViewModel(container: container)
+            let settingsViewModel = makeSettingsViewModel(
+                container: container,
+                settingsStore: stores.settingsStore
+            )
             let notesViewModel = NotesViewModel(
                 api: container.notesAPI,
                 store: stores.notesStore,

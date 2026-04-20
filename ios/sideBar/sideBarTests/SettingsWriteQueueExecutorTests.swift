@@ -24,7 +24,9 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
 
         XCTAssertEqual(secretStore.lookupReferences, ["secret-ref-1"])
         XCTAssertEqual(secretStore.deletedReferences, ["secret-ref-1"])
-        XCTAssertEqual(api.upsertedProviderKeys, [("anthropic", "anthropic-key")])
+        XCTAssertEqual(api.upsertedProviderKeys.count, 1)
+        XCTAssertEqual(api.upsertedProviderKeys.first?.0, "anthropic")
+        XCTAssertEqual(api.upsertedProviderKeys.first?.1, "anthropic-key")
     }
 
     func testExecuteSettingsPatchReplaysDecodedMutationIntoUpdateSettings() async throws {
@@ -188,27 +190,29 @@ private final class SettingsPendingSecretStoreSpy {
         return secret
     }
 
-    func delete(reference: String) {
+    func delete(reference: String) throws {
         deletedReferences.append(reference)
         secrets[reference] = nil
     }
 }
 
+extension SettingsPendingSecretStoreSpy: SettingsPendingSecretStoring {}
+
 @MainActor
 private final class SettingsPendingAssetStoreSpy {
-    private var assets: [String: StagedAssetRecord] = [:]
+    private var assets: [String: SettingsPendingAssetRecord] = [:]
     private(set) var lookupReferences: [String] = []
     private(set) var deletedReferences: [String] = []
 
     func stage(reference: String, data: Data, contentType: String, filename: String) {
-        assets[reference] = StagedAssetRecord(
+        assets[reference] = SettingsPendingAssetRecord(
             data: data,
             contentType: contentType,
             filename: filename
         )
     }
 
-    func lookup(reference: String) throws -> StagedAssetRecord {
+    func lookup(reference: String) throws -> SettingsPendingAssetRecord {
         lookupReferences.append(reference)
         guard let asset = assets[reference] else {
             throw SettingsWriteQueueExecutorTestError.forced
@@ -216,23 +220,19 @@ private final class SettingsPendingAssetStoreSpy {
         return asset
     }
 
-    func delete(reference: String) {
+    func delete(reference: String) throws {
         deletedReferences.append(reference)
         assets[reference] = nil
     }
 }
+
+extension SettingsPendingAssetStoreSpy: SettingsPendingAssetStoring {}
 
 private enum SettingsWriteQueueExecutorTestError: Error {
     case forced
 }
 
 private struct UploadedProfileImageRecord: Equatable {
-    let data: Data
-    let contentType: String
-    let filename: String
-}
-
-private struct StagedAssetRecord: Equatable {
     let data: Data
     let contentType: String
     let filename: String

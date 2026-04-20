@@ -11,6 +11,7 @@ extension AppEnvironment {
         let ingestionStore: IngestionStore
         let tasksStore: TasksStore
         let scratchpadStore: ScratchpadStore
+        let settingsStore: SettingsStore
         let offlineStore: OfflineStore
         let toastCenter: ToastCenter
         let chatViewModel: ChatViewModel
@@ -62,6 +63,7 @@ extension AppEnvironment {
             ingestionStore: stores.ingestionStore,
             tasksStore: stores.tasksStore,
             scratchpadStore: stores.scratchpadStore,
+            settingsStore: stores.settingsStore,
             offlineStore: core.offlineStore,
             toastCenter: core.toastCenter,
             chatViewModel: viewModels.chatViewModel,

@@ -16,7 +16,7 @@ extension SettingsViewModel {
     private static let settingsScopeLogger = Logger(subsystem: "sideBar", category: "SettingsSessionScope")
 
     public var assistantDisplayName: String {
-        guard let rawName = settings?.assistantIdentity?.name else {
+        guard let rawName = settingsStore.settings?.assistantIdentity?.name else {
             return Self.defaultAssistantDisplayName
         }
         let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,11 +129,11 @@ extension SettingsViewModel {
     }
 
     func currentSettingsForSave() async -> (settings: UserSettings?, error: String?) {
-        if let loaded = settings, isBound(settings: loaded, to: normalizedAuthUserId) {
+        if let loaded = settingsStore.settings, isBound(settings: loaded, to: normalizedAuthUserId) {
             return (loaded, nil)
         }
 
-        if settings != nil {
+        if settingsStore.settings != nil {
             Self.settingsScopeLogger.notice("Loaded settings snapshot is stale for current auth user, reloading before save")
         } else {
             Self.settingsScopeLogger.notice("No loaded settings snapshot available, reloading before save")

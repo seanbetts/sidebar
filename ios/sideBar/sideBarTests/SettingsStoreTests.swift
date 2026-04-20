@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import sideBarShared
 import XCTest
@@ -8,10 +9,16 @@ final class SettingsStoreTests: XCTestCase {
     func testLoadPrefersOfflineSnapshotWhenServerReadFails() async throws {
         let cachedSettings = makeSettings(name: "Stale cache snapshot")
         let offlineSnapshot = makeSettings(name: "Offline snapshot")
+        let persistence = PersistenceController(inMemory: true)
         let cache = SettingsPersistenceSpy()
         cache.stage(key: CacheKeys.userSettings, value: cachedSettings)
-        let offlineStore = SettingsOfflineSnapshotStoreSpy()
-        offlineStore.stage(snapshot: offlineSnapshot, for: CacheKeys.userSettings)
+        let offlineStore = OfflineStore(container: persistence.container)
+        offlineStore.set(
+            key: CacheKeys.userSettings,
+            entityType: "settings",
+            value: offlineSnapshot,
+            lastSyncAt: nil
+        )
         let api = SettingsStoreAPISpy(
             getSettingsResult: .failure(SettingsStoreTestError.forced)
         )
@@ -25,20 +32,37 @@ final class SettingsStoreTests: XCTestCase {
 
         let loaded = try await store.load()
 
-        XCTAssertEqual(loaded, offlineSnapshot)
-        XCTAssertEqual(store.settings, offlineSnapshot)
-        XCTAssertEqual(offlineStore.lookupCallCount, 1)
-        XCTAssertEqual(offlineStore.lastLookupKey, CacheKeys.userSettings)
+        XCTAssertEqual(loaded.userId, offlineSnapshot.userId)
+        XCTAssertEqual(loaded.name, offlineSnapshot.name)
+        XCTAssertEqual(loaded.jobTitle, offlineSnapshot.jobTitle)
+        XCTAssertEqual(loaded.enabledSkills, offlineSnapshot.enabledSkills)
+        XCTAssertEqual(store.settings?.userId, offlineSnapshot.userId)
+        XCTAssertEqual(store.settings?.name, offlineSnapshot.name)
+        XCTAssertEqual(store.settings?.jobTitle, offlineSnapshot.jobTitle)
+        XCTAssertEqual(store.settings?.enabledSkills, offlineSnapshot.enabledSkills)
+        let cachedSnapshot: UserSettings? = try cache.snapshot(for: CacheKeys.userSettings)
+        XCTAssertEqual(cachedSnapshot?.name, cachedSettings.name)
+        let persistedOffline: UserSettings? = offlineStore.get(
+            key: CacheKeys.userSettings,
+            as: UserSettings.self
+        )
+        XCTAssertEqual(persistedOffline?.name, offlineSnapshot.name)
         XCTAssertEqual(api.getSettingsCallCount, 1)
         XCTAssertEqual(writeQueue.enqueuedWrites.count, 0)
     }
 
     func testCommitUserPatchUpdatesLocalSnapshotAndEnqueuesSettingsWrite() async throws {
         let initialSettings = makeSettings(name: "Initial")
+        let persistence = PersistenceController(inMemory: true)
         let cache = SettingsPersistenceSpy()
         cache.stage(key: CacheKeys.userSettings, value: initialSettings)
-        let offlineStore = SettingsOfflineSnapshotStoreSpy()
-        offlineStore.stage(snapshot: initialSettings, for: CacheKeys.userSettings)
+        let offlineStore = OfflineStore(container: persistence.container)
+        offlineStore.set(
+            key: CacheKeys.userSettings,
+            entityType: "settings",
+            value: initialSettings,
+            lastSyncAt: nil
+        )
         let api = SettingsStoreAPISpy(
             getSettingsResult: .success(initialSettings),
             updateSettingsResult: .success(initialSettings)
@@ -56,9 +80,13 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(store.settings?.name, "Ada Lovelace")
         XCTAssertEqual(cache.setCallCount, 1)
-        XCTAssertEqual(offlineStore.setCallCount, 1)
-        XCTAssertEqual(try cache.snapshot(for: CacheKeys.userSettings)?.name, "Ada Lovelace")
-        XCTAssertEqual(try offlineStore.snapshot(for: CacheKeys.userSettings)?.name, "Ada Lovelace")
+        let updatedCacheSnapshot: UserSettings? = try cache.snapshot(for: CacheKeys.userSettings)
+        XCTAssertEqual(updatedCacheSnapshot?.name, "Ada Lovelace")
+        let persistedOffline: UserSettings? = offlineStore.get(
+            key: CacheKeys.userSettings,
+            as: UserSettings.self
+        )
+        XCTAssertEqual(persistedOffline?.name, "Ada Lovelace")
         XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
         let enqueuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
         XCTAssertEqual(enqueuedWrite.operationType, WriteOperation.update.rawValue)
@@ -89,43 +117,6 @@ private func makeSettings(name: String?) -> UserSettings {
 
 private enum SettingsStoreTestError: Error {
     case forced
-}
-
-@MainActor
-private final class SettingsOfflineSnapshotStoreSpy {
-    private var snapshots: [String: Data] = [:]
-    private(set) var lookupCallCount = 0
-    private(set) var setCallCount = 0
-    private(set) var lastLookupKey: String?
-    private(set) var lastSetKey: String?
-
-    func stage(snapshot: UserSettings, for key: String) {
-        snapshots[key] = try? JSONEncoder().encode(snapshot)
-    }
-
-    func get<T: Decodable>(key: String, as type: T.Type) -> T? {
-        lookupCallCount += 1
-        lastLookupKey = key
-        guard let snapshot = snapshots[key] else {
-            return nil
-        }
-        return try? JSONDecoder().decode(T.self, from: snapshot)
-    }
-
-    func set<T: Encodable>(key: String, entityType: String, value: T, lastSyncAt: Date?) {
-        _ = entityType
-        _ = lastSyncAt
-        setCallCount += 1
-        lastSetKey = key
-        snapshots[key] = try? JSONEncoder().encode(value)
-    }
-
-    func snapshot<T: Decodable>(for key: String, as type: T.Type = T.self) throws -> T? {
-        guard let snapshot = snapshots[key] else {
-            return nil
-        }
-        return try JSONDecoder().decode(T.self, from: snapshot)
-    }
 }
 
 @MainActor
@@ -265,7 +256,9 @@ private final class SettingsStoreAPISpy: SettingsProviding {
 private final class SettingsWriteQueueSpy {
     private(set) var enqueuedWrites: [PendingWriteRecord] = []
 
-    func enqueue(_ write: PendingWriteRecord) async {
+    func enqueue(_ write: PendingWriteRecord) async throws {
         enqueuedWrites.append(write)
     }
 }
+
+extension SettingsWriteQueueSpy: SettingsWriteQueueEnqueuing {}

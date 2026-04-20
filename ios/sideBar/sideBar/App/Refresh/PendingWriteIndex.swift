@@ -45,6 +45,8 @@ struct PendingWriteIndex {
             return .websites
         case .file:
             return .files
+        case .settings:
+            return .settings
         case .scratchpad:
             return nil
         }

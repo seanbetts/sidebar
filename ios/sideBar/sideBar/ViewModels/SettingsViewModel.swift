@@ -41,6 +41,7 @@ public final class SettingsViewModel: LoadableViewModel {
     let locationPermissionRequester: any LocationPermissionRequesting
     let notificationPermissionRequester: any NotificationPermissionRequesting
     let cache: CacheClient
+    let settingsStore: SettingsStore
     let currentAuthUserIdProvider: () -> String?
     let currentAuthorizedUserIdProvider: (() -> String?)?
     let refreshAuthorizedSession: (() async -> Void)?
@@ -53,6 +54,7 @@ public final class SettingsViewModel: LoadableViewModel {
         locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
         notificationPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         cache: CacheClient,
+        settingsStore: SettingsStore? = nil,
         currentAuthUserIdProvider: @escaping () -> String? = { nil },
         currentAuthorizedUserIdProvider: (() -> String?)? = nil,
         refreshAuthorizedSession: (() async -> Void)? = nil,
@@ -64,6 +66,10 @@ public final class SettingsViewModel: LoadableViewModel {
         self.locationPermissionRequester = locationPermissionRequester ?? LocationPermissionRequester()
         self.notificationPermissionRequester = notificationPermissionRequester ?? NotificationPermissionRequester()
         self.cache = cache
+        self.settingsStore = settingsStore ?? SettingsStore(
+            settingsAPI: settingsAPI,
+            cache: cache
+        )
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider
         self.refreshAuthorizedSession = refreshAuthorizedSession
@@ -80,18 +86,10 @@ public final class SettingsViewModel: LoadableViewModel {
         systemSaveError = nil
         primaryProviderError = nil
         setLoading(true)
-        let loader = CachedLoader(
-            cache: cache,
-            key: userSettingsCacheKey,
-            ttl: CachePolicy.userSettings
-        ) { [settingsAPI] in
-            try await settingsAPI.getSettings()
-        }
         do {
-            let (response, _) = try await loader.load(force: force, onRefresh: { [weak self] fresh in
-                self?.applySettingsResponse(fresh)
-            })
-            applySettingsResponse(response)
+            let response = try await settingsStore.load(force: force)
+            synchronizeInternalDiagnosticsSessionScope(with: response)
+            settings = response
         } catch {
             setError(error)
         }
@@ -387,6 +385,7 @@ public final class SettingsViewModel: LoadableViewModel {
         clearError()
 
         settings = nil
+        settingsStore.reset()
         skills = []
         isLoadingSkills = false
         isSavingSkills = false
@@ -414,13 +413,9 @@ public final class SettingsViewModel: LoadableViewModel {
     }
 
     func applySettingsResponse(_ response: UserSettings) {
+        settingsStore.replace(response, persist: true)
         synchronizeInternalDiagnosticsSessionScope(with: response)
         settings = response
-        cache.set(
-            key: userSettingsCacheKey,
-            value: response,
-            ttlSeconds: CachePolicy.userSettings
-        )
     }
 }
 
