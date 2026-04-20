@@ -6,9 +6,12 @@ import XCTest
 @MainActor
 final class SettingsStoreTests: XCTestCase {
     func testLoadPrefersOfflineSnapshotWhenServerReadFails() async throws {
-        let cachedSettings = makeSettings(name: "Offline snapshot")
+        let cachedSettings = makeSettings(name: "Stale cache snapshot")
+        let offlineSnapshot = makeSettings(name: "Offline snapshot")
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.userSettings, value: cachedSettings, ttlSeconds: 60)
+        let offlineStore = SettingsOfflineSnapshotStoreSpy()
+        offlineStore.stage(snapshot: offlineSnapshot, for: CacheKeys.userSettings)
         let api = SettingsStoreAPISpy(
             getSettingsResult: .failure(SettingsStoreTestError.forced)
         )
@@ -16,13 +19,16 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(
             settingsAPI: api,
             cache: cache,
+            offlineStore: offlineStore,
             writeQueue: writeQueue
         )
 
         let loaded = try await store.load()
 
-        XCTAssertEqual(loaded, cachedSettings)
-        XCTAssertEqual(store.settings, cachedSettings)
+        XCTAssertEqual(loaded, offlineSnapshot)
+        XCTAssertEqual(store.settings, offlineSnapshot)
+        XCTAssertEqual(offlineStore.lookupCallCount, 1)
+        XCTAssertEqual(offlineStore.lastLookupKey, CacheKeys.userSettings)
         XCTAssertEqual(api.getSettingsCallCount, 1)
         XCTAssertEqual(writeQueue.enqueuedWrites.count, 0)
     }
@@ -39,6 +45,7 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(
             settingsAPI: api,
             cache: cache,
+            offlineStore: SettingsOfflineSnapshotStoreSpy(),
             writeQueue: writeQueue
         )
         let patch = SettingsMutationPayload(name: "Ada Lovelace")
@@ -46,22 +53,15 @@ final class SettingsStoreTests: XCTestCase {
         try await store.commitUserPatch(patch)
 
         XCTAssertEqual(store.settings?.name, "Ada Lovelace")
-        XCTAssertEqual(writeQueue.enqueuedWrites, [queuedSettingsWrite(patch)])
+        XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
+        let enqueuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
+        XCTAssertEqual(enqueuedWrite.operationType, WriteOperation.update.rawValue)
+        XCTAssertEqual(enqueuedWrite.entityType, WriteEntityType.settings.rawValue)
+        XCTAssertEqual(enqueuedWrite.entityId, patch.entityId)
+        let decodedPayload = try JSONDecoder().decode(SettingsMutationPayload.self, from: enqueuedWrite.payload)
+        XCTAssertEqual(decodedPayload.name, patch.name)
         XCTAssertEqual(api.updateSettingsCallCount, 0)
     }
-}
-
-private func queuedSettingsWrite(_ payload: SettingsMutationPayload) -> PendingWriteRecord {
-    let payloadData = try! JSONEncoder().encode(payload)
-    return PendingWriteRecord(
-        id: UUID(),
-        operationType: WriteOperation.update.rawValue,
-        entityType: WriteEntityType.settings.rawValue,
-        entityId: payload.entityId,
-        payload: payloadData,
-        serverSnapshot: nil,
-        attempts: 0
-    )
 }
 
 private func makeSettings(name: String?) -> UserSettings {
@@ -83,6 +83,29 @@ private func makeSettings(name: String?) -> UserSettings {
 
 private enum SettingsStoreTestError: Error {
     case forced
+}
+
+@MainActor
+private final class SettingsOfflineSnapshotStoreSpy {
+    private var snapshots: [String: UserSettings] = [:]
+    private(set) var lookupCallCount = 0
+    private(set) var lastLookupKey: String?
+
+    func stage(snapshot: UserSettings, for key: String) {
+        snapshots[key] = snapshot
+    }
+
+    func get<T: Decodable>(key: String, as type: T.Type) -> T? {
+        lookupCallCount += 1
+        lastLookupKey = key
+        guard let snapshot = snapshots[key] else {
+            return nil
+        }
+        guard let typedSnapshot = snapshot as? T else {
+            return nil
+        }
+        return typedSnapshot
+    }
 }
 
 @MainActor
