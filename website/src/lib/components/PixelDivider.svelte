@@ -8,7 +8,7 @@
     opacity?: number;
   };
 
-  let { position = 'top', size = 4, gap = 2, opacity }: Props = $props();
+  let { position = 'top', size = 2, gap = 2, opacity }: Props = $props();
 
   let width = $state(0);
 

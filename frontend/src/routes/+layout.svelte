@@ -13,7 +13,12 @@
 	import { page } from '$app/stores';
 	import { flushClientSessionOnLogout } from '$lib/utils/sessionCleanup';
 	import { listenForStorageEvents } from '$lib/utils/cache';
-	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
+	import {
+		applyThemeMode,
+		getStoredTheme,
+		getSystemTheme,
+		startSystemThemeSync
+	} from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
 	import { startTaskEvents, stopTaskEvents } from '$lib/realtime/task_events';
 	import { logError } from '$lib/utils/errorHandling';
@@ -30,6 +35,7 @@
 	let stopRealtimeListener: (() => void) | null = null;
 	let stopDebugListener: (() => void) | null = null;
 	let stopSwipeViewportListener: (() => void) | null = null;
+	let stopThemeSystemListener: (() => void) | null = null;
 
 	let debugLayout = $state(false);
 	let viewportDebug = $state('');
@@ -110,10 +116,9 @@
 		};
 
 		const storedTheme = getStoredTheme();
-		const prefersDark =
-			typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
+		const initialTheme = storedTheme ?? getSystemTheme();
 		applyThemeMode(initialTheme, false);
+		stopThemeSystemListener = startSystemThemeSync();
 		void initWebVitals(() => get(page).url.pathname);
 
 		const supabaseUrl = data.supabaseUrl;
@@ -156,6 +161,7 @@
 		stopRealtimeListener?.();
 		stopDebugListener?.();
 		stopSwipeViewportListener?.();
+		stopThemeSystemListener?.();
 		stopRealtime();
 		stopTaskEvents();
 		chatStore.cleanup?.();

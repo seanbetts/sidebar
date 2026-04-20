@@ -3,11 +3,20 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { onDestroy, onMount } from 'svelte';
-	import { applyThemeMode, getStoredTheme, setThemeMode } from '$lib/utils/theme';
+	import {
+		applyThemeMode,
+		getStoredTheme,
+		getSystemTheme,
+		setThemeMode,
+		startSystemThemeSync,
+		type ResolvedThemeMode,
+		type ThemeMode
+	} from '$lib/utils/theme';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 
-	let isDark = $state(false);
+	let resolvedTheme = $state<ResolvedThemeMode>('light');
 	let cleanupThemeListener: (() => void) | null = null;
+	let cleanupSystemThemeSync: (() => void) | null = null;
 	let tooltipsEnabled = $state(false);
 
 	onMount(() => {
@@ -15,21 +24,23 @@
 			return;
 		}
 		const stored = getStoredTheme();
-		isDark =
-			stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-		applyThemeMode(isDark ? 'dark' : 'light', false);
+		applyThemeMode(stored ?? getSystemTheme(), false);
+		resolvedTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 
 		const handler = (event: Event) => {
-			const detail = (event as CustomEvent<{ theme?: string; source?: string }>).detail;
-			if (detail?.theme === 'dark') {
-				isDark = true;
-			} else if (detail?.theme === 'light') {
-				isDark = false;
+			const detail = (
+				event as CustomEvent<{
+					resolvedTheme?: ResolvedThemeMode;
+					source?: string;
+				}>
+			).detail;
+			if (detail?.resolvedTheme === 'light' || detail?.resolvedTheme === 'dark') {
+				resolvedTheme = detail.resolvedTheme;
 			}
 		};
 		window.addEventListener('themechange', handler);
 		cleanupThemeListener = () => window.removeEventListener('themechange', handler);
+		cleanupSystemThemeSync = startSystemThemeSync();
 		tooltipsEnabled = canShowTooltips();
 	});
 
@@ -37,11 +48,13 @@
 		if (cleanupThemeListener) {
 			cleanupThemeListener();
 		}
+		if (cleanupSystemThemeSync) {
+			cleanupSystemThemeSync();
+		}
 	});
 
 	function toggleTheme() {
-		isDark = !isDark;
-		setThemeMode(isDark ? 'dark' : 'light', 'user');
+		setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark', 'user');
 	}
 </script>
 
@@ -56,10 +69,10 @@
 					invokeSnippetClick(props, event);
 					toggleTheme();
 				}}
-				aria-label="Toggle theme"
+				aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
 				class="border-border"
 			>
-				{#if isDark}
+				{#if resolvedTheme === 'dark'}
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="20"
@@ -99,5 +112,7 @@
 			</Button>
 		{/snippet}
 	</TooltipTrigger>
-	<TooltipContent side="bottom">Toggle dark/light mode</TooltipContent>
+	<TooltipContent side="bottom">
+		{resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+	</TooltipContent>
 </Tooltip>

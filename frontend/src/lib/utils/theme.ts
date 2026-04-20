@@ -1,5 +1,15 @@
 export type ThemeMode = 'light' | 'dark';
+export type ResolvedThemeMode = 'light' | 'dark';
 export type ThemeSource = 'user' | 'weather' | 'ai' | 'system' | 'unknown';
+
+const THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+export function getSystemTheme(): ResolvedThemeMode {
+	if (typeof window !== 'undefined' && window.matchMedia?.(THEME_MEDIA_QUERY).matches) {
+		return 'dark';
+	}
+	return 'light';
+}
 
 /**
  * Apply a theme mode and optionally persist to localStorage.
@@ -16,18 +26,20 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean, source?: Them
 	if (theme === 'dark') {
 		root.classList.add('dark');
 		if (persist) {
-			localStorage.setItem('theme', 'dark');
+			localStorage.setItem('theme', theme);
 			localStorage.setItem('themeSource', source ?? 'unknown');
 		}
 	} else {
 		root.classList.remove('dark');
 		if (persist) {
-			localStorage.setItem('theme', 'light');
+			localStorage.setItem('theme', theme);
 			localStorage.setItem('themeSource', source ?? 'unknown');
 		}
 	}
 	if (typeof window !== 'undefined') {
-		window.dispatchEvent(new CustomEvent('themechange', { detail: { theme, source } }));
+		window.dispatchEvent(
+			new CustomEvent('themechange', { detail: { theme, resolvedTheme: theme, source } })
+		);
 	}
 }
 
@@ -52,4 +64,29 @@ export function getStoredTheme(): ThemeMode | null {
 		return stored;
 	}
 	return null;
+}
+
+export function startSystemThemeSync(): () => void {
+	if (typeof window === 'undefined' || !window.matchMedia) {
+		return () => {};
+	}
+
+	const mediaQuery = window.matchMedia(THEME_MEDIA_QUERY);
+	const handleChange = () => {
+		if (!getStoredTheme()) {
+			applyThemeMode(getSystemTheme(), false, 'system');
+		}
+	};
+
+	if (typeof mediaQuery.addEventListener === 'function') {
+		mediaQuery.addEventListener('change', handleChange);
+		return () => mediaQuery.removeEventListener('change', handleChange);
+	}
+
+	if (typeof mediaQuery.addListener === 'function') {
+		mediaQuery.addListener(handleChange);
+		return () => mediaQuery.removeListener(handleChange);
+	}
+
+	return () => {};
 }

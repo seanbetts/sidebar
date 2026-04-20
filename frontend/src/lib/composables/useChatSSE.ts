@@ -10,7 +10,6 @@ import { memoriesStore } from '$lib/stores/memories';
 import { conversationListStore } from '$lib/stores/conversations';
 import { weatherPreferencesStore } from '$lib/stores/weatherPreferences';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 import { logError } from '$lib/utils/errorHandling';
 import { get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
@@ -238,11 +237,6 @@ export function useChatSSE() {
 							fileId
 						});
 					}
-				},
-
-				onThemeSet: (data) => {
-					const theme = data?.theme === 'dark' ? 'dark' : 'light';
-					setThemeMode(theme as ThemeMode, 'ai');
 				},
 
 				onScratchpadUpdated: () => {

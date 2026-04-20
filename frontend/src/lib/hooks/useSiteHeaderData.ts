@@ -2,7 +2,6 @@ import { onDestroy, onMount } from 'svelte';
 import { get, writable } from 'svelte/store';
 import { weatherPreferencesStore } from '$lib/stores/weatherPreferences';
 import { formatTemperature } from '$lib/utils/weatherTemperature';
-import { setThemeMode } from '$lib/utils/theme';
 import {
 	getCachedData,
 	isCacheStale,
@@ -261,10 +260,6 @@ export function useSiteHeaderData() {
 		const weatherCode = typeof data.weather_code === 'number' ? data.weather_code : null;
 		const weatherIsDay = typeof data.is_day === 'number' ? data.is_day : null;
 		setState({ weatherCode, weatherIsDay });
-
-		if (weatherIsDay !== null) {
-			setThemeMode(weatherIsDay === 1 ? 'light' : 'dark', 'weather');
-		}
 	}
 
 	return state;

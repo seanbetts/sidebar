@@ -2,21 +2,51 @@
   import { onMount } from 'svelte';
   import PixelDivider from '$lib/components/PixelDivider.svelte';
 
+  const THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
   let isDark = $state(false);
 
   onMount(() => {
-    isDark = document.documentElement.classList.contains('dark');
+    const applyTheme = (theme: 'light' | 'dark', persist: boolean) => {
+      isDark = theme === 'dark';
+      document.documentElement.classList.toggle('dark', isDark);
+      if (persist) {
+        localStorage.setItem('theme', theme);
+      }
+    };
+
+    const stored = localStorage.getItem('theme');
+    const initialTheme =
+      stored === 'light' || stored === 'dark'
+        ? stored
+        : window.matchMedia?.(THEME_MEDIA_QUERY).matches
+          ? 'dark'
+          : 'light';
+    applyTheme(initialTheme, false);
+
+    const mediaQuery = window.matchMedia?.(THEME_MEDIA_QUERY);
+    const handleChange = () => {
+      if (!localStorage.getItem('theme')) {
+        applyTheme(mediaQuery?.matches ? 'dark' : 'light', false);
+      }
+    };
+
+    if (typeof mediaQuery?.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    if (typeof mediaQuery?.addListener === 'function') {
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
   });
 
   function toggleTheme() {
-    isDark = !isDark;
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    const nextTheme = isDark ? 'light' : 'dark';
+    isDark = nextTheme === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', nextTheme);
   }
 </script>
 
@@ -24,7 +54,22 @@
   <PixelDivider position="bottom" />
   <div class="nav-inner">
     <a href="/" class="brand" aria-label="sideBar home">
-      <img src="/logo.svg" alt="" width="36" height="36" />
+      <span class="brand-mark" aria-hidden="true">
+        <img
+          class="brand-mark__asset brand-mark__asset--light"
+          src="/logo-light.png"
+          alt=""
+          width="40"
+          height="40"
+        />
+        <img
+          class="brand-mark__asset brand-mark__asset--dark"
+          src="/logo-dark.png"
+          alt=""
+          width="40"
+          height="40"
+        />
+      </span>
       <span class="brand-name">sideBar</span>
     </a>
 
@@ -34,7 +79,11 @@
       <a href="/pricing">Pricing</a>
       <a href="https://docs.trysidebar.ai">Docs</a>
       <a href="https://app.trysidebar.ai" class="cta">Request Early Access</a>
-      <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle dark mode">
+      <button
+        class="theme-toggle"
+        onclick={toggleTheme}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
         {#if isDark}
           <!-- Sun icon -->
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -72,7 +121,7 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.4rem;
     text-decoration: none;
     font-family: var(--font-display);
     font-weight: var(--font-display-weight);
@@ -82,10 +131,32 @@
     line-height: var(--font-display-leading);
   }
 
-  .brand img {
-    display: block;
+  .brand-mark {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
     width: 2.5rem;
     height: 2.5rem;
+    flex: 0 0 auto;
+  }
+
+  .brand-mark__asset {
+    grid-area: 1 / 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .brand-mark__asset--dark {
+    display: none;
+  }
+
+  :global(.dark) .brand-mark__asset--light {
+    display: none;
+  }
+
+  :global(.dark) .brand-mark__asset--dark {
+    display: block;
   }
 
   .brand-name {

@@ -12,6 +12,7 @@ describe('marketing shell', () => {
     expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /docs/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /request early access/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /switch to (light|dark) mode/i })).toBeInTheDocument();
   });
 
   it('shows the final footer information architecture', () => {

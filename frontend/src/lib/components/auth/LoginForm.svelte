@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import BrandLockup from '$lib/components/BrandLockup.svelte';
+	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import PixelDivider from '$lib/components/PixelDivider.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Folder, FileText, Globe, CheckSquare, MessageSquare, Command } from 'lucide-svelte';
@@ -58,6 +59,39 @@
 
 <div class="login-shell">
 	<div class="login-container">
+		<nav class="login-nav" aria-label="Marketing navigation">
+			<PixelDivider position="bottom" />
+			<div class="login-nav-inner">
+				<a href="https://trysidebar.ai" class="login-brand" aria-label="sideBar home">
+					<span class="login-brand-mark" aria-hidden="true">
+						<img
+							class="login-brand-asset login-brand-asset-light"
+							src="/images/logo-light.png"
+							alt=""
+							width="40"
+							height="40"
+						/>
+						<img
+							class="login-brand-asset login-brand-asset-dark"
+							src="/images/logo-dark.png"
+							alt=""
+							width="40"
+							height="40"
+						/>
+					</span>
+					<span class="login-brand-name">sideBar</span>
+				</a>
+
+				<div class="login-nav-links">
+					<a href="https://trysidebar.ai">Home</a>
+					<a href="https://trysidebar.ai/about">About</a>
+					<a href="https://trysidebar.ai/pricing">Pricing</a>
+					<a href="https://docs.trysidebar.ai">Docs</a>
+					<ModeToggle />
+				</div>
+			</div>
+		</nav>
+
 		<div class="login-grid">
 			<section class="login-intro">
 				<h2 class="login-tagline" aria-label={MARKETING_COPY.tagline}>
@@ -189,7 +223,7 @@
 		min-height: 100vh;
 		display: flex;
 		width: 100%;
-		padding: 3rem 1.5rem 2rem;
+		padding: 0 1.5rem 2rem;
 		background: var(--color-background);
 	}
 
@@ -200,6 +234,80 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+	}
+
+	.login-nav {
+		position: relative;
+	}
+
+	.login-nav-inner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1.5rem;
+		min-height: 4.25rem;
+	}
+
+	.login-brand {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		color: var(--color-foreground);
+		text-decoration: none;
+	}
+
+	.login-brand-mark {
+		position: relative;
+		display: inline-grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		flex: 0 0 auto;
+	}
+
+	.login-brand-asset {
+		grid-area: 1 / 1;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.login-brand-asset-dark {
+		display: none;
+	}
+
+	:global(.dark) .login-brand-asset-light {
+		display: none;
+	}
+
+	:global(.dark) .login-brand-asset-dark {
+		display: block;
+	}
+
+	.login-brand-name {
+		font-size: 1.375rem;
+		font-weight: 700;
+		letter-spacing: -0.055em;
+		line-height: 0.94;
+		white-space: nowrap;
+	}
+
+	.login-nav-links {
+		display: flex;
+		align-items: center;
+		gap: 1.25rem;
+	}
+
+	.login-nav-links a {
+		font-size: 0.95rem;
+		font-weight: 500;
+		color: var(--color-muted-foreground);
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	.login-nav-links a:hover {
+		color: var(--color-foreground);
 	}
 
 	.login-grid {
@@ -441,11 +549,28 @@
 
 	@media (max-width: 900px) {
 		.login-shell {
-			padding: 1.5rem 1rem;
+			padding: 0 1rem 1.5rem;
 		}
 
 		.login-container {
 			min-height: calc(100dvh - 3rem);
+		}
+
+		.login-nav-inner {
+			padding: 0.75rem 0;
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+
+		.login-nav-links {
+			width: 100%;
+			justify-content: space-between;
+			gap: 0.75rem;
+			flex-wrap: wrap;
+		}
+
+		.login-nav-links a {
+			font-size: 0.9rem;
 		}
 
 		.login-grid {

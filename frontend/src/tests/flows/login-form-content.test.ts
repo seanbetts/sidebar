@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/svelte';
 import { readable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
-import LoginForm from '$lib/components/auth/LoginForm.svelte';
+import LoginFormWithProviders from '../fixtures/LoginFormWithProviders.svelte';
 
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn()
@@ -21,12 +21,20 @@ vi.mock('$lib/supabase', () => ({
 
 describe('login form content', () => {
 	it('shows the session-expired message', () => {
-		render(LoginForm);
+		render(LoginFormWithProviders);
 		expect(screen.getByText('Your session expired. Please sign in again.')).toBeInTheDocument();
 	});
 
 	it('uses the redesigned sign in wording and footer links', () => {
-		render(LoginForm);
+		render(LoginFormWithProviders);
+		expect(screen.getByRole('link', { name: 'sideBar home' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'About' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Pricing' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Docs' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: /switch to (light|dark) mode/i })
+		).toBeInTheDocument();
 		expect(screen.getByText('Welcome back')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Privacy Policy' })).toBeInTheDocument();
