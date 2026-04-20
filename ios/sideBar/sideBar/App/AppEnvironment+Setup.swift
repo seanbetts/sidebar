@@ -227,15 +227,21 @@ extension AppEnvironment {
     }
 
     private func setupTaskBadgeUpdates() {
-#if os(iOS)
         Publishers.CombineLatest($authState, tasksStore.$counts)
             .receive(on: DispatchQueue.main)
-            .sink { authState, counts in
-                let badgeCount = authState != .signedOut ? (counts?.counts.today ?? 0) : 0
-                UNUserNotificationCenter.current().setBadgeCount(badgeCount, withCompletionHandler: nil)
+            .sink { [weak self] authState, counts in
+                guard let self else { return }
+                let badgeCount = Self.taskBadgeCount(authState: authState, counts: counts)
+                self.storage.taskBadgeUpdater.update(count: badgeCount)
             }
             .store(in: &cancellables)
-#endif
+    }
+
+    nonisolated static func taskBadgeCount(
+        authState: AuthState,
+        counts: TaskCountsResponse?
+    ) -> Int {
+        authState != .signedOut ? (counts?.counts.today ?? 0) : 0
     }
 
     private func resetStoreRefreshBackoff() {
