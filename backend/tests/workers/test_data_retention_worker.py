@@ -102,7 +102,6 @@ def test_worker_runner_starts_data_retention_thread(monkeypatch):
 
     monkeypatch.setattr(worker_runner.threading, "Thread", FakeThread)
     monkeypatch.setattr(worker_runner, "_run_ingestion", lambda: None)
-    monkeypatch.setattr(worker_runner, "_run_notification_schedule", lambda: None)
     monkeypatch.setattr(worker_runner, "_run_data_retention", retention_target)
 
     worker_runner.main()
