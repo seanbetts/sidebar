@@ -188,6 +188,12 @@ enum WorkspaceReducer {
         state: inout WorkspaceState
     ) {
         state.mode = .agent
+
+        if shouldPreserveCollaborativeSurface(surface, in: pane, state: state) {
+            mergeCollaborativeSurface(surface, in: pane, state: &state)
+            return
+        }
+
         let descriptor = WorkspaceContentDescriptor.agentSurface(surface)
         switch pane {
         case .primary:
@@ -202,6 +208,48 @@ enum WorkspaceReducer {
                 )
             }
         }
+    }
+
+    private static func shouldPreserveCollaborativeSurface(
+        _ incoming: AgentWorkspaceSurfaceDescriptor,
+        in pane: WorkspacePane,
+        state: WorkspaceState
+    ) -> Bool {
+        guard incoming.surfaceClass == .boundEntity,
+              incoming.authorityMode == .collaborative,
+              let incomingBoundEntity = incoming.boundEntity,
+              let current = currentSurface(in: pane, state: state),
+              current.surfaceClass == .boundEntity,
+              current.authorityMode == .collaborative,
+              let currentBoundEntity = current.boundEntity else {
+            return false
+        }
+
+        return currentBoundEntity == incomingBoundEntity
+    }
+
+    private static func mergeCollaborativeSurface(
+        _ incoming: AgentWorkspaceSurfaceDescriptor,
+        in pane: WorkspacePane,
+        state: inout WorkspaceState
+    ) {
+        guard let current = currentSurface(in: pane, state: state) else { return }
+
+        let merged = AgentWorkspaceSurfaceDescriptor(
+            type: incoming.type,
+            surfaceId: incoming.surfaceId,
+            title: incoming.title,
+            payload: current.payload,
+            contextMenuActions: incoming.contextMenuActions,
+            surfaceClass: incoming.surfaceClass,
+            authorityMode: incoming.authorityMode,
+            boundEntity: incoming.boundEntity,
+            collaborationScope: incoming.collaborationScope,
+            capabilities: current.capabilities,
+            isPinned: current.isPinned
+        )
+
+        setSurface(merged, in: pane, state: &state)
     }
 
     private static func applyClosedPane(
@@ -254,6 +302,50 @@ enum WorkspaceReducer {
         guard case .agentSurface(let surface) = descriptor,
               surface.surfaceId == surfaceId else { return }
         descriptor = .agentSurface(updater(surface))
+    }
+
+    private static func currentSurface(
+        in pane: WorkspacePane,
+        state: WorkspaceState
+    ) -> AgentWorkspaceSurfaceDescriptor? {
+        switch pane {
+        case .primary:
+            guard case .agentSurface(let surface) = state.primaryPane.descriptor else {
+                return nil
+            }
+            return surface
+
+        case .secondary:
+            let descriptor = state.layout == .compact
+                ? state.primaryPane.descriptor
+                : state.secondaryPane?.descriptor
+            guard case .agentSurface(let surface) = descriptor else {
+                return nil
+            }
+            return surface
+        }
+    }
+
+    private static func setSurface(
+        _ surface: AgentWorkspaceSurfaceDescriptor,
+        in pane: WorkspacePane,
+        state: inout WorkspaceState
+    ) {
+        let descriptor = WorkspaceContentDescriptor.agentSurface(surface)
+        switch pane {
+        case .primary:
+            state.primaryPane.descriptor = descriptor
+
+        case .secondary:
+            if state.layout == .compact {
+                state.primaryPane.descriptor = descriptor
+            } else {
+                state.secondaryPane = WorkspacePaneState(
+                    pane: .secondary,
+                    descriptor: descriptor
+                )
+            }
+        }
     }
 
     private static func hasAgentSurface(_ descriptor: WorkspaceContentDescriptor?) -> Bool {

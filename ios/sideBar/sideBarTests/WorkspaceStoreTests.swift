@@ -2,6 +2,7 @@ import Combine
 import XCTest
 @testable import sideBar
 
+// swiftlint:disable type_body_length
 @MainActor
 final class WorkspaceStoreTests: XCTestCase {
     private static var retainedStores: [WorkspaceStore] = []
@@ -257,6 +258,83 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(next.primaryPane.descriptor, .agentSurface(surface))
     }
 
+    func testReducerPresentAgentSurfaceReplacesDisplaySurfaceInPlace() {
+        let original = AgentWorkspaceSurfaceDescriptor(
+            type: .markdown,
+            surfaceId: "surface-1",
+            payload: ["markdown": "Old"]
+        )
+        let replacement = AgentWorkspaceSurfaceDescriptor(
+            type: .markdown,
+            surfaceId: "surface-1",
+            payload: ["markdown": "New"]
+        )
+        let state = WorkspaceState(
+            mode: .agent,
+            layout: .split,
+            primaryPane: WorkspacePaneState(
+                pane: .primary,
+                descriptor: .agentSurface(original)
+            )
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .presentAgentSurface(replacement, pane: .primary)
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .agentSurface(replacement))
+    }
+
+    func testReducerPresentAgentSurfacePreservesCollaborativeBoundEntityDescriptorIdentity() {
+        let current = AgentWorkspaceSurfaceDescriptor(
+            type: .form,
+            surfaceId: "surface-note-1",
+            payload: ["field_one": "Local draft"],
+            surfaceClass: .boundEntity,
+            authorityMode: .collaborative,
+            boundEntity: .init(entityType: "note", entityId: "note-123"),
+            collaborationScope: .conversationBoundEntity(
+                entityType: "note",
+                entityId: "note-123"
+            )
+        )
+        let incoming = AgentWorkspaceSurfaceDescriptor(
+            type: .form,
+            surfaceId: "surface-note-1",
+            payload: ["field_one": "Assistant update"],
+            surfaceClass: .boundEntity,
+            authorityMode: .collaborative,
+            boundEntity: .init(entityType: "note", entityId: "note-123"),
+            collaborationScope: .conversationBoundEntity(
+                entityType: "note",
+                entityId: "note-123"
+            )
+        )
+        let state = WorkspaceState(
+            mode: .agent,
+            layout: .split,
+            primaryPane: WorkspacePaneState(
+                pane: .primary,
+                descriptor: .agentSurface(current)
+            )
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .presentAgentSurface(incoming, pane: .primary)
+        )
+
+        guard case .agentSurface(let surface) = next.primaryPane.descriptor else {
+            return XCTFail("Expected collaborative agent surface")
+        }
+
+        XCTAssertEqual(surface.surfaceId, current.surfaceId)
+        XCTAssertEqual(surface.boundEntity?.entityId, "note-123")
+        XCTAssertEqual(surface.authorityMode, .collaborative)
+        XCTAssertEqual(surface.payload["field_one"], "Local draft")
+    }
+
     func testReducerSetAgentSurfacePinnedUpdatesMatchingSurface() {
         let surface = AgentWorkspaceSurfaceDescriptor(
             type: .table,
@@ -415,3 +493,4 @@ final class WorkspaceStoreTests: XCTestCase {
         )
     }
 }
+// swiftlint:enable type_body_length
