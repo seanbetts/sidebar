@@ -68,7 +68,8 @@ public final class SettingsViewModel: LoadableViewModel {
         self.cache = cache
         self.settingsStore = settingsStore ?? SettingsStore(
             settingsAPI: settingsAPI,
-            cache: cache
+            cache: cache,
+            currentAuthUserIdProvider: currentAuthUserIdProvider
         )
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider

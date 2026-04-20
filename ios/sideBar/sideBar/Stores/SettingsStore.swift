@@ -10,17 +10,20 @@ public final class SettingsStore: ObservableObject {
     let settingsAPI: any SettingsProviding
     let cache: CacheClient
     let offlineStore: OfflineStore?
+    let currentAuthUserIdProvider: () -> String?
     weak var writeQueue: (any SettingsWriteQueueEnqueuing)?
 
     init(
         settingsAPI: any SettingsProviding,
         cache: CacheClient,
         offlineStore: OfflineStore? = nil,
+        currentAuthUserIdProvider: @escaping () -> String? = { nil },
         writeQueue: (any SettingsWriteQueueEnqueuing)? = nil
     ) {
         self.settingsAPI = settingsAPI
         self.cache = cache
         self.offlineStore = offlineStore
+        self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.writeQueue = writeQueue
     }
 
@@ -86,7 +89,18 @@ public final class SettingsStore: ObservableObject {
     }
 
     var cacheKey: String {
-        CacheKeys.userSettings
+        cacheKey(for: CacheKeys.userSettings)
+    }
+
+    func cacheKey(for baseKey: String) -> String {
+        guard
+            let userId = currentAuthUserIdProvider()?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            !userId.isEmpty
+        else {
+            return baseKey
+        }
+        return "\(baseKey).\(userId)"
     }
 }
 

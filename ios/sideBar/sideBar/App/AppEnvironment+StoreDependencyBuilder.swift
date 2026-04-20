@@ -58,11 +58,7 @@ extension AppEnvironment {
                 networkStatus: core.connectivityMonitor
             )
             notesStore.spotlightIndexer = core.spotlightIndexer
-            let settingsStore = SettingsStore(
-                settingsAPI: container.settingsAPI,
-                cache: container.cacheClient,
-                offlineStore: core.offlineStore
-            )
+            let settingsStore = makeSettingsStore(container: container, core: core)
 
             let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
             let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
@@ -96,6 +92,23 @@ extension AppEnvironment {
                 scratchpadStore: scratchpadStore,
                 settingsStore: settingsStore,
                 writeQueue: writeQueue
+            )
+        }
+
+        private static func makeSettingsStore(
+            container: ServiceContainer,
+            core: CoreDependencyBuilder.Output
+        ) -> SettingsStore {
+            SettingsStore(
+                settingsAPI: container.settingsAPI,
+                cache: container.cacheClient,
+                offlineStore: core.offlineStore,
+                currentAuthUserIdProvider: {
+                    ViewModelDependencyBuilder.settingsRequestUserId(
+                        authSession: container.authSession,
+                        requireAuthorization: false
+                    )
+                }
             )
         }
     }

@@ -91,7 +91,7 @@ def test_fly_deploy_workflow_verifies_website_machine_is_started() -> None:
 
 
 def test_fly_deploy_workflow_scales_notification_process_group() -> None:
-    """Fly deploy should explicitly keep one notification worker machine running."""
+    """Fly deploy should recover a notification worker before falling back to scaling."""
     workflow = _workflow()
     deploy_steps = workflow["jobs"]["deploy"]["steps"]
 
@@ -101,15 +101,19 @@ def test_fly_deploy_workflow_scales_notification_process_group() -> None:
         if step.get("name") == "Ensure notification worker machine is running"
     ]
 
-    assert matching_steps, "Missing notification worker scale step"
+    assert matching_steps, "Missing notification worker recovery step"
+    run_script = matching_steps[0]["run"]
+    assert '["flyctl", "-c", "fly.toml", "machine", "list", "--json"]' in run_script
+    assert 'machine_process_group(machine) == "notification"' in run_script
+    assert '"flyctl", "-c", "fly.toml", "machine", "start", machine_id' in run_script
     assert (
-        "flyctl -c fly.toml scale count 1 --yes --process-group notification --region lhr"
-        in matching_steps[0]["run"]
+        'flyctl -c fly.toml scale count 1 --yes --process-group notification --region lhr'
+        in run_script
     )
 
 
 def test_fly_deploy_workflow_verifies_notification_machine_is_started() -> None:
-    """Fly deploy should fail fast if the notification worker machine is not started."""
+    """Fly deploy should retry until the notification worker machine is started."""
     workflow = _workflow()
     deploy_steps = workflow["jobs"]["deploy"]["steps"]
 
@@ -121,8 +125,28 @@ def test_fly_deploy_workflow_verifies_notification_machine_is_started() -> None:
 
     assert matching_steps, "Missing notification worker verification step"
     run_script = matching_steps[0]["run"]
+    assert "for attempt in range(12):" in run_script
+    assert "time.sleep(5)" in run_script
     assert 'machine_process_group(machine) == "notification"' in run_script
     assert 'machine.get("state") == "started"' in run_script
+
+
+def test_fly_deploy_workflow_collects_notification_diagnostics_on_verify_failure() -> None:
+    """Fly deploy should emit machine state and logs when notification verification fails."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    diagnostics_step = next(
+        step
+        for step in deploy_steps
+        if step.get("name") == "Collect notification worker diagnostics on verification failure"
+    )
+
+    assert diagnostics_step["if"] == "failure()"
+    run_script = diagnostics_step["run"]
+    assert 'flyctl -c fly.toml machine list --json || true' in run_script
+    assert 'flyctl -c fly.toml logs --json --no-tail --region lhr || true' in run_script
+    assert '"notification"' in run_script
 
 
 def test_fly_deploy_workflow_authenticates_with_flyctl_before_push() -> None:
