@@ -9,6 +9,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy.orm import Session
 
 from api.models.user_settings import UserSettings
+from api.services.internal_access_service import InternalAccessService
+from api.services.notification_scheduler_decision_service import (
+    NotificationSchedulerDecisionService,
+)
 from api.services.notification_types import NotificationCategory
 from api.services.settings_notifications import resolve_notification_preferences
 
@@ -86,41 +90,125 @@ class NotificationScheduleService:
         due_users: list[ScheduledNotificationRecipient] = []
         settings_records = db.query(UserSettings).all()
         for settings_record in settings_records:
+            user_id = settings_record.user_id
             preferences = resolve_notification_preferences(settings_record)
             if preferences.get(config.enabled_field) is not True:
+                cls._record_internal_decision(
+                    db,
+                    user_id=user_id,
+                    category=category,
+                    run_started_at=current_time,
+                    decision_reason="disabled",
+                )
                 continue
 
             scheduled_time = preferences.get(config.time_field)
             schedule_timezone = preferences.get("schedule_timezone")
             if not scheduled_time or not schedule_timezone:
+                cls._record_internal_decision(
+                    db,
+                    user_id=user_id,
+                    category=category,
+                    run_started_at=current_time,
+                    decision_reason="schedule_incomplete",
+                    scheduled_time=scheduled_time,
+                    schedule_timezone=schedule_timezone,
+                )
                 continue
 
             try:
                 local_now = current_time.astimezone(ZoneInfo(schedule_timezone))
             except ZoneInfoNotFoundError:
+                cls._record_internal_decision(
+                    db,
+                    user_id=user_id,
+                    category=category,
+                    run_started_at=current_time,
+                    decision_reason="invalid_timezone",
+                    scheduled_time=scheduled_time,
+                    schedule_timezone=schedule_timezone,
+                )
                 continue
 
             if not cls._is_due_in_current_window(local_now, scheduled_time):
+                cls._record_internal_decision(
+                    db,
+                    user_id=user_id,
+                    category=category,
+                    run_started_at=current_time,
+                    decision_reason="outside_window",
+                    scheduled_time=scheduled_time,
+                    schedule_timezone=schedule_timezone,
+                    local_now=local_now,
+                )
                 continue
 
             if cls._was_emitted_in_window(
-                user_id=settings_record.user_id,
+                user_id=user_id,
                 category=category,
                 local_now=local_now,
                 scheduled_time=scheduled_time,
             ):
+                cls._record_internal_decision(
+                    db,
+                    user_id=user_id,
+                    category=category,
+                    run_started_at=current_time,
+                    decision_reason="duplicate_window",
+                    scheduled_time=scheduled_time,
+                    schedule_timezone=schedule_timezone,
+                    local_now=local_now,
+                )
                 continue
 
             due_users.append(
                 ScheduledNotificationRecipient(
-                    user_id=settings_record.user_id,
+                    user_id=user_id,
                     category=category,
                     scheduled_time=scheduled_time,
                     schedule_timezone=schedule_timezone,
                 )
             )
+            cls._record_internal_decision(
+                db,
+                user_id=user_id,
+                category=category,
+                run_started_at=current_time,
+                decision_reason="due",
+                scheduled_time=scheduled_time,
+                schedule_timezone=schedule_timezone,
+                local_now=local_now,
+            )
 
         return due_users
+
+    @classmethod
+    def _record_internal_decision(
+        cls,
+        db: Session,
+        *,
+        user_id: str,
+        category: NotificationCategory,
+        run_started_at: datetime,
+        decision_reason: str,
+        scheduled_time: str | None = None,
+        schedule_timezone: str | None = None,
+        local_now: datetime | None = None,
+    ) -> None:
+        """Persist scheduler eligibility decisions for internal users only."""
+        if not InternalAccessService.can_access_internal_diagnostics(user_id):
+            return
+        NotificationSchedulerDecisionService.record(
+            db,
+            run_started_at=run_started_at,
+            user_id=user_id,
+            notification_kind=category.value,
+            decision_stage="eligibility",
+            decision_reason=decision_reason,
+            scheduled_time=scheduled_time,
+            schedule_timezone=schedule_timezone,
+            local_now=local_now,
+        )
 
     @classmethod
     def _is_due_in_current_window(

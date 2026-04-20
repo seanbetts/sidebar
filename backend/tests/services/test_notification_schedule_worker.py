@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
+from sqlalchemy import text
+
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.models.notification_scheduler_heartbeat import NotificationSchedulerHeartbeat
 from api.models.task import Task
@@ -254,6 +256,16 @@ def test_execute_once_persists_scheduler_heartbeat_on_success(test_db):
     assert heartbeat.last_started_at == datetime(2026, 1, 15, 9, 0, tzinfo=UTC)
     assert heartbeat.last_task_reminders_due == 0
     assert heartbeat.last_task_reminders_dispatched == 0
+    history_rows = test_db.execute(
+        text(
+            """
+            select status, task_reminders_due, task_reminders_dispatched
+            from notification_scheduler_runs
+            order by started_at desc
+            """
+        )
+    ).all()
+    assert history_rows == [("completed", 0, 0)]
 
 
 def test_execute_once_persists_scheduler_heartbeat_on_failure(test_db):
@@ -282,3 +294,41 @@ def test_execute_once_persists_scheduler_heartbeat_on_failure(test_db):
     assert heartbeat.last_status == "failed"
     assert heartbeat.last_started_at == datetime(2026, 1, 15, 9, 0, tzinfo=UTC)
     assert heartbeat.last_error == "scheduler exploded"
+
+
+def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, monkeypatch):
+    NotificationScheduleService.clear_due_windows()
+    TaskReminderService.clear_emitted_days()
+    MorningDigestService.clear_emitted_days()
+    monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
+    monkeypatch.setenv("INTERNAL_DIAGNOSTIC_USER_IDS", "user-123")
+    test_db.add(
+        UserSettings(
+            user_id="user-123",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    test_db.commit()
+
+    stats = process_once(
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        digest_dispatcher=lambda db, due_users, *, now=None: 0,
+    )
+
+    decision_rows = test_db.execute(
+        text(
+            """
+            select user_id, decision_stage, decision_reason, detail
+            from notification_scheduler_decisions
+            order by created_at asc
+            """
+        )
+    ).all()
+
+    assert stats["task_reminders_due"] == 1
+    assert stats["task_reminders_dispatched"] == 0
+    assert ("user-123", "dispatch", "no_reminder_intent", "no_due_tasks") in decision_rows

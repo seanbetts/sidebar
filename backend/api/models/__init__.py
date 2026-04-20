@@ -6,7 +6,9 @@ from api.models.device_token import DeviceToken
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.note import Note
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
+from api.models.notification_scheduler_decision import NotificationSchedulerDecision
 from api.models.notification_scheduler_heartbeat import NotificationSchedulerHeartbeat
+from api.models.notification_scheduler_run import NotificationSchedulerRun
 from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
@@ -24,7 +26,9 @@ __all__ = [
     "DeviceToken",
     "Note",
     "NotificationDiagnosticsAudit",
+    "NotificationSchedulerDecision",
     "NotificationSchedulerHeartbeat",
+    "NotificationSchedulerRun",
     "Website",
     "UserSettings",
     "UserMemory",

@@ -6,8 +6,14 @@ from api.exceptions import NotFoundError
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.services.device_installation_service import DeviceInstallationService
 from api.services.notification_delivery_service import NotificationDeliveryService
+from api.services.notification_scheduler_decision_service import (
+    NotificationSchedulerDecisionService,
+)
 from api.services.notification_scheduler_heartbeat_service import (
     NotificationSchedulerHeartbeatService,
+)
+from api.services.notification_scheduler_run_service import (
+    NotificationSchedulerRunService,
 )
 from api.services.notification_types import (
     NotificationCategory,
@@ -36,6 +42,13 @@ class NotificationDiagnosticsService:
             .all()
         )
         scheduler = NotificationSchedulerHeartbeatService.get_status(db)
+        scheduler_runs = NotificationSchedulerRunService.list_recent(db)
+        recent_scheduler_decisions = (
+            NotificationSchedulerDecisionService.list_recent_for_user(
+                db,
+                user_id=user_id,
+            )
+        )
         return {
             "can_access_internal_diagnostics": True,
             "account_summary": {"user_id": user_id},
@@ -66,6 +79,22 @@ class NotificationDiagnosticsService:
                 if scheduler is not None
                 else None
             ),
+            "scheduler_runs": [
+                {
+                    "worker_name": row.worker_name,
+                    "started_at": row.started_at.isoformat(),
+                    "completed_at": row.completed_at.isoformat()
+                    if row.completed_at
+                    else None,
+                    "status": row.status,
+                    "error": row.error,
+                    "task_reminders_due": row.task_reminders_due,
+                    "task_reminders_dispatched": row.task_reminders_dispatched,
+                    "morning_digests_due": row.morning_digests_due,
+                    "morning_digests_dispatched": row.morning_digests_dispatched,
+                }
+                for row in scheduler_runs
+            ],
             "installations": [
                 {
                     "installation_id": installation.installation_id,
@@ -92,6 +121,21 @@ class NotificationDiagnosticsService:
                     "apns_environment": audit.apns_env,
                 }
                 for audit in recent_delivery
+            ],
+            "recent_scheduler_decisions": [
+                {
+                    "created_at": row.created_at.isoformat(),
+                    "run_started_at": row.run_started_at.isoformat(),
+                    "user_id": row.user_id,
+                    "notification_kind": row.notification_kind,
+                    "decision_stage": row.decision_stage,
+                    "decision_reason": row.decision_reason,
+                    "scheduled_time": row.scheduled_time,
+                    "schedule_timezone": row.schedule_timezone,
+                    "local_now": row.local_now.isoformat() if row.local_now else None,
+                    "detail": row.detail,
+                }
+                for row in recent_scheduler_decisions
             ],
         }
 

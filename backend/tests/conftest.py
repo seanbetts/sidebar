@@ -169,6 +169,12 @@ from api.models.user_settings import UserSettings  # noqa: F401, E402
 from api.models.notification_scheduler_heartbeat import (  # noqa: F401, E402
     NotificationSchedulerHeartbeat,
 )
+from api.models.notification_scheduler_decision import (  # noqa: F401, E402
+    NotificationSchedulerDecision,
+)
+from api.models.notification_scheduler_run import (  # noqa: F401, E402
+    NotificationSchedulerRun,
+)
 from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
 
@@ -273,6 +279,41 @@ def _ensure_user_settings_columns(connection) -> None:
             "last_morning_digests_due integer NOT NULL DEFAULT 0, "
             "last_morning_digests_dispatched integer NOT NULL DEFAULT 0, "
             "updated_at timestamptz NOT NULL DEFAULT now()"
+            ")"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS notification_scheduler_runs ("
+            "id uuid PRIMARY KEY, "
+            "worker_name text NOT NULL, "
+            "started_at timestamptz NOT NULL, "
+            "completed_at timestamptz NULL, "
+            "status text NOT NULL, "
+            "error text NULL, "
+            "task_reminders_due integer NOT NULL DEFAULT 0, "
+            "task_reminders_dispatched integer NOT NULL DEFAULT 0, "
+            "morning_digests_due integer NOT NULL DEFAULT 0, "
+            "morning_digests_dispatched integer NOT NULL DEFAULT 0, "
+            "created_at timestamptz NOT NULL DEFAULT now()"
+            ")"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS notification_scheduler_decisions ("
+            "id uuid PRIMARY KEY, "
+            "created_at timestamptz NOT NULL DEFAULT now(), "
+            "worker_name text NOT NULL, "
+            "run_started_at timestamptz NOT NULL, "
+            "user_id text NOT NULL, "
+            "notification_kind text NOT NULL, "
+            "decision_stage text NOT NULL, "
+            "decision_reason text NOT NULL, "
+            "scheduled_time text NULL, "
+            "schedule_timezone text NULL, "
+            "local_now timestamptz NULL, "
+            "detail text NULL"
             ")"
         )
     )

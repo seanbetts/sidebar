@@ -45,6 +45,19 @@ final class InternalDiagnosticsAPITests: XCTestCase {
                 "last_morning_digests_due": 0,
                 "last_morning_digests_dispatched": 0
               },
+              "scheduler_runs": [
+                {
+                  "worker_name": "notification_schedule",
+                  "started_at": "2026-04-20T08:00:00Z",
+                  "completed_at": "2026-04-20T08:00:01Z",
+                  "status": "completed",
+                  "error": null,
+                  "task_reminders_due": 2,
+                  "task_reminders_dispatched": 2,
+                  "morning_digests_due": 0,
+                  "morning_digests_dispatched": 0
+                }
+              ],
               "installations": [
                 {
                   "installation_id": "install-123",
@@ -64,6 +77,20 @@ final class InternalDiagnosticsAPITests: XCTestCase {
                   "token_suffix": "abcdef",
                   "delivery_result": "sent"
                 }
+              ],
+              "recent_scheduler_decisions": [
+                {
+                  "created_at": "2026-04-20T08:00:00Z",
+                  "run_started_at": "2026-04-20T08:00:00Z",
+                  "user_id": "user-123",
+                  "notification_kind": "task_reminder",
+                  "decision_stage": "dispatch",
+                  "decision_reason": "no_reminder_intent",
+                  "scheduled_time": "09:00",
+                  "schedule_timezone": "Europe/London",
+                  "local_now": "2026-04-20T09:00:00+01:00",
+                  "detail": "no_due_tasks"
+                }
               ]
             }
             """
@@ -76,8 +103,12 @@ final class InternalDiagnosticsAPITests: XCTestCase {
         XCTAssertEqual(snapshot.accountSummary?.userId, "user-123")
         XCTAssertEqual(snapshot.scheduler?.workerName, "notification_schedule")
         XCTAssertEqual(snapshot.scheduler?.lastTaskRemindersDispatched, 2)
+        XCTAssertEqual(snapshot.schedulerRuns.count, 1)
+        XCTAssertEqual(snapshot.schedulerRuns.first?.status, "completed")
         XCTAssertEqual(snapshot.installations.count, 1)
         XCTAssertEqual(snapshot.recentDelivery.count, 1)
+        XCTAssertEqual(snapshot.recentSchedulerDecisions.count, 1)
+        XCTAssertEqual(snapshot.recentSchedulerDecisions.first?.decisionReason, "no_reminder_intent")
         XCTAssertEqual(snapshot.installations.first?.tokenSuffix, "abcdef")
     }
 

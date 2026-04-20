@@ -26,6 +26,16 @@ class ReminderFocusTask:
     scope: str
 
 
+@dataclass(frozen=True, slots=True)
+class TaskReminderEvaluation:
+    """Expanded reminder evaluation used by scheduler diagnostics."""
+
+    intent: NotificationIntent | None
+    reason: str
+    overdue_count: int
+    due_today_count: int
+
+
 class TaskReminderService:
     """Build one task reminder intent per user per local day."""
 
@@ -57,6 +67,24 @@ class TaskReminderService:
         now: datetime | None = None,
     ) -> NotificationIntent | None:
         """Build a once-daily reminder for due and overdue work."""
+        evaluation = cls.inspect_daily_reminder(
+            db,
+            user_id=user_id,
+            schedule_timezone=schedule_timezone,
+            now=now,
+        )
+        return evaluation.intent
+
+    @classmethod
+    def inspect_daily_reminder(
+        cls,
+        db: Session,
+        *,
+        user_id: str,
+        schedule_timezone: str,
+        now: datetime | None = None,
+    ) -> TaskReminderEvaluation:
+        """Return the reminder intent plus the reason when no intent is built."""
         current_time = now or datetime.now(UTC)
         if current_time.tzinfo is None:
             current_time = current_time.replace(tzinfo=UTC)
@@ -64,14 +92,24 @@ class TaskReminderService:
         try:
             local_date = current_time.astimezone(ZoneInfo(schedule_timezone)).date()
         except ZoneInfoNotFoundError:
-            return None
+            return TaskReminderEvaluation(
+                intent=None,
+                reason="invalid_timezone",
+                overdue_count=0,
+                due_today_count=0,
+            )
 
         if cls._already_emitted_for_day(
             user_id=user_id,
             schedule_timezone=schedule_timezone,
             local_date_iso=local_date.isoformat(),
         ):
-            return None
+            return TaskReminderEvaluation(
+                intent=None,
+                reason="already_emitted",
+                overdue_count=0,
+                due_today_count=0,
+            )
 
         overdue_count = cls._count_due_tasks(
             db,
@@ -86,37 +124,52 @@ class TaskReminderService:
             local_date=local_date,
         )
         if overdue_count == 0 and due_today_count == 0:
-            return None
+            return TaskReminderEvaluation(
+                intent=None,
+                reason="no_due_tasks",
+                overdue_count=0,
+                due_today_count=0,
+            )
         focus_task = cls._find_focus_task(
             db,
             user_id=user_id,
             local_date=local_date,
         )
         if focus_task is None:
-            return None
+            return TaskReminderEvaluation(
+                intent=None,
+                reason="no_focus_task",
+                overdue_count=overdue_count,
+                due_today_count=due_today_count,
+            )
 
-        return NotificationIntent(
-            user_id=user_id,
-            category=NotificationCategory.TASK_REMINDER,
-            delivery_mode=NotificationDeliveryMode.ALERT,
-            title=cls._build_title(
-                overdue_count=overdue_count,
-                due_today_count=due_today_count,
+        return TaskReminderEvaluation(
+            intent=NotificationIntent(
+                user_id=user_id,
+                category=NotificationCategory.TASK_REMINDER,
+                delivery_mode=NotificationDeliveryMode.ALERT,
+                title=cls._build_title(
+                    overdue_count=overdue_count,
+                    due_today_count=due_today_count,
+                ),
+                body=cls._build_body(
+                    focus_task=focus_task,
+                    overdue_count=overdue_count,
+                    due_today_count=due_today_count,
+                ),
+                route="sidebar://tasks/today",
+                metadata={
+                    "overdue_count": overdue_count,
+                    "due_today_count": due_today_count,
+                    "focus_task_id": focus_task.id,
+                    "focus_task_title": focus_task.title,
+                    "focus_scope": focus_task.scope,
+                    "scope": "today",
+                },
             ),
-            body=cls._build_body(
-                focus_task=focus_task,
-                overdue_count=overdue_count,
-                due_today_count=due_today_count,
-            ),
-            route="sidebar://tasks/today",
-            metadata={
-                "overdue_count": overdue_count,
-                "due_today_count": due_today_count,
-                "focus_task_id": focus_task.id,
-                "focus_task_title": focus_task.title,
-                "focus_scope": focus_task.scope,
-                "scope": "today",
-            },
+            reason="ready",
+            overdue_count=overdue_count,
+            due_today_count=due_today_count,
         )
 
     @classmethod

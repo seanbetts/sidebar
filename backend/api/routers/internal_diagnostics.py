@@ -33,6 +33,35 @@ class InternalNotificationDiagnosticsInstallationResponse(BaseModel):
     is_foreground: bool | None = None
 
 
+class InternalNotificationSchedulerRunResponse(BaseModel):
+    """One persisted scheduler run returned in the diagnostics snapshot."""
+
+    worker_name: str
+    started_at: str
+    completed_at: str | None = None
+    status: str
+    error: str | None = None
+    task_reminders_due: int
+    task_reminders_dispatched: int
+    morning_digests_due: int
+    morning_digests_dispatched: int
+
+
+class InternalNotificationSchedulerDecisionResponse(BaseModel):
+    """One user-scoped scheduler decision returned in the diagnostics snapshot."""
+
+    created_at: str
+    run_started_at: str
+    user_id: str
+    notification_kind: str
+    decision_stage: str
+    decision_reason: str
+    scheduled_time: str | None = None
+    schedule_timezone: str | None = None
+    local_now: str | None = None
+    detail: str | None = None
+
+
 class InternalNotificationDiagnosticsDeliveryResponse(BaseModel):
     """Delivery audit row returned in the diagnostics snapshot."""
 
@@ -70,8 +99,10 @@ class InternalNotificationDiagnosticsSnapshotResponse(BaseModel):
     can_access_internal_diagnostics: bool
     account_summary: InternalNotificationDiagnosticsAccountSummaryResponse | None = None
     scheduler: InternalNotificationSchedulerStatusResponse | None = None
+    scheduler_runs: list[InternalNotificationSchedulerRunResponse]
     installations: list[InternalNotificationDiagnosticsInstallationResponse]
     recent_delivery: list[InternalNotificationDiagnosticsDeliveryResponse]
+    recent_scheduler_decisions: list[InternalNotificationSchedulerDecisionResponse]
 
 
 class InternalNotificationTestPushResponse(BaseModel):

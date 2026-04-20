@@ -11,12 +11,19 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from api.config import settings
 from api.db.session import SessionLocal
 from api.services.device_token_service import DeviceTokenService
+from api.services.internal_access_service import InternalAccessService
 from api.services.morning_digest_service import MorningDigestService
 from api.services.notification_delivery_service import NotificationDeliveryService
 from api.services.notification_policy_service import NotificationPolicyService
 from api.services.notification_schedule_service import NotificationScheduleService
+from api.services.notification_scheduler_decision_service import (
+    NotificationSchedulerDecisionService,
+)
 from api.services.notification_scheduler_heartbeat_service import (
     NotificationSchedulerHeartbeatService,
+)
+from api.services.notification_scheduler_run_service import (
+    NotificationSchedulerRunService,
 )
 from api.services.notification_types import NotificationCategory
 from api.services.task_reminder_service import TaskReminderService
@@ -25,6 +32,34 @@ from api.services.user_settings_service import UserSettingsService
 logger = logging.getLogger("notification_schedule.worker")
 SLEEP_SECONDS = 30
 FAILURE_SLEEP_SECONDS = 2
+
+
+def _record_dispatch_decision(
+    db,
+    *,
+    run_started_at: datetime,
+    user_id: str,
+    scheduled_time: str,
+    schedule_timezone: str,
+    local_now: datetime | None,
+    decision_reason: str,
+    detail: str | None = None,
+) -> None:
+    """Persist one dispatch-stage decision for internal diagnostics users."""
+    if not InternalAccessService.can_access_internal_diagnostics(user_id):
+        return
+    NotificationSchedulerDecisionService.record(
+        db,
+        run_started_at=run_started_at,
+        user_id=user_id,
+        notification_kind=NotificationCategory.TASK_REMINDER.value,
+        decision_stage="dispatch",
+        decision_reason=decision_reason,
+        scheduled_time=scheduled_time,
+        schedule_timezone=schedule_timezone,
+        local_now=local_now,
+        detail=detail,
+    )
 
 
 def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
@@ -66,13 +101,30 @@ def _dispatch_task_reminders(
     current_time = now or datetime.now(UTC)
     delivered_count = 0
     for recipient in due_users:
-        intent = TaskReminderService.build_daily_reminder(
+        local_now = None
+        try:
+            local_now = current_time.astimezone(ZoneInfo(recipient.schedule_timezone))
+        except ZoneInfoNotFoundError:
+            local_now = None
+
+        evaluation = TaskReminderService.inspect_daily_reminder(
             db,
             user_id=recipient.user_id,
             schedule_timezone=recipient.schedule_timezone,
             now=current_time,
         )
+        intent = evaluation.intent
         if not intent:
+            _record_dispatch_decision(
+                db,
+                run_started_at=current_time,
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                local_now=local_now,
+                decision_reason="no_reminder_intent",
+                detail=evaluation.reason,
+            )
             continue
 
         settings_record = UserSettingsService.get_settings(db, recipient.user_id)
@@ -87,6 +139,16 @@ def _dispatch_task_reminders(
             device_tokens=tokens,
         )
         if not decision.should_deliver:
+            _record_dispatch_decision(
+                db,
+                run_started_at=current_time,
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                local_now=local_now,
+                decision_reason="policy_blocked",
+                detail=decision.reason,
+            )
             continue
 
         result = NotificationDeliveryService.deliver_intent(
@@ -96,6 +158,27 @@ def _dispatch_task_reminders(
         )
         if result.sent_count > 0:
             _mark_recipient_delivered(recipient, current_time=current_time)
+            _record_dispatch_decision(
+                db,
+                run_started_at=current_time,
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                local_now=local_now,
+                decision_reason="delivered",
+                detail=f"sent_count={result.sent_count}",
+            )
+        else:
+            _record_dispatch_decision(
+                db,
+                run_started_at=current_time,
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                local_now=local_now,
+                decision_reason="delivery_skipped",
+                detail=result.reason,
+            )
         delivered_count += result.sent_count
     return delivered_count
 
@@ -213,12 +296,24 @@ def execute_once(
                 failed_at=failed_at,
                 error_message=str(exc) or exc.__class__.__name__,
             )
+            NotificationSchedulerRunService.record_failed(
+                db,
+                started_at=current_time,
+                failed_at=failed_at,
+                error_message=str(exc) or exc.__class__.__name__,
+            )
             db.commit()
         raise
 
     completed_at = datetime.now(UTC)
     with SessionLocal() as db:
         NotificationSchedulerHeartbeatService.mark_completed(
+            db,
+            started_at=current_time,
+            completed_at=completed_at,
+            stats=stats,
+        )
+        NotificationSchedulerRunService.record_completed(
             db,
             started_at=current_time,
             completed_at=completed_at,

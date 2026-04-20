@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from sqlalchemy import text
+
 from api.config import settings
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
 from api.services.notification_scheduler_heartbeat_service import (
@@ -84,6 +86,71 @@ def test_internal_notification_diagnostics_returns_user_scoped_snapshot(
             "morning_digests_dispatched": 0,
         },
     )
+    test_db.execute(
+        text(
+            """
+            insert into notification_scheduler_runs (
+                id,
+                worker_name,
+                started_at,
+                completed_at,
+                status,
+                error,
+                task_reminders_due,
+                task_reminders_dispatched,
+                morning_digests_due,
+                morning_digests_dispatched,
+                created_at
+            ) values (
+                '11111111-1111-1111-1111-111111111111',
+                'notification_schedule',
+                '2026-04-20T08:00:00+00:00',
+                '2026-04-20T08:00:01+00:00',
+                'completed',
+                null,
+                2,
+                2,
+                0,
+                0,
+                '2026-04-20T08:00:01+00:00'
+            )
+            """
+        )
+    )
+    test_db.execute(
+        text(
+            """
+            insert into notification_scheduler_decisions (
+                id,
+                created_at,
+                worker_name,
+                run_started_at,
+                user_id,
+                notification_kind,
+                decision_stage,
+                decision_reason,
+                scheduled_time,
+                schedule_timezone,
+                local_now,
+                detail
+            ) values (
+                '22222222-2222-2222-2222-222222222222',
+                '2026-04-20T08:00:00+00:00',
+                'notification_schedule',
+                '2026-04-20T08:00:00+00:00',
+                :user_id,
+                'task_reminder',
+                'dispatch',
+                'no_reminder_intent',
+                '09:00',
+                'Europe/London',
+                '2026-04-20T09:00:00+01:00',
+                'no_due_tasks'
+            )
+            """
+        ),
+        {"user_id": user_id},
+    )
     test_db.commit()
 
     response = test_client.get(
@@ -98,10 +165,16 @@ def test_internal_notification_diagnostics_returns_user_scoped_snapshot(
     assert body["scheduler"]["worker_name"] == "notification_schedule"
     assert body["scheduler"]["last_status"] == "completed"
     assert body["scheduler"]["last_task_reminders_due"] == 2
+    assert len(body["scheduler_runs"]) == 1
+    assert body["scheduler_runs"][0]["status"] == "completed"
+    assert body["scheduler_runs"][0]["task_reminders_due"] == 2
     assert [row["installation_id"] for row in body["installations"]] == ["install-123"]
     assert [row["user_id"] for row in body["installations"]] == [user_id]
     assert len(body["recent_delivery"]) == 1
     assert body["recent_delivery"][0]["user_id"] == user_id
+    assert len(body["recent_scheduler_decisions"]) == 1
+    assert body["recent_scheduler_decisions"][0]["user_id"] == user_id
+    assert body["recent_scheduler_decisions"][0]["decision_reason"] == "no_reminder_intent"
 
 
 def test_send_test_push_rejects_installation_owned_by_another_user(

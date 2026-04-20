@@ -68,6 +68,7 @@ public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
         let snapshot = snapshot
         let localState = localState
         let recentDelivery = snapshot?.recentDelivery ?? []
+        let recentSchedulerDecisions = snapshot?.recentSchedulerDecisions ?? []
         var lines = [
             "user_id: \(snapshot?.accountSummary?.userId ?? "unknown")",
             "can_access_internal_diagnostics: \(snapshot?.canAccessInternalDiagnostics == true)",
@@ -76,7 +77,9 @@ public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
             "last_registration_result: \(localState.lastDeviceRegistrationResult?.rawValue ?? "unknown")",
             "last_presence_is_foreground: \(localState.currentDevicePresenceIsForeground.map(String.init) ?? "unknown")",
             "backend_installation_count: \(snapshot?.installations.count ?? 0)",
-            "recent_delivery_count: \(recentDelivery.count)"
+            "recent_delivery_count: \(recentDelivery.count)",
+            "scheduler_run_count: \(snapshot?.schedulerRuns.count ?? 0)",
+            "recent_scheduler_decision_count: \(recentSchedulerDecisions.count)"
         ]
 
         if let scheduler = snapshot?.scheduler {
@@ -95,6 +98,12 @@ public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
         for row in recentDelivery.prefix(5) {
             lines.append(
                 "delivery[\(row.createdAt)] notification_kind=\(row.notificationKind) result=\(row.deliveryResult)"
+            )
+        }
+
+        for row in recentSchedulerDecisions.prefix(5) {
+            lines.append(
+                "scheduler_decision[\(row.decisionStage)]: \(row.decisionReason)"
             )
         }
 

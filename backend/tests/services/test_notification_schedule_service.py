@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from sqlalchemy import text
+
 from api.models.user_settings import UserSettings
 from api.services.notification_schedule_service import NotificationScheduleService
 from api.services.notification_types import NotificationCategory
@@ -171,3 +173,58 @@ def test_task_reminders_stay_due_for_a_short_catch_up_window(test_db):
     )
 
     assert [recipient.user_id for recipient in due] == ["user-london"]
+
+
+def test_internal_users_record_scheduler_eligibility_decisions(
+    test_db,
+    monkeypatch,
+):
+    NotificationScheduleService.clear_due_windows()
+    monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
+    monkeypatch.setenv(
+        "INTERNAL_DIAGNOSTIC_USER_IDS",
+        "user-due,user-late",
+    )
+    test_db.add_all(
+        [
+            _settings_record(
+                user_id="user-due",
+                notification_preferences={
+                    "task_reminders_enabled": True,
+                    "task_reminder_time": "09:00",
+                    "schedule_timezone": "Europe/London",
+                },
+            ),
+            _settings_record(
+                user_id="user-late",
+                notification_preferences={
+                    "task_reminders_enabled": True,
+                    "task_reminder_time": "08:30",
+                    "schedule_timezone": "Europe/London",
+                },
+            ),
+        ]
+    )
+    test_db.commit()
+
+    due = NotificationScheduleService.find_due_users(
+        test_db,
+        NotificationCategory.TASK_REMINDER,
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    rows = test_db.execute(
+        text(
+            """
+            select user_id, decision_stage, decision_reason
+            from notification_scheduler_decisions
+            order by user_id
+            """
+        )
+    ).all()
+
+    assert [recipient.user_id for recipient in due] == ["user-due"]
+    assert rows == [
+        ("user-due", "eligibility", "due"),
+        ("user-late", "eligibility", "outside_window"),
+    ]

@@ -84,6 +84,52 @@ public struct NotificationDiagnosticsSchedulerStatus: Codable, Equatable {
     public let lastMorningDigestsDispatched: Int
 }
 
+/// One persisted scheduler cycle returned by internal diagnostics.
+public struct NotificationDiagnosticsSchedulerRunRow: Codable, Equatable {
+    /// The stable worker name backing the scheduler loop.
+    public let workerName: String
+    /// When this scheduler cycle started.
+    public let startedAt: String
+    /// When this scheduler cycle completed or failed.
+    public let completedAt: String?
+    /// The stored cycle status.
+    public let status: String
+    /// Optional error captured for a failed cycle.
+    public let error: String?
+    /// Count of task reminders due in this cycle.
+    public let taskRemindersDue: Int
+    /// Count of task reminders dispatched in this cycle.
+    public let taskRemindersDispatched: Int
+    /// Count of morning digests due in this cycle.
+    public let morningDigestsDue: Int
+    /// Count of morning digests dispatched in this cycle.
+    public let morningDigestsDispatched: Int
+}
+
+/// One user-scoped scheduler decision returned by internal diagnostics.
+public struct NotificationSchedulerDecisionRow: Codable, Equatable {
+    /// When the decision row was recorded.
+    public let createdAt: String
+    /// When the owning scheduler cycle started.
+    public let runStartedAt: String
+    /// The user id associated with the decision.
+    public let userId: String
+    /// The notification kind being evaluated.
+    public let notificationKind: String
+    /// The stage that produced the decision.
+    public let decisionStage: String
+    /// The reason label persisted by the backend.
+    public let decisionReason: String
+    /// The configured local scheduled time.
+    public let scheduledTime: String?
+    /// The configured timezone used for local evaluation.
+    public let scheduleTimezone: String?
+    /// The evaluated local timestamp, when available.
+    public let localNow: String?
+    /// Optional detail string captured by the backend.
+    public let detail: String?
+}
+
 /// Installation row returned by the internal diagnostics snapshot.
 public struct NotificationDiagnosticsInstallationRow: Codable, Equatable {
     /// The stable installation id.
@@ -134,10 +180,14 @@ public struct InternalNotificationDiagnosticsSnapshot: Codable, Equatable {
     public let accountSummary: NotificationDiagnosticsAccountSummary?
     /// Latest global scheduler heartbeat available to internal diagnostics users.
     public let scheduler: NotificationDiagnosticsSchedulerStatus?
+    /// Recent persisted scheduler cycles, newest first.
+    public let schedulerRuns: [NotificationDiagnosticsSchedulerRunRow]
     /// Active installations owned by the current user.
     public let installations: [NotificationDiagnosticsInstallationRow]
     /// Recent delivery audit rows, newest first.
     public let recentDelivery: [NotificationDiagnosticsDeliveryAuditRow]
+    /// Recent scheduler decisions for the signed-in user, newest first.
+    public let recentSchedulerDecisions: [NotificationSchedulerDecisionRow]
 }
 
 /// Response body returned after sending a test push.

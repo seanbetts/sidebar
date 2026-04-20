@@ -88,6 +88,28 @@ struct InternalNotificationDiagnosticsView: View {
                 }
             }
 
+            Section("Scheduler Runs") {
+                if schedulerRuns.isEmpty {
+                    Text("No scheduler run history yet.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(Array(schedulerRuns.enumerated()), id: \.offset) { _, row in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(row.status) • due \(row.taskRemindersDue) • sent \(row.taskRemindersDispatched)")
+                                .appFont(.subheadlineSemibold)
+                            Text(row.startedAt)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                            if let error = row.error, !error.isEmpty {
+                                Text(error)
+                                    .appFont(.caption)
+                                    .foregroundStyle(DesignTokens.Colors.error)
+                            }
+                        }
+                    }
+                }
+            }
+
             Section("Backend View") {
                 if installations.isEmpty {
                     Text("No active installations.")
@@ -122,6 +144,28 @@ struct InternalNotificationDiagnosticsView: View {
                                 .foregroundStyle(.secondary)
                             if let reason = row.apnsReason ?? row.skipReason {
                                 Text(reason)
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section("Scheduler Decisions") {
+                if recentSchedulerDecisions.isEmpty {
+                    Text("No recent scheduler decision rows.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(Array(recentSchedulerDecisions.enumerated()), id: \.offset) { _, row in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(row.decisionStage) • \(row.decisionReason)")
+                                .appFont(.subheadlineSemibold)
+                            Text(row.createdAt)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                            if let detail = row.detail, !detail.isEmpty {
+                                Text(detail)
                                     .appFont(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -173,6 +217,14 @@ struct InternalNotificationDiagnosticsView: View {
 
     private var recentDelivery: [NotificationDiagnosticsDeliveryAuditRow] {
         snapshot?.recentDelivery ?? []
+    }
+
+    private var schedulerRuns: [NotificationDiagnosticsSchedulerRunRow] {
+        snapshot?.schedulerRuns ?? []
+    }
+
+    private var recentSchedulerDecisions: [NotificationSchedulerDecisionRow] {
+        snapshot?.recentSchedulerDecisions ?? []
     }
 
     private var errorMessage: String? {
