@@ -676,13 +676,41 @@ class SettingsService:
             extension = filename.rsplit(".", 1)[-1].lower()
 
         object_key = f"{user_id}/profile-images/{user_id}.{extension}"
-        storage_backend.put_object(object_key, contents, content_type=content_type)
-
-        settings_record = UserSettingsService.upsert_settings(
-            db,
-            user_id,
-            profile_image_path=object_key,
+        existing_settings = UserSettingsService.get_settings(db, user_id)
+        previous_object_key = (
+            existing_settings.profile_image_path if existing_settings else None
         )
+
+        try:
+            storage_backend.put_object(object_key, contents, content_type=content_type)
+            settings_record = UserSettingsService.upsert_settings(
+                db,
+                user_id,
+                profile_image_path=object_key,
+                commit=False,
+            )
+            if previous_object_key and previous_object_key != object_key:
+                storage_backend.delete_object(previous_object_key)
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            if previous_object_key != object_key:
+                try:
+                    storage_backend.delete_object(object_key)
+                except Exception as cleanup_exc:
+                    logger.warning(
+                        "Failed to clean up replacement profile image after upload error",
+                        exc_info=cleanup_exc,
+                        extra={"user_id": user_id, "storage_key": object_key},
+                    )
+            logger.error(
+                "Failed to upload profile image",
+                exc_info=exc,
+                extra={"user_id": user_id, "storage_key": object_key},
+            )
+            raise HTTPException(
+                status_code=500, detail="Failed to upload profile image"
+            ) from exc
         return {
             "profile_image_url": SettingsService._profile_image_url(settings_record)
         }

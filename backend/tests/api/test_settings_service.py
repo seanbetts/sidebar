@@ -63,6 +63,53 @@ def test_upload_profile_image_rejects_payloads_over_five_megabytes(test_db) -> N
     assert exc_info.value.detail == "Image too large (max 5MB)"
 
 
+def test_upload_profile_image_deletes_replaced_storage_object_when_key_changes(
+    test_db, monkeypatch
+) -> None:
+    uploaded_keys: list[str] = []
+    deleted_keys: list[str] = []
+
+    UserSettingsService.upsert_settings(
+        test_db,
+        "user-1",
+        profile_image_path="user-1/profile-images/user-1.png",
+    )
+
+    def fake_put_object(object_key: str, contents: bytes, *, content_type: str) -> None:
+        uploaded_keys.append(object_key)
+
+    def fake_delete_object(object_key: str) -> None:
+        deleted_keys.append(object_key)
+
+    monkeypatch.setattr(
+        "api.services.settings_service.storage_backend.put_object", fake_put_object
+    )
+    monkeypatch.setattr(
+        "api.services.settings_service.storage_backend.delete_object",
+        fake_delete_object,
+    )
+    monkeypatch.setattr(
+        "api.services.settings_service.storage_backend.object_exists",
+        lambda object_key: object_key == "user-1/profile-images/user-1.jpg",
+    )
+
+    result = SettingsService.upload_profile_image(
+        test_db,
+        "user-1",
+        content_type="image/jpeg",
+        contents=b"jpeg-bytes",
+        filename="avatar.jpg",
+    )
+
+    settings_record = UserSettingsService.get_settings(test_db, "user-1")
+
+    assert uploaded_keys == ["user-1/profile-images/user-1.jpg"]
+    assert deleted_keys == ["user-1/profile-images/user-1.png"]
+    assert settings_record is not None
+    assert settings_record.profile_image_path == "user-1/profile-images/user-1.jpg"
+    assert result == {"profile_image_url": "/api/settings/profile-image"}
+
+
 def test_clean_updates_rejects_agent_owned_fields() -> None:
     with pytest.raises(HTTPException) as exc_info:
         SettingsService.clean_updates(
