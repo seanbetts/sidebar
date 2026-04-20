@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { readable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
-import LoginForm from '$lib/components/auth/LoginForm.svelte';
+import LoginFormWithProviders from '../fixtures/LoginFormWithProviders.svelte';
 
 const { signInWithPassword, goto } = vi.hoisted(() => ({
 	signInWithPassword: vi.fn(),
@@ -30,7 +30,7 @@ describe('authentication flow', () => {
 		signInWithPassword.mockResolvedValue({ error: null });
 		const user = userEvent.setup();
 
-		render(LoginForm);
+		render(LoginFormWithProviders);
 
 		await user.type(screen.getByLabelText('Email'), 'test@example.com');
 		await user.type(screen.getByLabelText('Password'), 'password123');

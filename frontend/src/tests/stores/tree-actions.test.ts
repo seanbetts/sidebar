@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { FileNode, FileTreeState } from '$lib/types/file';
+import type { FileTreeState } from '$lib/types/file';
 import { createLoadActions } from '$lib/stores/tree/actions/load';
 import { createSearchActions } from '$lib/stores/tree/actions/search';
 import { createMutationActions } from '$lib/stores/tree/actions/mutations';

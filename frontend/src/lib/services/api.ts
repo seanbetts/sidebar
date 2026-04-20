@@ -341,6 +341,7 @@ class NotesAPI {
 	async sync(payload: {
 		last_sync: string | null;
 		operations: Record<string, unknown>[];
+		metadata_only?: boolean;
 	}): Promise<{
 		applied: string[];
 		notes: unknown[];
