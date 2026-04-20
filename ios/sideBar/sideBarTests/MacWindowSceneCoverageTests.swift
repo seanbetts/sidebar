@@ -77,7 +77,7 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("MacModalShell(type:settingsMacPresentationPanelType())"))
         XCTAssertTrue(normalized.contains("settingsInspectorHeader"))
         XCTAssertTrue(normalized.contains("settingsSidebarHeader"))
-        XCTAssertTrue(normalized.contains("inlineSaveStatusView"))
+        XCTAssertFalse(normalized.contains("inlineSaveStatusView"))
         XCTAssertTrue(normalized.contains("Settings"))
         XCTAssertTrue(normalized.contains("Image(systemName:\"xmark.circle.fill\")"))
         XCTAssertFalse(normalized.contains("Button(\"Done\""))
