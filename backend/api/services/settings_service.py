@@ -85,6 +85,7 @@ MAX_ASSISTANT_SOUL_TEXT_CHARS = max(
     MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS,
     MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS,
 )
+MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
 storage_backend = get_storage_backend()
 
 
@@ -659,8 +660,8 @@ class SettingsService:
         if not content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="Invalid image type")
 
-        if len(contents) > 2 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="Image too large (max 2MB)")
+        if len(contents) > MAX_PROFILE_IMAGE_BYTES:
+            raise HTTPException(status_code=400, detail="Image too large (max 5MB)")
 
         extension = "png"
         if content_type in {"image/jpeg", "image/jpg"}:

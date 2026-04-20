@@ -22,6 +22,47 @@ from api.services.user_ai_provider_settings_service import (
 from api.services.user_settings_service import UserSettingsService
 
 
+def test_upload_profile_image_accepts_payloads_up_to_five_megabytes(
+    test_db, monkeypatch
+) -> None:
+    captured: dict[str, str | bytes] = {}
+
+    def fake_put_object(object_key: str, contents: bytes, *, content_type: str) -> None:
+        captured["object_key"] = object_key
+        captured["contents"] = contents
+        captured["content_type"] = content_type
+
+    monkeypatch.setattr(
+        "api.services.settings_service.storage_backend.put_object", fake_put_object
+    )
+
+    result = SettingsService.upload_profile_image(
+        test_db,
+        "user-1",
+        content_type="image/png",
+        contents=b"x" * (5 * 1024 * 1024),
+        filename="avatar.png",
+    )
+
+    assert captured["object_key"] == "user-1/profile-images/user-1.png"
+    assert captured["content_type"] == "image/png"
+    assert "profile_image_url" in result
+
+
+def test_upload_profile_image_rejects_payloads_over_five_megabytes(test_db) -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.upload_profile_image(
+            test_db,
+            "user-1",
+            content_type="image/png",
+            contents=b"x" * (5 * 1024 * 1024 + 1),
+            filename="avatar.png",
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Image too large (max 5MB)"
+
+
 def test_clean_updates_rejects_agent_owned_fields() -> None:
     with pytest.raises(HTTPException) as exc_info:
         SettingsService.clean_updates(

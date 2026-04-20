@@ -16,6 +16,7 @@ struct ProfileSettingsView: View {
     @State var isProfileImageImporterPresented = false
     @State var isUploadingProfileImage = false
     @State var profileImageError: String?
+    @State var queuedProfileImageError: String?
     @State var name: String = ""
     @State var jobTitle: String = ""
     @State var employer: String = ""
@@ -87,6 +88,10 @@ struct ProfileSettingsView: View {
         }
         .onAppear {
             syncDraftsFromSettings(viewModel.settings)
+            syncQueuedProfileImageError()
+        }
+        .task(id: failedProfileImageWriteSignature) {
+            syncQueuedProfileImageError()
         }
         .onChange(of: profileAutosaveSignature) { _, _ in
             scheduleAutosave()
@@ -142,6 +147,10 @@ struct ProfileSettingsView: View {
         }
         .onAppear {
             syncDraftsFromSettings(viewModel.settings)
+            syncQueuedProfileImageError()
+        }
+        .task(id: failedProfileImageWriteSignature) {
+            syncQueuedProfileImageError()
         }
         .onChange(of: profileAutosaveSignature) { _, _ in
             scheduleAutosave()
@@ -275,12 +284,12 @@ struct ProfileSettingsView: View {
 
     @ViewBuilder
     private var profileImageErrorSection: some View {
-        if let profileImageError {
+        if let effectiveProfileImageError {
             #if os(macOS)
-            SettingsMacStatusBanner(message: profileImageError, tone: .error)
+            SettingsMacStatusBanner(message: effectiveProfileImageError, tone: .error)
             #else
             Section {
-                Text(profileImageError)
+                Text(effectiveProfileImageError)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
@@ -338,6 +347,10 @@ struct ProfileSettingsView: View {
                 Text("Sign Out")
             }
         }
+    }
+
+    private var effectiveProfileImageError: String? {
+        profileImageError ?? queuedProfileImageError
     }
 
 }

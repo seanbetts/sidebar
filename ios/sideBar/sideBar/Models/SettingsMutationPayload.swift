@@ -1,6 +1,8 @@
 import Foundation
 
 public struct SettingsMutationPayload: Codable, Equatable {
+    public static let profileImageEntityID = "profile-image"
+
     public enum Kind: String, Codable {
         case settingsPatch
         case providerKeyUpsert
@@ -140,9 +142,9 @@ public struct SettingsMutationPayload: Codable, Equatable {
         case .providerKeyDisconnect:
             return provider ?? "provider-key"
         case .profileImageUpload:
-            return assetRef ?? "profile-image"
+            return Self.profileImageEntityID
         case .profileImageDelete:
-            return "profile-image"
+            return Self.profileImageEntityID
         }
     }
 

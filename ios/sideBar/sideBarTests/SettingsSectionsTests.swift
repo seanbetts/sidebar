@@ -521,6 +521,33 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(options, baseOptions)
     }
 
+    func testProfileImageValidationMessageRejectsImagesOverFiveMegabytes() {
+        let data = Data(repeating: 0xAB, count: 5 * 1024 * 1024 + 1)
+
+        let message = ProfileSettingsView.profileImageValidationMessage(for: data)
+
+        XCTAssertEqual(message, "Profile photo is too large. Choose an image smaller than 5MB.")
+    }
+
+    func testProfileImageQueueFailureMessageSurfacesStoredAPIError() {
+        let failedWrite = PendingWriteSummary(
+            id: UUID(),
+            operationType: WriteOperation.update.rawValue,
+            entityType: WriteEntityType.settings.rawValue,
+            entityId: "profile-image",
+            status: WriteQueueStatus.failed.rawValue,
+            attempts: 5,
+            lastError: #"apiError("Image too large (max 5MB)")"#,
+            conflictReason: nil,
+            createdAt: Date(),
+            lastAttemptAt: Date()
+        )
+
+        let message = ProfileSettingsView.profileImageQueueFailureMessage(from: [failedWrite])
+
+        XCTAssertEqual(message, "Image too large (max 5MB)")
+    }
+
     func testNormalizedPickerSelectionUsesCanonicalOptionCasing() {
         let normalized = ProfileSettingsView.normalizedPickerSelection(
             currentValue: "He/Him",

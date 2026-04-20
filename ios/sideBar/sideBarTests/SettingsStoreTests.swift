@@ -189,6 +189,7 @@ final class SettingsStoreTests: XCTestCase {
         let queuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
         let payload = try JSONDecoder().decode(SettingsMutationPayload.self, from: queuedWrite.payload)
         XCTAssertEqual(payload.kind, .profileImageUpload)
+        XCTAssertEqual(queuedWrite.entityId, "profile-image")
         let assetReference = try XCTUnwrap(payload.assetRef)
         let stagedAsset = try assetStore.lookup(reference: assetReference)
         XCTAssertEqual(stagedAsset.data, Data([0x89, 0x50, 0x4E, 0x47]))

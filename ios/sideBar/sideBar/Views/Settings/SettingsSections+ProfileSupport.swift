@@ -4,6 +4,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension ProfileSettingsView {
+    static let maxProfileImageUploadBytes = 5 * 1024 * 1024
+
     var profileAvatar: some View {
         Group {
             if let profileImage {
@@ -66,6 +68,16 @@ extension ProfileSettingsView {
         } catch {
             profileImageError = profileImageUploadErrorMessage(for: error)
         }
+    }
+
+    var failedProfileImageWriteSignature: String {
+        environment.writeQueue.failedHeaderRows
+            .filter {
+                $0.entityType == WriteEntityType.settings.rawValue
+                    && $0.entityId == SettingsMutationPayload.profileImageEntityID
+            }
+            .map { "\($0.id.uuidString)|\($0.lastError ?? "")|\($0.attempts)" }
+            .joined(separator: "||")
     }
 
     func loadProfileImage(from data: Data) -> Image? {
@@ -336,6 +348,10 @@ extension ProfileSettingsView {
                     userInfo: [NSLocalizedDescriptionKey: "Couldn’t load selected photo data."]
                 )
             }
+            if let validationMessage = Self.profileImageValidationMessage(for: data) {
+                profileImageError = validationMessage
+                return
+            }
             if let image = loadProfileImage(from: data) {
                 profileImage = image
             }
@@ -356,6 +372,10 @@ extension ProfileSettingsView {
         do {
             let url = try result.get()
             let data = try loadImageData(from: url)
+            if let validationMessage = Self.profileImageValidationMessage(for: data) {
+                profileImageError = validationMessage
+                return
+            }
             let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
             let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
             if let image = loadProfileImage(from: data) {
@@ -387,5 +407,63 @@ extension ProfileSettingsView {
             }
         }
         return try Data(contentsOf: url)
+    }
+
+    func syncQueuedProfileImageError() {
+        queuedProfileImageError = Self.profileImageQueueFailureMessage(from: environment.writeQueue.failedHeaderRows)
+    }
+
+    static func profileImageValidationMessage(for data: Data) -> String? {
+        guard data.count > maxProfileImageUploadBytes else {
+            return nil
+        }
+        return "Profile photo is too large. Choose an image smaller than 5MB."
+    }
+
+    static func profileImageQueueFailureMessage(from summaries: [PendingWriteSummary]) -> String? {
+        guard let summary = summaries.first(where: {
+            $0.entityType == WriteEntityType.settings.rawValue
+                && $0.entityId == SettingsMutationPayload.profileImageEntityID
+        }),
+        let errorDescription = summary.lastError?.trimmingCharacters(in: .whitespacesAndNewlines),
+        !errorDescription.isEmpty else {
+            return nil
+        }
+
+        if let apiError = storedAPIClientError(from: errorDescription) {
+            return ErrorMapping.message(for: apiError)
+        }
+
+        return errorDescription
+    }
+
+    private static func storedAPIClientError(from description: String) -> APIClientError? {
+        switch description {
+        case "invalidUrl":
+            return .invalidUrl
+        case "missingToken":
+            return .missingToken
+        case "decodingFailed":
+            return .decodingFailed
+        case "unknown":
+            return .unknown
+        default:
+            break
+        }
+
+        if description.hasPrefix("requestFailed("), description.hasSuffix(")"),
+           let status = Int(description.dropFirst("requestFailed(".count).dropLast()) {
+            return .requestFailed(status)
+        }
+
+        if description.hasPrefix("apiError(\""), description.hasSuffix("\")") {
+            let quotedMessage = description
+                .dropFirst("apiError(\"".count)
+                .dropLast(2)
+            let message = quotedMessage.replacingOccurrences(of: "\\\"", with: "\"")
+            return .apiError(message)
+        }
+
+        return nil
     }
 }
