@@ -22,7 +22,7 @@ final class InternalDiagnosticsAPITests: XCTestCase {
         router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("notification-diagnostics") == true)
-            return try snapshotResponse(for: request.url)
+            return try self.snapshotResponse(for: request.url)
         }
 
         let snapshot = try await api.getSnapshot()
