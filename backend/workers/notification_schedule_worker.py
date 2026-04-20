@@ -34,6 +34,29 @@ SLEEP_SECONDS = 30
 FAILURE_SLEEP_SECONDS = 2
 
 
+def _log_task_dispatch_outcome(
+    *,
+    user_id: str,
+    scheduled_time: str,
+    schedule_timezone: str,
+    decision_reason: str,
+    detail: str | None = None,
+    warning: bool = False,
+) -> None:
+    """Emit one structured task reminder dispatch outcome for operational logs."""
+    log_fn = logger.warning if warning else logger.info
+    log_fn(
+        "Scheduled task reminder not delivered",
+        extra={
+            "user_id": user_id,
+            "scheduled_time": scheduled_time,
+            "schedule_timezone": schedule_timezone,
+            "decision_reason": decision_reason,
+            "detail": detail,
+        },
+    )
+
+
 def _record_dispatch_decision(
     db,
     *,
@@ -67,6 +90,15 @@ def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
     try:
         local_now = current_time.astimezone(ZoneInfo(recipient.schedule_timezone))
     except ZoneInfoNotFoundError:
+        logger.warning(
+            "Scheduled notification delivered but dedupe marker could not be updated",
+            extra={
+                "user_id": recipient.user_id,
+                "notification_category": recipient.category.value,
+                "scheduled_time": recipient.scheduled_time,
+                "schedule_timezone": recipient.schedule_timezone,
+            },
+        )
         return
 
     NotificationScheduleService.mark_emitted_window(
@@ -115,6 +147,13 @@ def _dispatch_task_reminders(
         )
         intent = evaluation.intent
         if not intent:
+            _log_task_dispatch_outcome(
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                decision_reason="no_reminder_intent",
+                detail=evaluation.reason,
+            )
             _record_dispatch_decision(
                 db,
                 run_started_at=current_time,
@@ -139,6 +178,13 @@ def _dispatch_task_reminders(
             device_tokens=tokens,
         )
         if not decision.should_deliver:
+            _log_task_dispatch_outcome(
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                decision_reason="policy_blocked",
+                detail=decision.reason,
+            )
             _record_dispatch_decision(
                 db,
                 run_started_at=current_time,
@@ -169,6 +215,14 @@ def _dispatch_task_reminders(
                 detail=f"sent_count={result.sent_count}",
             )
         else:
+            _log_task_dispatch_outcome(
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                decision_reason="delivery_skipped",
+                detail=result.reason,
+                warning=True,
+            )
             _record_dispatch_decision(
                 db,
                 run_started_at=current_time,

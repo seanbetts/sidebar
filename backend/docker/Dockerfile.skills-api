@@ -8,6 +8,7 @@ RUN apt-get update && \
     curl \
     ffmpeg \
     libreoffice \
+    tzdata \
     unzip \
     poppler-utils \
     nodejs \

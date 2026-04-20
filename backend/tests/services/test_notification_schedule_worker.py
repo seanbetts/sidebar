@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
@@ -332,3 +333,39 @@ def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, mo
     assert stats["task_reminders_due"] == 1
     assert stats["task_reminders_dispatched"] == 0
     assert ("user-123", "dispatch", "no_reminder_intent", "no_due_tasks") in decision_rows
+
+
+def test_due_task_reminder_non_delivery_is_logged_for_worker_ops(test_db, caplog):
+    NotificationScheduleService.clear_due_windows()
+    TaskReminderService.clear_emitted_days()
+    MorningDigestService.clear_emitted_days()
+    test_db.add(
+        UserSettings(
+            user_id="user-ops-log",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    test_db.commit()
+
+    with caplog.at_level(logging.INFO, logger="notification_schedule.worker"):
+        stats = process_once(
+            now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+            digest_dispatcher=lambda db, due_users, *, now=None: 0,
+        )
+
+    assert stats["task_reminders_due"] == 1
+    assert stats["task_reminders_dispatched"] == 0
+    matching_records = [
+        record
+        for record in caplog.records
+        if record.name == "notification_schedule.worker"
+        and record.getMessage() == "Scheduled task reminder not delivered"
+    ]
+    assert len(matching_records) == 1
+    assert matching_records[0].user_id == "user-ops-log"
+    assert matching_records[0].decision_reason == "no_reminder_intent"
+    assert matching_records[0].detail == "no_due_tasks"

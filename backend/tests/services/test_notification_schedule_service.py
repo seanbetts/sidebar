@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import text
+from zoneinfo import ZoneInfoNotFoundError
 
 from api.models.user_settings import UserSettings
+from api.services import notification_schedule_service
 from api.services.notification_schedule_service import NotificationScheduleService
 from api.services.notification_types import NotificationCategory
 
@@ -228,3 +231,55 @@ def test_internal_users_record_scheduler_eligibility_decisions(
         ("user-due", "eligibility", "due"),
         ("user-late", "eligibility", "outside_window"),
     ]
+
+
+def test_invalid_timezone_is_logged_and_recorded_for_internal_users(
+    test_db,
+    monkeypatch,
+    caplog,
+):
+    NotificationScheduleService.clear_due_windows()
+    monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
+    monkeypatch.setenv("INTERNAL_DIAGNOSTIC_USER_IDS", "user-bad-tz")
+    test_db.add(
+        _settings_record(
+            user_id="user-bad-tz",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    test_db.commit()
+
+    def _raise_zoneinfo_not_found(_name: str):
+        raise ZoneInfoNotFoundError("Europe/London")
+
+    monkeypatch.setattr(
+        notification_schedule_service,
+        "ZoneInfo",
+        _raise_zoneinfo_not_found,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        due = NotificationScheduleService.find_due_users(
+            test_db,
+            NotificationCategory.TASK_REMINDER,
+            now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        )
+
+    rows = test_db.execute(
+        text(
+            """
+            select user_id, decision_stage, decision_reason, schedule_timezone
+            from notification_scheduler_decisions
+            """
+        )
+    ).all()
+
+    assert due == []
+    assert rows == [
+        ("user-bad-tz", "eligibility", "invalid_timezone", "Europe/London")
+    ]
+    assert "invalid scheduler timezone" in caplog.text

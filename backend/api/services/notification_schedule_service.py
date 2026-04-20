@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -15,6 +16,8 @@ from api.services.notification_scheduler_decision_service import (
 )
 from api.services.notification_types import NotificationCategory
 from api.services.settings_notifications import resolve_notification_preferences
+
+logger = logging.getLogger("notification_schedule.service")
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +122,15 @@ class NotificationScheduleService:
             try:
                 local_now = current_time.astimezone(ZoneInfo(schedule_timezone))
             except ZoneInfoNotFoundError:
+                logger.warning(
+                    "Skipping scheduled notification evaluation for invalid "
+                    "scheduler timezone",
+                    extra={
+                        "user_id": user_id,
+                        "notification_category": category.value,
+                        "schedule_timezone": schedule_timezone,
+                    },
+                )
                 cls._record_internal_decision(
                     db,
                     user_id=user_id,
