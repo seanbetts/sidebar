@@ -83,6 +83,7 @@ def _apply_session_settings(
     connection,
     user_id: str | None,
     force_public_search_path: bool,
+    notification_worker_scope: str | None = None,
     website_worker_scope: str | None = None,
     retention_worker_scope: str | None = None,
 ) -> None:
@@ -90,6 +91,11 @@ def _apply_session_settings(
         connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
     else:
         connection.execute(text("SELECT set_config('app.user_id', '', false)"))
+    if notification_worker_scope:
+        connection.execute(
+            text("SET LOCAL app.notification_worker_scope = :worker_scope"),
+            {"worker_scope": notification_worker_scope},
+        )
     if website_worker_scope:
         connection.execute(
             text("SET LOCAL app.website_worker_scope = :worker_scope"),
@@ -114,6 +120,7 @@ def _apply_session_settings_with_retry(
     connection,
     user_id: str | None,
     force_public_search_path: bool,
+    notification_worker_scope: str | None = None,
     website_worker_scope: str | None = None,
     retention_worker_scope: str | None = None,
 ) -> None:
@@ -123,6 +130,7 @@ def _apply_session_settings_with_retry(
             connection,
             user_id,
             force_public_search_path,
+            notification_worker_scope,
             website_worker_scope,
             retention_worker_scope,
         )
@@ -162,12 +170,14 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     force_public = bool(session.info.get("force_public_search_path")) and not bool(
         session.info.get("skip_search_path")
     )
+    notification_worker_scope = session.info.get("notification_worker_scope")
     website_worker_scope = session.info.get("website_worker_scope")
     retention_worker_scope = session.info.get("retention_worker_scope")
     _apply_session_settings_with_retry(
         connection,
         user_id,
         force_public,
+        notification_worker_scope,
         website_worker_scope,
         retention_worker_scope,
     )
@@ -305,6 +315,28 @@ def set_website_worker_scope(db: Session, enabled: bool) -> None:
         return
 
     db.info.pop("website_worker_scope", None)
+
+
+def set_notification_worker_scope(db: Session, enabled: bool) -> None:
+    """Set notification-worker scope for the current and future transactions.
+
+    Args:
+        db: Active database session.
+        enabled: Whether cross-user notification worker scope should be enabled.
+    """
+    if enabled:
+        db.info["notification_worker_scope"] = "all"
+        _retry_session_bootstrap_operation(
+            db,
+            "SET LOCAL app.notification_worker_scope",
+            lambda: db.execute(
+                text("SET LOCAL app.notification_worker_scope = :worker_scope"),
+                {"worker_scope": "all"},
+            ),
+        )
+        return
+
+    db.info.pop("notification_worker_scope", None)
 
 
 def set_retention_worker_scope(db: Session, enabled: bool) -> None:

@@ -9,7 +9,11 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from api.config import settings
-from api.db.session import SessionLocal
+from api.db.session import (
+    SessionLocal,
+    set_notification_worker_scope,
+    user_scoped_session,
+)
 from api.services.device_token_service import DeviceTokenService
 from api.services.internal_access_service import InternalAccessService
 from api.services.morning_digest_service import MorningDigestService
@@ -32,6 +36,11 @@ from api.services.user_settings_service import UserSettingsService
 logger = logging.getLogger("notification_schedule.worker")
 SLEEP_SECONDS = 30
 FAILURE_SLEEP_SECONDS = 2
+
+
+def _set_worker_scope(db) -> None:
+    """Set session GUCs for cross-user notification scheduling reads."""
+    set_notification_worker_scope(db, enabled=True)
 
 
 def _log_task_dispatch_outcome(
@@ -129,6 +138,7 @@ def _dispatch_task_reminders(
     now: datetime | None = None,
 ) -> int:
     """Build and deliver due task reminders."""
+    _ = db
     environment = DeviceTokenService.normalize_environment(settings.apns_env)
     current_time = now or datetime.now(UTC)
     delivered_count = 0
@@ -139,101 +149,108 @@ def _dispatch_task_reminders(
         except ZoneInfoNotFoundError:
             local_now = None
 
-        evaluation = TaskReminderService.inspect_daily_reminder(
-            db,
-            user_id=recipient.user_id,
-            schedule_timezone=recipient.schedule_timezone,
-            now=current_time,
-        )
-        intent = evaluation.intent
-        if not intent:
-            _log_task_dispatch_outcome(
+        with user_scoped_session(recipient.user_id) as user_db:
+            evaluation = TaskReminderService.inspect_daily_reminder(
+                user_db,
                 user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
                 schedule_timezone=recipient.schedule_timezone,
-                decision_reason="no_reminder_intent",
-                detail=evaluation.reason,
+                now=current_time,
             )
-            _record_dispatch_decision(
-                db,
-                run_started_at=current_time,
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                local_now=local_now,
-                decision_reason="no_reminder_intent",
-                detail=evaluation.reason,
-            )
-            continue
+            intent = evaluation.intent
+            if not intent:
+                _log_task_dispatch_outcome(
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    decision_reason="no_reminder_intent",
+                    detail=evaluation.reason,
+                )
+                _record_dispatch_decision(
+                    user_db,
+                    run_started_at=current_time,
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_now=local_now,
+                    decision_reason="no_reminder_intent",
+                    detail=evaluation.reason,
+                )
+                user_db.commit()
+                continue
 
-        settings_record = UserSettingsService.get_settings(db, recipient.user_id)
-        tokens = DeviceTokenService.list_active_tokens(
-            db,
-            recipient.user_id,
-            environment=environment,
-        )
-        decision = NotificationPolicyService.evaluate(
-            intent,
-            settings_record=settings_record,
-            device_tokens=tokens,
-        )
-        if not decision.should_deliver:
-            _log_task_dispatch_outcome(
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                decision_reason="policy_blocked",
-                detail=decision.reason,
+            settings_record = UserSettingsService.get_settings(
+                user_db,
+                recipient.user_id,
             )
-            _record_dispatch_decision(
-                db,
-                run_started_at=current_time,
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                local_now=local_now,
-                decision_reason="policy_blocked",
-                detail=decision.reason,
+            tokens = DeviceTokenService.list_active_tokens(
+                user_db,
+                recipient.user_id,
+                environment=environment,
             )
-            continue
+            decision = NotificationPolicyService.evaluate(
+                intent,
+                settings_record=settings_record,
+                device_tokens=tokens,
+            )
+            if not decision.should_deliver:
+                _log_task_dispatch_outcome(
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    decision_reason="policy_blocked",
+                    detail=decision.reason,
+                )
+                _record_dispatch_decision(
+                    user_db,
+                    run_started_at=current_time,
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_now=local_now,
+                    decision_reason="policy_blocked",
+                    detail=decision.reason,
+                )
+                user_db.commit()
+                continue
 
-        result = NotificationDeliveryService.deliver_intent(
-            intent,
-            device_tokens=list(decision.matched_tokens) or tokens,
-            db=db,
-        )
-        if result.sent_count > 0:
-            _mark_recipient_delivered(recipient, current_time=current_time)
-            _record_dispatch_decision(
-                db,
-                run_started_at=current_time,
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                local_now=local_now,
-                decision_reason="delivered",
-                detail=f"sent_count={result.sent_count}",
+            result = NotificationDeliveryService.deliver_intent(
+                intent,
+                device_tokens=list(decision.matched_tokens) or tokens,
+                db=user_db,
             )
-        else:
-            _log_task_dispatch_outcome(
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                decision_reason="delivery_skipped",
-                detail=result.reason,
-                warning=True,
-            )
-            _record_dispatch_decision(
-                db,
-                run_started_at=current_time,
-                user_id=recipient.user_id,
-                scheduled_time=recipient.scheduled_time,
-                schedule_timezone=recipient.schedule_timezone,
-                local_now=local_now,
-                decision_reason="delivery_skipped",
-                detail=result.reason,
-            )
-        delivered_count += result.sent_count
+            if result.sent_count > 0:
+                _mark_recipient_delivered(recipient, current_time=current_time)
+                _record_dispatch_decision(
+                    user_db,
+                    run_started_at=current_time,
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_now=local_now,
+                    decision_reason="delivered",
+                    detail=f"sent_count={result.sent_count}",
+                )
+            else:
+                _log_task_dispatch_outcome(
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    decision_reason="delivery_skipped",
+                    detail=result.reason,
+                    warning=True,
+                )
+                _record_dispatch_decision(
+                    user_db,
+                    run_started_at=current_time,
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_now=local_now,
+                    decision_reason="delivery_skipped",
+                    detail=result.reason,
+                )
+            user_db.commit()
+            delivered_count += result.sent_count
     return delivered_count
 
 
@@ -244,41 +261,49 @@ def _dispatch_morning_digests(
     now: datetime | None = None,
 ) -> int:
     """Build and deliver due morning digests."""
+    _ = db
     environment = DeviceTokenService.normalize_environment(settings.apns_env)
     current_time = now or datetime.now(UTC)
     delivered_count = 0
     for recipient in due_users:
-        intent = MorningDigestService.build_digest(
-            db,
-            user_id=recipient.user_id,
-            schedule_timezone=recipient.schedule_timezone,
-            now=current_time,
-        )
-        if not intent:
-            continue
+        with user_scoped_session(recipient.user_id) as user_db:
+            intent = MorningDigestService.build_digest(
+                user_db,
+                user_id=recipient.user_id,
+                schedule_timezone=recipient.schedule_timezone,
+                now=current_time,
+            )
+            if not intent:
+                user_db.commit()
+                continue
 
-        settings_record = UserSettingsService.get_settings(db, recipient.user_id)
-        tokens = DeviceTokenService.list_active_tokens(
-            db,
-            recipient.user_id,
-            environment=environment,
-        )
-        decision = NotificationPolicyService.evaluate(
-            intent,
-            settings_record=settings_record,
-            device_tokens=tokens,
-        )
-        if not decision.should_deliver:
-            continue
+            settings_record = UserSettingsService.get_settings(
+                user_db,
+                recipient.user_id,
+            )
+            tokens = DeviceTokenService.list_active_tokens(
+                user_db,
+                recipient.user_id,
+                environment=environment,
+            )
+            decision = NotificationPolicyService.evaluate(
+                intent,
+                settings_record=settings_record,
+                device_tokens=tokens,
+            )
+            if not decision.should_deliver:
+                user_db.commit()
+                continue
 
-        result = NotificationDeliveryService.deliver_intent(
-            intent,
-            device_tokens=list(decision.matched_tokens) or tokens,
-            db=db,
-        )
-        if result.sent_count > 0:
-            _mark_recipient_delivered(recipient, current_time=current_time)
-        delivered_count += result.sent_count
+            result = NotificationDeliveryService.deliver_intent(
+                intent,
+                device_tokens=list(decision.matched_tokens) or tokens,
+                db=user_db,
+            )
+            if result.sent_count > 0:
+                _mark_recipient_delivered(recipient, current_time=current_time)
+            user_db.commit()
+            delivered_count += result.sent_count
     return delivered_count
 
 
@@ -291,6 +316,7 @@ def process_once(
     """Evaluate scheduled categories once and dispatch the due recipients."""
     current_time = now or datetime.now(UTC)
     with SessionLocal() as db:
+        _set_worker_scope(db)
         task_due = NotificationScheduleService.find_due_users(
             db,
             NotificationCategory.TASK_REMINDER,

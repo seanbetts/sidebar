@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 from sqlalchemy import text
@@ -12,13 +13,17 @@ from api.models.task import Task
 from api.models.user_settings import UserSettings
 from api.services.device_token_service import DeviceTokenService
 from api.services.morning_digest_service import MorningDigestService
-from api.services.notification_schedule_service import NotificationScheduleService
+from api.services.notification_schedule_service import (
+    NotificationScheduleService,
+    ScheduledNotificationRecipient,
+)
 from api.services.notification_types import (
     APNSNotificationOutcome,
     PushNotificationSendResult,
 )
 from api.services.push_notification_service import PushNotificationService
 from api.services.task_reminder_service import TaskReminderService
+from workers import notification_schedule_worker
 from workers.notification_schedule_worker import execute_once, process_once
 
 
@@ -369,3 +374,94 @@ def test_due_task_reminder_non_delivery_is_logged_for_worker_ops(test_db, caplog
     assert matching_records[0].user_id == "user-ops-log"
     assert matching_records[0].decision_reason == "no_reminder_intent"
     assert matching_records[0].detail == "no_due_tasks"
+
+
+def test_process_once_enables_notification_worker_scope(monkeypatch):
+    observed = {}
+
+    class _FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def commit(self):
+            observed["commit_called"] = True
+
+    fake_db = _FakeSession()
+    monkeypatch.setattr(notification_schedule_worker, "SessionLocal", lambda: fake_db)
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "set_notification_worker_scope",
+        lambda db, *, enabled: observed.update(scope=(db, enabled)),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationScheduleService,
+        "find_due_users",
+        lambda db, category, *, now=None: [],
+    )
+
+    stats = notification_schedule_worker.process_once(
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        task_dispatcher=lambda db, due_users, *, now=None: 0,
+        digest_dispatcher=lambda db, due_users, *, now=None: 0,
+    )
+
+    assert observed["scope"] == (fake_db, True)
+    assert observed["commit_called"] is True
+    assert stats["task_reminders_due"] == 0
+
+
+def test_task_dispatch_uses_user_scoped_sessions(monkeypatch):
+    recipient = ScheduledNotificationRecipient(
+        user_id="user-123",
+        category=notification_schedule_worker.NotificationCategory.TASK_REMINDER,
+        scheduled_time="09:00",
+        schedule_timezone="Europe/London",
+    )
+    scoped_db = SimpleNamespace()
+    calls: list[tuple[str, object]] = []
+    scoped_db.commit = lambda: calls.append(("commit", scoped_db))
+
+    class _ScopedSession:
+        def __enter__(self):
+            calls.append(("enter_scope", scoped_db))
+            return scoped_db
+
+        def __exit__(self, exc_type, exc, tb):
+            calls.append(("exit_scope", scoped_db))
+            return False
+
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "user_scoped_session",
+        lambda user_id: _ScopedSession(),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.TaskReminderService,
+        "inspect_daily_reminder",
+        lambda db, *, user_id, schedule_timezone, now=None: (
+            calls.append(("inspect", db))
+            or SimpleNamespace(intent=None, reason="no_due_tasks")
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "_record_dispatch_decision",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "_log_task_dispatch_outcome",
+        lambda *args, **kwargs: None,
+    )
+
+    delivered = notification_schedule_worker._dispatch_task_reminders(
+        object(),
+        [recipient],
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert delivered == 0
+    assert ("inspect", scoped_db) in calls

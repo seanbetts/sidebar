@@ -123,6 +123,7 @@ def test_after_begin_invalidates_and_reraises_disconnect(
         _connection,
         _user_id,
         _force_public_search_path,
+        _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
     ) -> None:
@@ -162,6 +163,7 @@ def test_after_begin_does_not_retry_disconnects_in_same_transaction(
         _connection,
         user_id,
         _force_public_search_path,
+        _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
     ) -> None:
@@ -205,6 +207,7 @@ def test_after_begin_never_rolls_back_connection_directly(
         _connection,
         _user_id,
         _force_public_search_path,
+        _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
     ) -> None:
@@ -243,11 +246,13 @@ def test_after_begin_applies_worker_scope_from_session_info(
         _connection,
         user_id,
         force_public_search_path,
+        notification_worker_scope,
         website_worker_scope,
         retention_worker_scope,
     ) -> None:
         captured["user_id"] = user_id
         captured["force_public_search_path"] = force_public_search_path
+        captured["notification_worker_scope"] = notification_worker_scope
         captured["website_worker_scope"] = website_worker_scope
         captured["retention_worker_scope"] = retention_worker_scope
 
@@ -262,6 +267,7 @@ def test_after_begin_applies_worker_scope_from_session_info(
     assert captured == {
         "user_id": None,
         "force_public_search_path": False,
+        "notification_worker_scope": None,
         "website_worker_scope": "all",
         "retention_worker_scope": None,
     }
@@ -362,6 +368,18 @@ def test_set_retention_worker_scope_retries_bootstrap_disconnects_on_fresh_conne
     session_module.set_retention_worker_scope(db, enabled=True)
 
     assert db.info["retention_worker_scope"] == "all"
+    assert db.execute_calls == 3
+    assert db.rollback_calls == 2
+    assert db.invalidate_calls == 2
+
+
+def test_set_notification_worker_scope_retries_bootstrap_disconnects_on_fresh_connections() -> None:
+    """Notification scope setup should survive multiple stale pooled connections."""
+    db = _BootstrapDisconnectingSession(failures_before_success=2)
+
+    session_module.set_notification_worker_scope(db, enabled=True)
+
+    assert db.info["notification_worker_scope"] == "all"
     assert db.execute_calls == 3
     assert db.rollback_calls == 2
     assert db.invalidate_calls == 2
