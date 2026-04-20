@@ -1,4 +1,4 @@
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable file_length
 import Foundation
 import AppIntents
 import WidgetKit
@@ -6,6 +6,7 @@ import XCTest
 import sideBarShared
 @testable import sideBarWidgetsExtension
 
+// swiftlint:disable:next type_body_length
 final class WidgetExtensionCoverageTests: XCTestCase {
     override func setUp() {
         super.setUp()
