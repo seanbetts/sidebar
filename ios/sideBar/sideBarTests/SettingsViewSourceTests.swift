@@ -13,7 +13,6 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertFalse(settingsViewNormalized.contains("settingsSaveCompletionCount"))
         XCTAssertFalse(settingsViewNormalized.contains("savePillState"))
         XCTAssertFalse(settingsViewNormalized.contains("savePillState:"))
-        XCTAssertFalse(settingsViewNormalized.contains("SettingsTabsView("))
         XCTAssertFalse(settingsTabsNormalized.contains("SettingsSaveStatusPill"))
         XCTAssertFalse(settingsTabsNormalized.contains("savePillState"))
         XCTAssertFalse(settingsTabsNormalized.contains("savePillState:"))

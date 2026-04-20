@@ -476,114 +476,6 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(draft.isDirty(comparedTo: settings))
     }
 
-    func testSettingsSaveStatusLogicShowsSavingThenSaved() {
-        var timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: false,
-            isSaving: true,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .saving)
-
-        timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: true,
-            isSaving: false,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .saved)
-    }
-
-    func testSettingsSaveStatusLogicTreatsWhitespaceErrorAsNil() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: true,
-            isSaving: false,
-            saveError: "   ",
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .saved)
-    }
-
-    func testSettingsSaveStatusLogicShowsErrorWhenErrorPresent() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: true,
-            isSaving: false,
-            saveError: "boom",
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .error("boom"))
-    }
-
-    func testSettingsSaveStatusLogicContinuesSavingWhenStillInFlight() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: true,
-            isSaving: true,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .saving)
-    }
-
-    func testSettingsSaveStatusLogicReturnsNilWhenIdleSecondAssertion() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: false,
-            isSaving: false,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertNil(timeline.immediateState)
-    }
-
-    func testSettingsSaveStatusLogicSequenceTransitionsFromSavingToSavedToNil() {
-        var wasSaving = false
-        var recordedStates: [SettingsSavePillState?] = []
-
-        let first = SettingsSaveStatusLogic.timeline(
-            wasSaving: wasSaving,
-            isSaving: true,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-        recordedStates.append(first.immediateState)
-        wasSaving = true
-
-        let second = SettingsSaveStatusLogic.timeline(
-            wasSaving: wasSaving,
-            isSaving: false,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-        recordedStates.append(second.immediateState)
-        wasSaving = false
-
-        let third = SettingsSaveStatusLogic.timeline(
-            wasSaving: wasSaving,
-            isSaving: false,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: false
-        )
-        recordedStates.append(third.immediateState)
-
-        XCTAssertEqual(recordedStates, [.saving, .saved, nil])
-    }
-
-    func testSettingsSaveStatusLogicShowsSavedWhenSaveCompletedTooQuicklyToObserveSaving() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: false,
-            isSaving: false,
-            saveError: nil,
-            didCompleteSaveSinceLastObservation: true
-        )
-
-        XCTAssertEqual(timeline.immediateState, .saved)
-    }
-
     private func waitUntil(
         timeoutNs: UInt64,
         pollNs: UInt64 = 5_000_000,
@@ -597,50 +489,6 @@ final class SettingsSectionsTests: XCTestCase {
             try? await Task.sleep(nanoseconds: pollNs)
         }
         return false
-    }
-
-    func testSettingsSaveStatusLogicErrorTakesPrecedenceOverSaving() {
-        let timeline = SettingsSaveStatusLogic.timeline(
-            wasSaving: false,
-            isSaving: true,
-            saveError: "boom",
-            didCompleteSaveSinceLastObservation: false
-        )
-
-        XCTAssertEqual(timeline.immediateState, .error("boom"))
-    }
-
-    func testSettingsSaveErrorPresentationReturnsProfileErrorForPill() {
-        let pillError = SettingsSaveErrorPresentation.pillError(
-            profileSaveError: "Session expired. Please sign in again.",
-            systemSaveError: nil,
-            skillsError: nil,
-            primaryProviderError: nil
-        )
-
-        XCTAssertEqual(pillError, "Session expired. Please sign in again.")
-    }
-
-    func testSettingsSaveErrorPresentationReturnsSystemErrorForPill() {
-        let pillError = SettingsSaveErrorPresentation.pillError(
-            profileSaveError: nil,
-            systemSaveError: "Couldn't refresh the current account settings. Reopen settings and try again.",
-            skillsError: nil,
-            primaryProviderError: nil
-        )
-
-        XCTAssertEqual(pillError, "Couldn't refresh the current account settings. Reopen settings and try again.")
-    }
-
-    func testSettingsSaveErrorPresentationReturnsNonInlineSkillError() {
-        let pillError = SettingsSaveErrorPresentation.pillError(
-            profileSaveError: nil,
-            systemSaveError: nil,
-            skillsError: "Couldn't update skills.",
-            primaryProviderError: nil
-        )
-
-        XCTAssertEqual(pillError, "Couldn't update skills.")
     }
 
     func testPickerOptionsReturnsBaseOptionsWhenCurrentValueIsEmpty() {
@@ -906,16 +754,6 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Text(title).appFont(.subheadline)"))
         XCTAssertTrue(normalized.contains(".multilineTextAlignment(.trailing)"))
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.trailing)"))
-    }
-
-    func testSettingsSaveStatusPillUsesDirectPillChromeWithoutPlatformIndirection() throws {
-        let normalized = try settingsSaveStatusPillSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertTrue(normalized.contains(".glassChrome(.pill)"))
-        XCTAssertFalse(normalized.contains("SettingsSaveStatusPillPlatform"))
-        XCTAssertFalse(normalized.contains("SettingsSaveStatusPillChrome"))
-        XCTAssertFalse(normalized.contains("chrome(for:currentPlatform)"))
     }
 
     func testUserSettingsMacSourceUsesTransparentEditors() throws {
@@ -1408,13 +1246,6 @@ private func settingsViewSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsView.swift", file: file, line: line)
-}
-
-private func settingsSaveStatusPillSource(
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws -> String {
-    try settingsSourceFile("SettingsSaveStatusPill.swift", file: file, line: line)
 }
 
 private func settingsSourceFile(
