@@ -54,6 +54,11 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
     func testExecuteProfileImageReferenceReplaysStagedAssetIntoUploadProfileImage() async throws {
         let secretStore = SettingsPendingSecretStoreSpy()
         let assetStore = SettingsPendingAssetStoreSpy()
+        let payload = SettingsMutationPayload.profileImageUpload(
+            assetRef: "asset-ref-1",
+            contentType: "image/png",
+            filename: "profile.png"
+        )
         assetStore.stage(
             reference: "asset-ref-1",
             data: Data([0x89, 0x50, 0x4E, 0x47]),
@@ -67,7 +72,7 @@ final class SettingsWriteQueueExecutorTests: XCTestCase {
             pendingAssetStore: assetStore
         )
 
-        try await executor.execute(write: try queuedProfileImageReferenceWrite(reference: "asset-ref-1"))
+        try await executor.execute(write: try queuedSettingsWrite(payload))
 
         XCTAssertEqual(assetStore.lookupReferences, ["asset-ref-1"])
         XCTAssertEqual(assetStore.deletedReferences, ["asset-ref-1"])
@@ -89,24 +94,6 @@ private func queuedSettingsWrite(_ payload: SettingsMutationPayload) throws -> P
         serverSnapshot: nil,
         attempts: 0
     )
-}
-
-private func queuedProfileImageReferenceWrite(reference: String) throws -> PendingWriteRecord {
-    let payload = ProfileImageReferenceWritePayload(reference: reference)
-    let payloadData = try JSONEncoder().encode(payload)
-    return PendingWriteRecord(
-        id: UUID(),
-        operationType: WriteOperation.update.rawValue,
-        entityType: WriteEntityType.settings.rawValue,
-        entityId: "profile-image",
-        payload: payloadData,
-        serverSnapshot: nil,
-        attempts: 0
-    )
-}
-
-private struct ProfileImageReferenceWritePayload: Codable, Equatable {
-    let reference: String
 }
 
 @MainActor

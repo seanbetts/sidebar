@@ -8,8 +8,8 @@ final class SettingsStoreTests: XCTestCase {
     func testLoadPrefersOfflineSnapshotWhenServerReadFails() async throws {
         let cachedSettings = makeSettings(name: "Stale cache snapshot")
         let offlineSnapshot = makeSettings(name: "Offline snapshot")
-        let cache = TestCacheClient()
-        cache.set(key: CacheKeys.userSettings, value: cachedSettings, ttlSeconds: 60)
+        let cache = SettingsPersistenceSpy()
+        cache.stage(key: CacheKeys.userSettings, value: cachedSettings)
         let offlineStore = SettingsOfflineSnapshotStoreSpy()
         offlineStore.stage(snapshot: offlineSnapshot, for: CacheKeys.userSettings)
         let api = SettingsStoreAPISpy(
@@ -35,8 +35,10 @@ final class SettingsStoreTests: XCTestCase {
 
     func testCommitUserPatchUpdatesLocalSnapshotAndEnqueuesSettingsWrite() async throws {
         let initialSettings = makeSettings(name: "Initial")
-        let cache = TestCacheClient()
-        cache.set(key: CacheKeys.userSettings, value: initialSettings, ttlSeconds: 60)
+        let cache = SettingsPersistenceSpy()
+        cache.stage(key: CacheKeys.userSettings, value: initialSettings)
+        let offlineStore = SettingsOfflineSnapshotStoreSpy()
+        offlineStore.stage(snapshot: initialSettings, for: CacheKeys.userSettings)
         let api = SettingsStoreAPISpy(
             getSettingsResult: .success(initialSettings),
             updateSettingsResult: .success(initialSettings)
@@ -45,7 +47,7 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(
             settingsAPI: api,
             cache: cache,
-            offlineStore: SettingsOfflineSnapshotStoreSpy(),
+            offlineStore: offlineStore,
             writeQueue: writeQueue
         )
         let patch = SettingsMutationPayload(name: "Ada Lovelace")
@@ -53,6 +55,10 @@ final class SettingsStoreTests: XCTestCase {
         try await store.commitUserPatch(patch)
 
         XCTAssertEqual(store.settings?.name, "Ada Lovelace")
+        XCTAssertEqual(cache.setCallCount, 1)
+        XCTAssertEqual(offlineStore.setCallCount, 1)
+        XCTAssertEqual(try cache.snapshot(for: CacheKeys.userSettings)?.name, "Ada Lovelace")
+        XCTAssertEqual(try offlineStore.snapshot(for: CacheKeys.userSettings)?.name, "Ada Lovelace")
         XCTAssertEqual(writeQueue.enqueuedWrites.count, 1)
         let enqueuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
         XCTAssertEqual(enqueuedWrite.operationType, WriteOperation.update.rawValue)
@@ -87,12 +93,14 @@ private enum SettingsStoreTestError: Error {
 
 @MainActor
 private final class SettingsOfflineSnapshotStoreSpy {
-    private var snapshots: [String: UserSettings] = [:]
+    private var snapshots: [String: Data] = [:]
     private(set) var lookupCallCount = 0
+    private(set) var setCallCount = 0
     private(set) var lastLookupKey: String?
+    private(set) var lastSetKey: String?
 
     func stage(snapshot: UserSettings, for key: String) {
-        snapshots[key] = snapshot
+        snapshots[key] = try? JSONEncoder().encode(snapshot)
     }
 
     func get<T: Decodable>(key: String, as type: T.Type) -> T? {
@@ -101,10 +109,63 @@ private final class SettingsOfflineSnapshotStoreSpy {
         guard let snapshot = snapshots[key] else {
             return nil
         }
-        guard let typedSnapshot = snapshot as? T else {
+        return try? JSONDecoder().decode(T.self, from: snapshot)
+    }
+
+    func set<T: Encodable>(key: String, entityType: String, value: T, lastSyncAt: Date?) {
+        _ = entityType
+        _ = lastSyncAt
+        setCallCount += 1
+        lastSetKey = key
+        snapshots[key] = try? JSONEncoder().encode(value)
+    }
+
+    func snapshot<T: Decodable>(for key: String, as type: T.Type = T.self) throws -> T? {
+        guard let snapshot = snapshots[key] else {
             return nil
         }
-        return typedSnapshot
+        return try JSONDecoder().decode(T.self, from: snapshot)
+    }
+}
+
+@MainActor
+private final class SettingsPersistenceSpy: CacheClient {
+    private var snapshots: [String: Data] = [:]
+    private(set) var setCallCount = 0
+    private(set) var lastSetKeys: [String] = []
+
+    func stage<T: Codable>(key: String, value: T) {
+        snapshots[key] = try? JSONEncoder().encode(value)
+    }
+
+    func get<T: Codable>(key: String) -> T? {
+        guard let data = snapshots[key] else {
+            return nil
+        }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    func setEncoded(key: String, payload data: Data, typeName: String, ttlSeconds: TimeInterval) {
+        _ = typeName
+        _ = ttlSeconds
+        setCallCount += 1
+        lastSetKeys.append(key)
+        snapshots[key] = data
+    }
+
+    func remove(key: String) {
+        snapshots[key] = nil
+    }
+
+    func clear() {
+        snapshots.removeAll()
+    }
+
+    func snapshot<T: Decodable>(for key: String, as type: T.Type = T.self) throws -> T? {
+        guard let data = snapshots[key] else {
+            return nil
+        }
+        return try JSONDecoder().decode(T.self, from: data)
     }
 }
 
