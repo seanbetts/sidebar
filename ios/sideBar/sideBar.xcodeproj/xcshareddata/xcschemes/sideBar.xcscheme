@@ -71,6 +71,23 @@
             ReferencedContainer = "container:sideBar.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
+            value = "REDACTED_FOR_PUBLIC_RELEASE"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "SIDEBAR_UI_TEST_USER_ID"
+            value = "REDACTED_FOR_PUBLIC_RELEASE"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+            value = "1"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
