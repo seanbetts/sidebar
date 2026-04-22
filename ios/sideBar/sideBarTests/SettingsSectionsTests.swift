@@ -241,7 +241,7 @@ final class SettingsSectionsTests: XCTestCase {
     }
 
     func testAppStorageKeysIncludesInternalDiagnosticsUnlockKey() throws {
-        let source = try String(contentsOfFile: "/Users/sean/Coding/sideBar/ios/sideBar/sideBar/Utilities/AppStorageKeys.swift")
+        let source = try appStorageKeysSource()
         let normalized = source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("internalDiagnosticsUnlocked=\"sidebar.internalDiagnosticsUnlocked\""))
@@ -1176,6 +1176,25 @@ private func formFieldSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read FormField.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func appStorageKeysSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Utilities")
+        .appendingPathComponent("AppStorageKeys.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read AppStorageKeys.swift: \(error)", file: file, line: line)
         throw error
     }
 }
