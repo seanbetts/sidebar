@@ -146,23 +146,19 @@ Each icon must carry a VoiceOver accessibility label describing its state — th
 
 This is the reference pattern for any new detail view that needs save status.
 
-### Sheet context: floating pill (settings pattern)
+### Sheet context: silent optimistic writes
 
-`SettingsSaveStatusPill` is a floating capsule that appears inside the settings sheet. Three states:
+Settings now use optimistic queued writes rather than an in-sheet save pill.
 
-| State | Icon | Text | Behaviour |
-|---|---|---|---|
-| Saving | Spinner | "Saving settings..." | Persists while saving |
-| Saved | checkmark.circle.fill | "Saved" | Auto-dismisses after a short delay |
-| Error | exclamationmark.triangle.fill | "Couldn't save settings" | Persists until acknowledged |
-
-Use this pattern for any sheet or modal that has ongoing auto-save behaviour.
+- Healthy writes should stay silent
+- Failed writes should surface through queued changes or a section-level recovery banner
+- Do not introduce a dedicated settings save pill for routine auto-save flows
 
 ### Haptics and save completion (iOS only)
 
 Auto-saves (continuous background saves triggered by typing) fire no haptic — the frequency would be disruptive.
 
-User-triggered saves (explicit button tap or deliberate action) should fire `Haptics.selection()` on completion on iOS. This applies to settings saves and any explicit "Save" button interaction.
+User-triggered saves (explicit button tap or deliberate action) should fire `Haptics.selection()` on completion on iOS when the action has a visible completion moment. This applies to explicit "Save" button interactions.
 
 Long-running operation completion (file processing done, sync complete) should fire `Haptics.notification(.success)` paired with a toast.
 

@@ -37,7 +37,6 @@ The inline generator pattern used in `LoginView` and `BiometricLockView` is the 
 | Archive / unarchive action | `selection()` | Context menu components |
 | Pin / unpin action | `selection()` | Context menu components |
 | Drag reorder completion | `notification(.success)` | Panel reorder files |
-| Settings save completion | `selection()` | `SettingsSaveStatusPill.swift` |
 
 **Target spec**: [feedback-and-haptics](../patterns/feedback-and-haptics)
 
@@ -91,7 +90,6 @@ Both implementations are functional but surface-heavy for what is typically a ba
 | Context | Component | States |
 |---|---|---|
 | Notes detail view | Toolbar icon in `NotesDetailView.swift` | Saving, Saved (2s auto-dismiss), Unsaved changes, Sync queued, Error |
-| Settings sheet | `SettingsSaveStatusPill.swift` | Saving, Saved (auto-dismiss), Error |
 
 `SyncStatusIndicator.swift` exists and is used in `SettingsSections+System.swift` as a verbose sync status display with text and a "View queued changes" button. This component is being removed — background/optimistic writes are silent per the spec.
 
@@ -144,7 +142,6 @@ The only component consistently using `glassEffect` is `PhoneFloatingActionDock`
 | Component | Current material | Target |
 |---|---|---|
 | `PhoneFloatingActionDock` | `glassEffect(.regular.interactive(), in: Capsule())` | Done |
-| `SettingsSaveStatusPill` | `.ultraThinMaterial` (iOS) | Liquid Glass |
 | `NoteFormattingBar` | `.thinMaterial` | Liquid Glass |
 | `MacPopoverShell` | Custom background | Liquid Glass |
 | `MacModalShell` | Custom background | Liquid Glass |

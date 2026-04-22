@@ -189,7 +189,7 @@ Success states should be quiet unless the action was significant.
 - Destructive confirms: silent — the item disappearing is confirmation enough
 - Significant actions (skill execution complete, sync finished): a short acknowledgement is appropriate
 
-`SettingsSaveStatusPill` shows "Couldn't save settings" on failure. A success form ("Saved") is appropriate if the pill is shown.
+Settings changes are silent while healthy. If a settings write fails, route the user to queued changes rather than showing a dedicated settings save pill.
 
 ### Loading and waiting states
 

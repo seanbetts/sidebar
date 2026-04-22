@@ -183,7 +183,6 @@ macOS 26 supports Liquid Glass. The adoption plan covers Mac-specific surfaces:
 - `MacPopoverShell`
 - `MacModalShell`
 - `SettingsMacStyles`
-- `SettingsSaveStatusPill` (macOS branch)
 - `SidebarRail`
 - `SiteHeaderBar`
 

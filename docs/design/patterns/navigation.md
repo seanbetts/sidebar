@@ -175,8 +175,6 @@ Nested `.sheet` presentations within settings:
 - **Date of birth picker** — `.sheet(isPresented:)`, wrapped in `NavigationStack`
 - **Queued changes** — `.sheet(isPresented:)`, wrapped in `NavigationStack`
 
-`SettingsSaveStatusPill` floats at the bottom of the sheet and auto-dismisses after a save.
-
 ### macOS
 
 Same `.sheet` trigger and same `SettingsTabsView` structure, but the sheet is wrapped in `MacModalShell` for appropriate window sizing and chrome. Platform-specific implementations:

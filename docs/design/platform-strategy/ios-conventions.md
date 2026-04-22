@@ -141,7 +141,7 @@ iOS 26 is the minimum deployment target. Liquid Glass (`glassEffect`) is availab
 
 Current usage: `PhoneFloatingActionDock`.
 
-Planned usage (per adoption plan): `SettingsSaveStatusPill`, `SearchField` (dock chrome), `PanelHeader`, `SidebarRail`, `SiteHeaderBar`, `HeaderActionIcon`, `NoteFormattingBar`, `MacPopoverShell`, `MacModalShell`, `SettingsMacStyles`, `LoginView`.
+Planned usage (per adoption plan): `SearchField` (dock chrome), `PanelHeader`, `SidebarRail`, `SiteHeaderBar`, `HeaderActionIcon`, `NoteFormattingBar`, `MacPopoverShell`, `MacModalShell`, `SettingsMacStyles`, `LoginView`.
 
 **Rule for agent**: New transient surface chrome (pills, action bars, popovers) on iOS 26+ should use Liquid Glass where the adoption plan specifies it. Solid fills are used for persistent surfaces (panels, backgrounds).
 

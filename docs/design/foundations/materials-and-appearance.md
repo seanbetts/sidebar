@@ -55,7 +55,6 @@ The following surfaces use Liquid Glass. Rollout order matters: primitives and s
 | `MacPopoverShell` | macOS | Popover background |
 | `MacModalShell` | macOS | Modal background |
 | `SettingsMacStyles` | macOS | Settings surface chrome |
-| `SettingsSaveStatusPill` | iOS + macOS | Save status pill |
 | `SidebarRail` | iOS + macOS | Validate against content legibility before adopting |
 | `SiteHeaderBar` | iOS + macOS | Site section header chrome |
 | `HeaderActionIcon` | iOS + macOS | Icon button chrome |

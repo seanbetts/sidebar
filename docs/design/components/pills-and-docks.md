@@ -13,7 +13,7 @@ Define the four families of capsule-shaped surfaces used across sideBar, when to
 
 | Family | Purpose | Interactive | Examples |
 |---|---|---|---|
-| Status pill | Show current state with icon + text | Optional tap action | Settings save, sync status, stale retry, toast banner |
+| Status pill | Show current state with icon + text | Optional tap action | Sync status, stale retry, toast banner |
 | Metadata pill | Label content attributes | No | Task project/deadline, chat role, tool badge |
 | Action pill | Trigger behaviour on tap | Yes | Filter chip, error popover, retry button |
 | Floating dock | Glass toolbar container for iPhone compact layout | Yes (contains buttons) | Search dock, section action bar |
@@ -51,7 +51,6 @@ A small capsule that communicates a transient or ongoing state. Always has an ic
 
 | Implementation | Location | States | Tap action |
 |---|---|---|---|
-| `SettingsSaveStatusPill` | `Views/Settings/` | saving, saved, error | No |
 | `SiteHeaderBar` sync pill | `Views/Websites/` | syncing, pending | No |
 | `SiteHeaderBar` ingestion pill | `Views/Websites/` | multiple | Yes (opens sheet) |
 | `ToastBanner` | `Design/Components/ToastCenter.swift` | error, success | No |
@@ -66,7 +65,7 @@ These should converge on a shared `StatusPill` component in `Design/Components/`
 - Always use a semantic state, not ad hoc colours. If the state doesn't fit the table above, add a new state to `StatusPill`, don't inline custom colours.
 - Icon is required. A status pill without an icon is a metadata pill.
 - Text is required. An icon-only status indicator is a badge, not a pill.
-- Transient chrome (settings save, toast) should use Liquid Glass where the platform supports it, with `surface` as fallback.
+- Transient chrome (toast, retry, sync) should use Liquid Glass where the platform supports it, with `surface` as fallback.
 
 ---
 

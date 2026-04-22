@@ -73,7 +73,7 @@ struct QueuedChangeResolutionSheet: View {
             return conflictReason
         }
 
-        return "Retry or cancel this change from the sync status pill or queued changes view."
+        return "Retry or cancel this change from queued changes."
     }
 
     private var operationLabel: String {
