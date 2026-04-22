@@ -141,7 +141,7 @@ extension AppEnvironment {
                       Self.shouldReconcileQueuedWebsitesOnItemsChange(authState: self.authState) else {
                     return
                 }
-                self.reconcileQueuedWebsitesWithSavedItems(
+                self.scheduleQueuedWebsiteReconciliation(
                     trigger: "websitesStore.items.changed",
                     savedItemCount: items.count
                 )

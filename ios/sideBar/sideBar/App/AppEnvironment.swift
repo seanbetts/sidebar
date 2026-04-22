@@ -6,7 +6,6 @@ import os
 import UIKit
 #endif
 // MARK: - AppEnvironment
-
 public struct AppEnvironmentStorage {
     public static let shared = AppEnvironmentStorage(
         userDefaults: .standard,
@@ -15,7 +14,6 @@ public struct AppEnvironmentStorage {
         pendingShareStore: .shared,
         taskBadgeUpdater: LiveTaskBadgeUpdater()
     )
-
     public let userDefaults: UserDefaults
     public let widgetDataManager: WidgetDataManager
     public let extensionEventStore: ExtensionEventStore
@@ -136,6 +134,9 @@ public final class AppEnvironment: ObservableObject {
     var biometricBackgroundedAt: Date?
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
+    var queuedWebsiteReconcileTask: Task<Void, Never>?
+    var queuedWebsiteReconcileTrigger = "direct"
+    var queuedWebsiteReconcileSavedItemCount: Int?
     var websiteSaveHandoffObserver: AnyObject?
     var widgetTaskCompletionObserver: AnyObject?
     var staleAuthRetryBannerRevealTask: Task<Void, Never>?

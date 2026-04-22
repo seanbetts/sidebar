@@ -349,6 +349,68 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
     }
 
+    func testApplySyncItemsPrunesMatchingQueuedWebsiteStateAfterBulkSync() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+        environment.websitesViewModel.syncPendingWebsitesFromQueuedShares(
+            storage.pendingShareStore.loadAll()
+        )
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.url, url)
+
+        environment.websitesStore.applySyncItems([
+            WebsiteItem(
+                id: "saved-\(UUID().uuidString)",
+                title: "Saved",
+                url: url,
+                domain: "example.com",
+                savedAt: "2026-03-20T23:41:37Z",
+                publishedAt: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                archived: false,
+                faviconUrl: nil,
+                faviconR2Key: nil,
+                youtubeTranscripts: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-20T23:41:37Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            WebsiteItem(
+                id: "other-\(UUID().uuidString)",
+                title: "Other",
+                url: "https://other.example/articles/\(UUID().uuidString)",
+                domain: "other.example",
+                savedAt: "2026-03-20T23:41:37Z",
+                publishedAt: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                archived: false,
+                faviconUrl: nil,
+                faviconR2Key: nil,
+                youtubeTranscripts: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-20T23:41:37Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            )
+        ])
+
+        for _ in 0..<20
+            where !storage.pendingShareStore.loadAll().isEmpty
+            || !environment.websitesViewModel.pendingWebsites.isEmpty {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
+    }
+
     func testEnqueueWebsiteSaveDoesNotReplaySameURLThroughPendingQueue() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let gate = AsyncGate()

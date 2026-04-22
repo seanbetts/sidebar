@@ -43,6 +43,7 @@ extension AppEnvironment {
         trigger: String = "direct",
         savedItemCount: Int? = nil
     ) {
+        guard hasPendingWebsiteCoordinatorWork else { return }
         let existing = storage.pendingShareStore.loadAll()
         let resolvedSavedItemCount = savedItemCount ?? websitesStore.items.count
         let pruned = prunedQueuedWebsiteItems(
@@ -63,6 +64,28 @@ extension AppEnvironment {
         guard pruned.count != existing.count else { return }
         storage.pendingShareStore.replaceAll(pruned)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(pruned)
+    }
+
+    func scheduleQueuedWebsiteReconciliation(
+        trigger: String = "direct",
+        savedItemCount: Int? = nil
+    ) {
+        guard hasPendingWebsiteCoordinatorWork else { return }
+        queuedWebsiteReconcileTrigger = trigger
+        queuedWebsiteReconcileSavedItemCount = savedItemCount
+        guard queuedWebsiteReconcileTask == nil else { return }
+        queuedWebsiteReconcileTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            let resolvedTrigger = self.queuedWebsiteReconcileTrigger
+            let resolvedSavedItemCount = self.queuedWebsiteReconcileSavedItemCount
+            self.queuedWebsiteReconcileTask = nil
+            self.queuedWebsiteReconcileSavedItemCount = nil
+            self.reconcileQueuedWebsitesWithSavedItems(
+                trigger: resolvedTrigger,
+                savedItemCount: resolvedSavedItemCount
+            )
+        }
     }
 
     public func enqueueWebsiteSave(
