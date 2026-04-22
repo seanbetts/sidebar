@@ -54,6 +54,10 @@ CADDY_PID="/tmp/sidebar-caddy.pid"
 REPO_ROOT="$(pwd)"
 PRODUCT_DOCS_MINTLIFY_HOME="${HOME}/.sidebar/mintlify-product"
 DESIGN_DOCS_MINTLIFY_HOME="${HOME}/.sidebar/mintlify-design"
+APP_PROXY_URL="http://app.trysidebar.localhost:8080"
+APP_DIRECT_URL="http://localhost:3000"
+MARKETING_PROXY_URL="http://trysidebar.localhost:8080"
+MARKETING_DIRECT_URL="http://localhost:5173"
 TEST_DB_HOST="localhost"
 TEST_DB_PORT="5433"
 TEST_DB_NAME="sidebar_test"
@@ -1254,6 +1258,14 @@ status_test_db() {
   echo "  Install package if needed: brew install postgresql@16"
 }
 
+print_local_access_urls() {
+  echo "Local app URLs:"
+  echo "  App website: ${APP_PROXY_URL}"
+  echo "  App website (direct): ${APP_DIRECT_URL}"
+  echo "  Marketing website: ${MARKETING_PROXY_URL}"
+  echo "  Marketing website (direct): ${MARKETING_DIRECT_URL}"
+}
+
 show_logs() {
   local target="$1"
   case "${target}" in
@@ -1321,6 +1333,7 @@ case "${command}" in
     start_design_docs
     start_website
     start_caddy
+    print_local_access_urls
     ;;
   stop)
     for_each_runner stop_runner
@@ -1354,6 +1367,7 @@ case "${command}" in
     start_design_docs
     start_website
     start_caddy
+    print_local_access_urls
     ;;
   cleanup)
     cleanup_services
@@ -1361,14 +1375,15 @@ case "${command}" in
   status)
     for_each_runner status_runner
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
-    status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
+    status_service "${FRONTEND_PID}" "Frontend" "${APP_DIRECT_URL}" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
     status_service "${WEBSITE_WORKER_PID}" "Website processing worker" "n/a" "${WEBSITE_WORKER_LOG}" "website-worker"
     status_service "${DOCS_PID}" "Docs" "http://localhost:3001" "${DOCS_LOG}" "docs"
     status_service "${DESIGN_DOCS_PID}" "Design docs" "http://localhost:3002" "${DESIGN_DOCS_LOG}" "design-docs"
-    status_service "${WEBSITE_PID}" "Website" "http://localhost:5173" "${WEBSITE_LOG}" "website"
+    status_service "${WEBSITE_PID}" "Website" "${MARKETING_DIRECT_URL}" "${WEBSITE_LOG}" "website"
     status_service "${CADDY_PID}" "Caddy proxy" "http://*.trysidebar.localhost:8080" "${CADDY_LOG}" "caddy"
     status_test_db
+    print_local_access_urls
     ;;
   logs)
     show_logs "${2:-}"
