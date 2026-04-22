@@ -105,10 +105,17 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--surface);
+    isolation: isolate;
+    background: var(--surface-glass-fallback);
+    border-bottom: 1px solid var(--glass-stroke);
+    box-shadow: 0 1.25rem 2.5rem -2rem var(--shadow-color);
+    -webkit-backdrop-filter: saturate(180%) blur(1.5rem);
+    backdrop-filter: saturate(180%) blur(1.5rem);
   }
 
   .nav-inner {
+    position: relative;
+    z-index: 2;
     max-width: 78rem;
     margin: 0 auto;
     padding: 0 1.5rem;
@@ -224,6 +231,12 @@
     color: var(--color-foreground);
     background: var(--color-secondary);
     border-color: var(--color-border);
+  }
+
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .nav {
+      background: var(--surface-glass);
+    }
   }
 
   @media (max-width: 640px) {
