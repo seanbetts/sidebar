@@ -11,7 +11,10 @@ describe('marketing shell', () => {
     expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /docs/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /request early access/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /join early access list/i })).toHaveAttribute(
+      'href',
+      '/early-access'
+    );
     expect(screen.getByRole('button', { name: /switch to (light|dark) mode/i })).toBeInTheDocument();
   });
 

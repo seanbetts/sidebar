@@ -9,6 +9,10 @@ describe('homepage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: /your work\. your assistant\. one place\./i })
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /join early access list/i })).toHaveAttribute(
+      'href',
+      '/early-access'
+    );
     expect(screen.queryByLabelText(/sidebar brand/i)).not.toBeInTheDocument();
   });
 

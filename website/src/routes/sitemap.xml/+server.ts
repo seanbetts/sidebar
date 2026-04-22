@@ -7,6 +7,7 @@ const SITE_URL = 'https://trysidebar.ai';
 const pages = [
   { path: '/', priority: '1.0', changefreq: 'weekly' },
   { path: '/about/', priority: '0.8', changefreq: 'monthly' },
+  { path: '/early-access/', priority: '0.85', changefreq: 'weekly' },
   { path: '/pricing/', priority: '0.7', changefreq: 'monthly' },
   { path: '/privacy/', priority: '0.5', changefreq: 'monthly' }
 ];

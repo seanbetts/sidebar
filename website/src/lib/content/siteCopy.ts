@@ -5,8 +5,8 @@ export const siteCopy = {
     hero: {
       headline: MARKETING_COPY.tagline,
       subhead: MARKETING_COPY.subtitle,
-      primaryCta: 'Request Early Access',
-      primaryHref: 'https://app.trysidebar.ai',
+      primaryCta: 'Join Early Access List',
+      primaryHref: '/early-access',
       secondaryCta: 'Read the Docs',
       secondaryHref: 'https://docs.trysidebar.ai',
       platforms: 'Available on iPhone, iPad, Mac, and web',

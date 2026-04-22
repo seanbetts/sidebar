@@ -78,7 +78,7 @@
       <a href="/about">About</a>
       <a href="/pricing">Pricing</a>
       <a href="https://docs.trysidebar.ai">Docs</a>
-      <a href="https://app.trysidebar.ai" class="cta">Request Early Access</a>
+      <a href="/early-access" class="cta">Join Early Access List</a>
       <button
         class="theme-toggle"
         onclick={toggleTheme}
