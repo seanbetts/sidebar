@@ -26,17 +26,20 @@ struct SideBarMarkdownContainer: View {
     let style: SideBarMarkdownStyle
     let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
     let renderingContext: SideBarMarkdownRenderingContext
+    let additionalContentInsets: EdgeInsets
 
     init(
         text: String,
         style: SideBarMarkdownStyle = .default,
         youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil,
-        renderingContext: SideBarMarkdownRenderingContext = .standard
+        renderingContext: SideBarMarkdownRenderingContext = .standard,
+        additionalContentInsets: EdgeInsets = .init()
     ) {
         self.text = text
         self.style = style
         self.youtubeTranscriptContext = youtubeTranscriptContext
         self.renderingContext = renderingContext
+        self.additionalContentInsets = additionalContentInsets
     }
 
     var body: some View {
@@ -49,6 +52,7 @@ struct SideBarMarkdownContainer: View {
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+            .padding(additionalContentInsets)
             .frame(maxWidth: .infinity, alignment: .top)
     }
 }

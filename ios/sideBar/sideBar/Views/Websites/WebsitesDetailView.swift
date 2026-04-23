@@ -8,6 +8,7 @@ import UIKit
 
 struct WebsitesDetailView: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+    static let websiteContentBottomInset: CGFloat = DesignTokens.Spacing.xxl
 
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
@@ -216,7 +217,13 @@ extension WebsitesDetailView {
                             await viewModel.requestYouTubeTranscript(websiteId: websiteId, url: url)
                         }
                     ),
-                    renderingContext: .website
+                    renderingContext: .website,
+                    additionalContentInsets: EdgeInsets(
+                        top: 0,
+                        leading: 0,
+                        bottom: Self.websiteContentBottomInset,
+                        trailing: 0
+                    )
                 )
             }
             #if os(iOS)
