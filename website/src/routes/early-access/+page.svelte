@@ -106,7 +106,7 @@
         </label>
 
         <fieldset class="field fieldset">
-          <legend>Which devices do you want to use sideBar on?</legend>
+          <p class="fieldset-label">Which devices do you want to use sideBar on?</p>
           <div class="choice-grid">
             {#each deviceOptions as device}
               <label class="choice">
@@ -134,7 +134,7 @@
         </label>
 
         <fieldset class="field fieldset">
-          <legend>Are you open to sharing feedback during beta?</legend>
+          <p class="fieldset-label">Are you open to sharing feedback during beta?</p>
           <div class="feedback-list">
             {#each feedbackOptions as option}
               <label class="choice choice--radio">
@@ -370,7 +370,7 @@
   }
 
   .field > span,
-  .fieldset legend {
+  .fieldset-label {
     font-size: 0.92rem;
     font-weight: 600;
     color: var(--color-foreground);
@@ -407,6 +407,11 @@
   .fieldset {
     border: 0;
     padding: 0;
+    margin: 0 0 0.55rem;
+  }
+
+  .fieldset-label {
+    margin: 0 0 0.45rem;
   }
 
   .choice-grid,
