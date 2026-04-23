@@ -57,7 +57,7 @@
 
 <div class="page">
   <section class="intro">
-    <div class="page-shell page-shell--wide intro-grid">
+    <div class="page-shell page-shell--wide intro-shell">
       <div class="intro-copy">
         <p class="eyebrow">Early access</p>
         <h1>Join the early access list</h1>
@@ -72,15 +72,6 @@
           iPhone, iPad, and Mac, where the experience is strongest today.
         </p>
       </div>
-
-      <aside class="signal-card" aria-label="What this means">
-        <p class="signal-label">How it works</p>
-        <ol>
-          <li>Join the list by email.</li>
-          <li>Selected people receive beta invites.</li>
-          <li>Launch opens sideBar more broadly with normal pricing.</li>
-        </ol>
-      </aside>
     </div>
   </section>
 
@@ -88,7 +79,7 @@
     <div class="page-shell page-shell--wide details-shell">
       <form class="form-card" aria-label="Early access form">
         <div class="form-header">
-          <h2>Tell me a little about you</h2>
+          <h2>Tell us a little bit about yourself</h2>
           <p>
             This first version still sends your request through email, but you can
             complete the details here instead of writing it from scratch.
@@ -197,11 +188,8 @@
     max-width: var(--page-width);
   }
 
-  .intro-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
-    gap: 1.25rem;
-    align-items: start;
+  .intro-shell {
+    max-width: 52rem;
   }
 
   .intro-copy {
@@ -222,7 +210,6 @@
   h1,
   h2,
   p,
-  ol,
   ul {
     margin: 0;
   }
@@ -244,8 +231,7 @@
   .lead,
   .supporting,
   .form-header p,
-  .detail-card li,
-  .signal-card li {
+  .detail-card li {
     font-size: var(--page-body-size);
     line-height: var(--page-body-leading);
     color: var(--color-muted-foreground);
@@ -303,7 +289,6 @@
     border-color: var(--color-border);
   }
 
-  .signal-card,
   .form-card,
   .detail-card {
     padding: 1.35rem;
@@ -313,25 +298,10 @@
     box-shadow: 0 24px 60px -36px var(--shadow-color);
   }
 
-  .signal-card {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .signal-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-muted-foreground);
-  }
-
-  .signal-card ol,
   .detail-card ul {
     padding-left: 1.2rem;
   }
 
-  .signal-card li + li,
   .detail-card li + li {
     margin-top: 0.6rem;
   }
@@ -464,10 +434,6 @@
   }
 
   @media (max-width: 760px) {
-    .intro-grid {
-      grid-template-columns: 1fr;
-    }
-
     .choice-grid {
       grid-template-columns: 1fr;
     }
