@@ -56,7 +56,160 @@ extension WebsitesStoreTests {
         store.applyListUpdate([local, remote], persist: false)
 
         XCTAssertEqual(store.items.map(\.id), ["local", "remote"])
-        XCTAssertTrue(store.reconciliationState.expirations.isEmpty)
+        XCTAssertNotNil(store.reconciliationState.expirations["local"])
+    }
+
+    func testApplyListUpdateKeepsRecentLocalInsertionOrderWhenServerListCatchesUp() async {
+        let api = ReconciliationMockWebsitesAPI()
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager(),
+            localListReconciliationWindow: 30
+        )
+        let firstLocal = WebsiteItem(
+            id: "first-local",
+            title: "First Local",
+            url: "https://example.com/first-local",
+            domain: "example.com",
+            savedAt: "2026-03-13T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "3 min",
+            updatedAt: "2026-03-13T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let secondLocal = WebsiteItem(
+            id: "second-local",
+            title: "Second Local",
+            url: "https://example.com/second-local",
+            domain: "example.com",
+            savedAt: "2026-03-13T00:00:01Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "2 min",
+            updatedAt: "2026-03-13T00:00:01Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let remote = WebsiteItem(
+            id: "remote",
+            title: "Remote",
+            url: "https://example.com/remote",
+            domain: "example.com",
+            savedAt: "2026-03-12T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "1 min",
+            updatedAt: "2026-03-12T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+
+        store.insertItemAtTop(firstLocal, persist: false)
+        store.insertItemAtTop(secondLocal, persist: false)
+
+        XCTAssertEqual(store.items.map(\.id), ["second-local", "first-local"])
+
+        store.applyListUpdate([firstLocal, secondLocal, remote], persist: false)
+
+        XCTAssertEqual(
+            store.items.map(\.id),
+            ["second-local", "first-local", "remote"]
+        )
+    }
+
+    func testApplyListUpdateFallsBackToServerOrderAfterLocalInsertionWindowExpires() async {
+        let api = ReconciliationMockWebsitesAPI()
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager(),
+            localListReconciliationWindow: 30
+        )
+        let firstLocal = WebsiteItem(
+            id: "first-local",
+            title: "First Local",
+            url: "https://example.com/first-local",
+            domain: "example.com",
+            savedAt: "2026-03-13T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "3 min",
+            updatedAt: "2026-03-13T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let secondLocal = WebsiteItem(
+            id: "second-local",
+            title: "Second Local",
+            url: "https://example.com/second-local",
+            domain: "example.com",
+            savedAt: "2026-03-13T00:00:01Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "2 min",
+            updatedAt: "2026-03-13T00:00:01Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let remote = WebsiteItem(
+            id: "remote",
+            title: "Remote",
+            url: "https://example.com/remote",
+            domain: "example.com",
+            savedAt: "2026-03-12T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "1 min",
+            updatedAt: "2026-03-12T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+
+        store.insertItemAtTop(firstLocal, persist: false)
+        store.insertItemAtTop(secondLocal, persist: false)
+        store.pruneExpiredLocallyInsertedWebsites(
+            now: Date().addingTimeInterval(store.localListReconciliationWindow + 1)
+        )
+
+        store.applyListUpdate([firstLocal, secondLocal, remote], persist: false)
+
+        XCTAssertEqual(
+            store.items.map(\.id),
+            ["first-local", "second-local", "remote"]
+        )
     }
 }
 

@@ -21,10 +21,8 @@ extension WebsitesStore {
             return incoming
         }
 
-        let incomingIds = Set(incoming.map(\.id))
-        for id in incomingIds {
-            reconciliationState.expirations.removeValue(forKey: id)
-        }
+        let reorderedIncoming = reorderLocallyInsertedIncomingItems(incoming)
+        let incomingIds = Set(reorderedIncoming.map(\.id))
 
         let preserved = current.filter { item in
             item.archived == false
@@ -32,9 +30,35 @@ extension WebsitesStore {
                 && reconciliationState.expirations[item.id] != nil
         }
         guard !preserved.isEmpty else {
+            return reorderedIncoming
+        }
+        return mergeReconciledActiveItems(incoming: reorderedIncoming, preserved: preserved)
+    }
+
+    func reorderLocallyInsertedIncomingItems(_ incoming: [WebsiteItem]) -> [WebsiteItem] {
+        let recentInsertions = reconciliationState.expirations
+        guard !recentInsertions.isEmpty else {
             return incoming
         }
-        return mergeReconciledActiveItems(incoming: incoming, preserved: preserved)
+
+        return incoming
+            .enumerated()
+            .sorted { lhs, rhs in
+                let leftExpiration = recentInsertions[lhs.element.id]
+                let rightExpiration = recentInsertions[rhs.element.id]
+
+                switch (leftExpiration, rightExpiration) {
+                case let (left?, right?) where left != right:
+                    return left > right
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                default:
+                    return lhs.offset < rhs.offset
+                }
+            }
+            .map(\.element)
     }
 
     func mergeReconciledActiveItems(incoming: [WebsiteItem], preserved: [WebsiteItem]) -> [WebsiteItem] {
