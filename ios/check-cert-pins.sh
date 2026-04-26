@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# check-cert-pins.sh — compare bundled .cer SPKI hashes against live server cert
+# check-cert-pins.sh — compare bundled .cer SPKI hashes against live server chain
 #
 # Usage:
 #   ./ios/check-cert-pins.sh [hostname] [port]
 #
 # Exits non-zero if:
 #   - The server cert cannot be fetched
-#   - No bundled .cer SPKI hash matches the live server SPKI
+#   - No bundled .cer SPKI hash matches the live server chain
 #   - The server cert has expired or expires within WARN_DAYS
 #
 # Requires: openssl, sha256sum (or shasum on macOS)
@@ -34,25 +34,66 @@ sha256_hex() {
 
 log "Checking live cert for $HOST:$PORT ..."
 
-# Fetch the PEM of the server leaf cert
-SERVER_PEM=$(openssl s_client \
+CHAIN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cert-pin-check.XXXXXX")
+cleanup() {
+    rm -rf "$CHAIN_DIR"
+}
+trap cleanup EXIT
+
+# Fetch the PEMs for the server-presented certificate chain.
+openssl s_client \
     -connect "$HOST:$PORT" \
     -servername "$HOST" \
     -verify_quiet \
+    -showcerts \
     2>/dev/null </dev/null \
-    | openssl x509 2>/dev/null) || true
+    | awk -v dir="$CHAIN_DIR" '
+        /-----BEGIN CERTIFICATE-----/ {
+            in_cert = 1
+            cert_index += 1
+            cert_file = sprintf("%s/cert-%02d.pem", dir, cert_index)
+        }
+        in_cert {
+            print > cert_file
+        }
+        /-----END CERTIFICATE-----/ {
+            in_cert = 0
+            close(cert_file)
+        }
+    ' || true
 
+SERVER_CHAIN_FILES=("$CHAIN_DIR"/cert-*.pem)
+if [ ${#SERVER_CHAIN_FILES[@]} -eq 0 ] || [ ! -f "${SERVER_CHAIN_FILES[0]}" ]; then
+    fail "Could not retrieve server certificate chain from $HOST:$PORT"
+fi
+
+SERVER_PEM=$(cat "${SERVER_CHAIN_FILES[0]}")
 if [ -z "$SERVER_PEM" ]; then
     fail "Could not retrieve server certificate from $HOST:$PORT"
 fi
 
-# SPKI hash = SHA-256 of the DER-encoded SubjectPublicKeyInfo
-SERVER_SPKI=$(echo "$SERVER_PEM" \
-    | openssl x509 -noout -pubkey 2>/dev/null \
-    | openssl pkey -pubin -outform DER 2>/dev/null \
-    | sha256_hex)
+LIVE_CHAIN_SPKIS=()
+log "Live cert chain:"
+CHAIN_INDEX=0
+for PEM in "${SERVER_CHAIN_FILES[@]}"; do
+    [ -f "$PEM" ] || continue
+    CHAIN_INDEX=$((CHAIN_INDEX + 1))
+    CHAIN_SPKI=$(openssl x509 -in "$PEM" -noout -pubkey 2>/dev/null \
+        | openssl pkey -pubin -outform DER 2>/dev/null \
+        | sha256_hex)
+    LIVE_CHAIN_SPKIS+=("$CHAIN_SPKI")
+    SUBJECT=$(openssl x509 -in "$PEM" -noout -subject 2>/dev/null \
+        | sed 's/subject=//' | tr -d '\n')
+    ENDDATE=$(openssl x509 -in "$PEM" -noout -enddate 2>/dev/null \
+        | cut -d= -f2)
+    LABEL="chain[$CHAIN_INDEX]"
+    if [ "$CHAIN_INDEX" -eq 1 ]; then
+        LABEL="leaf"
+    fi
+    log "  $LABEL: SPKI=$CHAIN_SPKI  ($SUBJECT, expires $ENDDATE)"
+done
 
-log "Server SPKI:      $SERVER_SPKI"
+SERVER_SPKI="${LIVE_CHAIN_SPKIS[0]}"
 
 # Cert expiry
 EXPIRY=$(echo "$SERVER_PEM" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
@@ -94,16 +135,23 @@ for CER in "${CER_FILES[@]}"; do
     ENDDATE=$(openssl x509 -inform DER -in "$CER" -noout -enddate 2>/dev/null \
         | cut -d= -f2)
     SUFFIX=""
-    if [ "$BUNDLED_SPKI" = "$SERVER_SPKI" ]; then
-        MATCH=1
-        SUFFIX=" ✓ MATCH"
-    fi
+    CHAIN_INDEX=0
+    for LIVE_SPKI in "${LIVE_CHAIN_SPKIS[@]}"; do
+        CHAIN_INDEX=$((CHAIN_INDEX + 1))
+        if [ "$BUNDLED_SPKI" = "$LIVE_SPKI" ]; then
+            MATCH=1
+            LABEL="chain[$CHAIN_INDEX]"
+            if [ "$CHAIN_INDEX" -eq 1 ]; then
+                LABEL="leaf"
+            fi
+            SUFFIX=" MATCHES live $LABEL"
+        fi
+    done
     log "  $(basename "$CER"): SPKI=$BUNDLED_SPKI  ($SUBJECT, expires $ENDDATE)$SUFFIX"
 done
 
 if [ "$MATCH" -eq 0 ]; then
-    fail "No bundled .cer SPKI matches live server ($HOST) SPKI=$SERVER_SPKI"
-    fail "Update sideBar/sideBar/Resources/ with the current server cert before the next release."
+    fail "No bundled .cer SPKI matches live server chain ($HOST); leaf SPKI=$SERVER_SPKI. Update sideBar/sideBar/Resources/ before the next release."
 fi
 
 log "Cert pin check PASSED for $HOST"
