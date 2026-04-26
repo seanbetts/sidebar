@@ -39,9 +39,15 @@ struct ReauthenticationRequiredView: View {
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: "lock.rotation")
-                .appFont(.title2)
-                .foregroundStyle(.secondary)
+            VStack(spacing: DesignTokens.Spacing.xs) {
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: DesignTokens.Icon.hero, height: DesignTokens.Icon.hero)
+                    .accessibilityHidden(true)
+                Text("sideBar")
+                    .appFont(.title2Semibold)
+            }
             Text("Sign in again")
                 .appFont(.title2)
             Text("Your session expired. Sign in again to continue.")

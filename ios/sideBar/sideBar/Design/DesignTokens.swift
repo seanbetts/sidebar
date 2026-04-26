@@ -45,6 +45,7 @@ enum DesignTokens {
         static let lg: CGFloat = 24
         static let xl: CGFloat = 32
         static let xxl: CGFloat = 40
+        static let hero: CGFloat = 64
     }
 
     enum Colors {
