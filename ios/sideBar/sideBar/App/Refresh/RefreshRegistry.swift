@@ -10,7 +10,23 @@ final class RefreshRegistry {
 
     func refresh(plan: RefreshPlan) async {
         for adapter in adapters where shouldRefresh(adapter: adapter, for: plan) {
+            StartupDebugTrace.log(
+                "refresh.adapter.start",
+                details: [
+                    "section": adapter.section.rawValue,
+                    "targets": plan.traceTargets,
+                    "trigger": plan.trigger.rawValue
+                ]
+            )
             await adapter.refresh(plan: plan)
+            StartupDebugTrace.log(
+                "refresh.adapter.end",
+                details: [
+                    "section": adapter.section.rawValue,
+                    "targets": plan.traceTargets,
+                    "trigger": plan.trigger.rawValue
+                ]
+            )
         }
     }
 

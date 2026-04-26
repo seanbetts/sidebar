@@ -15,6 +15,23 @@ enum RefreshTarget: Hashable, Equatable {
     case visibleDetail(AppSection)
     case pinnedMetadata(AppSection)
     case archiveList(AppSection)
+
+    var traceName: String {
+        switch self {
+        case .chatList:
+            return "chatList"
+        case .taskCounts:
+            return "taskCounts"
+        case .sectionList(let section):
+            return "sectionList.\(section.rawValue)"
+        case .visibleDetail(let section):
+            return "visibleDetail.\(section.rawValue)"
+        case .pinnedMetadata(let section):
+            return "pinnedMetadata.\(section.rawValue)"
+        case .archiveList(let section):
+            return "archiveList.\(section.rawValue)"
+        }
+    }
 }
 
 struct RefreshContext: Equatable {
@@ -30,4 +47,8 @@ struct RefreshPlan: Hashable, Equatable {
     let trigger: RefreshTrigger
     let targets: [RefreshTarget]
     let requiresQueueReplayFirst: Bool
+
+    var traceTargets: String {
+        targets.map(\.traceName).joined(separator: ",")
+    }
 }

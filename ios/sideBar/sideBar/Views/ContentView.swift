@@ -57,7 +57,8 @@ public struct ContentView: View {
             .onAppear {
                 syncOnboardingPresentation()
             }
-            .onChange(of: environment.authState) { _, _ in
+            .onChange(of: environment.authState) { _, newValue in
+                handleRootAuthStateChange(newValue)
                 syncOnboardingPresentation()
             }
             .onChange(of: onboardingStatusRaw) { _, _ in
@@ -215,6 +216,19 @@ public struct ContentView: View {
         if shouldAutoPresentOnboarding {
             showOnboarding = true
         }
+    }
+
+    private func handleRootAuthStateChange(_ authState: AuthState) {
+        guard Self.shouldResetSignedInBootstrapState(authState: authState) else { return }
+        StartupDebugTrace.log(
+            "signed-in.bootstrap.reset",
+            details: [
+                "auth_state": authState.rawValue,
+                "did_load_settings": didLoadSettings ? "true" : "false"
+            ]
+        )
+        didEnsureInitialPhoneChatInterface = false
+        didLoadSettings = false
     }
 
     private func handleOnboardingDismissed() {

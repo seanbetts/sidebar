@@ -3,6 +3,25 @@ import XCTest
 
 @MainActor
 final class RefreshCoordinatorTests: XCTestCase {
+    func testRefreshPlanTraceTargetsUseStableNames() {
+        let plan = RefreshPlan(
+            trigger: .coldLaunch,
+            targets: [
+                .chatList,
+                .taskCounts,
+                .sectionList(.notes),
+                .visibleDetail(.websites),
+                .pinnedMetadata(.files)
+            ],
+            requiresQueueReplayFirst: false
+        )
+
+        XCTAssertEqual(
+            plan.traceTargets,
+            "chatList,taskCounts,sectionList.notes,visibleDetail.websites,pinnedMetadata.files"
+        )
+    }
+
     func testCoordinatorCoalescesDuplicateActivationRequestsWhileRefreshIsInFlight() async {
         let adapter = BlockingRefreshAdapter(section: .notes)
         let coordinator = RefreshCoordinator(
