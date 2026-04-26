@@ -48,8 +48,7 @@ extension AppEnvironmentDeepLinkTests {
                 WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
             )
         )
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
+        let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),
             websitesAPI: websitesAPI
@@ -63,7 +62,7 @@ extension AppEnvironmentDeepLinkTests {
 
         authSession.authState = .active
         environment.refreshAuthState()
-        await waitForWebsiteEventSurface(url, in: environment)
+        await waitForWebsiteSaveCallCount(1, in: websitesAPI)
 
         XCTAssertEqual(websitesAPI.lastSavedURL, url)
         XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))

@@ -38,8 +38,7 @@ extension AppEnvironmentDeepLinkTests {
                 await replayGate.wait()
             }
         )
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
+        let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),
             websitesAPI: websitesAPI
