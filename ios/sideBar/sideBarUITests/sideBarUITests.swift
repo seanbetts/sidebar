@@ -454,6 +454,7 @@ enum SideBarUITestConstants {
     static let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
     static let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
     static let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+    static let uiTestBootstrapAuthKey = "SIDEBAR_UI_TEST_BOOTSTRAP_AUTH"
     static let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
     static let uiTestForceCompletedOnboardingKey = "SIDEBAR_UI_TEST_FORCE_COMPLETED_ONBOARDING"
     static let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"

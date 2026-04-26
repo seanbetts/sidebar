@@ -15,8 +15,16 @@ final class UITestAuthBootstrapTests: XCTestCase {
         ]))
     }
 
+    func testMakeSeededSessionRequiresExplicitBootstrapOptIn() {
+        XCTAssertNil(UITestAuthBootstrap.makeSeededSession(from: [
+            UITestAuthBootstrap.accessTokenKey: "token-123",
+            UITestAuthBootstrap.userIdKey: "user-456"
+        ]))
+    }
+
     func testMakeSeededSessionReturnsActiveSessionForTrimmedEnvironmentValues() throws {
         let session = try XCTUnwrap(UITestAuthBootstrap.makeSeededSession(from: [
+            UITestAuthBootstrap.bootstrapAuthKey: "1",
             UITestAuthBootstrap.accessTokenKey: " token-123 ",
             UITestAuthBootstrap.userIdKey: "\nuser-456\t"
         ]))
@@ -30,6 +38,7 @@ final class UITestAuthBootstrapTests: XCTestCase {
 
     func testMakeSeededSessionReturnsStaleSessionWhenForcedByEnvironment() throws {
         let session = try XCTUnwrap(UITestAuthBootstrap.makeSeededSession(from: [
+            UITestAuthBootstrap.bootstrapAuthKey: "1",
             UITestAuthBootstrap.forceStaleAuthKey: "1"
         ]))
         Self.retainedSessions.append(session)
@@ -42,6 +51,7 @@ final class UITestAuthBootstrapTests: XCTestCase {
 
     func testForcedStaleSessionPreservesExplicitSeededCredentials() throws {
         let session = try XCTUnwrap(UITestAuthBootstrap.makeSeededSession(from: [
+            UITestAuthBootstrap.bootstrapAuthKey: "1",
             UITestAuthBootstrap.forceStaleAuthKey: "1",
             UITestAuthBootstrap.accessTokenKey: " token-123 ",
             UITestAuthBootstrap.userIdKey: "\nuser-456\t"

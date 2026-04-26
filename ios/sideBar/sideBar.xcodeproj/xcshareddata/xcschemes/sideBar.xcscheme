@@ -75,22 +75,17 @@
          <EnvironmentVariable
             key = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
             value = "REDACTED_FOR_PUBLIC_RELEASE"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "SIDEBAR_UI_TEST_USER_ID"
             value = "REDACTED_FOR_PUBLIC_RELEASE"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
             value = "1"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "SIDEBAR_STARTUP_DEBUG"
-            value = "1"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>

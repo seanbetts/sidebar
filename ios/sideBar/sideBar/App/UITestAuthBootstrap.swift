@@ -2,6 +2,7 @@ import Foundation
 
 /// UI-test-only launch bootstrap that can start the app from an authenticated state.
 enum UITestAuthBootstrap {
+    static let bootstrapAuthKey = "SIDEBAR_UI_TEST_BOOTSTRAP_AUTH"
     static let accessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
     static let userIdKey = "SIDEBAR_UI_TEST_USER_ID"
     static let forceStaleAuthKey = "SIDEBAR_UI_TEST_FORCE_STALE_AUTH"
@@ -10,6 +11,7 @@ enum UITestAuthBootstrap {
     private static let fallbackUserId = "debug-stale-auth-user"
 
     static func makeSeededSession(from environment: [String: String]) -> PlaceholderAuthSession? {
+        guard environment[bootstrapAuthKey] == "1" else { return nil }
         if environment[forceStaleAuthKey] == "1" {
             return PlaceholderAuthSession(
                 accessToken: trimmedValue(for: accessTokenKey, in: environment) ?? fallbackAccessToken,
