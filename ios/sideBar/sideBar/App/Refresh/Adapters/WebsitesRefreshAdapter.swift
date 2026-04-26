@@ -17,7 +17,7 @@ final class WebsitesRefreshAdapter: DomainRefreshAdapter {
 
         if plan.targets.contains(.visibleDetail(.websites)),
            let websiteId = viewModel.selectedWebsiteId {
-            await viewModel.store.refreshDetail(id: websiteId)
+            await viewModel.loadById(id: websiteId, force: true)
         }
     }
 }

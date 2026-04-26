@@ -174,7 +174,7 @@ public final class WebsitesViewModel: ObservableObject {
         await store.loadArchivedList(force: force)
     }
 
-    public func loadById(id: String) async {
+    public func loadById(id: String, force: Bool = false) async {
         let start = ProcessInfo.processInfo.systemUptime
         WebsiteQueueDebugTrace.log(
             "websites-detail.load.request",
@@ -198,7 +198,7 @@ public final class WebsitesViewModel: ObservableObject {
         }
         isLoadingDetail = true
         do {
-            try await store.loadDetail(id: id)
+            try await store.loadDetail(id: id, force: force)
             let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
             WebsiteQueueDebugTrace.log(
                 "websites-detail.load.success",

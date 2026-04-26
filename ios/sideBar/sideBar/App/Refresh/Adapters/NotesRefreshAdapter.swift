@@ -17,7 +17,7 @@ final class NotesRefreshAdapter: DomainRefreshAdapter {
 
         if plan.targets.contains(.visibleDetail(.notes)),
            let noteId = viewModel.selectedNoteId {
-            await viewModel.store.refreshNote(id: noteId)
+            await viewModel.loadNote(id: noteId, force: true)
         }
     }
 }

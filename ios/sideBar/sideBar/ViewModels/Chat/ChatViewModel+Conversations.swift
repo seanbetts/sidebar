@@ -457,8 +457,8 @@ extension ChatViewModel {
     }
 
     public func loadConversation(id: String, silent: Bool = false) async {
+        errorMessage = nil
         if !silent {
-            errorMessage = nil
             isLoadingMessages = true
         }
         if !networkStatus.offlineCapabilityPolicy.canAttemptServerRead,

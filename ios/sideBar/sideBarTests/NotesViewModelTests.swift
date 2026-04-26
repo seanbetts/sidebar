@@ -1563,6 +1563,97 @@ extension NotesViewModelTests {
         }
         XCTAssertEqual(viewModel.archivedTree?.children.first?.path, "archived")
     }
+
+    func testRefreshAdapterClearsPreviousTreeLoadErrorAfterRecoveredRefresh() async throws {
+        let recoveredTree = FileTree(children: [
+            FileNode(
+                name: "Recovered.md",
+                path: "recovered",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let api = SequencedNotesAPI(
+            treeResults: [
+                .failure(APIClientError.missingToken),
+                .success(recoveredTree)
+            ],
+            noteResults: []
+        )
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.loadTree()
+        XCTAssertNotNil(viewModel.errorMessage)
+
+        let adapter = NotesRefreshAdapter(viewModel: viewModel)
+        await adapter.refresh(
+            plan: RefreshPlan(
+                trigger: .coldLaunch,
+                targets: [.sectionList(.notes)],
+                requiresQueueReplayFirst: false
+            )
+        )
+
+        XCTAssertNil(viewModel.errorMessage)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.tree?.children.first?.path == "recovered"
+        }
+    }
+
+    func testRefreshAdapterClearsPreviousNoteLoadErrorAfterRecoveredDetailRefresh() async throws {
+        let note = NotePayload(
+            id: "note-1",
+            name: "Recovered.md",
+            content: "Recovered",
+            path: "note-1",
+            modified: nil,
+            created: nil
+        )
+        let api = SequencedNotesAPI(
+            treeResults: [],
+            noteResults: [
+                .failure(APIClientError.missingToken),
+                .success(note)
+            ]
+        )
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.loadNote(id: "note-1")
+        XCTAssertEqual(viewModel.selectedNoteId, "note-1")
+        XCTAssertNotNil(viewModel.errorMessage)
+
+        let adapter = NotesRefreshAdapter(viewModel: viewModel)
+        await adapter.refresh(
+            plan: RefreshPlan(
+                trigger: .coldLaunch,
+                targets: [.visibleDetail(.notes)],
+                requiresQueueReplayFirst: false
+            )
+        )
+
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.activeNote?.id, "note-1")
+    }
 }
 
 @MainActor
@@ -1576,5 +1667,104 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
             return
         }
         await Task.yield()
+    }
+}
+
+@MainActor
+private final class SequencedNotesAPI: NotesProviding {
+    private var treeResults: [Result<FileTree, Error>]
+    private var noteResults: [Result<NotePayload, Error>]
+
+    init(
+        treeResults: [Result<FileTree, Error>],
+        noteResults: [Result<NotePayload, Error>]
+    ) {
+        self.treeResults = treeResults
+        self.noteResults = noteResults
+    }
+
+    func listTree() async throws -> FileTree {
+        guard !treeResults.isEmpty else { return FileTree(children: []) }
+        return try treeResults.removeFirst().get()
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        guard !noteResults.isEmpty else { throw MockError.forced }
+        return try noteResults.removeFirst().get()
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        _ = id
+        _ = document
+        throw MockError.forced
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
     }
 }

@@ -1901,6 +1901,39 @@ final class WebsitesViewModelTests: XCTestCase {
         )
         XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
     }
+
+    func testRefreshAdapterClearsPreviousDetailLoadErrorAfterRecoveredRefresh() async {
+        let detail = makeDetail(id: "site-1", content: "Recovered")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        api.enqueueGetResult(.failure(APIClientError.missingToken))
+        api.enqueueGetResult(.success(detail))
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            transcriptPollInterval: 60
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        XCTAssertEqual(viewModel.selectedWebsiteId, "site-1")
+        XCTAssertNotNil(viewModel.errorMessage)
+
+        let adapter = WebsitesRefreshAdapter(viewModel: viewModel)
+        await adapter.refresh(
+            plan: RefreshPlan(
+                trigger: .coldLaunch,
+                targets: [.visibleDetail(.websites)],
+                requiresQueueReplayFirst: false
+            )
+        )
+
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.active?.id, "site-1")
+        XCTAssertEqual(viewModel.active?.content, "Recovered")
+    }
 }
 
 extension WebsitesViewModelTests {

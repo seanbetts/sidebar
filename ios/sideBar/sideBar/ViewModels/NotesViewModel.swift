@@ -112,8 +112,14 @@ public final class NotesViewModel: ObservableObject {
     public func refreshTree(force: Bool = false) async {
         do {
             try await store.loadTree(force: force)
+            tree = store.tree
+            errorMessage = nil
         } catch {
-            toastCenter.show(message: "Failed to refresh notes")
+            if tree == nil {
+                errorMessage = ErrorMapping.message(for: error)
+            } else {
+                toastCenter.show(message: "Failed to refresh notes")
+            }
         }
     }
 
@@ -129,17 +135,19 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
-    public func loadNote(id: String) async {
+    public func loadNote(id: String, force: Bool = false) async {
         errorMessage = nil
         selectedNoteId = id
-        store.clearActiveNote()
+        if activeNote?.id != id {
+            store.clearActiveNote()
+        }
         if !notesOfflineCapabilityPolicy.canAttemptServerRead, !store.hasCachedNote(id: id) {
             errorMessage = "This note isn't available offline yet."
             pendingNoteId = id
             return
         }
         do {
-            try await store.loadNote(id: id)
+            try await store.loadNote(id: id, force: force)
             activeNote = store.activeNote
             pendingNoteId = nil
         } catch {

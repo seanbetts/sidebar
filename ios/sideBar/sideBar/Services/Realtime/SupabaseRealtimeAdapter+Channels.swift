@@ -137,6 +137,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            notesSubscriptions.removeAll()
+            notesChannel = nil
             logger.error("Notes subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -190,6 +192,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            websitesSubscriptions.removeAll()
+            websitesChannel = nil
             logger.error("Websites subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -243,6 +247,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            ingestedFilesSubscriptions.removeAll()
+            ingestedFilesChannel = nil
             logger.error("Ingested files subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -296,6 +302,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            fileJobsSubscriptions.removeAll()
+            fileJobsChannel = nil
             logger.error("File jobs subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -349,6 +357,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            tasksSubscriptions.removeAll()
+            tasksChannel = nil
             logger.error("Tasks subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -402,6 +412,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            taskProjectsSubscriptions.removeAll()
+            taskProjectsChannel = nil
             logger.error("Task projects subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -455,6 +467,8 @@ extension SupabaseRealtimeAdapter {
         } catch is CancellationError {
             // Expected during auth transitions
         } catch {
+            taskGroupsSubscriptions.removeAll()
+            taskGroupsChannel = nil
             logger.error("Task groups subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }

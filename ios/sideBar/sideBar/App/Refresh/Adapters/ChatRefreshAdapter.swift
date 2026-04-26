@@ -16,12 +16,12 @@ final class ChatRefreshAdapter: DomainRefreshAdapter {
         }
 
         if plan.targets.contains(.chatList) {
-            try? await viewModel.chatStore.loadConversations(force: true)
+            await viewModel.loadConversations(force: true, silent: true)
         }
 
         if plan.targets.contains(.visibleDetail(.chat)),
            let conversationId = viewModel.selectedConversationId {
-            try? await viewModel.chatStore.loadConversation(id: conversationId, force: true)
+            await viewModel.loadConversation(id: conversationId, silent: true)
         }
     }
 }
