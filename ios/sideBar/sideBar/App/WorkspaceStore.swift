@@ -226,6 +226,8 @@ enum WorkspaceReducer {
         }
 
         return currentBoundEntity == incomingBoundEntity
+            && current.surfaceId == incoming.surfaceId
+            && current.type == incoming.type
     }
 
     private static func mergeCollaborativeSurface(
@@ -239,13 +241,13 @@ enum WorkspaceReducer {
             type: incoming.type,
             surfaceId: incoming.surfaceId,
             title: incoming.title,
-            payload: current.payload,
+            payload: incoming.payload,
             contextMenuActions: incoming.contextMenuActions,
             surfaceClass: incoming.surfaceClass,
             authorityMode: incoming.authorityMode,
             boundEntity: incoming.boundEntity,
             collaborationScope: incoming.collaborationScope,
-            capabilities: current.capabilities,
+            capabilities: incoming.capabilities,
             isPinned: current.isPinned
         )
 
