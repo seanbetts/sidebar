@@ -103,10 +103,9 @@ public enum OnboardingPresentation {
         _ = isTestingOnboarding
         return false
 #else
-        if isTestingOnboarding {
-            return true
-        }
-        return authState == .signedOut && onboardingStatus == .notStarted
+        _ = authState
+        _ = onboardingStatus
+        return isTestingOnboarding
 #endif
     }
 

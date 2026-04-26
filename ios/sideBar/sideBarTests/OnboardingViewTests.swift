@@ -138,18 +138,14 @@ final class OnboardingViewLayoutTests: XCTestCase {
     }
 
     @MainActor
-    func testShouldShowOnboardingWhenSignedOutAndNotStarted() {
+    func testShouldNotAutoShowOnboardingWhenSignedOutAndNotStarted() {
         let result = OnboardingPresentation.shouldPresent(
             authState: .signedOut,
             onboardingStatus: .notStarted,
             isTestingOnboarding: false
         )
 
-#if os(macOS)
         XCTAssertFalse(result)
-#else
-        XCTAssertTrue(result)
-#endif
     }
 
     @MainActor
