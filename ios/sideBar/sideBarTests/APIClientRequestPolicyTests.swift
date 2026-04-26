@@ -242,6 +242,10 @@ final class APIClientRequestPolicyTests: XCTestCase {
     }
 
     func test401DoesNotRetryWhenRefreshLeavesAuthorizationTokenUnchanged() async {
+        final class TokenBox: @unchecked Sendable {
+            var token: String
+            init(_ token: String) { self.token = token }
+        }
         final class Counter: @unchecked Sendable {
             var value: Int = 0
         }
@@ -249,12 +253,16 @@ final class APIClientRequestPolicyTests: XCTestCase {
         let refreshCalls = Counter()
         let requestCount = Counter()
         let authRejectedCalls = Counter()
+        let rejectedToken = TokenBox("")
         let authRejectedNotification = expectation(description: "Authentication rejected notification")
         let observer = NotificationCenter.default.addObserver(
             forName: .apiClientAuthenticationRejected,
             object: nil,
             queue: nil
-        ) { _ in
+        ) { notification in
+            rejectedToken.token = notification.userInfo?[
+                AuthRejectedUserInfoKey.rejectedToken
+            ] as? String ?? ""
             authRejectedNotification.fulfill()
         }
         defer {
@@ -291,6 +299,7 @@ final class APIClientRequestPolicyTests: XCTestCase {
         XCTAssertEqual(requestCount.value, 1)
         XCTAssertEqual(authRejectedCalls.value, 1)
         await fulfillment(of: [authRejectedNotification], timeout: 1.0)
+        XCTAssertEqual(rejectedToken.token, "token-1")
     }
 
     private func assertAuthRefreshRetry(for intent: RequestIntent) async throws {

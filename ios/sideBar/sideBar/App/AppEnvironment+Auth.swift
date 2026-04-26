@@ -106,10 +106,14 @@ extension AppEnvironment {
         // stale/active auth transitions within the same signed-in session.
     }
 
-    func handleProtectedAuthRejected() {
+    func handleProtectedAuthRejected(rejectedToken: String? = nil) {
         guard authState != .reauthenticationRequired else { return }
-        (container.authSession as? AuthSessionInvalidating)?
-            .markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        if let scopedInvalidating = container.authSession as? AuthSessionTokenScopedInvalidating {
+            scopedInvalidating.markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: rejectedToken)
+        } else {
+            (container.authSession as? AuthSessionInvalidating)?
+                .markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        }
         refreshAuthState()
         toastCenter.dismiss()
     }

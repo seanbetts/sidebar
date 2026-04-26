@@ -116,8 +116,11 @@ extension AppEnvironment {
     private func observeProtectedAuthRejections() {
         NotificationCenter.default.publisher(for: .apiClientAuthenticationRejected)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.handleProtectedAuthRejected()
+            .sink { [weak self] notification in
+                let rejectedToken = notification.userInfo?[
+                    AuthRejectedUserInfoKey.rejectedToken
+                ] as? String
+                self?.handleProtectedAuthRejected(rejectedToken: rejectedToken)
             }
             .store(in: &cancellables)
     }

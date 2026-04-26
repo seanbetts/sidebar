@@ -51,7 +51,8 @@ public enum AuthAdapterError: LocalizedError, Equatable {
 
 @MainActor
 /// Supabase-backed authentication session handler.
-public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessionInvalidating {
+public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessionInvalidating,
+    AuthSessionTokenScopedInvalidating {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?
     @Published public private(set) var authState: AuthState = .signedOut
@@ -392,6 +393,16 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
         logger.notice("Backend rejected authorization; primary reauthentication required")
         refreshInFlightTask?.cancel()
         authState = .reauthenticationRequired
+    }
+
+    public func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?) {
+        if let rejectedToken,
+           let accessToken,
+           rejectedToken != accessToken {
+            logger.notice("Ignoring backend authorization rejection for a previous token")
+            return
+        }
+        markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 
     private func transitionToSignedOut(clearPersistedState: Bool) async {

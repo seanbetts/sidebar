@@ -6,6 +6,10 @@ public extension Notification.Name {
     static let apiClientAuthenticationRejected = Notification.Name("sideBar.apiClient.authenticationRejected")
 }
 
+public enum AuthRejectedUserInfoKey {
+    public static let rejectedToken = "rejectedToken"
+}
+
 private enum APIClientNotificationUserInfoKey {
     static let error = "error"
     static let signal = "signal"

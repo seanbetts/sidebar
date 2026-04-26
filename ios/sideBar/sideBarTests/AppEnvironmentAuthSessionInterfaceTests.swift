@@ -57,6 +57,30 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
     }
 
+    func testConfigureSubscriptionsIgnoresProtectedAuthRejectionForPreviousToken() async {
+        let authSession = ObservableAuthSessionDouble(
+            accessToken: "fresh-token",
+            userId: "user-123",
+            authState: .active
+        )
+        let environment = makeEnvironment(authSession: authSession)
+        environment.configureSubscriptions()
+
+        NotificationCenter.default.post(
+            name: .apiClientAuthenticationRejected,
+            object: nil,
+            userInfo: [AuthRejectedUserInfoKey.rejectedToken: "stale-token"]
+        )
+
+        await Task.yield()
+
+        XCTAssertEqual(environment.authState, .active)
+        XCTAssertTrue(environment.isAuthenticated)
+        XCTAssertTrue(environment.isProtectedContentReady)
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 0)
+        XCTAssertEqual(authSession.rejectedTokens, ["stale-token"])
+    }
+
     func testConfigureSubscriptionsKeepsAuthRejectionIdempotentAfterReauthenticationRequired() async {
         let authSession = ObservableAuthSessionDouble(
             accessToken: "stale-token",
@@ -149,7 +173,8 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
 }
 
 @MainActor
-private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObserving, AuthSessionInvalidating {
+private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObserving, AuthSessionInvalidating,
+    AuthSessionTokenScopedInvalidating {
     private let accessTokenSubject: CurrentValueSubject<String?, Never>
     private let authStateSubject: CurrentValueSubject<AuthState, Never>
     private let authErrorSubject = PassthroughSubject<AuthErrorEvent, Never>()
@@ -159,6 +184,7 @@ private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObservi
     private(set) var authState: AuthState
     private(set) var clearAuthErrorCallCount = 0
     private(set) var reauthRequiredCallCount = 0
+    private(set) var rejectedTokens: [String?] = []
 
     init(
         accessToken: String? = nil,
@@ -225,6 +251,12 @@ private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObservi
         guard authState == .active || authState == .staleRecoverable else { return }
         reauthRequiredCallCount += 1
         update(accessToken: accessToken, userId: userId, authState: .reauthenticationRequired)
+    }
+
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?) {
+        rejectedTokens.append(rejectedToken)
+        guard rejectedToken == nil || rejectedToken == authorizationToken else { return }
+        markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 
     func update(accessToken: String?, userId: String?, authState: AuthState) {

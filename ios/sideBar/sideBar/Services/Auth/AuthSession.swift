@@ -30,7 +30,7 @@ public protocol AuthSession: AnyObject {
 }
 
 /// No-op auth session placeholder.
-public final class PlaceholderAuthSession: AuthSession, AuthSessionInvalidating {
+public final class PlaceholderAuthSession: AuthSession, AuthSessionInvalidating, AuthSessionTokenScopedInvalidating {
     public private(set) var accessToken: String?
     public private(set) var userId: String?
     public private(set) var authState: AuthState
@@ -87,5 +87,14 @@ public final class PlaceholderAuthSession: AuthSession, AuthSessionInvalidating 
     public func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
         guard authState == .active || authState == .staleRecoverable else { return }
         authState = .reauthenticationRequired
+    }
+
+    public func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?) {
+        if let rejectedToken,
+           let accessToken,
+           rejectedToken != accessToken {
+            return
+        }
+        markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 }

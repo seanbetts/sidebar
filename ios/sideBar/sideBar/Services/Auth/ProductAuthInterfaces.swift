@@ -39,3 +39,9 @@ public protocol SignInRateLimitStatusProviding: AnyObject {
 public protocol AuthSessionInvalidating: AnyObject {
     func markSessionReauthenticationRequiredAfterAuthorizationFailure()
 }
+
+@MainActor
+/// Marks rejected auth only when the failed request matches the current session token.
+public protocol AuthSessionTokenScopedInvalidating: AnyObject {
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?)
+}

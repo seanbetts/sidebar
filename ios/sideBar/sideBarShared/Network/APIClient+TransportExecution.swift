@@ -55,7 +55,7 @@ extension APIClient {
 
         let http = try validateHTTPResponse(response, intent: intent)
         guard (200...299).contains(http.statusCode) else {
-            throw try await classifyStreamFailure(bytes: bytes, http: http, intent: intent)
+            throw try await classifyStreamFailure(bytes: bytes, http: http, intent: intent, request: request)
         }
 
         postSuccessNotification(intent: intent, statusCode: http.statusCode)
@@ -89,7 +89,7 @@ extension APIClient {
                 return retried
             }
 
-            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
+            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent, request: request)
             throw classifyHTTPFailure(data: data, statusCode: http.statusCode, intent: intent)
         }
 
@@ -111,7 +111,7 @@ extension APIClient {
         logger.debug("Response(retry) \(http.statusCode) in \(Int(Date().timeIntervalSince(start) * 1000))ms")
 
         guard (200...299).contains(http.statusCode) else {
-            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
+            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent, request: request)
             throw classifyHTTPFailure(data: data, statusCode: http.statusCode, intent: intent)
         }
 
@@ -243,7 +243,8 @@ extension APIClient {
     private func classifyStreamFailure(
         bytes: URLSession.AsyncBytes,
         http: HTTPURLResponse,
-        intent: RequestIntent
+        intent: RequestIntent,
+        request: URLRequest
     ) async throws -> APIClientError {
         let message: String?
         do {
@@ -255,7 +256,7 @@ extension APIClient {
         }
 
         postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
-        await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
+        await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent, request: request)
         if let message {
             return .apiError(message)
         }
@@ -270,11 +271,20 @@ extension APIClient {
         return data
     }
 
-    private func notifyAuthRejectedIfNeeded(statusCode: Int, intent: RequestIntent) async {
+    private func notifyAuthRejectedIfNeeded(statusCode: Int, intent: RequestIntent, request: URLRequest) async {
         guard statusCode == 401, intent.authRequirement == .required else {
             return
         }
-        await config.handleAuthRejected?()
-        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+        let rejectedToken = bearerToken(from: request)
+        if let handleAuthRejectedForToken = config.handleAuthRejectedForToken {
+            await handleAuthRejectedForToken(rejectedToken)
+        } else {
+            await config.handleAuthRejected?()
+        }
+        NotificationCenter.default.post(
+            name: .apiClientAuthenticationRejected,
+            object: nil,
+            userInfo: [AuthRejectedUserInfoKey.rejectedToken: rejectedToken as Any]
+        )
     }
 }

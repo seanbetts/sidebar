@@ -12,18 +12,22 @@ public struct APIClientConfig {
     public let requestIntentProvider: ((URLRequest) -> RequestIntent?)?
     /// Optional hook invoked when the backend rejects required authorization.
     public let handleAuthRejected: (() async -> Void)?
+    /// Optional hook invoked with the rejected bearer token when required authorization fails.
+    public let handleAuthRejectedForToken: ((String?) async -> Void)?
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
         refreshAuthIfNeeded: (() async -> Bool)? = nil,
         requestIntentProvider: ((URLRequest) -> RequestIntent?)? = nil,
-        handleAuthRejected: (() async -> Void)? = nil
+        handleAuthRejected: (() async -> Void)? = nil,
+        handleAuthRejectedForToken: ((String?) async -> Void)? = nil
     ) {
         self.baseUrl = baseUrl
         self.accessTokenProvider = accessTokenProvider
         self.refreshAuthIfNeeded = refreshAuthIfNeeded
         self.requestIntentProvider = requestIntentProvider
         self.handleAuthRejected = handleAuthRejected
+        self.handleAuthRejectedForToken = handleAuthRejectedForToken
     }
 }
 

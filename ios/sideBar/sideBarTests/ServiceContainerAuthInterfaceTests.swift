@@ -65,16 +65,35 @@ final class ServiceContainerAuthInterfaceTests: XCTestCase {
         )
 
         let refreshed = await container.apiClient.config.refreshAuthIfNeeded?()
-        await container.apiClient.config.handleAuthRejected?()
+        await container.apiClient.config.handleAuthRejectedForToken?("token-1")
 
         XCTAssertEqual(refreshed, false)
         XCTAssertEqual(authSession.refreshSessionCallCount, 1)
         XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
     }
+
+    func testAPIClientRejectedPreviousTokenDoesNotMarkFreshAuthReauthenticationRequired() async {
+        let authSession = AuthCapabilitySessionDouble(
+            canRestoreOfflineSession: false,
+            restoreOfflineSessionResult: false,
+            lockoutRemainingSeconds: nil,
+            authorizationToken: "fresh-token"
+        )
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+
+        await container.apiClient.config.handleAuthRejectedForToken?("stale-token")
+
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 0)
+        XCTAssertEqual(authSession.rejectedTokens, ["stale-token"])
+    }
 }
 
 private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessRestoring, SignInRateLimitStatusProviding,
-    AuthSessionInvalidating {
+    AuthSessionInvalidating, AuthSessionTokenScopedInvalidating {
     let accessToken: String? = nil
     let userId: String? = nil
     let authState: AuthState = .signedOut
@@ -87,6 +106,7 @@ private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessResto
     private(set) var restoreOfflineSessionCallCount = 0
     private(set) var refreshSessionCallCount = 0
     private(set) var reauthRequiredCallCount = 0
+    private(set) var rejectedTokens: [String?] = []
 
     init(
         canRestoreOfflineSession: Bool,
@@ -136,5 +156,11 @@ private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessResto
 
     func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
         reauthRequiredCallCount += 1
+    }
+
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?) {
+        rejectedTokens.append(rejectedToken)
+        guard rejectedToken == nil || rejectedToken == authorizationToken else { return }
+        markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 }

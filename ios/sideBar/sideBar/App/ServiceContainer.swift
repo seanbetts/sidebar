@@ -91,7 +91,13 @@ public final class ServiceContainer {
                 }
                 return previousToken == nil || currentToken != previousToken
             },
-            handleAuthRejected: {
+            handleAuthRejectedForToken: { rejectedToken in
+                if let scopedInvalidating = authSession as? AuthSessionTokenScopedInvalidating {
+                    scopedInvalidating.markSessionReauthenticationRequiredAfterAuthorizationFailure(
+                        rejectedToken: rejectedToken
+                    )
+                    return
+                }
                 (authSession as? AuthSessionInvalidating)?
                     .markSessionReauthenticationRequiredAfterAuthorizationFailure()
             }
