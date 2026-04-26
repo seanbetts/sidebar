@@ -90,4 +90,35 @@ final class UITestAuthBootstrapTests: XCTestCase {
         XCTAssertEqual(session.authState, .active)
         XCTAssertEqual(session.authorizationToken, "token-123")
     }
+
+    func testSeededSessionCanBeInvalidatedAfterBackendAuthorizationRejection() {
+        let session = PlaceholderAuthSession(
+            accessToken: "token-123",
+            userId: "user-456",
+            authState: .active
+        )
+        Self.retainedSessions.append(session)
+
+        let invalidatingSession = session as? AuthSessionInvalidating
+        invalidatingSession?.markSessionReauthenticationRequiredAfterAuthorizationFailure()
+
+        XCTAssertNotNil(invalidatingSession)
+        XCTAssertEqual(session.authState, .reauthenticationRequired)
+        XCTAssertNil(session.authorizationToken)
+    }
+
+    func testSeededSessionRefreshDoesNotRecoverAfterBackendAuthorizationRejection() async {
+        let session = PlaceholderAuthSession(
+            accessToken: "token-123",
+            userId: "user-456",
+            authState: .active
+        )
+        Self.retainedSessions.append(session)
+
+        session.markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        await session.refreshSession()
+
+        XCTAssertEqual(session.authState, .reauthenticationRequired)
+        XCTAssertNil(session.authorizationToken)
+    }
 }

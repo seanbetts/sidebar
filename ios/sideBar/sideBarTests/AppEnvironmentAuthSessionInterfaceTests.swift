@@ -96,6 +96,25 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
     }
 
+    func testConfigureSubscriptionsRoutesSeededPlaceholderAuthRejectionToReauthenticationRequired() async {
+        let authSession = PlaceholderAuthSession(
+            accessToken: "stale-token",
+            userId: "user-123",
+            authState: .active
+        )
+        let environment = makeEnvironment(authSession: authSession)
+        environment.configureSubscriptions()
+
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+
+        await Task.yield()
+
+        XCTAssertEqual(environment.authState, .reauthenticationRequired)
+        XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertFalse(environment.isProtectedContentReady)
+        XCTAssertNil(authSession.authorizationToken)
+    }
+
     func testConfigureSubscriptionsForwardsToastCenterObjectWillChange() async {
         let authSession = ObservableAuthSessionDouble(authState: .active)
         let environment = makeEnvironment(authSession: authSession)

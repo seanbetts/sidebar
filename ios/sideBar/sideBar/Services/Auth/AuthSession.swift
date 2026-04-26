@@ -30,7 +30,7 @@ public protocol AuthSession: AnyObject {
 }
 
 /// No-op auth session placeholder.
-public final class PlaceholderAuthSession: AuthSession {
+public final class PlaceholderAuthSession: AuthSession, AuthSessionInvalidating {
     public private(set) var accessToken: String?
     public private(set) var userId: String?
     public private(set) var authState: AuthState
@@ -70,6 +70,7 @@ public final class PlaceholderAuthSession: AuthSession {
     }
 
     public func refreshSession() async {
+        guard authState != .reauthenticationRequired else { return }
         guard accessToken != nil, userId != nil else { return }
         authState = .active
     }
@@ -81,5 +82,10 @@ public final class PlaceholderAuthSession: AuthSession {
         accessToken = nil
         userId = nil
         authState = .signedOut
+    }
+
+    public func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
+        guard authState == .active || authState == .staleRecoverable else { return }
+        authState = .reauthenticationRequired
     }
 }
