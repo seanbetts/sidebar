@@ -33,6 +33,7 @@ public protocol RealtimeEventHandler: AnyObject {
     var tasksChannel: RealtimeChannelV2?
     var taskProjectsChannel: RealtimeChannelV2?
     var taskGroupsChannel: RealtimeChannelV2?
+    var currentAccessToken: String?
     var notesSubscriptions: [ObservationToken] = []
     var websitesSubscriptions: [ObservationToken] = []
     var ingestedFilesSubscriptions: [ObservationToken] = []
@@ -68,6 +69,16 @@ public protocol RealtimeEventHandler: AnyObject {
         _ = enqueueTransition { [weak self] in
             await self?.stopInternal()
         }
+    }
+
+    static func shouldResubscribeChannel(
+        currentUserId: String?,
+        currentAccessToken: String?,
+        nextUserId: String,
+        nextAccessToken: String?,
+        hasChannel: Bool
+    ) -> Bool {
+        !hasChannel || currentUserId != nextUserId || currentAccessToken != nextAccessToken
     }
 }
 

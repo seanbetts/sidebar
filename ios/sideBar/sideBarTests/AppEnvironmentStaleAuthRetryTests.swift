@@ -45,6 +45,48 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
         XCTAssertEqual(environment.authState, .active)
     }
 
+    func testRecoverableStaleAuthRefreshesBeforeContentActivation() async {
+        let authSession = StaleRetryAuthSession(authState: .staleRecoverable)
+        let refreshCoordinator = RecordingRefreshCoordinator(observedAuthState: { authSession.authState })
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            refreshCoordinator: refreshCoordinator
+        )
+
+        await environment.handleSignedInActivation(includeDeferredRefresh: true)
+
+        XCTAssertGreaterThanOrEqual(authSession.refreshSessionCallCount, 1)
+        XCTAssertEqual(refreshCoordinator.activationAuthStates, [.active])
+    }
+
+    func testRefreshAuthStateSchedulesRecoverableStaleAuthActivation() async {
+        let authSession = StaleRetryAuthSession(authState: .signedOut)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            refreshCoordinator: NoopRefreshCoordinator()
+        )
+
+        authSession.accessToken = "stale-token"
+        authSession.userId = "user-id"
+        authSession.authState = .staleRecoverable
+        environment.refreshAuthState()
+
+        await waitUntil(timeoutSeconds: 1.0) {
+            authSession.refreshSessionCallCount == 1
+        }
+        XCTAssertEqual(environment.authState, .active)
+    }
+
     func testBeginSignOutClearsRecoverableStaleAuth() async {
         let authSession = StaleRetryAuthSession(authState: .active)
         let container = ServiceContainer(
@@ -127,5 +169,43 @@ private final class NoopRefreshCoordinator: RefreshCoordinatorType {
     func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async {
         _ = section
         _ = context
+    }
+}
+
+private final class RecordingRefreshCoordinator: RefreshCoordinatorType {
+    private let observedAuthState: () -> AuthState
+    private(set) var activationAuthStates: [AuthState] = []
+
+    init(observedAuthState: @escaping () -> AuthState) {
+        self.observedAuthState = observedAuthState
+    }
+
+    func handleActivation(_ request: ActivationRefreshRequest) async {
+        _ = request
+        activationAuthStates.append(observedAuthState())
+    }
+
+    func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
+        _ = trigger
+        _ = context
+    }
+
+    func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async {
+        _ = section
+        _ = context
+    }
+}
+
+private func waitUntil(
+    timeoutSeconds: TimeInterval,
+    condition: @escaping () -> Bool
+) async {
+    let deadline = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < deadline {
+        if condition() {
+            return
+        }
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 10_000_000)
     }
 }

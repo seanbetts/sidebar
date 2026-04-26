@@ -7,6 +7,14 @@ import UIKit
 #endif
 // MARK: - ContentView+SignedIn
 extension ContentView {
+    static func shouldStartSignedInBootstrap(
+        authState: AuthState,
+        isProtectedContentReady: Bool,
+        didLoadSettings: Bool
+    ) -> Bool {
+        authState == .active && isProtectedContentReady && !didLoadSettings
+    }
+
     var signedInContent: AnyView {
         var content: AnyView = AnyView(
             SignedInContentView(
@@ -443,14 +451,18 @@ extension ContentView {
     }
 
     private func triggerSignedInProtectedContentLoadIfNeeded(source: String) {
-        guard environment.isProtectedContentReady else {
+        guard environment.authState == .active, environment.isProtectedContentReady else {
             StartupDebugTrace.log(
                 "signed-in.bootstrap.skip",
                 details: ["reason": "protected_content_not_ready", "source": source]
             )
             return
         }
-        guard !didLoadSettings else {
+        guard Self.shouldStartSignedInBootstrap(
+            authState: environment.authState,
+            isProtectedContentReady: environment.isProtectedContentReady,
+            didLoadSettings: didLoadSettings
+        ) else {
             StartupDebugTrace.log(
                 "signed-in.bootstrap.skip",
                 details: ["reason": "already_loaded", "source": source]
@@ -460,7 +472,6 @@ extension ContentView {
         didLoadSettings = true
         StartupDebugTrace.log("signed-in.bootstrap.start", details: ["source": source])
         Task {
-            guard environment.authState == .active, environment.isProtectedContentReady else { return }
             environment.currentLocationViewModel.startTrackingIfAuthorized()
             await environment.settingsViewModel.load(force: true)
             await environment.settingsViewModel.loadOnboarding(force: true)

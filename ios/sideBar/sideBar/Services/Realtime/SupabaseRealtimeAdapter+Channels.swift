@@ -7,14 +7,26 @@ extension SupabaseRealtimeAdapter {
     func startInternal(userId: String, accessToken: String?) async {
         await tokenStore.set(accessToken)
         await client.realtimeV2.setAuth(accessToken)
-        let shouldResubscribeNotes = currentUserId != userId || notesChannel == nil
-        let shouldResubscribeWebsites = currentUserId != userId || websitesChannel == nil
-        let shouldResubscribeIngestedFiles = currentUserId != userId || ingestedFilesChannel == nil
-        let shouldResubscribeFileJobs = currentUserId != userId || fileJobsChannel == nil
-        let shouldResubscribeTasks = currentUserId != userId || tasksChannel == nil
-        let shouldResubscribeTaskProjects = currentUserId != userId || taskProjectsChannel == nil
-        let shouldResubscribeTaskGroups = currentUserId != userId || taskGroupsChannel == nil
+        let existingUserId = currentUserId
+        let existingAccessToken = currentAccessToken
+        let shouldResubscribe: (Bool) -> Bool = { hasChannel in
+            Self.shouldResubscribeChannel(
+                currentUserId: existingUserId,
+                currentAccessToken: existingAccessToken,
+                nextUserId: userId,
+                nextAccessToken: accessToken,
+                hasChannel: hasChannel
+            )
+        }
+        let shouldResubscribeNotes = shouldResubscribe(notesChannel != nil)
+        let shouldResubscribeWebsites = shouldResubscribe(websitesChannel != nil)
+        let shouldResubscribeIngestedFiles = shouldResubscribe(ingestedFilesChannel != nil)
+        let shouldResubscribeFileJobs = shouldResubscribe(fileJobsChannel != nil)
+        let shouldResubscribeTasks = shouldResubscribe(tasksChannel != nil)
+        let shouldResubscribeTaskProjects = shouldResubscribe(taskProjectsChannel != nil)
+        let shouldResubscribeTaskGroups = shouldResubscribe(taskGroupsChannel != nil)
         currentUserId = userId
+        currentAccessToken = accessToken
         if shouldResubscribeNotes {
             await subscribeToNotes(userId: userId)
         }
@@ -64,6 +76,7 @@ extension SupabaseRealtimeAdapter {
         taskGroupsChannel = nil
         await tokenStore.set(nil)
         currentUserId = nil
+        currentAccessToken = nil
         for channel in channels {
             guard client.realtimeV2.channels[channel.topic] != nil else { continue }
             await client.realtimeV2.removeChannel(channel)

@@ -230,6 +230,27 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
     }
 
+    func testTokenChangeRequiresRealtimeResubscribeForExistingChannels() {
+        XCTAssertTrue(
+            SupabaseRealtimeAdapter.shouldResubscribeChannel(
+                currentUserId: "user-1",
+                currentAccessToken: "old-token",
+                nextUserId: "user-1",
+                nextAccessToken: "new-token",
+                hasChannel: true
+            )
+        )
+        XCTAssertFalse(
+            SupabaseRealtimeAdapter.shouldResubscribeChannel(
+                currentUserId: "user-1",
+                currentAccessToken: "token",
+                nextUserId: "user-1",
+                nextAccessToken: "token",
+                hasChannel: true
+            )
+        )
+    }
+
     private func retain(_ adapter: SupabaseRealtimeAdapter) -> SupabaseRealtimeAdapter {
         Self.retainedAdapters.append(adapter)
         return adapter

@@ -22,11 +22,13 @@ extension AppEnvironment {
 
     public func refreshAuthState(scheduleActivation: Bool = true) {
         let previousAuthState = authState
+        let wasAuthenticated = isAuthenticated
         let wasProtectedContentReady = isProtectedContentReady
         authState = container.authSession.authState
         syncBiometricUnlockState(previousAuthState: previousAuthState)
         let becameActive = previousAuthState != .active && authState == .active
         let isAuthenticated = self.isAuthenticated
+        let becameAuthenticated = !wasAuthenticated && isAuthenticated
         let becameProtectedContentReady = !wasProtectedContentReady && isProtectedContentReady
 
         let storedCacheScopeUserId = storage.userDefaults.string(forKey: AppStorageKeys.cacheScopeUserId)
@@ -56,8 +58,8 @@ extension AppEnvironment {
             #endif
             if scheduleActivation {
                 Task { [weak self] in
-                    guard let self, self.authState == .active else { return }
-                    if becameActive {
+                    guard let self, self.isAuthenticated else { return }
+                    if becameActive || becameAuthenticated {
                         await self.handleSignedInActivation()
                     } else {
                         self.websiteQueueCoordinator.authDidBecomeRunnable()
@@ -332,13 +334,6 @@ extension AppEnvironment {
             message: "Handling signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
         )
-        await refreshCoordinator.handleActivation(
-            ActivationRefreshRequest(
-                includeDeferredRefresh: includeDeferredRefresh,
-                activeSection: activeSection,
-                context: currentRefreshContext()
-            )
-        )
         switch authState {
         case .staleRecoverable:
             await container.authSession.refreshSession()
@@ -351,6 +346,13 @@ extension AppEnvironment {
         }
 
         if authState == .active {
+            await refreshCoordinator.handleActivation(
+                ActivationRefreshRequest(
+                    includeDeferredRefresh: includeDeferredRefresh,
+                    activeSection: activeSection,
+                    context: currentRefreshContext()
+                )
+            )
             await refreshWebsiteQueueHandoff(awaitPendingShareReplay: false)
             await consumeWidgetCompletions()
             if includeDeferredRefresh {
