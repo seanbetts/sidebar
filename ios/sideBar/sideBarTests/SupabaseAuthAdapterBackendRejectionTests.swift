@@ -53,6 +53,61 @@ final class SupabaseAuthAdapterBackendRejectionTests: XCTestCase {
         XCTAssertNil(adapter.authorizationToken)
     }
 
+    func testBackendAuthorizationRejectionIgnoresLaterStoredSessionEvents() async {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterBackendRejectionTests")
+        defer { isolated.tearDown() }
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: true,
+            userDefaults: isolated.defaults
+        )
+
+        await waitForAuthStateSubscriber(client)
+
+        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        client.yield(event: .initialSession, session: SupabaseSessionInfo(
+            accessToken: token,
+            userId: "user-1",
+            expiresAt: exp
+        ))
+
+        await Task.yield()
+
+        XCTAssertEqual(adapter.authState, .reauthenticationRequired)
+        XCTAssertNil(adapter.authorizationToken)
+    }
+
+    func testExplicitSignInCanRecoverAfterBackendAuthorizationRejection() async throws {
+        let staleExp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let freshExp: TimeInterval = Date().addingTimeInterval(2 * 60 * 60).timeIntervalSince1970
+        let staleToken = makeJwt(exp: staleExp)
+        let freshToken = makeJwt(exp: freshExp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: staleToken, userId: "user-1", expiresAt: staleExp)
+        client.signInResult = .success(())
+        let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterBackendRejectionTests")
+        defer { isolated.tearDown() }
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: isolated.defaults
+        )
+
+        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        client.currentSession = SupabaseSessionInfo(accessToken: freshToken, userId: "user-1", expiresAt: freshExp)
+
+        try await adapter.signIn(email: "person@example.com", password: "password123")
+
+        XCTAssertEqual(adapter.authState, .active)
+        XCTAssertEqual(adapter.authorizationToken, freshToken)
+    }
+
     private func makeJwt(exp: TimeInterval) -> String {
         let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
         let payload = base64UrlEncode(["exp": exp, "sub": "user"])
@@ -66,5 +121,14 @@ final class SupabaseAuthAdapterBackendRejectionTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func waitForAuthStateSubscriber(_ client: FakeSupabaseAuthClient) async {
+        for _ in 0..<20 {
+            if client.hasSubscriber {
+                return
+            }
+            await Task.yield()
+        }
     }
 }

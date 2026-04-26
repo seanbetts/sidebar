@@ -24,7 +24,7 @@ extension SupabaseAuthAdapter {
 
         do {
             let session = try await authClient.verifyOTP(email: trimmedEmail, code: trimmedCode)
-            applySession(session)
+            applySession(session, allowsReauthenticationRecovery: true)
             pendingVerificationEmail = nil
             logger.notice("OTP verification succeeded")
         } catch {

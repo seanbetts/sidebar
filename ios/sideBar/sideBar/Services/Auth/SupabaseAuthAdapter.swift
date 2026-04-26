@@ -199,7 +199,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
             do {
                 try await self.authClient.signIn(email: email, password: password)
                 if let session = self.authClient.currentSession {
-                    self.applySession(session)
+                    self.applySession(session, allowsReauthenticationRecovery: true)
                 }
                 // Reset rate limiting on successful login
                 self.failedLoginAttempts = 0
@@ -288,8 +288,15 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
         persistAuthState(accessToken: accessToken, userId: userId)
     }
 
-    func applySession(_ session: SupabaseSessionInfo?) {
+    func applySession(
+        _ session: SupabaseSessionInfo?,
+        allowsReauthenticationRecovery: Bool = false
+    ) {
         guard let session else { return }
+        guard authState != .reauthenticationRequired || allowsReauthenticationRecovery else {
+            logger.debug("Ignoring stored session while primary reauthentication is required")
+            return
+        }
         let resolvedExpiry = Self.sessionExpiryDate(from: session)
         if resolvedExpiry <= Date() {
             // Keep the user "signed in" locally while we attempt a silent refresh.
@@ -370,6 +377,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
     }
 
     func transitionToStale() {
+        guard authState != .reauthenticationRequired else {
+            logger.debug("Ignoring stale transition while primary reauthentication is required")
+            return
+        }
         if authState != .staleRecoverable {
             logger.notice("Auth state transitioned to stale")
         }
