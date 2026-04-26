@@ -233,6 +233,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
     }
 
     public func refreshSession() async {
+        guard authState != .reauthenticationRequired else {
+            logger.debug("refreshSession: skipped — primary reauthentication required")
+            return
+        }
         guard authClient.currentSession != nil else {
             logger.debug("refreshSession: skipped — no current session (authState=\(self.authState.rawValue, privacy: .public))")
             return
@@ -366,16 +370,17 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
     }
 
     func transitionToStale() {
-        if authState != .stale {
+        if authState != .staleRecoverable {
             logger.notice("Auth state transitioned to stale")
         }
-        authState = .stale
+        authState = .staleRecoverable
     }
 
-    public func markSessionStaleAfterAuthorizationFailure() {
+    public func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
         guard authState == .active else { return }
-        logger.notice("Backend rejected active authorization; marking session stale")
-        transitionToStale()
+        logger.notice("Backend rejected active authorization; primary reauthentication required")
+        refreshInFlightTask?.cancel()
+        authState = .reauthenticationRequired
     }
 
     private func transitionToSignedOut(clearPersistedState: Bool) async {
@@ -405,7 +410,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
                 applySession(session)
             } else {
                 // INITIAL_SESSION can legitimately be nil; attempt recovery only if we were previously signed in.
-                if authState != .signedOut {
+                if authState == .active || authState == .staleRecoverable {
                     await attemptSessionRecovery()
                 }
             }

@@ -25,7 +25,7 @@ extension AppEnvironmentDeepLinkTests {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }
 
-        let authSession = MutableAuthSession(authState: .stale)
+        let authSession = MutableAuthSession(authState: .staleRecoverable)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
@@ -34,7 +34,7 @@ extension AppEnvironmentDeepLinkTests {
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
-        environment.authState = .stale
+        environment.authState = .staleRecoverable
 
         let url = "https://example.com/articles/\(UUID().uuidString)"
         storage.extensionEventStore.recordWebsiteSaved(url: url)

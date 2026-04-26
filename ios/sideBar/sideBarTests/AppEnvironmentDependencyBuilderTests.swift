@@ -120,7 +120,7 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         let session = FakeAuthSession(
             accessToken: nil,
             userId: "cached-user",
-            authState: .stale
+            authState: .staleRecoverable
         )
 
         let resolved = AppEnvironment.ViewModelDependencyBuilder.settingsRequestUserId(

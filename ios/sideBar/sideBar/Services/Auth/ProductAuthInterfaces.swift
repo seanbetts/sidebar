@@ -35,7 +35,7 @@ public protocol SignInRateLimitStatusProviding: AnyObject {
 }
 
 @MainActor
-/// Marks a locally active session stale after the backend rejects its token.
+/// Marks a locally active session as requiring primary sign-in after backend rejection.
 public protocol AuthSessionInvalidating: AnyObject {
-    func markSessionStaleAfterAuthorizationFailure()
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure()
 }

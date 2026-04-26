@@ -10,7 +10,7 @@ import AppKit
 
 extension AppEnvironment {
     nonisolated static func shouldBootstrapWidgetBridge(authState: AuthState) -> Bool {
-        authState != .signedOut
+        authState == .active || authState == .staleRecoverable
     }
 
     nonisolated static func shouldNotifyWebsiteQueueConnectivityRecovery(
@@ -241,7 +241,7 @@ extension AppEnvironment {
         authState: AuthState,
         counts: TaskCountsResponse?
     ) -> Int {
-        authState != .signedOut ? (counts?.counts.today ?? 0) : 0
+        (authState == .active || authState == .staleRecoverable) ? (counts?.counts.today ?? 0) : 0
     }
 
     private func resetStoreRefreshBackoff() {

@@ -42,7 +42,7 @@ extension AppEnvironmentDeepLinkTests {
         defer { AppEnvironment.shared = previousSharedEnvironment }
 
         let url = "https://example.com/articles/\(UUID().uuidString)"
-        let authSession = SavedWebsiteEventMutableAuthSession(authState: .stale)
+        let authSession = SavedWebsiteEventMutableAuthSession(authState: .staleRecoverable)
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
                 WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
@@ -56,7 +56,7 @@ extension AppEnvironmentDeepLinkTests {
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
-        environment.authState = .stale
+        environment.authState = .staleRecoverable
 
         storage.extensionEventStore.recordWebsiteSaved(url: url)
 

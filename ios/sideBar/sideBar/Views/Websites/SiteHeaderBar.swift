@@ -75,6 +75,9 @@ public struct SiteHeaderBar: View {
         ) { _ in
             refreshSyncHeaderStatus()
         }
+        .onChange(of: environment.authState) { _, _ in
+            refreshSessionHeaderStatus()
+        }
         .onReceive(
             Publishers.CombineLatest(
                 environment.ingestionViewModel.$itemsVersion,
@@ -84,6 +87,7 @@ public struct SiteHeaderBar: View {
             refreshIngestionHeaderStatus()
         }
         .onAppear {
+            refreshSessionHeaderStatus()
             refreshSyncHeaderStatus()
             refreshIngestionHeaderStatus()
         }
@@ -283,8 +287,21 @@ public struct SiteHeaderBar: View {
         headerStatusController.applySync(snapshot: environment.writeQueue.headerStatusSnapshot)
     }
 
+    private func refreshSessionHeaderStatus() {
+        headerStatusController.applySession(snapshot: sessionHeaderStatusSnapshot)
+    }
+
     private func refreshIngestionHeaderStatus() {
         headerStatusController.applyIngestion(snapshot: environment.ingestionViewModel.headerStatusSnapshot)
+    }
+
+    private var sessionHeaderStatusSnapshot: HeaderSessionStatusSnapshot? {
+        switch environment.authState {
+        case .staleRecoverable:
+            return .syncPaused
+        case .active, .reauthenticationRequired, .signedOut:
+            return nil
+        }
     }
 
     private func performHeaderAction(
@@ -293,6 +310,8 @@ public struct SiteHeaderBar: View {
         action: HeaderStatusActionModel
     ) async -> HeaderStatusRowActionResult {
         switch pill.kind {
+        case .session:
+            return .failed("This status updates automatically.")
         case .sync:
             return await performSyncHeaderAction(row: row, action: action)
         case .ingestion:

@@ -49,4 +49,32 @@ final class AppEnvironmentBiometricAuthRefreshTests: XCTestCase {
         XCTAssertTrue(environment.isProtectedContentReady)
         XCTAssertFalse(environment.isBiometricUnlockRequired)
     }
+
+    func testReauthenticationRequiredDoesNotExposeProtectedContentEvenWhenBiometricUnlocked() {
+        let defaults = isolatedDefaults.defaults
+        defaults.set(true, forKey: AppStorageKeys.biometricUnlockEnabled)
+
+        let authSession = PlaceholderAuthSession(
+            accessToken: "token-123",
+            userId: "user-123",
+            authState: .reauthenticationRequired
+        )
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            storage: AppEnvironmentStorage(userDefaults: defaults)
+        )
+        retainedEnvironments.append(environment)
+        environment.isBiometricUnlocked = true
+
+        environment.refreshAuthState()
+
+        XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertFalse(environment.isProtectedContentReady)
+        XCTAssertFalse(environment.isBiometricUnlockRequired)
+    }
 }

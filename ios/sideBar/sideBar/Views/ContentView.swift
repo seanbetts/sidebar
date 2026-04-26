@@ -85,6 +85,11 @@ public struct ContentView: View {
                 PasswordResetCompletionView()
                     .environmentObject(environment)
                     .onAppear { logStartup("PasswordResetCompletionView appeared") }
+            } else if environment.authState == .reauthenticationRequired {
+                ReauthenticationRequiredView {
+                    Task { await environment.beginSignOut() }
+                }
+                .onAppear { logStartup("ReauthenticationRequiredView appeared") }
             } else if environment.authState == .signedOut {
                 switch OnboardingPresentation.signedOutContent(
                     authState: environment.authState,

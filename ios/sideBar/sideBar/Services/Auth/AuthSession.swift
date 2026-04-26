@@ -8,7 +8,9 @@ public enum AuthState: String, Equatable, Sendable {
     /// Session is usable for network requests and sync.
     case active
     /// App can remain usable locally, but network auth/sync is paused until refresh succeeds.
-    case stale
+    case staleRecoverable
+    /// Backend rejected authorization and the user must complete primary sign-in again.
+    case reauthenticationRequired
 }
 
 /// Defines the requirements for AuthSession.

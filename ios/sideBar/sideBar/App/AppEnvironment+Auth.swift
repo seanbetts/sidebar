@@ -20,14 +20,14 @@ extension AppEnvironment {
         await refreshWebsiteQueueHandoff(awaitPendingShareReplay: true)
     }
 
-    public func refreshAuthState() {
+    public func refreshAuthState(scheduleActivation: Bool = true) {
         let previousAuthState = authState
         let wasProtectedContentReady = isProtectedContentReady
         authState = container.authSession.authState
         syncBiometricUnlockState(previousAuthState: previousAuthState)
         let becameActive = previousAuthState != .active && authState == .active
-        let wasAuthenticated = previousAuthState != .signedOut
-        let isAuthenticated = authState != .signedOut
+        let wasAuthenticated = previousAuthState == .active || previousAuthState == .staleRecoverable
+        let isAuthenticated = self.isAuthenticated
         let becameProtectedContentReady = !wasProtectedContentReady && isProtectedContentReady
 
         let storedCacheScopeUserId = storage.userDefaults.string(forKey: AppStorageKeys.cacheScopeUserId)
@@ -37,22 +37,10 @@ extension AppEnvironment {
         let requiresSignedOutReset = authState == .signedOut
             && !hasRecoverableSignedOutSession
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
-        let becameStale = previousAuthState != .stale && authState == .stale
-        let recoveredFromStale = previousAuthState == .stale && authState != .stale
         if requiresSignedOutReset {
-            cancelStaleAuthRetryBannerReveal()
-            shouldShowStaleAuthRetryBanner = false
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
             storage.userDefaults.set(false, forKey: AppStorageKeys.widgetAuthStateMirror)
-        }
-        if becameStale && wasAuthenticated {
-            shouldShowStaleAuthRetryBanner = false
-            scheduleStaleAuthRetryBannerReveal()
-        }
-        if recoveredFromStale {
-            cancelStaleAuthRetryBannerReveal()
-            shouldShowStaleAuthRetryBanner = false
         }
         if isAuthenticated {
             reconcileCacheScopeForAuthenticatedUser()
@@ -67,13 +55,15 @@ extension AppEnvironment {
                 registerDeviceTokenIfNeeded()
             }
             #endif
-            Task { [weak self] in
-                guard let self, self.authState == .active else { return }
-                if becameActive {
-                    await self.handleSignedInActivation()
-                } else {
-                    self.websiteQueueCoordinator.authDidBecomeRunnable()
-                    await self.consumeWidgetCompletions()
+            if scheduleActivation {
+                Task { [weak self] in
+                    guard let self, self.authState == .active else { return }
+                    if becameActive {
+                        await self.handleSignedInActivation()
+                    } else {
+                        self.websiteQueueCoordinator.authDidBecomeRunnable()
+                        await self.consumeWidgetCompletions()
+                    }
                 }
             }
         } else {
@@ -95,13 +85,13 @@ extension AppEnvironment {
     }
 
     func syncBiometricUnlockState(previousAuthState: AuthState) {
-        guard authState != .signedOut else {
+        guard isAuthenticated else {
             isBiometricUnlocked = false
             biometricBackgroundedAt = nil
             return
         }
 
-        if previousAuthState == .signedOut {
+        if previousAuthState == .signedOut || previousAuthState == .reauthenticationRequired {
             // A successful primary-auth flow counts as the unlock for the new session.
             isBiometricUnlocked = true
             biometricBackgroundedAt = nil
@@ -118,7 +108,7 @@ extension AppEnvironment {
     }
 
     func updateBiometricUnlockPreference(isEnabled: Bool) {
-        guard authState != .signedOut else {
+        guard isAuthenticated else {
             isBiometricUnlocked = false
             biometricBackgroundedAt = nil
             return
@@ -134,7 +124,7 @@ extension AppEnvironment {
     }
 
     func noteProtectedContentBackgrounded() {
-        guard authState != .signedOut, isBiometricUnlockEnabled else {
+        guard isAuthenticated, isBiometricUnlockEnabled else {
             biometricBackgroundedAt = nil
             return
         }
@@ -143,7 +133,7 @@ extension AppEnvironment {
 
     func noteProtectedContentBecameActive() {
         defer { biometricBackgroundedAt = nil }
-        guard authState != .signedOut else { return }
+        guard isAuthenticated else { return }
         guard isBiometricUnlockEnabled, isBiometricUnlocked else { return }
         guard let biometricBackgroundedAt else { return }
 
@@ -158,7 +148,7 @@ extension AppEnvironment {
     }
 
     func completeBiometricUnlock() async {
-        guard authState != .signedOut else { return }
+        guard isAuthenticated else { return }
         isBiometricUnlocked = true
         biometricBackgroundedAt = nil
         await replayProtectedDeferredActionsIfReady()
@@ -306,21 +296,10 @@ extension AppEnvironment {
 
     public func beginSignOut() async {
         signOutEvent = UUID()
-        cancelStaleAuthRetryBannerReveal()
-        shouldShowStaleAuthRetryBanner = false
         #if os(iOS) || os(macOS)
         await disableDeviceTokenIfNeeded()
         #endif
         await container.authSession.signOut()
-        refreshAuthState()
-    }
-
-    public func retryStaleAuthSession() async {
-        guard authState == .stale, !isRetryingStaleAuth else { return }
-        isRetryingStaleAuth = true
-        defer { isRetryingStaleAuth = false }
-
-        await container.authSession.refreshSession()
         refreshAuthState()
     }
 
@@ -339,12 +318,15 @@ extension AppEnvironment {
                 context: currentRefreshContext()
             )
         )
-        if authState != .signedOut {
-            if authState == .stale {
-                await container.authSession.refreshSession()
-            } else {
-                await container.authSession.refreshSessionIfStale()
-            }
+        switch authState {
+        case .staleRecoverable:
+            await container.authSession.refreshSession()
+            refreshAuthState(scheduleActivation: false)
+        case .active:
+            await container.authSession.refreshSessionIfStale()
+            refreshAuthState(scheduleActivation: false)
+        case .reauthenticationRequired, .signedOut:
+            break
         }
 
         if authState == .active {
@@ -363,21 +345,6 @@ extension AppEnvironment {
             message: "Finished signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
         )
-    }
-
-    private func scheduleStaleAuthRetryBannerReveal() {
-        cancelStaleAuthRetryBannerReveal()
-        staleAuthRetryBannerRevealTask = Task { [weak self] in
-            guard let self else { return }
-            try? await Task.sleep(nanoseconds: staleAuthRetryBannerDelayNanoseconds)
-            guard !Task.isCancelled, authState == .stale else { return }
-            shouldShowStaleAuthRetryBanner = true
-        }
-    }
-
-    private func cancelStaleAuthRetryBannerReveal() {
-        staleAuthRetryBannerRevealTask?.cancel()
-        staleAuthRetryBannerRevealTask = nil
     }
 
 }

@@ -162,18 +162,18 @@ extension APIClient {
     private func prepareAuthorizationIfNeeded(for request: inout URLRequest, intent: RequestIntent) async throws {
         switch intent.authRequirement {
         case .required:
-            guard bearerToken(from: request) == nil else {
-                return
+            request.setValue(nil, forHTTPHeaderField: "Authorization")
+            if config.accessTokenProvider() == nil {
+                _ = await attemptAuthRefreshIfNeeded()
             }
-            _ = await attemptAuthRefreshIfNeeded()
             guard let token = config.accessTokenProvider(), !token.isEmpty else {
                 postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
                 throw APIClientError.missingToken
             }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         case .optional:
-            guard bearerToken(from: request) == nil,
-                  let token = config.accessTokenProvider(), !token.isEmpty else {
+            request.setValue(nil, forHTTPHeaderField: "Authorization")
+            guard let token = config.accessTokenProvider(), !token.isEmpty else {
                 return
             }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

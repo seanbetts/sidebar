@@ -72,7 +72,7 @@ final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
 
     func testWidgetBridgeBootstrapRequiresSignedInAuth() {
         XCTAssertFalse(AppEnvironment.shouldBootstrapWidgetBridge(authState: .signedOut))
-        XCTAssertTrue(AppEnvironment.shouldBootstrapWidgetBridge(authState: .stale))
+        XCTAssertTrue(AppEnvironment.shouldBootstrapWidgetBridge(authState: .staleRecoverable))
         XCTAssertTrue(AppEnvironment.shouldBootstrapWidgetBridge(authState: .active))
     }
 

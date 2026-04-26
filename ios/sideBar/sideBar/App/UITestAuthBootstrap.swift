@@ -14,7 +14,7 @@ enum UITestAuthBootstrap {
             return PlaceholderAuthSession(
                 accessToken: trimmedValue(for: accessTokenKey, in: environment) ?? fallbackAccessToken,
                 userId: trimmedValue(for: userIdKey, in: environment) ?? fallbackUserId,
-                authState: .stale
+                authState: .staleRecoverable
             )
         }
         guard

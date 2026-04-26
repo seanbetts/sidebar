@@ -7,7 +7,7 @@ final class AppEnvironmentWebsiteQueueStartupTests: XCTestCase {
             AppEnvironment.shouldReconcileQueuedWebsitesOnItemsChange(authState: .signedOut)
         )
         XCTAssertFalse(
-            AppEnvironment.shouldReconcileQueuedWebsitesOnItemsChange(authState: .stale)
+            AppEnvironment.shouldReconcileQueuedWebsitesOnItemsChange(authState: .staleRecoverable)
         )
         XCTAssertTrue(
             AppEnvironment.shouldReconcileQueuedWebsitesOnItemsChange(authState: .active)
@@ -52,7 +52,7 @@ final class AppEnvironmentWebsiteQueueStartupTests: XCTestCase {
             AppEnvironment.shouldBootstrapMacWindowlessWebsiteQueueHost(authState: .signedOut)
         )
         XCTAssertFalse(
-            AppEnvironment.shouldBootstrapMacWindowlessWebsiteQueueHost(authState: .stale)
+            AppEnvironment.shouldBootstrapMacWindowlessWebsiteQueueHost(authState: .staleRecoverable)
         )
         XCTAssertTrue(
             AppEnvironment.shouldBootstrapMacWindowlessWebsiteQueueHost(authState: .active)

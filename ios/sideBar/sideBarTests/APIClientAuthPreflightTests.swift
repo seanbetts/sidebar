@@ -122,4 +122,58 @@ final class APIClientAuthPreflightTests: XCTestCase {
         XCTAssertEqual(refreshCalls.value, 0)
         XCTAssertEqual(requestCount.value, 1)
     }
+
+    func testPrebuiltProtectedRequestDropsStaleAuthorizationWhenTokenBecomesUnavailable() async throws {
+        final class TokenBox: @unchecked Sendable {
+            var token: String?
+            init(_ token: String?) { self.token = token }
+        }
+        final class Counter: @unchecked Sendable {
+            var value: Int = 0
+        }
+
+        let tokenBox = TokenBox("stale-token")
+        let refreshCalls = Counter()
+        let requestCount = Counter()
+        let config = APIClientConfig(
+            baseUrl: router.baseURL,
+            accessTokenProvider: { tokenBox.token },
+            refreshAuthIfNeeded: {
+                refreshCalls.value += 1
+                return false
+            }
+        )
+        let client = APIClient(config: config, session: router.makeSession())
+        let request = try client.buildRequest("tasks/lists/today", method: .get)
+        let intent = RequestIntent(
+            operation: "get.tasks.lists.today",
+            path: "tasks/lists/today",
+            method: .get,
+            requestKind: .foregroundRead,
+            authRequirement: .required,
+            replaySafety: .safeToReplayAlways,
+            timeoutClass: .standard
+        )
+
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer stale-token")
+        tokenBox.token = nil
+
+        router.setHandler { request in
+            requestCount.value += 1
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        do {
+            _ = try await client.execute(request, intent: intent)
+            XCTFail("Expected protected request to fail before transport")
+        } catch APIClientError.missingToken {
+            // Expected.
+        } catch {
+            XCTFail("Expected missingToken, got \(error)")
+        }
+
+        XCTAssertEqual(refreshCalls.value, 1)
+        XCTAssertEqual(requestCount.value, 0)
+    }
 }

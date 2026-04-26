@@ -26,13 +26,6 @@ extension ContentView {
         #endif
         content = AnyView(content.overlay(alignment: .top) {
             VStack(spacing: DesignTokens.Spacing.sm) {
-                if environment.shouldShowStaleAuthRetryBanner {
-                    StaleAuthRetryBanner(isRefreshing: environment.isRetryingStaleAuth) {
-                        Task {
-                            await environment.retryStaleAuthSession()
-                        }
-                    }
-                }
                 if let toast = environment.toastCenter.toast {
                     ToastBanner(toast: toast)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -285,9 +278,8 @@ extension ContentView {
             }
         }))
         #endif
-        content = AnyView(content.onChange(of: environment.authState) { oldValue, newValue in
-            _ = oldValue
-            let isAuthenticated = newValue != .signedOut
+        content = AnyView(content.onChange(of: environment.authState) { _, _ in
+            let isAuthenticated = environment.isAuthenticated
             activeAlert = nil
             pendingBiometricUnavailableAlert = false
             isSigningOut = false

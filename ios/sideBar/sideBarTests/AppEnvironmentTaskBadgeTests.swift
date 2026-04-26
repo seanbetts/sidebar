@@ -32,7 +32,7 @@ final class AppEnvironmentTaskBadgeTests: XCTestCase {
 
     func testTaskBadgeCountDefaultsToZeroWhenCountsMissing() {
         let count = AppEnvironment.taskBadgeCount(
-            authState: .stale,
+            authState: .staleRecoverable,
             counts: nil
         )
 

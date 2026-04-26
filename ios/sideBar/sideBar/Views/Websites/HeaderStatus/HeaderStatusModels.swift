@@ -1,6 +1,7 @@
 import Foundation
 
 enum HeaderStatusKind: Equatable {
+    case session
     case sync
     case ingestion
 }
@@ -86,4 +87,9 @@ enum HeaderIngestionStatusSnapshot: Equatable {
     case active(rows: [HeaderStatusRowModel])
     case success(messageID: String, title: String, message: String?)
     case failureWithoutAction(messageID: String, title: String, message: String?)
+}
+
+enum HeaderSessionStatusSnapshot: Equatable {
+    case reconnecting
+    case syncPaused
 }

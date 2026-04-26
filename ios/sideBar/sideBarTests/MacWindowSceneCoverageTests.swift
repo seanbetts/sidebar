@@ -31,13 +31,13 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertFalse(normalized.contains("onClose:{environment.dismissMacSettings()}"))
     }
 
-    func testSignedInContentShowsManualRetryBannerWhileAuthIsStale() throws {
+    func testSignedInContentDoesNotShowManualRetryBannerWhileAuthIsStale() throws {
         let normalized = try signedInContentSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("ifenvironment.shouldShowStaleAuthRetryBanner{"))
-        XCTAssertTrue(normalized.contains("StaleAuthRetryBanner("))
-        XCTAssertTrue(normalized.contains("awaitenvironment.retryStaleAuthSession()"))
+        XCTAssertFalse(normalized.contains("ifenvironment.shouldShowStaleAuthRetryBanner{"))
+        XCTAssertFalse(normalized.contains("StaleAuthRetryBanner("))
+        XCTAssertFalse(normalized.contains("awaitenvironment.retryStaleAuthSession()"))
         XCTAssertTrue(normalized.contains(".padding(.horizontal,DesignTokens.Spacing.md)"))
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity)"))
     }
@@ -51,21 +51,22 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("presentSettingsSurface()"))
     }
 
-    func testStaleAuthRetryBannerUsesGlassPillChrome() throws {
+    func testContentViewRoutesReauthenticationRequiredAwayFromSignedInShell() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("environment.authState==.reauthenticationRequired"))
+        XCTAssertTrue(normalized.contains("ReauthenticationRequiredView{Task{awaitenvironment.beginSignOut()}}"))
+        XCTAssertTrue(normalized.contains("logStartup(\"ReauthenticationRequiredViewappeared\")"))
+    }
+
+    func testReauthenticationRequiredViewUsesPrimarySignInAction() throws {
         let normalized = try contentViewComponentsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("GlassEffectContainer(spacing:DesignTokens.Spacing.xs){"))
-        XCTAssertTrue(normalized.contains("@Environment(\\.horizontalSizeClass)privatevarhorizontalSizeClass"))
-        XCTAssertTrue(normalized.contains("privatevarbannerMaxWidth:CGFloat{horizontalSizeClass==.compact?360:400}"))
-        XCTAssertTrue(normalized.contains(".frame(width:18,alignment:.leading)"))
-        XCTAssertTrue(normalized.contains("Spacer(minLength:DesignTokens.Spacing.sm)"))
-        XCTAssertTrue(normalized.contains(".padding(.leading,DesignTokens.Spacing.md)"))
-        XCTAssertTrue(normalized.contains(".padding(.trailing,DesignTokens.Spacing.sm)"))
-        XCTAssertTrue(normalized.contains(".frame(maxWidth:bannerMaxWidth)"))
-        XCTAssertTrue(normalized.contains("Text(\"Changesmaybedelayeduntilsessionrefreshes.\")"))
-        XCTAssertTrue(normalized.contains("content.glassEffect(.regular,in:Capsule())"))
-        XCTAssertTrue(normalized.contains("content.glassEffect(.regular.interactive(),in:Capsule())"))
+        XCTAssertTrue(normalized.contains("structReauthenticationRequiredView:View"))
+        XCTAssertTrue(normalized.contains("Text(\"Yoursessionexpired.Signinagaintocontinue.\")"))
+        XCTAssertTrue(normalized.contains("Button(\"Signin\"){onSignInAgain()}"))
     }
 
     func testSettingsViewDefinesDedicatedMacModalPresentationChrome() throws {

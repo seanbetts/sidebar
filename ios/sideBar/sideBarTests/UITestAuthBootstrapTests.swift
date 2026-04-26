@@ -36,7 +36,7 @@ final class UITestAuthBootstrapTests: XCTestCase {
 
         XCTAssertEqual(session.accessToken, "debug-stale-auth-token")
         XCTAssertEqual(session.userId, "debug-stale-auth-user")
-        XCTAssertEqual(session.authState, .stale)
+        XCTAssertEqual(session.authState, .staleRecoverable)
         XCTAssertNil(session.authorizationToken)
     }
 
@@ -50,7 +50,7 @@ final class UITestAuthBootstrapTests: XCTestCase {
 
         XCTAssertEqual(session.accessToken, "token-123")
         XCTAssertEqual(session.userId, "user-456")
-        XCTAssertEqual(session.authState, .stale)
+        XCTAssertEqual(session.authState, .staleRecoverable)
         XCTAssertNil(session.authorizationToken)
     }
 
@@ -81,7 +81,7 @@ final class UITestAuthBootstrapTests: XCTestCase {
         let session = PlaceholderAuthSession(
             accessToken: "token-123",
             userId: "user-456",
-            authState: .stale
+            authState: .staleRecoverable
         )
         Self.retainedSessions.append(session)
 

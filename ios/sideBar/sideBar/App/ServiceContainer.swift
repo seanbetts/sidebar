@@ -93,7 +93,7 @@ public final class ServiceContainer {
             },
             handleAuthRejected: {
                 (authSession as? AuthSessionInvalidating)?
-                    .markSessionStaleAfterAuthorizationFailure()
+                    .markSessionReauthenticationRequiredAfterAuthorizationFailure()
             }
         ))
 

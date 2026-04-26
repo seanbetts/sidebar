@@ -118,10 +118,6 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isBiometricUnlocked: Bool = false
     /// Tracks device-local push registration and presence state for diagnostics.
     @Published public internal(set) var pushDiagnosticsState = PushLifecycleDiagnosticsState()
-    /// Tracks whether a user-triggered stale-session refresh is currently running.
-    @Published public internal(set) var isRetryingStaleAuth: Bool = false
-    /// Tracks whether the delayed stale-auth retry banner should currently be visible.
-    @Published public internal(set) var shouldShowStaleAuthRetryBanner: Bool = false
     /// Tracks whether a signed-out recovery flow is collecting a new password.
     @Published public internal(set) var passwordResetState: PasswordResetState?
     /// Tracks the login notice shown after a successful password reset.
@@ -139,8 +135,6 @@ public final class AppEnvironment: ObservableObject {
     var queuedWebsiteReconcileSavedItemCount: Int?
     var websiteSaveHandoffObserver: AnyObject?
     var widgetTaskCompletionObserver: AnyObject?
-    var staleAuthRetryBannerRevealTask: Task<Void, Never>?
-    let staleAuthRetryBannerDelayNanoseconds: UInt64
     lazy var websiteQueueCoordinator: WebsiteQueueCoordinator = makeWebsiteQueueCoordinator()
     #if os(iOS) || os(macOS)
     var deviceToken: String?
@@ -161,15 +155,13 @@ public final class AppEnvironment: ObservableObject {
         container: ServiceContainer,
         storage: AppEnvironmentStorage? = nil,
         configError: EnvironmentConfigLoadError? = nil,
-        initialPasswordResetState: PasswordResetState? = nil,
-        staleAuthRetryBannerDelayNanoseconds: UInt64 = 10_000_000_000
+        initialPasswordResetState: PasswordResetState? = nil
     ) {
         self.init(
             container: container,
             storage: storage,
             configError: configError,
             initialPasswordResetState: initialPasswordResetState,
-            staleAuthRetryBannerDelayNanoseconds: staleAuthRetryBannerDelayNanoseconds,
             refreshCoordinator: nil
         )
     }
@@ -179,7 +171,6 @@ public final class AppEnvironment: ObservableObject {
         storage: AppEnvironmentStorage? = nil,
         configError: EnvironmentConfigLoadError? = nil,
         initialPasswordResetState: PasswordResetState? = nil,
-        staleAuthRetryBannerDelayNanoseconds: UInt64 = 10_000_000_000,
         refreshCoordinator: RefreshCoordinatorType? = nil
     ) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
@@ -245,7 +236,6 @@ public final class AppEnvironment: ObservableObject {
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
         self.passwordResetState = initialPasswordResetState
-        self.staleAuthRetryBannerDelayNanoseconds = staleAuthRetryBannerDelayNanoseconds
         let chatViewModel = dependencies.chatViewModel
         let notesViewModel = dependencies.notesViewModel
         let websitesViewModel = dependencies.websitesViewModel
@@ -285,7 +275,7 @@ public final class AppEnvironment: ObservableObject {
             )
         }
         self.authState = container.authSession.authState
-        self.isBiometricUnlocked = authState != .signedOut && !isBiometricUnlockEnabled
+        self.isBiometricUnlocked = (authState == .active || authState == .staleRecoverable) && !isBiometricUnlockEnabled
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         hydratePushDiagnosticsStateFromStorage()
@@ -337,7 +327,12 @@ public final class AppEnvironment: ObservableObject {
 
     /// Indicates whether the current auth state represents a signed-in user.
     public var isAuthenticated: Bool {
-        authState != .signedOut
+        switch authState {
+        case .active, .staleRecoverable:
+            return true
+        case .reauthenticationRequired, .signedOut:
+            return false
+        }
     }
 
     /// Indicates whether biometric lock is enabled for the current app profile.

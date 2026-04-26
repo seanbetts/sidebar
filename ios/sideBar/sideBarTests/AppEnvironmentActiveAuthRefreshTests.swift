@@ -8,7 +8,7 @@ extension AppEnvironmentDeepLinkTests {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }
 
-        let authSession = ActiveAuthRefreshMutableAuthSession(authState: .stale)
+        let authSession = ActiveAuthRefreshMutableAuthSession(authState: .staleRecoverable)
         let replayGate = AsyncReplayGate()
         let queuedURL = "https://example.com/articles/\(UUID().uuidString)"
         let existingItem = WebsiteItem(
@@ -46,7 +46,7 @@ extension AppEnvironmentDeepLinkTests {
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
-        environment.authState = .stale
+        environment.authState = .staleRecoverable
 
         storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
 

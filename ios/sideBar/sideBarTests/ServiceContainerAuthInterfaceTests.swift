@@ -51,7 +51,7 @@ final class ServiceContainerAuthInterfaceTests: XCTestCase {
         XCTAssertTrue(container.makeRealtimeClient(handler: nil) is PlaceholderRealtimeClient)
     }
 
-    func testAPIClientRefreshHookRequiresTokenChangeAndMarksRejectedAuthStale() async {
+    func testAPIClientRefreshHookRequiresTokenChangeAndMarksRejectedAuthReauthenticationRequired() async {
         let authSession = AuthCapabilitySessionDouble(
             canRestoreOfflineSession: false,
             restoreOfflineSessionResult: false,
@@ -69,7 +69,7 @@ final class ServiceContainerAuthInterfaceTests: XCTestCase {
 
         XCTAssertEqual(refreshed, false)
         XCTAssertEqual(authSession.refreshSessionCallCount, 1)
-        XCTAssertEqual(authSession.markSessionStaleAfterAuthorizationFailureCallCount, 1)
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
     }
 }
 
@@ -86,7 +86,7 @@ private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessResto
     private let token: String?
     private(set) var restoreOfflineSessionCallCount = 0
     private(set) var refreshSessionCallCount = 0
-    private(set) var markSessionStaleAfterAuthorizationFailureCallCount = 0
+    private(set) var reauthRequiredCallCount = 0
 
     init(
         canRestoreOfflineSession: Bool,
@@ -134,7 +134,7 @@ private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessResto
         return restoreOfflineSessionResult
     }
 
-    func markSessionStaleAfterAuthorizationFailure() {
-        markSessionStaleAfterAuthorizationFailureCallCount += 1
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
+        reauthRequiredCallCount += 1
     }
 }

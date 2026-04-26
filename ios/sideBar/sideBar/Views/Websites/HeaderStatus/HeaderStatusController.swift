@@ -6,6 +6,7 @@ final class HeaderStatusController: ObservableObject {
     @Published private(set) var visiblePills: [HeaderStatusPillModel] = []
 
     private let sleepFor: @Sendable (Duration) async -> Void
+    private var sessionSnapshot: HeaderSessionStatusSnapshot?
     private var syncSnapshot: HeaderSyncStatusSnapshot?
     private var ingestionSnapshot: HeaderIngestionStatusSnapshot?
     private var expiryTasks: [HeaderStatusKind: Task<Void, Never>] = [:]
@@ -25,6 +26,11 @@ final class HeaderStatusController: ObservableObject {
 
     deinit {
         expiryTasks.values.forEach { $0.cancel() }
+    }
+
+    func applySession(snapshot: HeaderSessionStatusSnapshot?) {
+        sessionSnapshot = snapshot
+        updateVisibleState(for: .session)
     }
 
     func applySync(snapshot: HeaderSyncStatusSnapshot?) {
@@ -65,6 +71,8 @@ final class HeaderStatusController: ObservableObject {
 
         suppressedInformationalPillIDs[kind] = pillID
         switch kind {
+        case .session:
+            sessionSnapshot = nil
         case .sync:
             syncSnapshot = nil
         case .ingestion:
@@ -90,10 +98,49 @@ final class HeaderStatusController: ObservableObject {
 
     private func pill(for kind: HeaderStatusKind) -> HeaderStatusPillModel? {
         switch kind {
+        case .session:
+            return sessionSnapshot.map(makeSessionPill)
         case .sync:
             return syncSnapshot.map(makeSyncPill)
         case .ingestion:
             return ingestionSnapshot.map(makeIngestionPill)
+        }
+    }
+
+    private func makeSessionPill(snapshot: HeaderSessionStatusSnapshot) -> HeaderStatusPillModel {
+        switch snapshot {
+        case .reconnecting:
+            return HeaderStatusPillModel(
+                id: "session-reconnecting",
+                kind: .session,
+                tone: .progress,
+                label: "Reconnecting",
+                accessibilityLabel: "Reconnecting",
+                isActionable: false,
+                expiresAfter: nil,
+                popover: HeaderStatusPopoverModel(
+                    tone: .progress,
+                    title: "Reconnecting",
+                    message: "sideBar is reconnecting. Changes will sync automatically.",
+                    rows: []
+                )
+            )
+        case .syncPaused:
+            return HeaderStatusPillModel(
+                id: "session-sync-paused",
+                kind: .session,
+                tone: .warning,
+                label: "Sync paused",
+                accessibilityLabel: "Sync paused",
+                isActionable: false,
+                expiresAfter: nil,
+                popover: HeaderStatusPopoverModel(
+                    tone: .warning,
+                    title: "Sync paused",
+                    message: "sideBar will reconnect and sync automatically.",
+                    rows: []
+                )
+            )
         }
     }
 
@@ -205,5 +252,5 @@ final class HeaderStatusController: ObservableObject {
 }
 
 private extension HeaderStatusKind {
-    static let allCases: [HeaderStatusKind] = [.sync, .ingestion]
+    static let allCases: [HeaderStatusKind] = [.session, .sync, .ingestion]
 }

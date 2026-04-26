@@ -28,6 +28,22 @@ final class HeaderStatusControllerTests: XCTestCase {
         XCTAssertEqual(controller.visiblePills.first?.label, "Pending")
     }
 
+    func testSessionSnapshotMapsRecoverableStaleToNonActionablePill() {
+        let sleeper = HeaderStatusTestSleeper()
+        let controller = HeaderStatusController(sleepFor: sleeper.sleep(for:))
+
+        controller.applySession(snapshot: .syncPaused)
+
+        XCTAssertEqual(controller.visiblePills.map(\.kind), [.session])
+        XCTAssertEqual(controller.visiblePills.first?.label, "Sync paused")
+        XCTAssertEqual(controller.visiblePills.first?.tone, .warning)
+        XCTAssertEqual(controller.visiblePills.first?.isActionable, false)
+        XCTAssertEqual(
+            controller.visiblePills.first?.popover.message,
+            "sideBar will reconnect and sync automatically."
+        )
+    }
+
     func testInformationalReplacementSwapsImmediatelyWithoutWaitingForPriorExpiry() async {
         let sleeper = HeaderStatusTestSleeper()
         let controller = HeaderStatusController(sleepFor: sleeper.sleep(for:))
