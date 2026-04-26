@@ -377,8 +377,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessi
     }
 
     public func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
-        guard authState == .active else { return }
-        logger.notice("Backend rejected active authorization; primary reauthentication required")
+        guard authState == .active || authState == .staleRecoverable else { return }
+        logger.notice("Backend rejected authorization; primary reauthentication required")
         refreshInFlightTask?.cancel()
         authState = .reauthenticationRequired
     }

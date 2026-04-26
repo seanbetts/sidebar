@@ -4,7 +4,7 @@ import Supabase
 @testable import sideBar
 
 @MainActor
-extension SupabaseAuthAdapterTests {
+final class SupabaseAuthAdapterPasswordChangeTests: XCTestCase {
     func testChangePasswordTrimsAndUpdatesViaClient() async throws {
         let authClient = FakeSupabaseAuthClient()
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterPasswordChangeTests")

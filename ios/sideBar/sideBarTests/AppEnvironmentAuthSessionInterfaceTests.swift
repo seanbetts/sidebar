@@ -75,6 +75,27 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
     }
 
+    func testConfigureSubscriptionsRoutesStaleProtectedAuthRejectionToReauthenticationRequired() async {
+        let authSession = ObservableAuthSessionDouble(
+            accessToken: "stale-token",
+            userId: "user-123",
+            authState: .staleRecoverable
+        )
+        let environment = makeEnvironment(authSession: authSession)
+        environment.configureSubscriptions()
+        environment.toastCenter.show(message: "Unable to load chats")
+
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+
+        await Task.yield()
+
+        XCTAssertEqual(environment.authState, .reauthenticationRequired)
+        XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertFalse(environment.isProtectedContentReady)
+        XCTAssertNil(environment.toastCenter.toast)
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
+    }
+
     func testConfigureSubscriptionsForwardsToastCenterObjectWillChange() async {
         let authSession = ObservableAuthSessionDouble(authState: .active)
         let environment = makeEnvironment(authSession: authSession)
@@ -182,7 +203,7 @@ private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObservi
     }
 
     func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
-        guard authState == .active else { return }
+        guard authState == .active || authState == .staleRecoverable else { return }
         reauthRequiredCallCount += 1
         update(accessToken: accessToken, userId: userId, authState: .reauthenticationRequired)
     }

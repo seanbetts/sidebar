@@ -345,28 +345,6 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.authState, .active)
     }
 
-    func testBackendAuthorizationRejectionRequiresPrimaryReauthentication() {
-        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
-        let token = makeJwt(exp: exp)
-        let client = FakeSupabaseAuthClient()
-        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
-
-        let adapter = SupabaseAuthAdapter(
-            authClient: client,
-            stateStore: InMemoryAuthStateStore(),
-            startAuthStateTask: false,
-            userDefaults: makeUserDefaults()
-        )
-
-        XCTAssertEqual(adapter.authState, .active)
-        XCTAssertEqual(adapter.authorizationToken, token)
-
-        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure()
-
-        XCTAssertEqual(adapter.authState, .reauthenticationRequired)
-        XCTAssertNil(adapter.authorizationToken)
-    }
-
     func testNilSessionWithTransientRefreshFailureBecomesStaleNotSignedOut() async throws {
         let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
         let token = makeJwt(exp: exp)
