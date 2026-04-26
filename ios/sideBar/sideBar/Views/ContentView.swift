@@ -220,13 +220,6 @@ public struct ContentView: View {
 
     private func handleRootAuthStateChange(_ authState: AuthState) {
         guard Self.shouldResetSignedInBootstrapState(authState: authState) else { return }
-        StartupDebugTrace.log(
-            "signed-in.bootstrap.reset",
-            details: [
-                "auth_state": authState.rawValue,
-                "did_load_settings": didLoadSettings ? "true" : "false"
-            ]
-        )
         didEnsureInitialPhoneChatInterface = false
         didLoadSettings = false
     }

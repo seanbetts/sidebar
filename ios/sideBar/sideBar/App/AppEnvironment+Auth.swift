@@ -30,19 +30,6 @@ extension AppEnvironment {
         let isAuthenticated = self.isAuthenticated
         let becameAuthenticated = !wasAuthenticated && isAuthenticated
         let becameProtectedContentReady = !wasProtectedContentReady && isProtectedContentReady
-        StartupDebugTrace.log(
-            "auth.refresh-state",
-            details: [
-                "became_active": becameActive ? "true" : "false",
-                "became_authenticated": becameAuthenticated ? "true" : "false",
-                "has_access_token": container.authSession.accessToken == nil ? "false" : "true",
-                "has_authorization_token": container.authSession.authorizationToken == nil ? "false" : "true",
-                "has_user_id": container.authSession.userId == nil ? "false" : "true",
-                "next": authState.rawValue,
-                "previous": previousAuthState.rawValue,
-                "schedule_activation": scheduleActivation ? "true" : "false"
-            ]
-        )
 
         let storedCacheScopeUserId = storage.userDefaults.string(forKey: AppStorageKeys.cacheScopeUserId)
         let hasRecoverableSignedOutSession =
@@ -341,15 +328,6 @@ extension AppEnvironment {
 
     /// Handles signed-in foreground activation work shared by iOS and macOS.
     public func handleSignedInActivation(includeDeferredRefresh: Bool = true) async {
-        StartupDebugTrace.log(
-            "auth.activation.start",
-            details: [
-                "auth_state": authState.rawValue,
-                "has_authorization_token": container.authSession.authorizationToken == nil ? "false" : "true",
-                "include_deferred_refresh": includeDeferredRefresh ? "true" : "false",
-                "protected_ready": isProtectedContentReady ? "true" : "false"
-            ]
-        )
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "app_activation",
             stage: "begin",
@@ -369,16 +347,6 @@ extension AppEnvironment {
 
         if authState == .active {
             let context = currentRefreshContext()
-            StartupDebugTrace.log(
-                "auth.activation.refresh",
-                details: [
-                    "can_attempt_server_read": context.canAttemptServerRead ? "true" : "false",
-                    "has_visible_detail": context.hasVisibleDetail ? "true" : "false",
-                    "last_opened": context.lastOpenedSection?.rawValue ?? "<none>",
-                    "pinned": context.pinnedSections.map(\.rawValue).joined(separator: ","),
-                    "visible_section": context.visibleSection?.rawValue ?? "<none>"
-                ]
-            )
             await refreshCoordinator.handleActivation(
                 ActivationRefreshRequest(
                     includeDeferredRefresh: includeDeferredRefresh,
@@ -400,13 +368,6 @@ extension AppEnvironment {
             stage: "end",
             message: "Finished signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
-        )
-        StartupDebugTrace.log(
-            "auth.activation.end",
-            details: [
-                "auth_state": authState.rawValue,
-                "has_authorization_token": container.authSession.authorizationToken == nil ? "false" : "true"
-            ]
         )
     }
 
