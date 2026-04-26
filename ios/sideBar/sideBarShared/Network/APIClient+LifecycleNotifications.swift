@@ -3,6 +3,7 @@ import Foundation
 public extension Notification.Name {
     static let apiClientRequestFailed = Notification.Name("sideBar.apiClient.requestFailed")
     static let apiClientRequestSucceeded = Notification.Name("sideBar.apiClient.requestSucceeded")
+    static let apiClientAuthenticationRejected = Notification.Name("sideBar.apiClient.authenticationRejected")
 }
 
 private enum APIClientNotificationUserInfoKey {

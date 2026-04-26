@@ -42,6 +42,26 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataPresent(environment)
     }
 
+    func testRefreshAuthStateKeepsCachedDataWhenUUIDScopeOnlyChangesCase() {
+        isolatedDefaults.defaults.set(
+            "1A70528D-778E-4CEE-A17B-C7DF94C5AB20",
+            forKey: cacheScopeKey
+        )
+        let environment = makeEnvironment(
+            authState: .active,
+            userId: "REDACTED_FOR_PUBLIC_RELEASE"
+        )
+        primeCachedData(environment)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(
+            isolatedDefaults.defaults.string(forKey: cacheScopeKey),
+            "REDACTED_FOR_PUBLIC_RELEASE"
+        )
+        assertCachedDataPresent(environment)
+    }
+
     func testRefreshAuthStateClearsCachedDataWhenUserScopeChanges() {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         let environment = makeEnvironment(authState: .active, userId: "user-new")

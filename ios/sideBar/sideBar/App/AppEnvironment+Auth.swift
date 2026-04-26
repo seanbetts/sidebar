@@ -26,7 +26,6 @@ extension AppEnvironment {
         authState = container.authSession.authState
         syncBiometricUnlockState(previousAuthState: previousAuthState)
         let becameActive = previousAuthState != .active && authState == .active
-        let wasAuthenticated = previousAuthState == .active || previousAuthState == .staleRecoverable
         let isAuthenticated = self.isAuthenticated
         let becameProtectedContentReady = !wasProtectedContentReady && isProtectedContentReady
 
@@ -107,6 +106,14 @@ extension AppEnvironment {
         // stale/active auth transitions within the same signed-in session.
     }
 
+    func handleProtectedAuthRejected() {
+        guard authState != .reauthenticationRequired else { return }
+        (container.authSession as? AuthSessionInvalidating)?
+            .markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        refreshAuthState()
+        toastCenter.dismiss()
+    }
+
     func updateBiometricUnlockPreference(isEnabled: Bool) {
         guard isAuthenticated else {
             isBiometricUnlocked = false
@@ -179,7 +186,13 @@ extension AppEnvironment {
         guard let currentUserId = currentAuthUserId else { return }
         let defaults = storage.userDefaults
         let storedUserId = defaults.string(forKey: AppStorageKeys.cacheScopeUserId)
-        guard storedUserId != currentUserId else { return }
+        let normalizedStoredUserId = storedUserId.map(Self.normalizedCacheScopeUserId)
+        guard normalizedStoredUserId != currentUserId else {
+            if storedUserId != currentUserId {
+                defaults.set(currentUserId, forKey: AppStorageKeys.cacheScopeUserId)
+            }
+            return
+        }
 
         // Run a one-time migration clear for existing installs with unscoped cache keys.
         let shouldResetSignedInData = storedUserId != nil || authState == .active
@@ -201,9 +214,13 @@ extension AppEnvironment {
 
     private var currentAuthUserId: String? {
         guard let rawUserId = container.authSession.userId else { return nil }
-        let trimmedUserId = rawUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUserId = Self.normalizedCacheScopeUserId(rawUserId)
         guard !trimmedUserId.isEmpty else { return nil }
         return trimmedUserId
+    }
+
+    private static func normalizedCacheScopeUserId(_ userId: String) -> String {
+        userId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     private func clearStoredCacheScopeUserId() {

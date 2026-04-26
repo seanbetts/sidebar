@@ -36,6 +36,45 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.clearAuthErrorCallCount, 1)
     }
 
+    func testConfigureSubscriptionsRoutesProtectedAuthRejectionToReauthenticationRequired() async {
+        let authSession = ObservableAuthSessionDouble(
+            accessToken: "stale-token",
+            userId: "user-123",
+            authState: .active
+        )
+        let environment = makeEnvironment(authSession: authSession)
+        environment.configureSubscriptions()
+        environment.toastCenter.show(message: "Unable to load tasks")
+
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+
+        await Task.yield()
+
+        XCTAssertEqual(environment.authState, .reauthenticationRequired)
+        XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertFalse(environment.isProtectedContentReady)
+        XCTAssertNil(environment.toastCenter.toast)
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
+    }
+
+    func testConfigureSubscriptionsKeepsAuthRejectionIdempotentAfterReauthenticationRequired() async {
+        let authSession = ObservableAuthSessionDouble(
+            accessToken: "stale-token",
+            userId: "user-123",
+            authState: .active
+        )
+        let environment = makeEnvironment(authSession: authSession)
+        environment.configureSubscriptions()
+
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
+
+        await Task.yield()
+
+        XCTAssertEqual(environment.authState, .reauthenticationRequired)
+        XCTAssertEqual(authSession.reauthRequiredCallCount, 1)
+    }
+
     func testConfigureSubscriptionsForwardsToastCenterObjectWillChange() async {
         let authSession = ObservableAuthSessionDouble(authState: .active)
         let environment = makeEnvironment(authSession: authSession)
@@ -70,7 +109,7 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
 }
 
 @MainActor
-private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObserving {
+private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObserving, AuthSessionInvalidating {
     private let accessTokenSubject: CurrentValueSubject<String?, Never>
     private let authStateSubject: CurrentValueSubject<AuthState, Never>
     private let authErrorSubject = PassthroughSubject<AuthErrorEvent, Never>()
@@ -79,6 +118,7 @@ private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObservi
     private(set) var userId: String?
     private(set) var authState: AuthState
     private(set) var clearAuthErrorCallCount = 0
+    private(set) var reauthRequiredCallCount = 0
 
     init(
         accessToken: String? = nil,
@@ -139,6 +179,12 @@ private final class ObservableAuthSessionDouble: AuthSession, AuthSessionObservi
 
     func clearAuthError() {
         clearAuthErrorCallCount += 1
+    }
+
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
+        guard authState == .active else { return }
+        reauthRequiredCallCount += 1
+        update(accessToken: accessToken, userId: userId, authState: .reauthenticationRequired)
     }
 
     func update(accessToken: String?, userId: String?, authState: AuthState) {

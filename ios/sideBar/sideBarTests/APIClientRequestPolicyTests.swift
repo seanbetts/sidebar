@@ -249,6 +249,17 @@ final class APIClientRequestPolicyTests: XCTestCase {
         let refreshCalls = Counter()
         let requestCount = Counter()
         let authRejectedCalls = Counter()
+        let authRejectedNotification = expectation(description: "Authentication rejected notification")
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientAuthenticationRejected,
+            object: nil,
+            queue: nil
+        ) { _ in
+            authRejectedNotification.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
         let config = APIClientConfig(
             baseUrl: router.baseURL,
             accessTokenProvider: { "token-1" },
@@ -279,6 +290,7 @@ final class APIClientRequestPolicyTests: XCTestCase {
         XCTAssertEqual(refreshCalls.value, 1)
         XCTAssertEqual(requestCount.value, 1)
         XCTAssertEqual(authRejectedCalls.value, 1)
+        await fulfillment(of: [authRejectedNotification], timeout: 1.0)
     }
 
     private func assertAuthRefreshRetry(for intent: RequestIntent) async throws {

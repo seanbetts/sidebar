@@ -275,5 +275,6 @@ extension APIClient {
             return
         }
         await config.handleAuthRejected?()
+        NotificationCenter.default.post(name: .apiClientAuthenticationRejected, object: nil)
     }
 }

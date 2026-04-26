@@ -60,6 +60,7 @@ extension AppEnvironment {
         if let authSession = container.observableAuthSession {
             bindAuthSession(authSession)
         }
+        observeProtectedAuthRejections()
         forwardObjectWillChange()
         configureDevicePresenceReporting()
         monitorNetwork()
@@ -108,6 +109,15 @@ extension AppEnvironment {
             .sink { [weak self] event in
                 self?.toastCenter.show(message: event.message)
                 authSession.clearAuthError()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func observeProtectedAuthRejections() {
+        NotificationCenter.default.publisher(for: .apiClientAuthenticationRejected)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleProtectedAuthRejected()
             }
             .store(in: &cancellables)
     }
