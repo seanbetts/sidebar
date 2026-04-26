@@ -241,45 +241,44 @@ final class APIClientRequestPolicyTests: XCTestCase {
         await assertNoAuthRefreshRetry(for: intent)
     }
 
-    func test401RetriesGetEvenWhenInitialAuthorizationHeaderIsMissing() async throws {
-        final class TokenBox: @unchecked Sendable {
-            var token: String?
-            init(_ token: String?) { self.token = token }
-        }
+    func test401DoesNotRetryWhenRefreshLeavesAuthorizationTokenUnchanged() async {
         final class Counter: @unchecked Sendable {
             var value: Int = 0
         }
 
-        let tokenBox = TokenBox(nil)
         let refreshCalls = Counter()
         let requestCount = Counter()
+        let authRejectedCalls = Counter()
         let config = APIClientConfig(
             baseUrl: router.baseURL,
-            accessTokenProvider: { tokenBox.token },
+            accessTokenProvider: { "token-1" },
             refreshAuthIfNeeded: {
                 refreshCalls.value += 1
-                tokenBox.token = "token-2"
                 return true
+            },
+            handleAuthRejected: {
+                authRejectedCalls.value += 1
             }
         )
         let client = APIClient(config: config, session: router.makeSession())
 
         router.setHandler { request in
             requestCount.value += 1
-            if requestCount.value == 1 {
-                XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
-                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
-                return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
-            }
-
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-2")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (response, Data("{}".utf8))
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-1")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
         }
 
-        let _: EmptyResponse = try await client.request("ping", method: "GET")
+        do {
+            let _: EmptyResponse = try await client.request("ping", method: "GET")
+            XCTFail("Expected request to fail")
+        } catch {
+            // Expected.
+        }
+
         XCTAssertEqual(refreshCalls.value, 1)
-        XCTAssertEqual(requestCount.value, 2)
+        XCTAssertEqual(requestCount.value, 1)
+        XCTAssertEqual(authRejectedCalls.value, 1)
     }
 
     private func assertAuthRefreshRetry(for intent: RequestIntent) async throws {

@@ -10,16 +10,20 @@ public struct APIClientConfig {
     public let refreshAuthIfNeeded: (() async -> Bool)?
     /// Optional bridge from the current request to the shared request policy contract.
     public let requestIntentProvider: ((URLRequest) -> RequestIntent?)?
+    /// Optional hook invoked when the backend rejects required authorization.
+    public let handleAuthRejected: (() async -> Void)?
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
         refreshAuthIfNeeded: (() async -> Bool)? = nil,
-        requestIntentProvider: ((URLRequest) -> RequestIntent?)? = nil
+        requestIntentProvider: ((URLRequest) -> RequestIntent?)? = nil,
+        handleAuthRejected: (() async -> Void)? = nil
     ) {
         self.baseUrl = baseUrl
         self.accessTokenProvider = accessTokenProvider
         self.refreshAuthIfNeeded = refreshAuthIfNeeded
         self.requestIntentProvider = requestIntentProvider
+        self.handleAuthRejected = handleAuthRejected
     }
 }
 

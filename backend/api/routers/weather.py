@@ -10,10 +10,9 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.concurrency import run_in_threadpool
 
-from api.auth import verify_bearer_token
 from api.config import settings
 from api.exceptions import ExternalServiceError
 
@@ -105,14 +104,12 @@ def _cache_key(lat: float, lon: float) -> str:
 async def get_weather(
     lat: float,
     lon: float,
-    _: str = Depends(verify_bearer_token),
 ):
     """Fetch weather data with caching.
 
     Args:
         lat: Latitude.
         lon: Longitude.
-        _: Authorization token (validated).
 
     Returns:
         Weather payload with current and daily summary.

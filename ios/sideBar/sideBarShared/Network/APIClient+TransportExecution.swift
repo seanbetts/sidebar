@@ -6,7 +6,9 @@ extension APIClient {
         _ request: URLRequest,
         intent: RequestIntent
     ) async throws -> (Data, HTTPURLResponse) {
-        try await executeRequest(
+        var request = request
+        try await prepareAuthorizationIfNeeded(for: &request, intent: intent)
+        return try await executeRequest(
             request,
             intent: intent,
             transport: { request in
@@ -21,7 +23,9 @@ extension APIClient {
         intent: RequestIntent,
         emitSuccessNotification: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
-        try await executeRequest(
+        var request = request
+        try await prepareAuthorizationIfNeeded(for: &request, intent: intent)
+        return try await executeRequest(
             request,
             intent: intent,
             emitSuccessNotification: emitSuccessNotification,
@@ -35,6 +39,8 @@ extension APIClient {
         _ request: URLRequest,
         intent: RequestIntent
     ) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
+        var request = request
+        try await prepareAuthorizationIfNeeded(for: &request, intent: intent)
         if let url = request.url {
             logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
         }
@@ -83,6 +89,7 @@ extension APIClient {
                 return retried
             }
 
+            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
             throw classifyHTTPFailure(data: data, statusCode: http.statusCode, intent: intent)
         }
 
@@ -104,6 +111,7 @@ extension APIClient {
         logger.debug("Response(retry) \(http.statusCode) in \(Int(Date().timeIntervalSince(start) * 1000))ms")
 
         guard (200...299).contains(http.statusCode) else {
+            await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
             throw classifyHTTPFailure(data: data, statusCode: http.statusCode, intent: intent)
         }
 
@@ -151,6 +159,29 @@ extension APIClient {
         return http
     }
 
+    private func prepareAuthorizationIfNeeded(for request: inout URLRequest, intent: RequestIntent) async throws {
+        switch intent.authRequirement {
+        case .required:
+            guard bearerToken(from: request) == nil else {
+                return
+            }
+            _ = await attemptAuthRefreshIfNeeded()
+            guard let token = config.accessTokenProvider(), !token.isEmpty else {
+                postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
+                throw APIClientError.missingToken
+            }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        case .optional:
+            guard bearerToken(from: request) == nil,
+                  let token = config.accessTokenProvider(), !token.isEmpty else {
+                return
+            }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        case .none:
+            request.setValue(nil, forHTTPHeaderField: "Authorization")
+        }
+    }
+
     private func retryUnauthorizedRequest(
         _ request: URLRequest,
         data: Data,
@@ -170,7 +201,7 @@ extension APIClient {
 
         let refreshed = await attemptAuthRefreshIfNeeded()
         let tokenChanged = shouldRetryWithUpdatedToken(for: request)
-        guard refreshed || tokenChanged else {
+        guard tokenChanged || (refreshed && bearerToken(from: request) == nil) else {
             logger.notice("Auth refresh unavailable for \(method) \(url); no retry token available")
             return nil
         }
@@ -224,6 +255,7 @@ extension APIClient {
         }
 
         postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
+        await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent)
         if let message {
             return .apiError(message)
         }
@@ -236,5 +268,12 @@ extension APIClient {
             data.append(byte)
         }
         return data
+    }
+
+    private func notifyAuthRejectedIfNeeded(statusCode: Int, intent: RequestIntent) async {
+        guard statusCode == 401, intent.authRequirement == .required else {
+            return
+        }
+        await config.handleAuthRejected?()
     }
 }

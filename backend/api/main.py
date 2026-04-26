@@ -217,6 +217,8 @@ async def auth_middleware(request: Request, call_next):
         "/metrics",
         "/api/auth/password-reset/request",
         "/api/v1/auth/password-reset/request",
+        "/api/weather",
+        "/api/v1/weather",
     }:
         response = await call_next(request)
         return response

@@ -84,8 +84,16 @@ public final class ServiceContainer {
             baseUrl: config.apiBaseUrl,
             accessTokenProvider: { authSession.authorizationToken },
             refreshAuthIfNeeded: {
+                let previousToken = authSession.authorizationToken
                 await authSession.refreshSession()
-                return authSession.authorizationToken != nil
+                guard let currentToken = authSession.authorizationToken else {
+                    return false
+                }
+                return previousToken == nil || currentToken != previousToken
+            },
+            handleAuthRejected: {
+                (authSession as? AuthSessionInvalidating)?
+                    .markSessionStaleAfterAuthorizationFailure()
             }
         ))
 

@@ -33,3 +33,9 @@ public protocol OfflineAccessRestoring: AnyObject {
 public protocol SignInRateLimitStatusProviding: AnyObject {
     var lockoutRemainingSeconds: Int? { get }
 }
+
+@MainActor
+/// Marks a locally active session stale after the backend rejects its token.
+public protocol AuthSessionInvalidating: AnyObject {
+    func markSessionStaleAfterAuthorizationFailure()
+}

@@ -24,6 +24,23 @@ def test_weather_uses_cache(test_client):
     assert response.json()["temperature_c"] == 10
 
 
+def test_weather_v1_ignores_invalid_authorization_header(test_client):
+    payload = {"temperature_c": 11, "fetched_at": time.time()}
+    weather_router._weather_cache["3.0:4.0"] = {
+        "fetched_at": time.time(),
+        "payload": payload,
+    }
+
+    response = test_client.get(
+        "/api/v1/weather",
+        params={"lat": 3.0, "lon": 4.0},
+        headers={"Authorization": "Bearer expired-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["temperature_c"] == 11
+
+
 def test_weather_handles_invalid_json(monkeypatch):
     class FakeResponse:
         def __init__(self, payload: bytes):

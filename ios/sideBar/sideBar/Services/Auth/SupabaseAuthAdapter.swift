@@ -51,7 +51,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
 
 @MainActor
 /// Supabase-backed authentication session handler.
-public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
+public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessionInvalidating {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?
     @Published public private(set) var authState: AuthState = .signedOut
@@ -370,6 +370,12 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             logger.notice("Auth state transitioned to stale")
         }
         authState = .stale
+    }
+
+    public func markSessionStaleAfterAuthorizationFailure() {
+        guard authState == .active else { return }
+        logger.notice("Backend rejected active authorization; marking session stale")
+        transitionToStale()
     }
 
     private func transitionToSignedOut(clearPersistedState: Bool) async {

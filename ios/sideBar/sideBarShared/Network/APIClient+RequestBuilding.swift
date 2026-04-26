@@ -89,7 +89,7 @@ extension APIClient {
             path: path,
             method: method,
             requestKind: inferredRequestKind(for: method),
-            authRequirement: .required,
+            authRequirement: inferredAuthRequirement(for: path),
             replaySafety: inferredReplaySafety(for: method),
             timeoutClass: inferredTimeoutClass(timeoutInterval)
         )
@@ -147,6 +147,21 @@ extension APIClient {
             return "\(method.rawValue.lowercased()).\(trimmedPath.replacingOccurrences(of: "/", with: "."))"
         }
         return method.rawValue.lowercased()
+    }
+
+    private func inferredAuthRequirement(for path: String) -> AuthRequirement {
+        let trimmedPath = path
+            .split(separator: "?", maxSplits: 1)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        switch trimmedPath {
+        case "weather", "auth/password-reset/request":
+            return .none
+        default:
+            return .required
+        }
     }
 
     private func inferredRequestKind(for method: HTTPMethod) -> RequestKind {
