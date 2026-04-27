@@ -343,6 +343,20 @@ final class RefreshCoordinatorSpy: RefreshCoordinatorType {
         requests.append(request)
     }
 
+    func prepareVisibleSectionForPresentation(_ section: AppSection?, canAttemptServerRead: Bool) async {
+        _ = section
+        _ = canAttemptServerRead
+    }
+
+    func hasVisibleDetail(for section: AppSection?) -> Bool {
+        _ = section
+        return false
+    }
+
+    func pinnedSections() -> [AppSection] {
+        []
+    }
+
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
         _ = trigger
         _ = context

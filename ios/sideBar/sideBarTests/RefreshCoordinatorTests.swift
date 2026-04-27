@@ -118,6 +118,36 @@ final class RefreshCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(adapter.refreshCount, 0)
     }
+
+    func testRegistryPreparesOnlyTheVisibleContentDomain() async {
+        let notes = PreparingRefreshAdapter(section: .notes)
+        let websites = PreparingRefreshAdapter(section: .websites)
+        let registry = RefreshRegistry(adapters: [notes, websites])
+
+        await registry.prepareForPresentation(section: .notes, canAttemptServerRead: true)
+
+        XCTAssertEqual(notes.prepareCalls, [true])
+        XCTAssertEqual(websites.prepareCalls, [])
+    }
+
+    func testRegistryReportsVisibleDetailAndPinnedMetadataByDomain() {
+        let notes = PreparingRefreshAdapter(
+            section: .notes,
+            hasVisibleDetail: true,
+            hasPinnedMetadata: true
+        )
+        let websites = PreparingRefreshAdapter(
+            section: .websites,
+            hasVisibleDetail: false,
+            hasPinnedMetadata: true
+        )
+        let registry = RefreshRegistry(adapters: [notes, websites])
+
+        XCTAssertTrue(registry.hasVisibleDetail(for: .notes))
+        XCTAssertFalse(registry.hasVisibleDetail(for: .websites))
+        XCTAssertFalse(registry.hasVisibleDetail(for: .files))
+        XCTAssertEqual(registry.pinnedSections(), [.notes, .websites])
+    }
 }
 
 @MainActor
@@ -156,5 +186,29 @@ private final class CountingRefreshAdapter: DomainRefreshAdapter {
 
     func refresh(plan: RefreshPlan) async {
         refreshCount += 1
+    }
+}
+
+@MainActor
+private final class PreparingRefreshAdapter: DomainRefreshAdapter {
+    let section: AppSection
+    let hasVisibleDetail: Bool
+    let hasPinnedMetadata: Bool
+    private(set) var prepareCalls: [Bool] = []
+
+    init(
+        section: AppSection,
+        hasVisibleDetail: Bool = false,
+        hasPinnedMetadata: Bool = false
+    ) {
+        self.section = section
+        self.hasVisibleDetail = hasVisibleDetail
+        self.hasPinnedMetadata = hasPinnedMetadata
+    }
+
+    func refresh(plan: RefreshPlan) async {}
+
+    func prepareForPresentation(canAttemptServerRead: Bool) async {
+        prepareCalls.append(canAttemptServerRead)
     }
 }

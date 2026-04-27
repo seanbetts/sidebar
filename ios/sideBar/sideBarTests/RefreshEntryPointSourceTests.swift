@@ -82,6 +82,35 @@ final class RefreshEntryPointSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("awaitprepareVisibleSectionForPresentation(section)"))
     }
 
+    func testVisibleSectionPreparationUsesRefreshCoordinator() throws {
+        let normalized = try source(named: "App/AppEnvironment+Refresh.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains("awaitrefreshCoordinator.prepareVisibleSectionForPresentation(")
+        )
+        XCTAssertFalse(normalized.contains("prepareChatForPresentation"))
+        XCTAssertFalse(normalized.contains("prepareNotesForPresentation"))
+        XCTAssertFalse(normalized.contains("prepareTasksForPresentation"))
+        XCTAssertFalse(normalized.contains("prepareWebsitesForPresentation"))
+        XCTAssertFalse(normalized.contains("prepareFilesForPresentation"))
+    }
+
+    func testRefreshContextUsesRefreshCoordinatorDomainState() throws {
+        let normalized = try source(named: "App/AppEnvironment+Refresh.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("refreshCoordinator.hasVisibleDetail(for:"))
+        XCTAssertTrue(normalized.contains("refreshCoordinator.pinnedSections()"))
+        XCTAssertFalse(normalized.contains("selectedConversationId!=nil"))
+        XCTAssertFalse(normalized.contains("selectedNoteId!=nil"))
+        XCTAssertFalse(normalized.contains("selectedWebsiteId!=nil"))
+        XCTAssertFalse(normalized.contains("selectedFileId!=nil"))
+        XCTAssertFalse(normalized.contains("pinnedNoteOrder()"))
+        XCTAssertFalse(normalized.contains("pinnedWebsiteOrder()"))
+        XCTAssertFalse(normalized.contains("pinnedFileOrder()"))
+    }
+
     func testPhoneSectionHelperDoesNotLoadContentDomainsDirectly() throws {
         let normalized = try source(named: "Views/ContentView+Lifecycle.swift")
             .normalizedForSourceAssertions()

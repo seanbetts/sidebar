@@ -236,21 +236,11 @@ public final class AppEnvironment: ObservableObject {
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
         self.passwordResetState = initialPasswordResetState
-        let chatViewModel = dependencies.chatViewModel
-        let notesViewModel = dependencies.notesViewModel
-        let websitesViewModel = dependencies.websitesViewModel
-        let ingestionViewModel = dependencies.ingestionViewModel
         let authSession = container.authSession
         let refreshContextProvider = {
             Self.makeRefreshContext(
                 workspaceState: workspaceStore.state,
-                chatViewModel: chatViewModel,
-                notesViewModel: notesViewModel,
-                websitesViewModel: websitesViewModel,
-                ingestionViewModel: ingestionViewModel,
-                notesStore: dependencies.notesStore,
-                websitesStore: dependencies.websitesStore,
-                ingestionStore: dependencies.ingestionStore,
+                refreshCoordinator: resolvedRefreshCoordinator,
                 canAttemptServerRead: dependencies.connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
             )
         }

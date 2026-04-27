@@ -9,6 +9,9 @@ struct ActivationRefreshRequest: Equatable {
 @MainActor
 protocol RefreshCoordinatorType: AnyObject {
     func handleActivation(_ request: ActivationRefreshRequest) async
+    func prepareVisibleSectionForPresentation(_ section: AppSection?, canAttemptServerRead: Bool) async
+    func hasVisibleDetail(for section: AppSection?) -> Bool
+    func pinnedSections() -> [AppSection]
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async
     func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async
 }
@@ -49,6 +52,22 @@ final class RefreshCoordinator: RefreshCoordinatorType {
                 canAttemptServerRead: true
             )
         )
+    }
+
+    func prepareVisibleSectionForPresentation(_ section: AppSection?, canAttemptServerRead: Bool) async {
+        guard let section else { return }
+        await registry.prepareForPresentation(
+            section: section,
+            canAttemptServerRead: canAttemptServerRead
+        )
+    }
+
+    func hasVisibleDetail(for section: AppSection?) -> Bool {
+        registry.hasVisibleDetail(for: section)
+    }
+
+    func pinnedSections() -> [AppSection] {
+        registry.pinnedSections()
     }
 
     func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async {

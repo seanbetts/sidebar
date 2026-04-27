@@ -4,13 +4,7 @@ extension AppEnvironment {
     func currentRefreshContext() -> RefreshContext {
         let baseContext = Self.makeRefreshContext(
             workspaceState: workspaceStore.state,
-            chatViewModel: chatViewModel,
-            notesViewModel: notesViewModel,
-            websitesViewModel: websitesViewModel,
-            ingestionViewModel: ingestionViewModel,
-            notesStore: notesStore,
-            websitesStore: websitesStore,
-            ingestionStore: ingestionStore,
+            refreshCoordinator: refreshCoordinator,
             canAttemptServerRead: connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
         )
         guard baseContext.visibleSection == nil else {
@@ -33,13 +27,7 @@ extension AppEnvironment {
         guard let section else { return baseContext }
         return RefreshContext(
             visibleSection: section,
-            hasVisibleDetail: Self.hasVisibleDetail(
-                for: section,
-                chatViewModel: chatViewModel,
-                notesViewModel: notesViewModel,
-                websitesViewModel: websitesViewModel,
-                ingestionViewModel: ingestionViewModel
-            ),
+            hasVisibleDetail: refreshCoordinator.hasVisibleDetail(for: section),
             pinnedSections: baseContext.pinnedSections,
             lastOpenedSection: baseContext.lastOpenedSection,
             staleTargets: baseContext.staleTargets,
@@ -65,73 +53,11 @@ extension AppEnvironment {
     }
 
     func prepareVisibleSectionForPresentation(_ section: AppSection?) async {
-        guard let section else { return }
         let canAttemptServerRead = connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
-
-        switch section {
-        case .chat:
-            await prepareChatForPresentation(canAttemptServerRead: canAttemptServerRead)
-        case .notes:
-            await prepareNotesForPresentation(canAttemptServerRead: canAttemptServerRead)
-        case .tasks:
-            await prepareTasksForPresentation(canAttemptServerRead: canAttemptServerRead)
-        case .websites:
-            await prepareWebsitesForPresentation(canAttemptServerRead: canAttemptServerRead)
-        case .files:
-            await prepareFilesForPresentation(canAttemptServerRead: canAttemptServerRead)
-        case .skillsStore, .settings:
-            break
-        }
-    }
-
-    private func prepareChatForPresentation(canAttemptServerRead: Bool) async {
-        chatViewModel.errorMessage = nil
-        if canAttemptServerRead {
-            await chatStore.hydrateConversationsFromCache()
-        } else {
-            await chatViewModel.loadConversations()
-        }
-    }
-
-    private func prepareNotesForPresentation(canAttemptServerRead: Bool) async {
-        if canAttemptServerRead {
-            notesViewModel.hydrateTreeFromCache()
-        } else {
-            await notesViewModel.loadTree()
-        }
-    }
-
-    private func prepareTasksForPresentation(canAttemptServerRead: Bool) async {
-        let selection = tasksViewModel.preferredLoadSelection
-        tasksViewModel.localErrorMessage = nil
-        if canAttemptServerRead {
-            tasksStore.hydrateListFromCache(selection: selection)
-            tasksStore.hydrateCountsFromCache()
-            if case .upcoming = selection {
-                tasksViewModel.filteredUpcomingCount = tasksViewModel.viewState.totalCount
-            }
-        } else {
-            await tasksViewModel.load(selection: selection)
-            await tasksViewModel.loadCounts()
-        }
-    }
-
-    private func prepareWebsitesForPresentation(canAttemptServerRead: Bool) async {
-        websitesViewModel.errorMessage = nil
-        if canAttemptServerRead {
-            websitesStore.hydrateListFromCache()
-        } else {
-            await websitesViewModel.load()
-        }
-    }
-
-    private func prepareFilesForPresentation(canAttemptServerRead: Bool) async {
-        ingestionViewModel.errorMessage = nil
-        if canAttemptServerRead {
-            ingestionStore.hydrateListFromCache()
-        } else {
-            await ingestionViewModel.load()
-        }
+        await refreshCoordinator.prepareVisibleSectionForPresentation(
+            section,
+            canAttemptServerRead: canAttemptServerRead
+        )
     }
 
     static func makeRefreshCoordinator(
@@ -157,30 +83,14 @@ extension AppEnvironment {
 
     static func makeRefreshContext(
         workspaceState: WorkspaceState,
-        chatViewModel: ChatViewModel,
-        notesViewModel: NotesViewModel,
-        websitesViewModel: WebsitesViewModel,
-        ingestionViewModel: IngestionViewModel,
-        notesStore: NotesStore,
-        websitesStore: WebsitesStore,
-        ingestionStore: IngestionStore,
+        refreshCoordinator: RefreshCoordinatorType,
         canAttemptServerRead: Bool
     ) -> RefreshContext {
         let visibleSection = refreshableVisibleSection(from: workspaceState)
         return RefreshContext(
             visibleSection: visibleSection,
-            hasVisibleDetail: hasVisibleDetail(
-                for: visibleSection,
-                chatViewModel: chatViewModel,
-                notesViewModel: notesViewModel,
-                websitesViewModel: websitesViewModel,
-                ingestionViewModel: ingestionViewModel
-            ),
-            pinnedSections: pinnedRefreshSections(
-                notesStore: notesStore,
-                websitesStore: websitesStore,
-                ingestionStore: ingestionStore
-            ),
+            hasVisibleDetail: refreshCoordinator.hasVisibleDetail(for: visibleSection),
+            pinnedSections: refreshCoordinator.pinnedSections(),
             lastOpenedSection: workspaceState.lastNonChatSection,
             staleTargets: [],
             canAttemptServerRead: canAttemptServerRead
@@ -199,42 +109,4 @@ extension AppEnvironment {
             .first(where: AppSection.primaryNavigationSections.contains)
     }
 
-    private static func hasVisibleDetail(
-        for section: AppSection?,
-        chatViewModel: ChatViewModel,
-        notesViewModel: NotesViewModel,
-        websitesViewModel: WebsitesViewModel,
-        ingestionViewModel: IngestionViewModel
-    ) -> Bool {
-        switch section {
-        case .chat:
-            return chatViewModel.selectedConversationId != nil
-        case .notes:
-            return notesViewModel.selectedNoteId != nil
-        case .websites:
-            return websitesViewModel.selectedWebsiteId != nil
-        case .files:
-            return ingestionViewModel.selectedFileId != nil
-        default:
-            return false
-        }
-    }
-
-    private static func pinnedRefreshSections(
-        notesStore: NotesStore,
-        websitesStore: WebsitesStore,
-        ingestionStore: IngestionStore
-    ) -> [AppSection] {
-        var sections: [AppSection] = []
-        if !notesStore.pinnedNoteOrder().isEmpty {
-            sections.append(.notes)
-        }
-        if !websitesStore.pinnedWebsiteOrder().isEmpty {
-            sections.append(.websites)
-        }
-        if !ingestionStore.pinnedFileOrder().isEmpty {
-            sections.append(.files)
-        }
-        return sections
-    }
 }

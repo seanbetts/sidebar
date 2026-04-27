@@ -3,11 +3,21 @@ import Foundation
 @MainActor
 final class ChatRefreshAdapter: DomainRefreshAdapter {
     let section: AppSection = .chat
+    var hasVisibleDetail: Bool { viewModel.selectedConversationId != nil }
 
     private let viewModel: ChatViewModel
 
     init(viewModel: ChatViewModel) {
         self.viewModel = viewModel
+    }
+
+    func prepareForPresentation(canAttemptServerRead: Bool) async {
+        viewModel.errorMessage = nil
+        if canAttemptServerRead {
+            await viewModel.chatStore.hydrateConversationsFromCache()
+        } else {
+            await viewModel.loadConversations()
+        }
     }
 
     func refresh(plan: RefreshPlan) async {

@@ -161,6 +161,20 @@ private final class NoopRefreshCoordinator: RefreshCoordinatorType {
         _ = request
     }
 
+    func prepareVisibleSectionForPresentation(_ section: AppSection?, canAttemptServerRead: Bool) async {
+        _ = section
+        _ = canAttemptServerRead
+    }
+
+    func hasVisibleDetail(for section: AppSection?) -> Bool {
+        _ = section
+        return false
+    }
+
+    func pinnedSections() -> [AppSection] {
+        []
+    }
+
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
         _ = trigger
         _ = context
@@ -183,6 +197,20 @@ private final class RecordingRefreshCoordinator: RefreshCoordinatorType {
     func handleActivation(_ request: ActivationRefreshRequest) async {
         _ = request
         activationAuthStates.append(observedAuthState())
+    }
+
+    func prepareVisibleSectionForPresentation(_ section: AppSection?, canAttemptServerRead: Bool) async {
+        _ = section
+        _ = canAttemptServerRead
+    }
+
+    func hasVisibleDetail(for section: AppSection?) -> Bool {
+        _ = section
+        return false
+    }
+
+    func pinnedSections() -> [AppSection] {
+        []
     }
 
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
