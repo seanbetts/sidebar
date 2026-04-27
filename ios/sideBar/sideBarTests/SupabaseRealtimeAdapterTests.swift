@@ -230,6 +230,34 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
     }
 
+    func testSubscriptionPlanCentralizesRealtimeDomainOrdering() {
+        let allExistingPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
+            currentUserId: "user-1",
+            currentAccessToken: "token",
+            nextUserId: "user-1",
+            nextAccessToken: "token"
+        ) { _ in true }
+        XCTAssertTrue(allExistingPlan.domains.isEmpty)
+
+        let missingChannelPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
+            currentUserId: "user-1",
+            currentAccessToken: "token",
+            nextUserId: "user-1",
+            nextAccessToken: "token"
+        ) { domain in
+            domain != .websites && domain != .taskGroups
+        }
+        XCTAssertEqual(missingChannelPlan.domains, [.websites, .taskGroups])
+
+        let tokenChangedPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
+            currentUserId: "user-1",
+            currentAccessToken: "old-token",
+            nextUserId: "user-1",
+            nextAccessToken: "new-token"
+        ) { _ in true }
+        XCTAssertEqual(tokenChangedPlan.domains, RealtimeSubscriptionDomain.allCases)
+    }
+
     func testTokenChangeRequiresRealtimeResubscribeForExistingChannels() {
         XCTAssertTrue(
             SupabaseRealtimeAdapter.shouldResubscribeChannel(
