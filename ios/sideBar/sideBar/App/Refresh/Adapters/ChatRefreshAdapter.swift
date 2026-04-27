@@ -21,15 +21,15 @@ final class ChatRefreshAdapter: DomainRefreshAdapter {
     }
 
     func refresh(plan: RefreshPlan) async {
-        guard plan.targets.contains(.chatList) || plan.targets.contains(.visibleDetail(.chat)) else {
+        guard plan.containsRefreshWork(for: section) else {
             return
         }
 
-        if plan.targets.contains(.chatList) {
+        if plan.contains(.chatList) {
             await viewModel.loadConversations(force: true, silent: true)
         }
 
-        if plan.targets.contains(.visibleDetail(.chat)),
+        if plan.containsVisibleDetail(for: section),
            let conversationId = viewModel.selectedConversationId {
             await viewModel.loadConversation(id: conversationId, silent: true)
         }

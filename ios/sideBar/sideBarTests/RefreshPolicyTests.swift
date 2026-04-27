@@ -184,4 +184,41 @@ final class RefreshPolicyTests: XCTestCase {
         XCTAssertFalse(plan.targets.contains(.archiveList(.notes)))
         XCTAssertFalse(plan.targets.contains(.archiveList(.websites)))
     }
+
+    func testRefreshPlanCentralizesTargetMatchingForAdapters() {
+        let plan = RefreshPlan(
+            trigger: .coldLaunch,
+            targets: [
+                .chatList,
+                .taskCounts,
+                .sectionList(.notes),
+                .visibleDetail(.files),
+                .pinnedMetadata(.websites),
+                .archiveList(.notes)
+            ],
+            requiresQueueReplayFirst: false
+        )
+
+        XCTAssertTrue(plan.containsRefreshWork(for: .chat))
+        XCTAssertTrue(plan.containsRefreshWork(for: .tasks))
+        XCTAssertTrue(plan.containsRefreshWork(for: .notes))
+        XCTAssertTrue(plan.containsRefreshWork(for: .files))
+        XCTAssertTrue(plan.containsRefreshWork(for: .websites))
+        XCTAssertFalse(plan.containsRefreshWork(for: .settings))
+    }
+
+    func testRefreshPlanCentralizesCommonDomainTargetGroups() {
+        let plan = RefreshPlan(
+            trigger: .manualRefresh,
+            targets: [.sectionList(.notes), .visibleDetail(.notes), .pinnedMetadata(.files)],
+            requiresQueueReplayFirst: false
+        )
+
+        XCTAssertTrue(plan.containsListOrPinnedMetadata(for: .notes))
+        XCTAssertTrue(plan.containsListOrVisibleDetail(for: .notes))
+        XCTAssertTrue(plan.containsVisibleDetail(for: .notes))
+        XCTAssertTrue(plan.containsListOrPinnedMetadata(for: .files))
+        XCTAssertFalse(plan.containsListOrVisibleDetail(for: .files))
+        XCTAssertFalse(plan.containsVisibleDetail(for: .files))
+    }
 }

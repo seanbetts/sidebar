@@ -21,11 +21,11 @@ final class NotesRefreshAdapter: DomainRefreshAdapter {
     }
 
     func refresh(plan: RefreshPlan) async {
-        if plan.targets.contains(.sectionList(.notes)) || plan.targets.contains(.pinnedMetadata(.notes)) {
+        if plan.containsListOrPinnedMetadata(for: section) {
             await viewModel.refreshTree(force: true)
         }
 
-        if plan.targets.contains(.visibleDetail(.notes)),
+        if plan.containsVisibleDetail(for: section),
            let noteId = viewModel.selectedNoteId {
             await viewModel.loadNote(id: noteId, force: true)
         }

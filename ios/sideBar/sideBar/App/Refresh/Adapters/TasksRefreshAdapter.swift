@@ -26,11 +26,11 @@ final class TasksRefreshAdapter: DomainRefreshAdapter {
     }
 
     func refresh(plan: RefreshPlan) async {
-        if plan.targets.contains(.sectionList(.tasks)) || plan.targets.contains(.visibleDetail(.tasks)) {
+        if plan.containsListOrVisibleDetail(for: section) {
             await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
         }
 
-        if plan.targets.contains(.taskCounts) {
+        if plan.contains(.taskCounts) {
             await viewModel.loadCounts(force: true)
             await viewModel.refreshWidgetData()
         }

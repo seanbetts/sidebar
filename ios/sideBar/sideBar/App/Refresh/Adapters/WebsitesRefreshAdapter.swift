@@ -22,11 +22,11 @@ final class WebsitesRefreshAdapter: DomainRefreshAdapter {
     }
 
     func refresh(plan: RefreshPlan) async {
-        if plan.targets.contains(.sectionList(.websites)) || plan.targets.contains(.pinnedMetadata(.websites)) {
+        if plan.containsListOrPinnedMetadata(for: section) {
             await viewModel.load(force: true)
         }
 
-        if plan.targets.contains(.visibleDetail(.websites)),
+        if plan.containsVisibleDetail(for: section),
            let websiteId = viewModel.selectedWebsiteId {
             await viewModel.loadById(id: websiteId, force: true)
         }
