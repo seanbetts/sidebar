@@ -46,6 +46,32 @@ final class LoadableStateTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoading)
         XCTAssertEqual(viewModel.errorMessage, "Network connection failed. Please check your internet.")
     }
+
+    func testContentListLoadStateRequiresSuccessfulLoadBeforeEmptyState() {
+        let idle = ContentListLoadState.idle
+        XCTAssertFalse(idle.canShowEmptyState)
+        XCTAssertFalse(idle.isLoading)
+        XCTAssertNil(idle.errorMessage)
+
+        let loading = ContentListLoadState.loading
+        XCTAssertFalse(loading.canShowEmptyState)
+        XCTAssertTrue(loading.isLoading)
+
+        let failed = ContentListLoadState.failed("Session expired. Please sign in again.")
+        XCTAssertFalse(failed.canShowEmptyState)
+        XCTAssertFalse(failed.isLoading)
+        XCTAssertEqual(failed.errorMessage, "Session expired. Please sign in again.")
+
+        let loaded = ContentListLoadState.loaded
+        XCTAssertTrue(loaded.canShowEmptyState)
+        XCTAssertFalse(loaded.isLoading)
+        XCTAssertNil(loaded.errorMessage)
+    }
+
+    func testContentListLoadStateTrimsBlankFailureMessages() {
+        XCTAssertEqual(ContentListLoadState.failure(message: " Session expired ").errorMessage, "Session expired")
+        XCTAssertEqual(ContentListLoadState.failure(message: "   ").errorMessage, "Unable to load content")
+    }
 }
 
 @MainActor

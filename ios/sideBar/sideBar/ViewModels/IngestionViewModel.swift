@@ -85,6 +85,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public var selectedFileId: String?
     @Published public var selectedDerivativeKind: String?
     @Published public var viewerState: FileViewerState?
+    @Published public var listLoadState: ContentListLoadState = .idle
     @Published public var isLoading: Bool = false
     @Published public var isLoadingContent: Bool = false
     @Published public var isSelecting: Bool = false

@@ -24,6 +24,37 @@ public enum LoadingState<T> {
     }
 }
 
+/// Shared list loading state for content panels.
+public enum ContentListLoadState: Equatable {
+    case idle
+    case loading
+    case loaded
+    case failed(String)
+
+    public var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
+
+    public var errorMessage: String? {
+        if case .failed(let message) = self { return message }
+        return nil
+    }
+
+    public var canShowEmptyState: Bool {
+        if case .loaded = self { return true }
+        return false
+    }
+
+    public static func failure(message: String?) -> ContentListLoadState {
+        let trimmedMessage = message?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmedMessage, !trimmedMessage.isEmpty else {
+            return .failed("Unable to load content")
+        }
+        return .failed(trimmedMessage)
+    }
+}
+
 /// Base class for ViewModels with common loading/error state.
 @MainActor
 open class LoadableViewModel: ObservableObject {

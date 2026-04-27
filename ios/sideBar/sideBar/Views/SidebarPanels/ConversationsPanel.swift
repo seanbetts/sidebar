@@ -47,7 +47,7 @@ struct ConversationsPanelView: View {
         VStack(spacing: 0) {
             header
             Group {
-                if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
+                if viewModel.conversationsLoadState.isLoading && viewModel.conversations.isEmpty {
                     SidebarListSkeleton(rowCount: 8, showSubtitle: true)
                 } else if isSearchLoading && filteredGroups.isEmpty {
                     SidebarListSkeleton(rowCount: 3, showSubtitle: false)
@@ -60,7 +60,7 @@ struct ConversationsPanelView: View {
                     ) {
                         Task { await viewModel.loadConversations(force: true) }
                     }
-                } else if filteredGroups.isEmpty {
+                } else if filteredGroups.isEmpty && viewModel.conversationsLoadState.canShowEmptyState {
                     if searchQuery.isEmpty {
                         let emptyState = EmptyStateContent.noContentYet(
                             title: "No conversations",
@@ -83,6 +83,8 @@ struct ConversationsPanelView: View {
                             iconName: searchEmptyState.systemImage
                         )
                     }
+                } else if filteredGroups.isEmpty {
+                    SidebarListSkeleton(rowCount: 8, showSubtitle: true)
                 } else {
                     conversationsList
                 }

@@ -26,7 +26,8 @@ extension NotesPanelView {
         hasError: Bool,
         searchQuery: String,
         pinnedCount: Int,
-        mainNodeCount: Int
+        mainNodeCount: Int,
+        treeLoadState: ContentListLoadState = .loaded
     ) -> PanelState {
         if !isTreeLoaded && hasError {
             return .error
@@ -37,6 +38,9 @@ extension NotesPanelView {
         if !searchQuery.trimmed.isEmpty {
             return .search
         }
+        if !treeLoadState.canShowEmptyState && pinnedCount == 0 && mainNodeCount == 0 {
+            return treeLoadState.errorMessage == nil ? .loading : .error
+        }
         return (pinnedCount == 0 && mainNodeCount == 0) ? .sparse : .content
     }
 
@@ -46,7 +50,8 @@ extension NotesPanelView {
             hasError: viewModel.errorMessage != nil,
             searchQuery: viewModel.searchQuery,
             pinnedCount: pinnedItems.count,
-            mainNodeCount: mainNodes.count
+            mainNodeCount: mainNodes.count,
+            treeLoadState: viewModel.treeLoadState
         )
         if resolvedState == .sparse && !hasArchivedContent {
             return .empty

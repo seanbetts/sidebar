@@ -44,6 +44,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var active: WebsiteDetail?
     @Published public internal(set) var selectedWebsiteId: String?
     @Published public internal(set) var isLoading: Bool = false
+    @Published public internal(set) var listLoadState: ContentListLoadState = .idle
     @Published public internal(set) var isLoadingDetail: Bool = false
     @Published public internal(set) var isLoadingArchived: Bool = false
     var lastForcedLoadAt: Date?
@@ -141,30 +142,6 @@ public final class WebsitesViewModel: ObservableObject {
                 self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
-    }
-
-    public func load(force: Bool = false) async {
-        var effectiveForce = force
-        if force {
-            let now = Date()
-            if let last = lastForcedLoadAt, now.timeIntervalSince(last) < minForcedLoadInterval {
-                effectiveForce = false
-            } else {
-                lastForcedLoadAt = now
-            }
-        }
-        if items.isEmpty {
-            isLoading = true
-        }
-        errorMessage = nil
-        do {
-            try await store.loadList(force: effectiveForce)
-        } catch {
-            if items.isEmpty {
-                errorMessage = ErrorMapping.message(for: error)
-            }
-        }
-        isLoading = false
     }
 
     public func loadArchived(force: Bool = false) async {
@@ -472,4 +449,35 @@ public final class WebsitesViewModel: ObservableObject {
         store.applyRealtimeEvent(payload)
     }
 
+}
+
+extension WebsitesViewModel {
+    public func load(force: Bool = false) async {
+        var effectiveForce = force
+        if force {
+            let now = Date()
+            if let last = lastForcedLoadAt, now.timeIntervalSince(last) < minForcedLoadInterval {
+                effectiveForce = false
+            } else {
+                lastForcedLoadAt = now
+            }
+        }
+        if items.isEmpty {
+            isLoading = true
+            listLoadState = .loading
+        }
+        errorMessage = nil
+        do {
+            try await store.loadList(force: effectiveForce)
+            listLoadState = .loaded
+            errorMessage = nil
+        } catch {
+            if items.isEmpty {
+                let message = ErrorMapping.message(for: error)
+                errorMessage = message
+                listLoadState = .failure(message: message)
+            }
+        }
+        isLoading = false
+    }
 }

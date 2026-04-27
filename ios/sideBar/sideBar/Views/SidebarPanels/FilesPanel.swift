@@ -172,9 +172,9 @@ extension FilesPanelView {
             if showsHeader {
                 header
             }
-            if viewModel.isLoading && viewModel.items.isEmpty {
+            if viewModel.listLoadState.isLoading && viewModel.items.isEmpty {
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-            } else if let message = viewModel.errorMessage, viewModel.items.isEmpty {
+            } else if let message = viewModel.listLoadState.errorMessage, viewModel.items.isEmpty {
                 SidebarPanelPlaceholder(
                     title: "Unable to load files",
                     subtitle: message,
@@ -183,7 +183,7 @@ extension FilesPanelView {
                 ) {
                     Task { await viewModel.load() }
                 }
-            } else if filteredItems.isEmpty {
+            } else if filteredItems.isEmpty && viewModel.listLoadState.canShowEmptyState {
                 if viewModel.panelSearchQuery.trimmed.isEmpty {
                     let emptyState = EmptyStateContent.noContentYet(
                         title: "No files yet",
@@ -205,6 +205,8 @@ extension FilesPanelView {
                     )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            } else if filteredItems.isEmpty {
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else {
                 filesListView
             }

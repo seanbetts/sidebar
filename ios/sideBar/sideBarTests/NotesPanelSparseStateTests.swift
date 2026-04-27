@@ -42,6 +42,34 @@ final class NotesPanelSparseStateTests: XCTestCase {
         )
     }
 
+    func testPanelStateDoesNotUseSparseBeforeSuccessfulTreeLoad() {
+        XCTAssertEqual(
+            NotesPanelView.resolvePanelState(
+                isTreeLoaded: true,
+                hasError: false,
+                searchQuery: "",
+                pinnedCount: 0,
+                mainNodeCount: 0,
+                treeLoadState: .idle
+            ),
+            .loading
+        )
+    }
+
+    func testPanelStateUsesErrorForFailedEmptyTreeLoad() {
+        XCTAssertEqual(
+            NotesPanelView.resolvePanelState(
+                isTreeLoaded: true,
+                hasError: true,
+                searchQuery: "",
+                pinnedCount: 0,
+                mainNodeCount: 0,
+                treeLoadState: .failed("Session expired")
+            ),
+            .error
+        )
+    }
+
     func testPanelStateReturnsErrorWhenTreeIsUnavailableAndErrorExists() {
         XCTAssertEqual(
             NotesPanelView.resolvePanelState(

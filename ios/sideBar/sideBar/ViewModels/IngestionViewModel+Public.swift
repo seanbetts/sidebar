@@ -7,19 +7,21 @@ import UniformTypeIdentifiers
 
 extension IngestionViewModel {
     public func load(force: Bool = false) async {
-        if items.isEmpty {
-            isLoading = true
-        }
+        if items.isEmpty { isLoading = true; listLoadState = .loading }
         errorMessage = nil
         do {
             try await store.loadList(force: force)
+            listLoadState = .loaded
+            errorMessage = nil
         } catch {
             if items.isEmpty {
-                errorMessage = ingestionErrorMessage(
+                let message = ingestionErrorMessage(
                     for: error,
                     operation: "ingestion.list",
                     requestKind: .foregroundRead
                 )
+                errorMessage = message
+                listLoadState = .failure(message: message)
             }
         }
         isLoading = false

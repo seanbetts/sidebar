@@ -47,7 +47,8 @@ extension WebsitesPanelView {
         panelSearchQuery: String,
         pinnedCount: Int,
         mainCount: Int,
-        pendingCount: Int
+        pendingCount: Int,
+        listLoadState: ContentListLoadState = .loaded
     ) -> PanelState {
         if isLoading && !hasLoadedContent {
             return .loading
@@ -57,6 +58,9 @@ extension WebsitesPanelView {
         }
         if !panelSearchQuery.trimmed.isEmpty {
             return .search
+        }
+        if !listLoadState.canShowEmptyState && pinnedCount == 0 && mainCount == 0 && pendingCount == 0 {
+            return listLoadState.errorMessage == nil ? .loading : .error
         }
         return (pinnedCount == 0 && mainCount == 0 && pendingCount == 0) ? .sparse : .content
     }
@@ -128,7 +132,8 @@ extension WebsitesPanelView {
             panelSearchQuery: viewModel.panelSearchQuery,
             pinnedCount: pinnedItemsSorted.count,
             mainCount: mainItems.count,
-            pendingCount: visiblePendingCount
+            pendingCount: visiblePendingCount,
+            listLoadState: viewModel.listLoadState
         )
         if resolvedState == .sparse && !hasArchivedContent {
             return .empty

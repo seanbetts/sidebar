@@ -48,7 +48,7 @@ final class SearchTextMatcherTests: XCTestCase {
         let message = ConversationsPanelView.loadErrorMessageForEmptyState(
             searchQuery: "",
             conversations: [],
-            errorMessage: "Network connection failed. Please check your internet."
+            loadState: .failed("Network connection failed. Please check your internet.")
         )
 
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
@@ -58,7 +58,17 @@ final class SearchTextMatcherTests: XCTestCase {
         let message = ConversationsPanelView.loadErrorMessageForEmptyState(
             searchQuery: "project",
             conversations: [],
-            errorMessage: "Network connection failed. Please check your internet."
+            loadState: .failed("Network connection failed. Please check your internet.")
+        )
+
+        XCTAssertNil(message)
+    }
+
+    func testConversationPanelLoadErrorHiddenAfterSuccessfulEmptyLoad() {
+        let message = ConversationsPanelView.loadErrorMessageForEmptyState(
+            searchQuery: "",
+            conversations: [],
+            loadState: .loaded
         )
 
         XCTAssertNil(message)

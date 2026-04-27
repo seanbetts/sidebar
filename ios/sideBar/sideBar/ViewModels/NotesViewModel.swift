@@ -42,6 +42,7 @@ public final class NotesViewModel: ObservableObject {
     @Published public private(set) var searchResults: [FileNode] = []
     @Published public private(set) var isSearching: Bool = false
     @Published public private(set) var isLoadingArchived: Bool = false
+    @Published public private(set) var treeLoadState: ContentListLoadState = .idle
     @Published public private(set) var errorMessage: String?
 
     let api: any NotesProviding
@@ -99,24 +100,36 @@ public final class NotesViewModel: ObservableObject {
 
     public func loadTree() async {
         errorMessage = nil
+        if tree == nil {
+            treeLoadState = .loading
+        }
         do {
             try await store.loadTree()
             tree = store.tree
+            treeLoadState = .loaded
         } catch {
             if tree == nil {
-                errorMessage = ErrorMapping.message(for: error)
+                let message = ErrorMapping.message(for: error)
+                errorMessage = message
+                treeLoadState = .failure(message: message)
             }
         }
     }
 
     public func refreshTree(force: Bool = false) async {
+        if tree == nil {
+            treeLoadState = .loading
+        }
         do {
             try await store.loadTree(force: force)
             tree = store.tree
+            treeLoadState = .loaded
             errorMessage = nil
         } catch {
             if tree == nil {
-                errorMessage = ErrorMapping.message(for: error)
+                let message = ErrorMapping.message(for: error)
+                errorMessage = message
+                treeLoadState = .failure(message: message)
             } else {
                 toastCenter.show(message: "Failed to refresh notes")
             }

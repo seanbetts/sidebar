@@ -57,7 +57,7 @@ extension ConversationsPanelView {
     static func loadErrorMessageForEmptyState(
         searchQuery: String,
         conversations: [Conversation],
-        errorMessage: String?
+        loadState: ContentListLoadState
     ) -> String? {
         guard searchQuery.trimmed.isEmpty else {
             return nil
@@ -65,7 +65,7 @@ extension ConversationsPanelView {
         guard conversations.isEmpty else {
             return nil
         }
-        guard let errorMessage = errorMessage?.trimmedOrNil else {
+        guard let errorMessage = loadState.errorMessage?.trimmedOrNil else {
             return nil
         }
         return errorMessage
@@ -75,7 +75,7 @@ extension ConversationsPanelView {
         Self.loadErrorMessageForEmptyState(
             searchQuery: searchQuery,
             conversations: viewModel.conversations,
-            errorMessage: viewModel.errorMessage
+            loadState: viewModel.conversationsLoadState
         )
     }
 

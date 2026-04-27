@@ -58,6 +58,8 @@ final class IngestionViewModelTests: XCTestCase {
         await viewModel.load()
 
         XCTAssertEqual(viewModel.errorMessage, "Server is busy right now. Please try again.")
+        XCTAssertEqual(viewModel.listLoadState, .failed("Server is busy right now. Please try again."))
+        XCTAssertFalse(viewModel.listLoadState.canShowEmptyState)
     }
 
     func testSelectFileLoadsViewerState() async {

@@ -315,7 +315,7 @@ extension NotesPanelView {
 
     var notesPanelContent: some View {
         Group {
-            if let error = viewModel.errorMessage, viewModel.tree == nil {
+            if let error = viewModel.treeLoadState.errorMessage, viewModel.tree == nil {
                 SidebarPanelPlaceholder(
                     title: "Unable to load notes",
                     subtitle: error,

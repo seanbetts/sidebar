@@ -56,6 +56,38 @@ final class WebsitesPanelSparseStateTests: XCTestCase {
         )
     }
 
+    func testPanelStateDoesNotUseSparseBeforeSuccessfulListLoad() {
+        XCTAssertEqual(
+            WebsitesPanelView.resolvePanelState(
+                isLoading: false,
+                hasError: false,
+                hasLoadedContent: false,
+                panelSearchQuery: "",
+                pinnedCount: 0,
+                mainCount: 0,
+                pendingCount: 0,
+                listLoadState: .idle
+            ),
+            .loading
+        )
+    }
+
+    func testPanelStateUsesErrorForFailedEmptyListLoad() {
+        XCTAssertEqual(
+            WebsitesPanelView.resolvePanelState(
+                isLoading: false,
+                hasError: true,
+                hasLoadedContent: false,
+                panelSearchQuery: "",
+                pinnedCount: 0,
+                mainCount: 0,
+                pendingCount: 0,
+                listLoadState: .failed("Session expired")
+            ),
+            .error
+        )
+    }
+
     func testPanelStateUsesContentWhenPendingItemsExist() {
         XCTAssertEqual(
             WebsitesPanelView.resolvePanelState(

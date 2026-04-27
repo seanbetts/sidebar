@@ -124,6 +124,7 @@ private final class ChatViewModelTeardownBag {
     @Published public var messages: [Message] = []
     @Published public var isStreaming: Bool = false
     @Published public var isLoadingConversations: Bool = false
+    @Published public var conversationsLoadState: ContentListLoadState = .idle
     @Published public var isLoadingMessages: Bool = false
     @Published public var attachments: [ChatAttachmentItem] = []
     @Published public var draftText: String = ""

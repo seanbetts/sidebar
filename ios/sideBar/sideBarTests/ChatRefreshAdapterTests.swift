@@ -35,6 +35,38 @@ final class ChatRefreshAdapterTests: ChatViewModelTestCase {
         )
 
         XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.conversationsLoadState, .loaded)
+        XCTAssertEqual(viewModel.conversations.map(\.id), ["conversation-1"])
+    }
+
+    func testConversationLoadStateTracksFailureAndRecovery() async {
+        let conversation = Conversation(
+            id: "conversation-1",
+            title: "Recovered chat",
+            titleGenerated: false,
+            createdAt: "2026-04-26T15:00:00Z",
+            updatedAt: "2026-04-26T15:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false
+        )
+        let api = SequencedConversationsAPI(results: [
+            .failure(APIClientError.missingToken),
+            .success([conversation])
+        ])
+        let viewModel = makeViewModel(api: api, cache: TestCacheClient())
+
+        await viewModel.loadConversations(force: true)
+
+        let expectedMessage = ErrorMapping.message(for: APIClientError.missingToken)
+        XCTAssertEqual(viewModel.errorMessage, expectedMessage)
+        XCTAssertEqual(viewModel.conversationsLoadState, .failed(expectedMessage))
+        XCTAssertFalse(viewModel.conversationsLoadState.canShowEmptyState)
+
+        await viewModel.loadConversations(force: true)
+
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.conversationsLoadState, .loaded)
         XCTAssertEqual(viewModel.conversations.map(\.id), ["conversation-1"])
     }
 }

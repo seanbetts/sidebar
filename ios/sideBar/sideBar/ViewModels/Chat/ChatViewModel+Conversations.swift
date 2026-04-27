@@ -49,19 +49,22 @@ extension ChatViewModel {
 
     public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
-        if !silent {
-            isLoadingConversations = true
+        if conversations.isEmpty {
+            conversationsLoadState = .loading
         }
+        if !silent { isLoadingConversations = true }
         do {
             try await chatStore.loadConversations(force: force)
+            conversationsLoadState = .loaded
+            errorMessage = nil
         } catch {
             if conversations.isEmpty {
-                errorMessage = ErrorMapping.message(for: error)
+                let message = ErrorMapping.message(for: error)
+                errorMessage = message
+                conversationsLoadState = .failure(message: message)
             }
         }
-        if !silent {
-            isLoadingConversations = false
-        }
+        if !silent { isLoadingConversations = false }
     }
 
     public func refreshConversations(silent: Bool = false) async {
