@@ -120,6 +120,42 @@ final class ChatToolComponentsTests: XCTestCase {
         )
     }
 
+    func testVisibleToolCallsHideGetNoteWhenEditNoteSucceedsForSameNote() {
+        let toolCalls = [
+            ToolCall(
+                id: "tool-1",
+                name: "Get Note",
+                parameters: ["id": AnyCodable("note-1")],
+                status: .success,
+                result: AnyCodable([
+                    "success": true,
+                    "data": [
+                        "id": "note-1",
+                        "title": "Q2 Testing Priorities"
+                    ]
+                ])
+            ),
+            ToolCall(
+                id: "tool-2",
+                name: "Edit Note",
+                parameters: ["note_id": AnyCodable("note-1")],
+                status: .success,
+                result: AnyCodable([
+                    "success": true,
+                    "data": [
+                        "id": "note-1",
+                        "title": "Q2 Testing Priorities"
+                    ]
+                ])
+            )
+        ]
+
+        XCTAssertEqual(
+            ChatToolPresentation.visibleToolCalls(from: toolCalls).map(\.id),
+            ["tool-2"]
+        )
+    }
+
     func testSummaryPresentationKeepsSingleToolNameWhenNoFailuresExist() {
         let toolCalls = [
             ToolCall(id: "tool-1", name: "Create Note", parameters: [:], status: .success)

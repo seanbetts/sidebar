@@ -68,9 +68,14 @@ enum ChatToolPresentation {
             runStart = runEnd
         }
 
-        return toolCalls.enumerated().compactMap { index, toolCall in
+        let retryCollapsed = toolCalls.enumerated().compactMap { index, toolCall in
             hiddenIndices.contains(index) ? nil : toolCall
         }
+        return collapseHelperReads(in: retryCollapsed)
+    }
+
+    static func usesListOnlyPopoverLayout(for toolCalls: [ToolCall]) -> Bool {
+        visibleToolCalls(from: toolCalls).count > 1
     }
 
     static func summary(for toolCall: ToolCall) -> Summary {
@@ -172,5 +177,77 @@ enum ChatToolPresentation {
 
     private static func toolFamily(for toolCall: ToolCall) -> String {
         (toolCall.skillId?.trimmedOrNil ?? toolCall.name.trimmedOrNil ?? toolCall.id).lowercased()
+    }
+
+    private static func collapseHelperReads(in toolCalls: [ToolCall]) -> [ToolCall] {
+        guard toolCalls.count > 1 else {
+            return toolCalls
+        }
+
+        return toolCalls.enumerated().compactMap { index, toolCall in
+            guard isSuccessfulGetNote(toolCall),
+                  index + 1 < toolCalls.count,
+                  let targetID = noteTargetID(for: toolCall),
+                  isSuccessfulEditNote(toolCalls[index + 1], targetID: targetID) else {
+                return toolCall
+            }
+            return nil
+        }
+    }
+
+    private static func isSuccessfulGetNote(_ toolCall: ToolCall) -> Bool {
+        toolCall.name == "Get Note" && toolCall.status == .success
+    }
+
+    private static func isSuccessfulEditNote(_ toolCall: ToolCall, targetID: String) -> Bool {
+        guard toolCall.name == "Edit Note", toolCall.status == .success else {
+            return false
+        }
+        return noteTargetID(for: toolCall) == targetID
+    }
+
+    private static func noteTargetID(for toolCall: ToolCall) -> String? {
+        let parameterTarget = firstTrimmedString(
+            in: toolCall.parameters,
+            keys: ["note_id", "noteId", "id", "path"]
+        )
+        if let parameterTarget {
+            return parameterTarget
+        }
+
+        guard let payload = resultPayload(from: toolCall.result) else {
+            return nil
+        }
+        if let resultTarget = firstTrimmedString(in: payload, keys: ["id", "note_id", "noteId", "path"]) {
+            return resultTarget
+        }
+        if let dataPayload = payload["data"] as? [String: Any] {
+            return firstTrimmedString(in: dataPayload, keys: ["id", "note_id", "noteId", "path"])
+        }
+        return nil
+    }
+
+    private static func firstTrimmedString(
+        in payload: [String: AnyCodable],
+        keys: [String]
+    ) -> String? {
+        for key in keys {
+            guard let raw = payload[key]?.value as? String,
+                  let trimmed = raw.trimmedOrNil else { continue }
+            return trimmed
+        }
+        return nil
+    }
+
+    private static func firstTrimmedString(
+        in payload: [String: Any],
+        keys: [String]
+    ) -> String? {
+        for key in keys {
+            guard let raw = payload[key] as? String,
+                  let trimmed = raw.trimmedOrNil else { continue }
+            return trimmed
+        }
+        return nil
     }
 }

@@ -78,6 +78,15 @@ final class ToolCallPopoverTests: XCTestCase {
         XCTAssertEqual(sections.map(\.kind), [.summary])
     }
 
+    func testMultiToolPopoverUsesListOnlyLayout() {
+        let toolCalls = [
+            ToolCall(id: "tool-1", name: "Get Note", parameters: [:], status: .success),
+            ToolCall(id: "tool-2", name: "Edit Note", parameters: [:], status: .success)
+        ]
+
+        XCTAssertTrue(ChatToolPresentation.usesListOnlyPopoverLayout(for: toolCalls))
+    }
+
     private func makePromptPreviewToolCall() -> ToolCall {
         ToolCall(
             id: "prompt-preview",

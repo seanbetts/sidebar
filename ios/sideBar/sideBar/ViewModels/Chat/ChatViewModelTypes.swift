@@ -67,8 +67,17 @@ struct NotesContextProvider: ContextProvider {
     }
 
     func refresh(_ target: ContextRefreshTarget) async throws {
-        guard case .notes = target else { return }
+        guard case let .notes(noteId) = target else { return }
         try await notesStore.loadTree(force: true)
+        if let activeNote = notesStore.activeNote,
+           activeNote.id == noteId || activeNote.path == noteId {
+            try await notesStore.loadNote(id: noteId, force: true)
+            return
+        }
+        if let activeRequestID = notesStore.activeNoteRequestID,
+           activeRequestID == noteId {
+            try await notesStore.loadNote(id: noteId, force: true)
+        }
     }
 }
 

@@ -202,39 +202,24 @@ struct ToolCallRow: View {
 
 struct ToolCallPopoverContent: View {
     let toolCalls: [ToolCall]
-    @State private var selectedToolCallID: String
-
-    init(toolCalls: [ToolCall]) {
-        self.toolCalls = toolCalls
-        let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
-        _selectedToolCallID = State(initialValue: visibleToolCalls.first?.id ?? toolCalls.first?.id ?? "")
-    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                if visibleToolCalls.count > 1 {
+                if ChatToolPresentation.usesListOnlyPopoverLayout(for: toolCalls) {
                     Text("Skills Used")
                         .appFont(.captionSemibold)
                         .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(visibleToolCalls) { toolCall in
-                            Button {
-                                selectedToolCallID = toolCall.id
-                            } label: {
-                                ToolCallRow(
-                                    toolCall: toolCall,
-                                    isSelected: selectedToolCallID == toolCall.id
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            ToolCallRow(
+                                toolCall: toolCall,
+                                isSelected: false
+                            )
                         }
                     }
-                    Divider()
-                }
-
-                if let selectedToolCall {
+                } else if let selectedToolCall {
                     ToolCallDetailView(toolCall: selectedToolCall)
                 } else {
                     Text("No skill details available.")
@@ -252,7 +237,7 @@ struct ToolCallPopoverContent: View {
     }
 
     private var selectedToolCall: ToolCall? {
-        visibleToolCalls.first(where: { $0.id == selectedToolCallID }) ?? visibleToolCalls.first
+        visibleToolCalls.first
     }
 }
 
