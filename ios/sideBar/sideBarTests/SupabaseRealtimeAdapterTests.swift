@@ -230,30 +230,38 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
     }
 
+    func testSubscriptionSessionRequiresUserIdAndAccessToken() {
+        XCTAssertNil(RealtimeSubscriptionSession(userId: nil, accessToken: "token"))
+        XCTAssertNil(RealtimeSubscriptionSession(userId: "user-1", accessToken: nil))
+        XCTAssertNil(RealtimeSubscriptionSession(userId: "   ", accessToken: "token"))
+        XCTAssertNil(RealtimeSubscriptionSession(userId: "user-1", accessToken: ""))
+
+        let session = RealtimeSubscriptionSession(userId: " user-1 ", accessToken: "token")
+
+        XCTAssertEqual(session?.userId, "user-1")
+        XCTAssertEqual(session?.accessToken, "token")
+    }
+
     func testSubscriptionPlanCentralizesRealtimeDomainOrdering() {
+        let currentSession = RealtimeSubscriptionSession(userId: "user-1", accessToken: "token")
+        let nextSession = RealtimeSubscriptionSession(userId: "user-1", accessToken: "token")!
         let allExistingPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
-            currentUserId: "user-1",
-            currentAccessToken: "token",
-            nextUserId: "user-1",
-            nextAccessToken: "token"
+            currentSession: currentSession,
+            nextSession: nextSession
         ) { _ in true }
         XCTAssertTrue(allExistingPlan.domains.isEmpty)
 
         let missingChannelPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
-            currentUserId: "user-1",
-            currentAccessToken: "token",
-            nextUserId: "user-1",
-            nextAccessToken: "token"
+            currentSession: currentSession,
+            nextSession: nextSession
         ) { domain in
             domain != .websites && domain != .taskGroups
         }
         XCTAssertEqual(missingChannelPlan.domains, [.websites, .taskGroups])
 
         let tokenChangedPlan = SupabaseRealtimeAdapter.makeSubscriptionPlan(
-            currentUserId: "user-1",
-            currentAccessToken: "old-token",
-            nextUserId: "user-1",
-            nextAccessToken: "new-token"
+            currentSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "old-token"),
+            nextSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "new-token")!
         ) { _ in true }
         XCTAssertEqual(tokenChangedPlan.domains, RealtimeSubscriptionDomain.allCases)
     }
@@ -261,19 +269,15 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     func testTokenChangeRequiresRealtimeResubscribeForExistingChannels() {
         XCTAssertTrue(
             SupabaseRealtimeAdapter.shouldResubscribeChannel(
-                currentUserId: "user-1",
-                currentAccessToken: "old-token",
-                nextUserId: "user-1",
-                nextAccessToken: "new-token",
+                currentSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "old-token"),
+                nextSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "new-token")!,
                 hasChannel: true
             )
         )
         XCTAssertFalse(
             SupabaseRealtimeAdapter.shouldResubscribeChannel(
-                currentUserId: "user-1",
-                currentAccessToken: "token",
-                nextUserId: "user-1",
-                nextAccessToken: "token",
+                currentSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "token"),
+                nextSession: RealtimeSubscriptionSession(userId: "user-1", accessToken: "token")!,
                 hasChannel: true
             )
         )

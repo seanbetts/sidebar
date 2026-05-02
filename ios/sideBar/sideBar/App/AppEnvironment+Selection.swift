@@ -13,14 +13,16 @@ extension AppEnvironment {
 
     func realtimeClientStopStart() {
         guard authState == .active,
-              let userId = container.authSession.userId,
-              let token = container.authSession.authorizationToken
+              let session = RealtimeSubscriptionSession(
+                userId: container.authSession.userId,
+                accessToken: container.authSession.authorizationToken
+              )
         else {
             realtimeClient.stop()
             return
         }
         Task {
-            await realtimeClient.start(userId: userId, accessToken: token)
+            await realtimeClient.start(userId: session.userId, accessToken: session.accessToken)
         }
     }
 

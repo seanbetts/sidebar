@@ -72,13 +72,11 @@ public protocol RealtimeEventHandler: AnyObject {
     }
 
     static func shouldResubscribeChannel(
-        currentUserId: String?,
-        currentAccessToken: String?,
-        nextUserId: String,
-        nextAccessToken: String?,
+        currentSession: RealtimeSubscriptionSession?,
+        nextSession: RealtimeSubscriptionSession,
         hasChannel: Bool
     ) -> Bool {
-        !hasChannel || currentUserId != nextUserId || currentAccessToken != nextAccessToken
+        !hasChannel || currentSession != nextSession
     }
 }
 

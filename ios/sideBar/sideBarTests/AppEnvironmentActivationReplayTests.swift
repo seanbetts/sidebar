@@ -18,9 +18,17 @@ extension AppEnvironmentDeepLinkTests {
 
     func testHandleSignedInActivationNotifiesRefreshCoordinator() async {
         let refreshCoordinator = RefreshCoordinatorSpy()
-        environment = makeEnvironment(storage: storage, refreshCoordinator: refreshCoordinator)
+        let authSession = PlaceholderAuthSession(
+            accessToken: "token",
+            userId: "user-1",
+            authState: .active
+        )
+        environment = makeEnvironment(
+            storage: storage,
+            authSession: authSession,
+            refreshCoordinator: refreshCoordinator
+        )
         let environment = requireEnvironment()
-        environment.authState = .active
 
         await environment.handleSignedInActivation(includeDeferredRefresh: false)
 

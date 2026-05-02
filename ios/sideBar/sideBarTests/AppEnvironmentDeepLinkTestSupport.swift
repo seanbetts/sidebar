@@ -383,10 +383,10 @@ extension AppEnvironmentDeepLinkTests {
 
     func makeEnvironment(
         storage: AppEnvironmentStorage,
+        authSession: AuthSession = PlaceholderAuthSession(authState: .signedOut),
         websitesAPI: (any WebsitesProviding)? = nil,
         refreshCoordinator: RefreshCoordinatorType? = nil
     ) -> AppEnvironment {
-        let authSession = PlaceholderAuthSession(authState: .signedOut)
         let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),

@@ -55,6 +55,23 @@ enum RealtimeSubscriptionDomain: CaseIterable, Equatable {
     }
 }
 
+struct RealtimeSubscriptionSession: Equatable {
+    let userId: String
+    let accessToken: String
+
+    init?(userId: String?, accessToken: String?) {
+        guard let userId = userId?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !userId.isEmpty,
+              let accessToken,
+              !accessToken.isEmpty
+        else {
+            return nil
+        }
+        self.userId = userId
+        self.accessToken = accessToken
+    }
+}
+
 struct RealtimeSubscriptionPlan: Equatable {
     let domains: [RealtimeSubscriptionDomain]
 }
@@ -67,20 +84,25 @@ struct RealtimeSubscriptionHandlers {
 
 extension SupabaseRealtimeAdapter {
     func startInternal(userId: String, accessToken: String?) async {
-        await tokenStore.set(accessToken)
-        await client.realtimeV2.setAuth(accessToken)
+        guard let nextSession = RealtimeSubscriptionSession(userId: userId, accessToken: accessToken) else {
+            await stopInternal()
+            return
+        }
+        await tokenStore.set(nextSession.accessToken)
+        await client.realtimeV2.setAuth(nextSession.accessToken)
         let plan = Self.makeSubscriptionPlan(
-            currentUserId: currentUserId,
-            currentAccessToken: currentAccessToken,
-            nextUserId: userId,
-            nextAccessToken: accessToken
+            currentSession: RealtimeSubscriptionSession(
+                userId: currentUserId,
+                accessToken: currentAccessToken
+            ),
+            nextSession: nextSession
         ) { [weak self] domain in
             self?.channel(for: domain) != nil
         }
-        currentUserId = userId
-        currentAccessToken = accessToken
+        currentUserId = nextSession.userId
+        currentAccessToken = nextSession.accessToken
         for domain in plan.domains {
-            await subscribe(to: domain, userId: userId)
+            await subscribe(to: domain, userId: nextSession.userId)
         }
     }
 
@@ -112,18 +134,14 @@ extension SupabaseRealtimeAdapter {
     }
 
     static func makeSubscriptionPlan(
-        currentUserId: String?,
-        currentAccessToken: String?,
-        nextUserId: String,
-        nextAccessToken: String?,
+        currentSession: RealtimeSubscriptionSession?,
+        nextSession: RealtimeSubscriptionSession,
         hasChannel: (RealtimeSubscriptionDomain) -> Bool
     ) -> RealtimeSubscriptionPlan {
         let domains = RealtimeSubscriptionDomain.allCases.filter { domain in
             shouldResubscribeChannel(
-                currentUserId: currentUserId,
-                currentAccessToken: currentAccessToken,
-                nextUserId: nextUserId,
-                nextAccessToken: nextAccessToken,
+                currentSession: currentSession,
+                nextSession: nextSession,
                 hasChannel: hasChannel(domain)
             )
         }
