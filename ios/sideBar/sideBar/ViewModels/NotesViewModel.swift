@@ -181,11 +181,11 @@ public final class NotesViewModel: ObservableObject {
 
     public func refreshSelectedNoteIfNeeded() async {
         if let pendingNoteId {
-            await loadNote(id: pendingNoteId)
+            await loadNote(id: pendingNoteId, force: true)
             return
         }
-        guard let selectedNoteId, activeNote == nil else { return }
-        await loadNote(id: selectedNoteId)
+        guard let selectedNoteId else { return }
+        await loadNote(id: selectedNoteId, force: true)
     }
 
     public func noteNode(id: String) -> FileNode? {

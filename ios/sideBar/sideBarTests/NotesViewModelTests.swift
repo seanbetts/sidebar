@@ -1654,6 +1654,46 @@ extension NotesViewModelTests {
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertEqual(viewModel.activeNote?.id, "note-1")
     }
+
+    func testRefreshSelectedNoteIfNeededReloadsVisibleNote() async throws {
+        let initial = NotePayload(
+            id: "note-1",
+            name: "Open.md",
+            content: "Initial",
+            path: "note-1",
+            modified: 100,
+            created: nil
+        )
+        let refreshed = NotePayload(
+            id: "note-1",
+            name: "Open.md",
+            content: "Refreshed",
+            path: "note-1",
+            modified: 200,
+            created: nil
+        )
+        let api = SequencedNotesAPI(
+            treeResults: [],
+            noteResults: [
+                .success(initial),
+                .success(refreshed)
+            ]
+        )
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.loadNote(id: "note-1")
+        XCTAssertEqual(viewModel.activeNote?.content, "Initial")
+
+        await viewModel.refreshSelectedNoteIfNeeded()
+
+        XCTAssertEqual(viewModel.activeNote?.content, "Refreshed")
+    }
 }
 
 @MainActor
