@@ -1,14 +1,14 @@
 import Foundation
 import sideBarShared
 
-private struct ChatStreamPresentationRule {
+nonisolated private struct ChatStreamPresentationRule {
     let matches: Bool
     let category: ChatStreamErrorCategory
     let title: String
     let userMessage: String
 }
 
-extension ErrorMapping {
+nonisolated extension ErrorMapping {
     public static func message(for error: AppError) -> String {
         presentation(for: error).message
     }

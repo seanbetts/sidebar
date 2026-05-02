@@ -1,7 +1,7 @@
 import Foundation
 import sideBarShared
 
-enum URLRequestErrorCategory {
+nonisolated enum URLRequestErrorCategory {
     case offline
     case timeout
     case serverUnreachable
@@ -11,7 +11,7 @@ enum URLRequestErrorCategory {
     case other
 }
 
-enum URLRequestErrorClassifier {
+nonisolated enum URLRequestErrorClassifier {
     static func category(for error: Error) -> URLRequestErrorCategory? {
         guard let code = urlErrorCode(from: error) else {
             return nil
@@ -91,7 +91,7 @@ enum URLRequestErrorClassifier {
         return signals.contains(where: description.contains)
     }
 }
-public enum ErrorMapping {
+public nonisolated enum ErrorMapping {
     public static func message(for error: Error) -> String {
         if let appError = error as? AppError {
             return message(for: appError)

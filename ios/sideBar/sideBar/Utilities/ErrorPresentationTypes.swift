@@ -1,6 +1,6 @@
 import sideBarShared
 
-public struct ChatStreamErrorPresentation: Equatable {
+public nonisolated struct ChatStreamErrorPresentation: Equatable {
     public let category: ChatStreamErrorCategory
     public let isRetryable: Bool
     public let title: String
@@ -10,7 +10,7 @@ public struct ChatStreamErrorPresentation: Equatable {
     public let requestID: String?
 }
 
-public enum ChatStreamErrorCategory: Equatable {
+public nonisolated enum ChatStreamErrorCategory: Equatable {
     case providerOverloaded
     case providerRateLimited
     case requestTimeout
@@ -23,7 +23,7 @@ public enum ChatStreamErrorCategory: Equatable {
     case unknown
 }
 
-public struct ErrorPresentationDecision: Equatable {
+public nonisolated struct ErrorPresentationDecision: Equatable {
     public let surface: RecommendedSurface
     public let title: String
     public let message: String
