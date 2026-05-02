@@ -13,11 +13,11 @@ Define how sideBar handles incoming context from outside the main app process �
 
 | Type | Entry point | Trigger | Auth required |
 |---|---|---|---|
-| Extension save | `ExtensionEventStore` / `PendingShareStore` | Share or Safari extension records a save | Active (deferred until auth resolves) |
-| Widget intent | `WidgetDataManager` | Widget button tap (add task, add note, complete task) | Active (deferred until auth resolves) |
-| Deep link | `onOpenURL` / `scene(_:openURLContexts:)` | URL scheme link from any source | Active (deferred until auth resolves) |
-| Spotlight | `scene(_:continue:)` with `NSUserActivity` | User taps a Spotlight search result | Active (deferred until auth resolves) |
-| Push notification | `didReceiveRemoteNotification` | Server-sent remote notification | Active (deferred until auth resolves) |
+| Extension save | `ExtensionEventStore` / `PendingShareStore` | Share or Safari extension records a save | Authenticated and protected content ready (deferred until auth resolves) |
+| Widget intent | `WidgetDataManager` | Widget button tap (add task, add note, complete task) | Authenticated and protected content ready (deferred until auth resolves) |
+| Deep link | `onOpenURL` / `scene(_:openURLContexts:)` | URL scheme link from any source | Authenticated and protected content ready (deferred until auth resolves) |
+| Spotlight | `scene(_:continue:)` with `NSUserActivity` | User taps a Spotlight search result | Authenticated and protected content ready (deferred until auth resolves) |
+| Push notification | `didReceiveRemoteNotification` | Server-sent remote notification | Authenticated and protected content ready (deferred until auth resolves) |
 
 ---
 
@@ -36,7 +36,8 @@ The extension writes the URL to `PendingShareStore` in App Group UserDefaults, t
 | Active, foreground | Inter-process notification fires; items drained immediately | Process immediately |
 | Active, backgrounded | Notification received; items remain queued; drained on next foreground entry | Process immediately via background URLSession |
 | Active, biometric locked | Auth state is `.active` so items are processed immediately, without waiting for unlock | Queue; drain after biometric auth completes |
-| Stale auth | `consumePendingShares` is gated on `.active`; items queue until session recovers | Queue; drain when auth recovers |
+| Recoverable stale auth | Remote processing waits until the session recovers | Queue; drain when auth recovers |
+| Reauthentication required | Existing credentials cannot access protected content | Queue; drain after sign-in again |
 | Signed out | Items written to App Group storage after sign-out clear; retained until sign-in | Queue; drain after sign-in |
 | App not running | Items written to App Group storage by the extension; drained on next launch | Queue; drain on launch |
 
@@ -46,7 +47,7 @@ Before inserting a URL-queue item, the app normalises the URL canonically and ch
 
 ### Auth gating
 
-All extension save processing is gated on `authState == .active`. Items queued while the app is signed out or loading are retained in `PendingShareStore` and drained after successful sign-in. See [Authentication — Deferred actions](./authentication#deferred-actions).
+All extension save processing is gated on an active authenticated session and protected-content readiness. Items queued while the app is signed out, locked, reauth-required, stale-recoverable, or loading are retained in `PendingShareStore` and drained after successful recovery. See [Authentication — Deferred actions](./authentication#deferred-actions).
 
 ### Error classification
 
@@ -78,7 +79,7 @@ Widget action intents that require navigation convert to a `sidebar://` deep lin
 
 ### Auth gating
 
-Widget intent processing is gated on `authState == .active`. Pending operations recorded while the app is signed out are retained and consumed after sign-in.
+Widget intent processing is gated on an active authenticated session and protected-content readiness. Pending operations recorded while the app is signed out or reauth-required are retained and consumed after sign-in.
 
 ---
 
@@ -178,7 +179,7 @@ Progress surfaces communicate status for long-running operations with a clear st
 
 Every foreground transition triggers a coordinated drain of all pending handoff data. The sequence on `handleSignedInActivation()` is:
 
-1. Auth refresh (stale session recovery or staleness check)
+1. Auth refresh (`staleRecoverable` session recovery or staleness check)
 2. Send foreground presence update to backend (for notification away-state rule)
 3. Consume extension events (with pending share replay)
 4. Consume widget task completions
@@ -247,7 +248,7 @@ The in-app browser is the default for title taps. The external browser is an exp
 1. **Never silently drop a handoff.** All incoming data — extension saves, widget intents, deep links — must be queued if the app is not ready, and drained when it is.
 2. **App Group UserDefaults is the handoff bus.** Extension saves and widget intents write to App Group storage so data survives process termination and is available on next launch.
 3. **Deep links are the universal navigation primitive.** Spotlight, widget navigation, and notifications all convert to `sidebar://` URLs before routing. There is one routing implementation.
-4. **All data handoffs are gated on `authState == .active`.** Queued items are retained until the user is signed in and active.
+4. **All data handoffs are gated on active auth and protected-content readiness.** Queued items are retained until the user is signed in, locally unlocked, and allowed to process protected content.
 5. **URL deduplication is mandatory for extension saves.** Canonical URL matching must run before inserting a queued save.
 6. **Retry on transient errors, fail fast on permanent ones.** Network and server errors use exponential backoff. 4xx client errors mark items as permanently failed without retrying.
 7. **Sign-out clears all queued handoff data.** No content from a previous session should be processed by a subsequent user on the same device.

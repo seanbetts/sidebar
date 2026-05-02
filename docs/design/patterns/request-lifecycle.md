@@ -92,6 +92,17 @@ Expired auth should be treated as a transport recovery concern, not as feature-s
 - Auth refresh must be coordinated so concurrent failures do not trigger refresh storms
 - If auth refresh fails, the original request fails with an auth-classified error
 - Feature code must not implement its own token-refresh retry loop
+- If the request cannot refresh because no retry credential is available, the auth session must move to `reauthenticationRequired`
+- Feature code must not render auth-required list placeholders for hard auth failures; the app-level auth surface owns that user experience
+
+Recoverable stale auth and hard auth expiry are different outcomes:
+
+| Outcome | Meaning | Request-layer response | User experience |
+|---|---|---|---|
+| `staleRecoverable` | Token or connectivity recovery is still possible | Pause protected server reads, allow automatic recovery | App remains usable with eligible cached data |
+| `reauthenticationRequired` | Credentials were rejected or no retry credential exists | Stop protected reads and realtime subscriptions | Full-screen "Sign in again" surface |
+
+Stale recovery is automatic. A feature may observe the degraded state for presentation, but it must not ask the user to fix a recoverable refresh path before the shared auth layer has finished its own recovery attempt.
 
 ### Applicability
 

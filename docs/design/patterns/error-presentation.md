@@ -28,6 +28,7 @@ All user-facing error states: operation failures, validation errors, load failur
 | **Inline text** | Red caption `Text` | Clears on correction | Form or field validation error |
 | **Placeholder** | `PlaceholderView` | N/A — replaces content | Content area failed to load and is empty |
 | **Banner** | `OfflineBanner` | Auto (connection restores) | Persistent connection degradation |
+| **Global auth screen** | Reauthentication required view | User signs in again | Existing session can no longer access protected content |
 
 ---
 
@@ -51,7 +52,7 @@ Use an alert when the error requires the user to acknowledge a blocker or make a
 
 - Login failure
 - Website save failed
-- Session expired / auth required
+- Destructive confirmation failed
 
 Use the system `.alert` modifier. Use `DeleteConfirmationAlert` for all destructive operation confirmations — it wraps `.alert` with consistent wording and button roles.
 
@@ -113,6 +114,28 @@ Use `OfflineBanner` when the device is offline or the server is unreachable. The
 
 ---
 
+### Global auth screen
+
+Use the full-screen reauthentication surface when an existing session can no longer access protected content because credentials were rejected or no retry credential is available.
+
+Examples:
+
+- Stored token rejected by the backend
+- Refresh unavailable because no retry token exists
+- Session expired and cannot be recovered automatically
+
+Rules:
+
+- route once from the app auth state, not from each feature view model
+- do not show per-section placeholders such as "Unable to load chats" for the same auth boundary
+- do not show protected cached content behind the screen
+- send the user to the sign-in form, not the sign-up form
+- clear stale auth load errors after successful sign-in and refresh visible content through the shared refresh coordinator
+
+This surface is not a toast, alert, or list error. It is a global access boundary.
+
+---
+
 ### Chat stream errors
 
 Chat stream errors use a dedicated three-part presentation: `ChatErrorPillView` (compact in-thread indicator), `ChatErrorRetryActionView` (retry button), and `ChatErrorPopoverContent` (detail popover on tap). This pattern is specific to streaming AI responses.
@@ -137,6 +160,7 @@ For retryable stream errors (provider overloaded, rate limited, timeout, transpo
 
 When an operation fails:
 
+- Hard auth boundary: route to the global auth screen. Do not show section-level retry placeholders.
 - Content area is empty (load failure): show `PlaceholderView` with a retry action.
 - Selected content exists but is not cached offline: show an unavailable-offline placeholder in context.
 - Content area has stale content (refresh failure): show a toast, leave the stale content in place.

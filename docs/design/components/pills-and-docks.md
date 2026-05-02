@@ -13,7 +13,7 @@ Define the four families of capsule-shaped surfaces used across sideBar, when to
 
 | Family | Purpose | Interactive | Examples |
 |---|---|---|---|
-| Status pill | Show current state with icon + text | Optional tap action | Sync status, stale retry, toast banner |
+| Status pill | Show current state with icon + text | Optional tap action | Sync status, stale auth, toast banner |
 | Metadata pill | Label content attributes | No | Task project/deadline, chat role, tool badge |
 | Action pill | Trigger behaviour on tap | Yes | Filter chip, error popover, retry button |
 | Floating dock | Glass toolbar container for iPhone compact layout | Yes (contains buttons) | Search dock, section action bar |
@@ -54,7 +54,7 @@ A small capsule that communicates a transient or ongoing state. Always has an ic
 | `SiteHeaderBar` sync pill | `Views/Websites/` | syncing, pending | No |
 | `SiteHeaderBar` ingestion pill | `Views/Websites/` | multiple | Yes (opens sheet) |
 | `ToastBanner` | `Design/Components/ToastCenter.swift` | error, success | No |
-| Stale auth retry pill | Auth views | persistent stale after 10s | Yes (retry) |
+| Stale auth status pill | Auth views | persistent recoverable stale after 10s | Optional |
 
 ### Target
 

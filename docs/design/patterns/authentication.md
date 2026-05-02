@@ -27,17 +27,20 @@ Each account has one primary credential path: `email_password`. Passkeys and Sig
 
 ## Auth state model
 
-The app uses a three-state model:
+The native app uses a four-state model:
 
 | State | Meaning | User experience |
 |---|---|---|
 | `signedOut` | No usable session. User must authenticate. | Login screen shown |
-| `active` | Session valid and network-authenticated. | Full app access, sync running |
-| `stale` | Session exists but cannot be verified (network unavailable or refresh failed). | App usable with cached data, sync paused |
+| `active` | Session valid and network-authenticated. | Full app access once protected content is locally unlocked, sync running |
+| `staleRecoverable` | Session exists but needs automatic recovery, usually because of transient network failure or a refresh that can still be retried. | App usable with eligible cached data, sync paused, recovery automatic |
+| `reauthenticationRequired` | Stored credentials were rejected or no retry credential is available. | Branded full-screen "Sign in again" view |
 
-**Rule**: Treat `.stale` as a degraded-but-functional state, not an error state. The user should be able to continue working. Sync resumes automatically when the session is recovered.
+**Rule**: Treat `.staleRecoverable` as a degraded-but-functional token state, not an error state. The user should be able to continue working with protected content only when the separate local protected-content gate allows it. Sync resumes automatically when the session is recovered.
 
-The transition from `.stale` back to `.active` happens automatically on the next successful token refresh — no user action required if the network returns. If the user wants to force it, a manual retry should be available.
+The transition from `.staleRecoverable` back to `.active` happens automatically on the next successful token refresh or connectivity recovery. User intervention is not required. If the state persists long enough to be worth surfacing, use the existing status pill pattern rather than per-section errors.
+
+**Rule**: Treat `.reauthenticationRequired` as a global auth boundary. Do not let individual sections show empty lists, retry placeholders, or stale protected content for hard auth failures. Route to the dedicated sign-in-again surface.
 
 ---
 
@@ -48,13 +51,13 @@ The transition from `.stale` back to `.active` happens automatically on the next
 On launch, the app determines initial auth state before showing any content:
 
 1. Check Keychain for a stored session
-2. If a valid session exists within the 24-hour offline access window: restore as `.active` (if network is available) or `.stale` (if offline)
-3. If the session exists but the offline window has expired: attempt a token refresh. Success → `.active`; auth error → `signedOut`; network error → `.stale`
+2. If a valid session exists within the 24-hour offline access window: restore as `.active` (if network is available) or `.staleRecoverable` (if offline)
+3. If the session exists but the offline window has expired: attempt a token refresh. Success → `.active`; hard auth error → `.reauthenticationRequired`; network error → `.staleRecoverable`
 4. If no session: `signedOut`
 
-**Rule**: `signedOut` always shows the login screen — no exceptions, no partial access. Any transition to `signedOut`, whether from sign-out, token expiry, or failed session restore, must result in the login screen being shown and all user data cleared.
+**Rule**: `signedOut` always shows the login screen — no exceptions, no partial access. Explicit sign-out and no-session launch resolve to `signedOut` and clear user data. Hard auth expiry from an existing session resolves first to `reauthenticationRequired` so the user gets a clear sign-in-again path rather than a generic empty app.
 
-While auth state is being determined on launch, show a neutral loading state — not the login screen. The login screen only appears once auth state has resolved to `signedOut`. Showing login prematurely would interrupt users who are simply returning to an active or stale session.
+While auth state is being determined on launch, show a neutral loading state — not the login screen. The login screen only appears once auth state has resolved to `signedOut`. Showing login prematurely would interrupt users who are simply returning to an active or recoverable stale session.
 
 ### Token refresh
 
@@ -62,21 +65,32 @@ Tokens are refreshed proactively — 10 minutes before expiry — rather than re
 
 - **Foreground**: Refresh triggered on app activation when token is within 10 minutes of expiry
 - **Background**: `BGAppRefreshTask` scheduled every 15 minutes when app backgrounds; keeps tokens fresh for users who leave the app open
-- **On refresh failure**: Transient errors (network) → `.stale`; hard auth errors (expired refresh token, invalid JWT) → `signedOut` with full state clear
+- **On refresh failure**: Transient errors (network) → `.staleRecoverable`; hard auth errors (expired refresh token, invalid JWT, missing retry credential) → `.reauthenticationRequired`
 
 A 60-second cooldown prevents refresh thrashing if multiple failures occur in rapid succession.
 
-### Stale state recovery
+### Recoverable stale state
 
-When in `.stale`, the app:
-- Continues to function with locally cached data
-- Surfaces a non-blocking retry pill if stale state persists for 10 continuous seconds
-- Provides a manual "Retry" action in that pill so the user is not left waiting for the next background refresh
-- Automatically transitions to `.active` on next successful token refresh
+When in `.staleRecoverable`, the app:
+- Continues to function with locally cached data when protected content is locally unlocked
+- Pauses remote sync and foreground protected reads that require a fresh server token
+- Recovers automatically on the next successful token refresh or connectivity recovery
+- May surface a non-blocking status pill if the recoverable stale state persists long enough to be useful
 
 Short-lived stale periods should not show visible chrome. If the session recovers before the 10-second threshold, show nothing.
 
-**Rule**: Do not block the UI in `.stale` state. The user can continue working. Surface the degraded state clearly but without demanding action.
+**Rule**: Do not block the UI in `.staleRecoverable` state. The user can continue working with locally available protected content. Surface the degraded state clearly but without demanding action.
+
+### Reauthentication required
+
+When in `.reauthenticationRequired`, the app:
+- Shows the branded full-screen "Sign in again" surface
+- Stops protected content reads and realtime subscriptions
+- Prevents protected cached content from remaining visible
+- Clears section-level load errors caused by the auth boundary
+- Sends the user to the sign-in form when they tap "Sign in"
+
+**Rule**: Do not present `.reauthenticationRequired` as a local list failure. Section placeholders such as "Unable to load chats" are incorrect for a global auth boundary.
 
 ---
 
@@ -142,7 +156,7 @@ Settings should support:
 
 ## Biometric lock
 
-Biometric lock is a separate layer on top of auth state — it does not change the session, only controls access to the app UI.
+Biometric lock is a separate layer on top of auth state — it does not change the backend session, only controls access to protected app UI and cached protected content.
 
 ### Behaviour
 
@@ -189,12 +203,12 @@ When the user has a stored session and the device is offline (or connectivity is
 
 If the user opens the app offline with a valid cached session:
 - Biometric authentication is required first (if biometric lock is enabled)
-- Session is restored in `.stale` state — not `.active`
+- Session is restored in `.staleRecoverable` state — not `.active`
 - The user can work with cached data; sync resumes when connectivity returns
 
 ### Offline window expiry
 
-After 24 hours without a successful token refresh, the offline window expires. On next launch, the app attempts a token refresh. If that fails due to a hard auth error (not just network unavailability), the session is cleared and the user must sign in again.
+After 24 hours without a successful token refresh, the offline window expires. On next launch, the app attempts a token refresh. If that fails due to a hard auth error (not just network unavailability), the app moves to `.reauthenticationRequired` and the user must sign in again.
 
 The 24-hour window should be backed by a value stored in Keychain alongside the token, not in UserDefaults. This prevents the offline window from being trivially reset by clearing UserDefaults while Keychain remains intact.
 
@@ -226,18 +240,20 @@ Deep links that arrive while the app is not in `.active` state:
 
 - If the app is loading (auth state not yet determined): queue the deep link and process after auth resolves
 - If `signedOut`: complete sign-in, then process the queued deep link
+- If `reauthenticationRequired`: complete sign-in again, then process the queued deep link
 - If biometric lock is showing: complete biometric auth, then process the deep link
-- If `.stale`: process immediately. The destination works from cached data, same as any other navigation in stale state.
+- If `.staleRecoverable`: process immediately when the destination can be served from eligible cached data. Otherwise show the correct unavailable-offline state.
 
-**Rule**: Deep links must never route to feature content before auth is complete. Silent failure (routing to a blank/loading screen) is not acceptable. However, `.stale` counts as authenticated, so deep links should not be blocked by offline state.
+**Rule**: Deep links must never route to feature content before auth is complete. Silent failure (routing to a blank/loading screen) is not acceptable. However, `.staleRecoverable` counts as authenticated for locally available content, so deep links should not be blocked by offline state alone.
 
 ### Website saves (share extension and Safari extension)
 
 A save triggered from the share sheet or Safari extension may arrive when the app is `signedOut`, locked, or loading. The save must be queued and completed once auth resolves — it must not be silently discarded.
 
 - If `signedOut`: queue the save, complete sign-in, then process it
+- If `reauthenticationRequired`: queue the save, complete sign-in again, then process it
 - If biometric lock is showing: queue the save, complete biometric auth, then process it
-- If `.stale`: process immediately using the cached session; sync when connectivity returns
+- If `.staleRecoverable`: process locally when possible; sync when connectivity returns
 
 Unlike deep links, website saves do not require navigation after completion. The user should receive a confirmation (toast or notification) once the save completes, but is not routed into the app unless they tap the confirmation.
 
@@ -251,14 +267,15 @@ Auth errors are surfaced non-modally in order of severity:
 
 | Error type | Surface |
 |---|---|
-| Token refresh failed (transient) | No immediate surface; if `.stale` persists for 10 seconds, show retry pill: "Sync paused" |
-| Token refresh failed (hard auth error) | Sign-out with full data clear; return to login |
+| Token refresh failed (transient) | No immediate surface; if `.staleRecoverable` persists for 10 seconds, show status pill: "Sync paused" |
+| Token refresh failed (hard auth error) | Full-screen "Sign in again" surface |
 | Sign-in failed (wrong credentials) | Inline error below email/password fields |
 | Sign-in rate limited | Inline lockout message with countdown |
 | Biometric failure | Inline error on lock screen |
-| Session expired mid-session | Transition to `.stale`; if it persists for 10 seconds, show retry pill |
+| Session expired mid-session, refreshable | Transition to `.staleRecoverable`; recover automatically |
+| Session expired mid-session, no retry credential | Transition to `.reauthenticationRequired` |
 
-Auth errors must be cleared automatically when auth state transitions successfully. A stale retry pill should not persist after the session is recovered.
+Auth errors must be cleared automatically when auth state transitions successfully. A stale status pill should not persist after the session is recovered.
 
 ---
 
@@ -279,9 +296,9 @@ The web app has no biometric lock (no API equivalent in browsers), no offline ac
 
 ## Rules summary
 
-1. **Three states only: `signedOut`, `stale`, `active`.** No additional top-level states should be introduced.
-2. **`.stale` is functional, not an error.** The user continues working with cached data. Sync resumes automatically.
-3. **Always provide a manual retry for `.stale` state.** Do not rely solely on background/foreground transitions to recover.
+1. **Four native auth states only: `signedOut`, `active`, `staleRecoverable`, `reauthenticationRequired`.** Do not introduce feature-local auth state machines.
+2. **`.staleRecoverable` is functional, not an error.** The user continues working with eligible cached data. Sync resumes automatically.
+3. **`.reauthenticationRequired` is global.** Route to the full-screen sign-in-again surface instead of showing per-section empty or retry states.
 4. **Rate limiting must be persisted.** In-memory lockout provides no meaningful protection against brute force.
 5. **Offline window must be backed by Keychain.** Do not rely on UserDefaults for security-relevant timestamps.
 6. **Deferred actions are queued, never silently dropped.** Deep links and website saves must be held until auth completes, then processed.

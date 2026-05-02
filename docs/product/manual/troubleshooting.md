@@ -9,8 +9,9 @@ surfaces: [app, website, internal-knowledge]
 ## Chat isn't working
 
 **"Session expired. Please sign in again."**
-Your sideBar session has expired. Sign out from **Settings → Profile** and
-sign back in.
+Your sideBar session has expired. Tap **Sign in** on the session screen and
+sign in again. If you do not see that screen, close and reopen sideBar, then
+sign in from the welcome screen.
 
 **Provider API error or unexpected error**
 Your API key may be incorrect, expired, or have been revoked, or your provider
@@ -50,7 +51,7 @@ from the compose button in Chat. Your memories carry forward automatically.
 ## A file won't ingest
 
 **Stuck on "processing"**
-Wait a few minutes — large files take longer. If the card still shows
+Wait a few minutes, large files take longer. If the card still shows
 processing after several minutes, tap **Retry**.
 
 **Shows an error**
@@ -77,7 +78,7 @@ connection returns. No action needed.
 
 **Skill isn't running when expected**
 Check that the skill is enabled in **Settings → Skills**. If it is enabled,
-make sure the skill's requirements are met — some Store skills need an API key
+make sure the skill's requirements are met. Some Store skills need an API key
 before they will work.
 
 **Skill error shown in chat**
