@@ -26,21 +26,10 @@ public protocol RealtimeEventHandler: AnyObject {
     let client: SupabaseClient
     let logger = Logger(subsystem: "sideBar", category: "Realtime")
     var currentUserId: String?
-    var notesChannel: RealtimeChannelV2?
-    var websitesChannel: RealtimeChannelV2?
-    var ingestedFilesChannel: RealtimeChannelV2?
-    var fileJobsChannel: RealtimeChannelV2?
-    var tasksChannel: RealtimeChannelV2?
-    var taskProjectsChannel: RealtimeChannelV2?
-    var taskGroupsChannel: RealtimeChannelV2?
     var currentAccessToken: String?
-    var notesSubscriptions: [ObservationToken] = []
-    var websitesSubscriptions: [ObservationToken] = []
-    var ingestedFilesSubscriptions: [ObservationToken] = []
-    var fileJobsSubscriptions: [ObservationToken] = []
-    var tasksSubscriptions: [ObservationToken] = []
-    var taskProjectsSubscriptions: [ObservationToken] = []
-    var taskGroupsSubscriptions: [ObservationToken] = []
+    var subscriptionSlots: [RealtimeSubscriptionDomain: RealtimeSubscriptionSlot] = Dictionary(
+        uniqueKeysWithValues: RealtimeSubscriptionDomain.allCases.map { ($0, RealtimeSubscriptionSlot()) }
+    )
     var transitionTask: Task<Void, Never>?
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {

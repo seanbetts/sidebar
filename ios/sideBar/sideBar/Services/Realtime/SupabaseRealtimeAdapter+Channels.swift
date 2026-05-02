@@ -3,7 +3,7 @@ import sideBarShared
 import OSLog
 import Supabase
 
-enum RealtimeSubscriptionDomain: CaseIterable, Equatable {
+enum RealtimeSubscriptionDomain: CaseIterable, Equatable, Hashable {
     case notes
     case websites
     case ingestedFiles
@@ -74,6 +74,11 @@ struct RealtimeSubscriptionSession: Equatable {
 
 struct RealtimeSubscriptionPlan: Equatable {
     let domains: [RealtimeSubscriptionDomain]
+}
+
+struct RealtimeSubscriptionSlot {
+    var channel: RealtimeChannelV2?
+    var subscriptions: [ObservationToken] = []
 }
 
 struct RealtimeSubscriptionHandlers {
@@ -179,79 +184,27 @@ extension SupabaseRealtimeAdapter {
     }
 
     func channel(for domain: RealtimeSubscriptionDomain) -> RealtimeChannelV2? {
-        switch domain {
-        case .notes:
-            notesChannel
-        case .websites:
-            websitesChannel
-        case .ingestedFiles:
-            ingestedFilesChannel
-        case .fileJobs:
-            fileJobsChannel
-        case .tasks:
-            tasksChannel
-        case .taskProjects:
-            taskProjectsChannel
-        case .taskGroups:
-            taskGroupsChannel
-        }
+        subscriptionSlots[domain]?.channel
     }
 
     func setChannel(_ channel: RealtimeChannelV2?, for domain: RealtimeSubscriptionDomain) {
-        switch domain {
-        case .notes:
-            notesChannel = channel
-        case .websites:
-            websitesChannel = channel
-        case .ingestedFiles:
-            ingestedFilesChannel = channel
-        case .fileJobs:
-            fileJobsChannel = channel
-        case .tasks:
-            tasksChannel = channel
-        case .taskProjects:
-            taskProjectsChannel = channel
-        case .taskGroups:
-            taskGroupsChannel = channel
-        }
+        var slot = subscriptionSlots[domain] ?? RealtimeSubscriptionSlot()
+        slot.channel = channel
+        subscriptionSlots[domain] = slot
     }
 
     func clearSubscriptions(for domain: RealtimeSubscriptionDomain) {
-        switch domain {
-        case .notes:
-            notesSubscriptions.removeAll()
-        case .websites:
-            websitesSubscriptions.removeAll()
-        case .ingestedFiles:
-            ingestedFilesSubscriptions.removeAll()
-        case .fileJobs:
-            fileJobsSubscriptions.removeAll()
-        case .tasks:
-            tasksSubscriptions.removeAll()
-        case .taskProjects:
-            taskProjectsSubscriptions.removeAll()
-        case .taskGroups:
-            taskGroupsSubscriptions.removeAll()
-        }
+        setSubscriptions([], for: domain)
+    }
+
+    func subscriptions(for domain: RealtimeSubscriptionDomain) -> [ObservationToken] {
+        subscriptionSlots[domain]?.subscriptions ?? []
     }
 
     func setSubscriptions(_ subscriptions: [ObservationToken], for domain: RealtimeSubscriptionDomain) {
-        switch domain {
-        case .notes:
-            notesSubscriptions = subscriptions
-        case .websites:
-            websitesSubscriptions = subscriptions
-        case .ingestedFiles:
-            ingestedFilesSubscriptions = subscriptions
-        case .fileJobs:
-            fileJobsSubscriptions = subscriptions
-        case .tasks:
-            tasksSubscriptions = subscriptions
-        case .taskProjects:
-            taskProjectsSubscriptions = subscriptions
-        case .taskGroups:
-            taskGroupsSubscriptions = subscriptions
-        }
+        var slot = subscriptionSlots[domain] ?? RealtimeSubscriptionSlot()
+        slot.subscriptions = subscriptions
+        subscriptionSlots[domain] = slot
     }
 
     func registerSubscriptions(

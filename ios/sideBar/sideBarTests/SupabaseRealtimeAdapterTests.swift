@@ -198,29 +198,22 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
 
         for index in 0..<10 {
             adapter.currentUserId = "user-\(index)"
-            adapter.notesChannel = adapter.client.realtimeV2.channel("public:notes-\(index)")
-            adapter.websitesChannel = adapter.client.realtimeV2.channel("public:websites-\(index)")
-            adapter.ingestedFilesChannel = adapter.client.realtimeV2.channel("public:files-\(index)")
-            adapter.fileJobsChannel = adapter.client.realtimeV2.channel("public:file-jobs-\(index)")
-            adapter.tasksChannel = adapter.client.realtimeV2.channel("public:tasks-\(index)")
-            adapter.taskProjectsChannel = adapter.client.realtimeV2.channel("public:task-projects-\(index)")
-            adapter.taskGroupsChannel = adapter.client.realtimeV2.channel("public:task-groups-\(index)")
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:notes-\(index)"), for: .notes)
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:websites-\(index)"), for: .websites)
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:files-\(index)"), for: .ingestedFiles)
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:file-jobs-\(index)"), for: .fileJobs)
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:tasks-\(index)"), for: .tasks)
+            adapter.setChannel(
+                adapter.client.realtimeV2.channel("public:task-projects-\(index)"),
+                for: .taskProjects
+            )
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:task-groups-\(index)"), for: .taskGroups)
             await adapter.stopInternal()
-            XCTAssertNil(adapter.notesChannel)
-            XCTAssertNil(adapter.websitesChannel)
-            XCTAssertNil(adapter.ingestedFilesChannel)
-            XCTAssertNil(adapter.fileJobsChannel)
-            XCTAssertNil(adapter.tasksChannel)
-            XCTAssertNil(adapter.taskProjectsChannel)
-            XCTAssertNil(adapter.taskGroupsChannel)
             XCTAssertNil(adapter.currentUserId)
-            XCTAssertTrue(adapter.notesSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.websitesSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.ingestedFilesSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.fileJobsSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.tasksSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.taskProjectsSubscriptions.isEmpty)
-            XCTAssertTrue(adapter.taskGroupsSubscriptions.isEmpty)
+            for domain in RealtimeSubscriptionDomain.allCases {
+                XCTAssertNil(adapter.channel(for: domain))
+                XCTAssertTrue(adapter.subscriptions(for: domain).isEmpty)
+            }
         }
     }
 
@@ -283,6 +276,27 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         )
     }
 
+    func testRealtimeAdapterStoresChannelsAndSubscriptionsInDomainSlots() throws {
+        let normalized = try realtimeSource(named: "SupabaseRealtimeAdapter.swift")
+            .normalizedForRealtimeSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("varsubscriptionSlots:[RealtimeSubscriptionDomain:RealtimeSubscriptionSlot]="))
+        XCTAssertFalse(normalized.contains("varnotesChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("varwebsitesChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("varingestedFilesChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("varfileJobsChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("vartasksChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("vartaskProjectsChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("vartaskGroupsChannel:RealtimeChannelV2?"))
+        XCTAssertFalse(normalized.contains("varnotesSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("varwebsitesSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("varingestedFilesSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("varfileJobsSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("vartasksSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("vartaskProjectsSubscriptions:[ObservationToken]"))
+        XCTAssertFalse(normalized.contains("vartaskGroupsSubscriptions:[ObservationToken]"))
+    }
+
     private func retain(_ adapter: SupabaseRealtimeAdapter) -> SupabaseRealtimeAdapter {
         Self.retainedAdapters.append(adapter)
         return adapter
@@ -295,6 +309,34 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         Self.retainedAdapters.append(adapter)
         Self.retainedHandlers.append(handler)
         return adapter
+    }
+
+    private func realtimeSource(
+        named fileName: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sourceURL = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Services")
+            .appendingPathComponent("Realtime")
+            .appendingPathComponent(fileName)
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read \(fileName): \(error)", file: file, line: line)
+            throw error
+        }
+    }
+}
+
+private extension String {
+    func normalizedForRealtimeSourceAssertions() -> String {
+        replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
     }
 }
 
