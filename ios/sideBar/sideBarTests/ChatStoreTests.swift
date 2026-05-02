@@ -32,7 +32,10 @@ final class ChatStoreTests: XCTestCase {
         ]
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.conversationsList, value: cached, ttlSeconds: 60)
-        let api = MockConversationsAPI(listResult: .success(fresh), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success(fresh),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         api.listDelay = 0.05
         let listExpectation = expectation(description: "list refresh")
         api.onList = {
@@ -72,7 +75,10 @@ final class ChatStoreTests: XCTestCase {
         )
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.conversation(id: "c1"), value: cached, ttlSeconds: 60)
-        let api = MockConversationsAPI(listResult: .failure(MockError.forced), getResult: .success(fresh))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .failure(ChatStoreMockError.forced),
+            getResult: .success(fresh)
+        )
         api.getDelay = 0.05
         let getExpectation = expectation(description: "detail refresh")
         api.onGet = {
@@ -123,7 +129,10 @@ final class ChatStoreTests: XCTestCase {
         )
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.conversation(id: "c1"), value: cached, ttlSeconds: 60)
-        let api = MockConversationsAPI(listResult: .failure(MockError.forced), getResult: .success(fresh))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .failure(ChatStoreMockError.forced),
+            getResult: .success(fresh)
+        )
         api.getDelay = 0.05
         let getExpectation = expectation(description: "detail refresh")
         api.onGet = {
@@ -141,7 +150,10 @@ final class ChatStoreTests: XCTestCase {
 
     func testUpdateConversationMessagesPersistsMessagesCache() async {
         let cache = TestCacheClient()
-        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success([]),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         let store = ChatStore(conversationsAPI: api, cache: cache)
         let detail = ConversationWithMessages(
             id: "c1",
@@ -190,7 +202,10 @@ final class ChatStoreTests: XCTestCase {
             )
         ]
         let cache = TestCacheClient()
-        let api = MockConversationsAPI(listResult: .success(conversations), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success(conversations),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         api.listDelay = 0.05
         let store = ChatStore(conversationsAPI: api, cache: cache)
 
@@ -226,7 +241,7 @@ final class ChatStoreTests: XCTestCase {
             ]
         )
         let cache = TestCacheClient()
-        let api = MockConversationsAPI(
+        let api = ChatStoreMockConversationsAPI(
             listResult: .success([]),
             getResult: .success(detail)
         )
@@ -262,12 +277,15 @@ final class ChatStoreTests: XCTestCase {
             value: cached,
             lastSyncAt: nil
         )
-        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success([]),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         let store = ChatStore(
             conversationsAPI: api,
             cache: TestCacheClient(),
             offlineStore: offlineStore,
-            networkStatus: StoreNetworkStatus(
+            networkStatus: ChatStoreNetworkStatus(
                 isNetworkAvailable: true,
                 isOffline: false,
                 isServerReachable: false
@@ -311,12 +329,15 @@ final class ChatStoreTests: XCTestCase {
             value: detail,
             lastSyncAt: nil
         )
-        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success([]),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         let store = ChatStore(
             conversationsAPI: api,
             cache: TestCacheClient(),
             offlineStore: offlineStore,
-            networkStatus: StoreNetworkStatus(
+            networkStatus: ChatStoreNetworkStatus(
                 isNetworkAvailable: true,
                 isOffline: false,
                 isServerReachable: false
@@ -365,7 +386,10 @@ final class ChatStoreTests: XCTestCase {
             ]
         )
         let cache = TestCacheClient()
-        let api = MockConversationsAPI(listResult: .success(fresh), getResult: .failure(MockError.forced))
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success(fresh),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
         let store = ChatStore(conversationsAPI: api, cache: cache)
         store.upsertConversationDetail(detail, persist: true)
 
@@ -384,17 +408,17 @@ final class ChatStoreTests: XCTestCase {
     }
 }
 
-private enum MockError: Error {
+enum ChatStoreMockError: Error {
     case forced
 }
 
-private struct StoreNetworkStatus: NetworkStatusProviding {
+struct ChatStoreNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
     let isServerReachable: Bool
 }
 
-private final class MockConversationsAPI: ConversationsProviding {
+final class ChatStoreMockConversationsAPI: ConversationsProviding {
     let listResult: Result<[Conversation], Error>
     let getResult: Result<ConversationWithMessages, Error>
     var listCallCount = 0
@@ -439,6 +463,6 @@ private final class MockConversationsAPI: ConversationsProviding {
 
     func delete(conversationId: String) async throws -> Conversation {
         _ = conversationId
-        throw MockError.forced
+        throw ChatStoreMockError.forced
     }
 }

@@ -45,7 +45,8 @@ extension ChatViewModel {
             assistantMessageId=\(self.currentStreamMessageId ?? "nil", privacy: .public)
             """
         )
-        if !shouldSuppressCurrentStreamErrors {
+        if shouldSurfaceCurrentStreamError(status: .error),
+           !shouldSuppressCurrentStreamErrors {
             errorMessage = fallbackMessage
         }
         finalizeStreaming(status: .error, streamError: fallbackMessage)
@@ -58,6 +59,26 @@ extension ChatViewModel {
             assistantMessageId=\(self.currentStreamMessageId ?? "nil", privacy: .public) \
             error=\(mappedError, privacy: .public)
             """
+        )
+    }
+
+    func logTerminalStreamError(_ rawError: String?) {
+        chatStreamLogger.error(
+            """
+            Stream emitted terminal error conversationId=\(self.streamingConversationId ?? "nil", privacy: .public) \
+            assistantMessageId=\(self.currentStreamMessageId ?? "nil", privacy: .public) \
+            error=\(rawError ?? "nil", privacy: .public)
+            """
+        )
+    }
+
+    func shouldSurfaceCurrentStreamError(status: MessageStatus) -> Bool {
+        guard let messageId = activeStreamingMessageId else {
+            return true
+        }
+        return !shouldTreatToolOnlyFailureAsComplete(
+            messageId: messageId,
+            status: status
         )
     }
 }

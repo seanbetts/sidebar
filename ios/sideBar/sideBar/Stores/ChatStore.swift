@@ -92,7 +92,10 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             throw ChatOfflineError(message: "This chat isn't available offline yet.")
         }
 
-        let response = try await fetchConversationDetail(id: id)
+        let response = mergedConversationDetail(
+            try await fetchConversationDetail(id: id),
+            cached: conversationDetails[id]
+        )
         if shouldApplyConversationUpdate(response, cached: conversationDetails[id]) {
             conversationDetails[id] = response
             cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
@@ -228,7 +231,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             titleGenerated: existing.titleGenerated,
             createdAt: existing.createdAt,
             updatedAt: existing.updatedAt,
-            messageCount: existing.messageCount,
+            messageCount: messages.count,
             firstMessage: existing.firstMessage,
             isArchived: existing.isArchived,
             messages: messages
@@ -325,7 +328,10 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             guard let self else { return }
             defer { self.refreshingConversationDetailIDs.remove(id) }
             do {
-                let response = try await self.fetchConversationDetail(id: id)
+                let response = self.mergedConversationDetail(
+                    try await self.fetchConversationDetail(id: id),
+                    cached: self.conversationDetails[id]
+                )
                 if self.shouldApplyConversationUpdate(response, cached: self.conversationDetails[id]) {
                     self.conversationDetails[id] = response
                     self.cache.set(

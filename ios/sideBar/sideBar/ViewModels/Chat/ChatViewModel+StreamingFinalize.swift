@@ -35,7 +35,20 @@ extension ChatViewModel {
                 errorDetails: errorDetails?.trimmedOrNil ?? message.errorDetails
             )
         }
-        if shouldSuppressCurrentStreamErrors && status == .error {
+        if shouldTreatToolOnlyFailureAsComplete(messageId: messageId, status: finalizedStatus) {
+            finalizedStatus = .complete
+            finalizedStreamError = nil
+            finalizedErrorDetails = nil
+            errorMessage = nil
+            updateFinalizedMessage(
+                id: messageId,
+                status: finalizedStatus,
+                streamError: nil,
+                errorDetails: nil,
+                preserveExistingErrorState: false
+            )
+        }
+        if shouldSuppressCurrentStreamErrors && finalizedStatus == .error {
             clearRetryState()
             discardAssistantMessage(id: messageId)
             return
@@ -83,14 +96,12 @@ extension ChatViewModel {
             conversationId: streamingConversationId ?? selectedConversationId,
             persist: true
         )
-        if let conversationId = streamingConversationId ?? selectedConversationId {
-            Task { [weak self] in
-                if finalizedStatus == .complete {
-                    await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
-                }
-                await self?.refreshConversations(silent: true)
-                await self?.refreshActiveConversation(silent: true)
-            }
+        schedulePostFinalizeRefresh(
+            conversationId: streamingConversationId ?? selectedConversationId,
+            finalizedStatus: finalizedStatus
+        )
+        if finalizedStatus == .complete {
+            errorMessage = nil
         }
         didReceiveTerminalStreamEvent = false
         isStreaming = false
@@ -105,7 +116,8 @@ extension ChatViewModel {
         id: String,
         status: MessageStatus,
         streamError: String?,
-        errorDetails: String?
+        errorDetails: String?,
+        preserveExistingErrorState: Bool = true
     ) {
         updateMessage(id: id, persist: false) { message in
             Message(
@@ -116,9 +128,27 @@ extension ChatViewModel {
                 toolCalls: message.toolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: streamError?.trimmedOrNil ?? message.error,
-                errorDetails: errorDetails?.trimmedOrNil ?? message.errorDetails
+                error: preserveExistingErrorState ? (streamError?.trimmedOrNil ?? message.error) : streamError?.trimmedOrNil,
+                errorDetails: preserveExistingErrorState
+                    ? (errorDetails?.trimmedOrNil ?? message.errorDetails)
+                    : errorDetails?.trimmedOrNil
             )
+        }
+    }
+
+    private func schedulePostFinalizeRefresh(
+        conversationId: String?,
+        finalizedStatus: MessageStatus
+    ) {
+        guard let conversationId else {
+            return
+        }
+        Task { [weak self] in
+            if finalizedStatus == .complete {
+                await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
+            }
+            await self?.refreshConversations(silent: true)
+            await self?.refreshActiveConversation(silent: true)
         }
     }
 
@@ -127,6 +157,20 @@ extension ChatViewModel {
             return true
         }
         return !(message.toolCalls?.isEmpty ?? true)
+    }
+
+    func shouldTreatToolOnlyFailureAsComplete(
+        messageId: String,
+        status: MessageStatus
+    ) -> Bool {
+        guard status == .error,
+              let assistantMessage = messages.first(where: { $0.id == messageId }),
+              assistantMessage.content.trimmedOrNil == nil,
+              let toolCalls = assistantMessage.toolCalls,
+              !toolCalls.isEmpty else {
+            return false
+        }
+        return toolCalls.allSatisfy { $0.status == .success }
     }
 
     private enum EmptyAssistantResponseResolution {

@@ -102,6 +102,50 @@ final class ChatViewModelEmptyAssistantFailureTests: XCTestCase {
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
+    func testErrorAfterSuccessfulToolOnlyResponseDoesNotSurfaceAssistantError() async throws {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: initialMessage.id)
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .toolResult,
+                data: AnyCodable([
+                    "id": "tool-1",
+                    "name": "Edit Note",
+                    "status": "success",
+                    "result": [
+                        "success": true,
+                        "summary": "Updated note"
+                    ]
+                ])
+            )
+        )
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .error,
+                data: AnyCodable([
+                    "error": "transport stream closed after tool completion"
+                ])
+            )
+        )
+
+        let finalizedAssistant = try XCTUnwrap(viewModel.messages.first(where: { $0.id == initialMessage.id }))
+        XCTAssertEqual(finalizedAssistant.status, .complete)
+        XCTAssertNil(finalizedAssistant.error)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(finalizedAssistant.toolCalls?.map(\.status), [.success])
+        XCTAssertNil(viewModel.latestRetryableAssistantMessageID)
+    }
+
     private func makeRetrySource(assistantMessageID: String) -> ChatRetrySource {
         ChatRetrySource(
             conversationID: "conv-1",

@@ -23,8 +23,10 @@ extension ChatViewModel {
                     from: rawStreamError,
                     fallbackUserMessage: "The response hit an error. Please try again."
                 )
+                self?.logTerminalStreamError(rawStreamError)
                 self?.didReceiveTerminalStreamEvent = true
-                if self?.shouldSuppressCurrentStreamErrors != true {
+                if self?.shouldSurfaceCurrentStreamError(status: .error) == true,
+                   self?.shouldSuppressCurrentStreamErrors != true {
                     self?.errorMessage = presentation.userMessage
                 }
                 self?.finalizeStreaming(

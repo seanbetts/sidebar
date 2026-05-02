@@ -237,6 +237,41 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
+    func testFailedSendPreservesFailedTurnAfterConversationRefresh() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+        viewModel.chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: "conv-1",
+                title: "Chat",
+                titleGenerated: false,
+                createdAt: "2026-01-02T00:00:00Z",
+                updatedAt: "2026-01-02T00:00:00Z",
+                messageCount: 0,
+                firstMessage: nil,
+                isArchived: nil,
+                messages: []
+            )
+        )
+        viewModel.selectedConversationId = "conv-1"
+
+        await viewModel.sendMessage(text: "Done")
+
+        await settleStreamingFailureAsyncWork(iterations: 20)
+
+        XCTAssertEqual(viewModel.messages.count, 2)
+        XCTAssertEqual(viewModel.messages.first?.role, .user)
+        XCTAssertEqual(viewModel.messages.first?.content, "Done")
+        XCTAssertEqual(viewModel.messages.last?.role, .assistant)
+        XCTAssertEqual(viewModel.messages.last?.status, .error)
+        XCTAssertEqual(viewModel.chatStore.conversationDetails["conv-1"]?.messages.count, 2)
+    }
+
     func testStopStreamClearsTypingRevealState() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
