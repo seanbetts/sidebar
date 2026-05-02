@@ -59,6 +59,21 @@ class SectionRefreshAdapter: DomainRefreshAdapter {
         await prepareForPresentationHandler(canAttemptServerRead)
     }
 
+    static func protectedListPreparation(
+        clearError: @escaping @MainActor () -> Void = {},
+        hydrateFromCache: @escaping @MainActor () async -> Void,
+        loadWhenServerReadUnavailable: @escaping @MainActor () async -> Void
+    ) -> @MainActor (Bool) async -> Void {
+        { canAttemptServerRead in
+            clearError()
+            if canAttemptServerRead {
+                await hydrateFromCache()
+            } else {
+                await loadWhenServerReadUnavailable()
+            }
+        }
+    }
+
     func refresh(plan: RefreshPlan) async {
         guard plan.containsRefreshWork(for: section) else {
             return

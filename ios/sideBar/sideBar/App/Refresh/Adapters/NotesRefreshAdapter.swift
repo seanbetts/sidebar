@@ -6,13 +6,14 @@ final class NotesRefreshAdapter: SectionRefreshAdapter {
             section: .notes,
             hasVisibleDetail: { viewModel.selectedNoteId != nil },
             hasPinnedMetadata: { !viewModel.store.pinnedNoteOrder().isEmpty },
-            prepareForPresentation: { canAttemptServerRead in
-                if canAttemptServerRead {
+            prepareForPresentation: Self.protectedListPreparation(
+                hydrateFromCache: {
                     viewModel.hydrateTreeFromCache()
-                } else {
+                },
+                loadWhenServerReadUnavailable: {
                     await viewModel.loadTree()
                 }
-            },
+            ),
             refreshList: {
                 await viewModel.refreshTree(force: true)
             },

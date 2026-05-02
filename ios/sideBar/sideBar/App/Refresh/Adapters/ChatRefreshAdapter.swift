@@ -5,14 +5,17 @@ final class ChatRefreshAdapter: SectionRefreshAdapter {
         super.init(
             section: .chat,
             hasVisibleDetail: { viewModel.selectedConversationId != nil },
-            prepareForPresentation: { canAttemptServerRead in
-                viewModel.errorMessage = nil
-                if canAttemptServerRead {
+            prepareForPresentation: Self.protectedListPreparation(
+                clearError: {
+                    viewModel.errorMessage = nil
+                },
+                hydrateFromCache: {
                     await viewModel.chatStore.hydrateConversationsFromCache()
-                } else {
+                },
+                loadWhenServerReadUnavailable: {
                     await viewModel.loadConversations()
                 }
-            },
+            ),
             refreshesListWhen: { plan, _ in
                 plan.contains(.chatList)
             },

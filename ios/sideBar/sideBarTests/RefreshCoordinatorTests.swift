@@ -194,6 +194,30 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(listRefreshCount, 1)
         XCTAssertEqual(detailRefreshCount, 1)
     }
+
+    func testSectionRefreshAdapterCentralizesProtectedListPreparation() async {
+        var clearCount = 0
+        var hydrateCount = 0
+        var blockedReadLoadCount = 0
+        let prepare = SectionRefreshAdapter.protectedListPreparation(
+            clearError: {
+                clearCount += 1
+            },
+            hydrateFromCache: {
+                hydrateCount += 1
+            },
+            loadWhenServerReadUnavailable: {
+                blockedReadLoadCount += 1
+            }
+        )
+
+        await prepare(true)
+        await prepare(false)
+
+        XCTAssertEqual(clearCount, 2)
+        XCTAssertEqual(hydrateCount, 1)
+        XCTAssertEqual(blockedReadLoadCount, 1)
+    }
 }
 
 @MainActor

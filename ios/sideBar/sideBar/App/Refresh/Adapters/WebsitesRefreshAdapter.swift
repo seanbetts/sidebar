@@ -6,14 +6,17 @@ final class WebsitesRefreshAdapter: SectionRefreshAdapter {
             section: .websites,
             hasVisibleDetail: { viewModel.selectedWebsiteId != nil },
             hasPinnedMetadata: { !viewModel.store.pinnedWebsiteOrder().isEmpty },
-            prepareForPresentation: { canAttemptServerRead in
-                viewModel.errorMessage = nil
-                if canAttemptServerRead {
+            prepareForPresentation: Self.protectedListPreparation(
+                clearError: {
+                    viewModel.errorMessage = nil
+                },
+                hydrateFromCache: {
                     viewModel.store.hydrateListFromCache()
-                } else {
+                },
+                loadWhenServerReadUnavailable: {
                     await viewModel.load()
                 }
-            },
+            ),
             refreshList: {
                 await viewModel.load(force: true)
             },
