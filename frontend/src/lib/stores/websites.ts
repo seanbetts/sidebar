@@ -665,6 +665,9 @@ function createWebsitesStore() {
 				}
 				noteFreshWebsite(website.id);
 				this.upsertFromRealtime(buildWebsiteSummary(website));
+				if (get({ subscribe }).active?.id === website.id) {
+					this.setActiveWebsite(website);
+				}
 
 				update((state) => ({
 					...state,

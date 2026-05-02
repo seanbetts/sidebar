@@ -526,6 +526,67 @@ describe('websitesStore', () => {
 		expect(pollUntilComplete).toHaveBeenCalledWith('job-1');
 	});
 
+	it('refreshes active content when a completed save updates an existing website', async () => {
+		websitesStore.upsertFromRealtime({
+			id: 'saved-1',
+			title: 'Old Title',
+			url: 'https://example.com',
+			domain: 'example.com',
+			saved_at: '2026-03-13T09:00:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T09:00:00Z',
+			last_opened_at: null
+		});
+		websitesStore.setActiveWebsite({
+			id: 'saved-1',
+			title: 'Old Title',
+			url: 'https://example.com',
+			domain: 'example.com',
+			content: 'Old one-image content',
+			source: 'readability',
+			url_full: 'https://example.com',
+			saved_at: '2026-03-13T09:00:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T09:00:00Z',
+			last_opened_at: null
+		});
+		websitesAPI.save.mockResolvedValue({ job_id: 'job-1', status: 'pending' });
+		pollUntilComplete.mockResolvedValue({
+			id: 'saved-1',
+			title: 'New Title',
+			url: 'https://example.com',
+			domain: 'example.com',
+			content: 'Full refreshed article body',
+			source: 'readability',
+			url_full: 'https://example.com',
+			saved_at: '2026-03-13T10:00:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T10:00:00Z',
+			last_opened_at: null
+		});
+
+		const result = await websitesStore.saveWebsite('https://example.com');
+		const state = get(websitesStore);
+
+		expect(result.success).toBe(true);
+		expect(state.items[0]).toMatchObject({
+			id: 'saved-1',
+			title: 'New Title',
+			updated_at: '2026-03-13T10:00:00Z'
+		});
+		expect(state.active).toMatchObject({
+			id: 'saved-1',
+			title: 'New Title',
+			content: 'Full refreshed article body'
+		});
+	});
+
 	it('treats YouTube URLs as regular website saves', async () => {
 		websitesAPI.save.mockResolvedValue({ job_id: 'job-yt', status: 'pending' });
 		pollUntilComplete.mockResolvedValue({
