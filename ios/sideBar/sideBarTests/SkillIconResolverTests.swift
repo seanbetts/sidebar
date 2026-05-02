@@ -45,6 +45,17 @@ final class SkillIconResolverTests: XCTestCase {
         XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
     }
 
+    func testEditNoteToolCallFallsBackToNotesIcon() {
+        let legacyToolCall = ToolCall(
+            id: "tool-2",
+            name: "Edit Note",
+            parameters: [:],
+            status: .success
+        )
+
+        XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
+    }
+
     func testConversationsSkillUsesConversationIcon() {
         let skill = SkillItem(
             id: "conversations",

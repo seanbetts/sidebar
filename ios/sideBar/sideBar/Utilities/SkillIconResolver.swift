@@ -51,6 +51,7 @@ enum SkillIconResolver {
         "download note": "notes",
         "download website": "web-save",
         "download youtube": "youtube-download",
+        "edit note": "notes",
         "generate prompts": "prompt-preview",
         "get assistant identity": "assistant-identity",
         "get assistant soul": "assistant-soul",
