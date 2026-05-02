@@ -33,7 +33,9 @@ extension ChatViewModel {
                 self?.finalizeStreaming(
                     status: .error,
                     streamError: presentation.userMessage,
-                    errorDetails: presentation.details
+                    errorDetails: presentation.details,
+                    assistantContext: presentation.assistantContext,
+                    assistantExplanation: presentation.assistantExplanation
                 )
             }
         ]
@@ -265,12 +267,18 @@ extension ChatViewModel {
         }
         clearActiveToolTask?.cancel()
         let statusRaw = payload.status.lowercased()
-        let status = statusRaw == ToolActivityStatus.error.rawValue ? ToolActivityStatus.error : ToolActivityStatus.success
+        let status = statusRaw == ToolActivityStatus.error.rawValue
+            ? ToolActivityStatus.error
+            : ToolActivityStatus.success
         if statusRaw == ToolActivityStatus.running.rawValue {
             activeTool = ChatActiveTool(name: payload.name, status: .running, startedAt: self.clock())
             return
         }
-        activeTool = ChatActiveTool(name: payload.name, status: status, startedAt: activeTool?.startedAt ?? self.clock())
+        activeTool = ChatActiveTool(
+            name: payload.name,
+            status: status,
+            startedAt: activeTool?.startedAt ?? self.clock()
+        )
         markNeedsNewline()
         clearActiveToolTask?.cancel()
         clearActiveToolTask = Task { [weak self] in

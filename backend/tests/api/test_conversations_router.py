@@ -9,6 +9,7 @@ from api.db.dependencies import get_current_user_id
 from api.main import app
 from api.middleware import rate_limit as rate_limit_module
 from api.models.conversation import Conversation
+from api.services.conversation_service import ConversationService
 
 TEST_USER_ID = os.environ["TEST_USER_ID"]
 
@@ -333,6 +334,101 @@ def test_get_conversation_preserves_visible_error_details(test_client, test_db):
     assert response.status_code == 200
     payload = response.json()
     assert payload["messages"][0]["errorDetails"] == error_details
+
+
+def test_append_hidden_assistant_error_diagnostics_preserves_visible_count(test_db):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Provider failure",
+        messages=[
+            {
+                "id": "assistant-1",
+                "role": "assistant",
+                "content": "I couldn't complete this response.",
+                "status": "error",
+                "timestamp": "2026-05-02T10:00:00Z",
+                "error": "The AI provider account needs billing attention.",
+            }
+        ],
+        message_count=1,
+        first_message="Hello",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    updated = ConversationService.append_hidden_assistant_error_diagnostics(
+        test_db,
+        TEST_USER_ID,
+        conversation_id,
+        related_message_id="assistant-1",
+        diagnostics={
+            "category": "provider_billing",
+            "provider": "openai",
+            "request_id": "req_123",
+        },
+        timestamp="2026-05-02T10:00:01Z",
+        diagnostic_message_id="diag-1",
+    )
+
+    assert updated.message_count == 1
+    assert len(updated.messages) == 2
+    hidden = updated.messages[1]
+    assert hidden["visibility"] == "hidden"
+    assert hidden["kind"] == "assistant_error_diagnostics"
+    assert hidden["related_message_id"] == "assistant-1"
+    assert hidden["diagnostics"]["request_id"] == "req_123"
+
+
+def test_get_conversation_filters_hidden_assistant_error_diagnostics(
+    test_client,
+    test_db,
+):
+    conversation_id = uuid.uuid4()
+    visible_message = {
+        "id": "assistant-1",
+        "role": "assistant",
+        "content": "I couldn't complete this response.",
+        "status": "error",
+        "timestamp": "2026-05-02T10:00:00Z",
+        "error": "The AI provider account needs billing attention.",
+    }
+    hidden_message = {
+        "id": "diag-1",
+        "role": "assistant",
+        "content": "Assistant diagnostic context for previous failed response.",
+        "status": "complete",
+        "timestamp": "2026-05-02T10:00:01Z",
+        "visibility": "hidden",
+        "kind": "assistant_error_diagnostics",
+        "related_message_id": "assistant-1",
+        "diagnostics": {"category": "provider_billing", "request_id": "req_123"},
+    }
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Provider failure",
+        messages=[visible_message, hidden_message],
+        message_count=1,
+        first_message="Hello",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/conversations/{conversation_id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    assert [message["id"] for message in response.json()["messages"]] == [
+        "assistant-1"
+    ]
 
 
 def test_search_conversations_ignores_hidden_bootstrap_messages(test_client, test_db):

@@ -7,11 +7,14 @@ extension ChatViewModel {
     func finalizeStreaming(
         status: MessageStatus,
         streamError: String? = nil,
-        errorDetails: String? = nil
+        errorDetails: String? = nil,
+        assistantContext _: String? = nil,
+        assistantExplanation: String? = nil
     ) {
         var finalizedStatus = status
         var finalizedStreamError = streamError
         var finalizedErrorDetails = errorDetails
+        let trimmedAssistantExplanation = assistantExplanation?.trimmedOrNil
         guard let messageId = activeStreamingMessageId else {
             clearTypingRevealState(flushDisplayedContent: false)
             didReceiveTerminalStreamEvent = false
@@ -26,7 +29,9 @@ extension ChatViewModel {
             Message(
                 id: message.id,
                 role: message.role,
-                content: message.content,
+                content: message.content.trimmedOrNil == nil
+                    ? (trimmedAssistantExplanation ?? message.content)
+                    : message.content,
                 status: status,
                 toolCalls: message.toolCalls,
                 needsNewline: message.needsNewline,
@@ -128,7 +133,9 @@ extension ChatViewModel {
                 toolCalls: message.toolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: preserveExistingErrorState ? (streamError?.trimmedOrNil ?? message.error) : streamError?.trimmedOrNil,
+                error: preserveExistingErrorState
+                    ? (streamError?.trimmedOrNil ?? message.error)
+                    : streamError?.trimmedOrNil,
                 errorDetails: preserveExistingErrorState
                     ? (errorDetails?.trimmedOrNil ?? message.errorDetails)
                     : errorDetails?.trimmedOrNil

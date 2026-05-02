@@ -7,7 +7,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from typing import TypedDict, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -77,6 +77,85 @@ class _TitleCacheEntry(TypedDict):
 
 
 TITLE_CACHE: dict[str, _TitleCacheEntry] = {}
+
+
+def _trimmed_string(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _persist_terminal_stream_error(
+    *,
+    user_id: str,
+    conversation_uuid: UUID | None,
+    message: str,
+    user_message_id: str | None,
+    assistant_message_id: str | None,
+    message_visibility: str | None,
+    assistant_content: str,
+    tool_calls: list[dict] | None,
+    error_event: dict,
+) -> None:
+    if conversation_uuid is None:
+        return
+
+    persisted_user_message_id = _trimmed_string(user_message_id) or str(uuid4())
+    persisted_assistant_message_id = _trimmed_string(assistant_message_id) or str(
+        uuid4()
+    )
+    timestamp = datetime.now(UTC).isoformat()
+    explanation = _trimmed_string(error_event.get("assistant_explanation"))
+    visible_assistant_content = assistant_content.strip() or explanation or ""
+    persisted_messages: list[dict] = [
+        {
+            "id": persisted_user_message_id,
+            "role": "user",
+            "content": message,
+            "status": "complete",
+            "timestamp": timestamp,
+            **(
+                {"visibility": message_visibility}
+                if message_visibility == "hidden"
+                else {}
+            ),
+        },
+        {
+            "id": persisted_assistant_message_id,
+            "role": "assistant",
+            "content": visible_assistant_content,
+            "status": "error",
+            "timestamp": timestamp,
+            "toolCalls": tool_calls or [],
+            "error": str(error_event.get("error") or ""),
+        },
+    ]
+    assistant_context = error_event.get("assistant_context")
+    if isinstance(assistant_context, dict):
+        persisted_messages.append(
+            ConversationService.build_assistant_error_diagnostic_message(
+                message_id=f"diag-{persisted_assistant_message_id}",
+                related_message_id=persisted_assistant_message_id,
+                timestamp=timestamp,
+                diagnostics=assistant_context,
+            )
+        )
+
+    try:
+        with user_scoped_session(user_id) as persistence_db:
+            ConversationService.add_messages(
+                persistence_db,
+                user_id,
+                conversation_uuid,
+                persisted_messages,
+            )
+    except Exception:
+        logger.warning(
+            "Failed to persist terminal chat stream error",
+            exc_info=True,
+            extra={"conversation_id": str(conversation_uuid)},
+        )
 
 
 def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
@@ -319,6 +398,17 @@ async def stream_chat(
 
             async def error_generator():
                 chat_stream_errors_total.labels(type="server_error").inc()
+                _persist_terminal_stream_error(
+                    user_id=user_id,
+                    conversation_uuid=conversation_uuid,
+                    message=message,
+                    user_message_id=user_message_id,
+                    assistant_message_id=assistant_message_id,
+                    message_visibility=normalized_message_visibility,
+                    assistant_content="",
+                    tool_calls=[],
+                    error_event=error_event,
+                )
                 yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
 
             return StreamingResponse(
@@ -565,8 +655,8 @@ async def stream_chat(
                     chat_stream_errors_total.labels(type="stream_error").inc()
                     structured_event = (
                         event
-                        if event.get("version") == 1
-                        and isinstance(event.get("error_details"), dict)
+                        if event.get("version") == 2
+                        and isinstance(event.get("assistant_context"), dict)
                         else build_chat_stream_error_event(
                             str(event.get("error") or "Unknown stream error"),
                             provider=chat_resolution.provider,
@@ -574,6 +664,21 @@ async def stream_chat(
                             if isinstance(event.get("category"), str)
                             else None,
                         )
+                    )
+                    _persist_terminal_stream_error(
+                        user_id=user_id,
+                        conversation_uuid=conversation_uuid,
+                        message=message,
+                        user_message_id=user_message_id,
+                        assistant_message_id=assistant_message_id,
+                        message_visibility=normalized_message_visibility,
+                        assistant_content="".join(assistant_content_parts),
+                        tool_calls=[
+                            tool_calls_by_id[call_id]
+                            for call_id in tool_call_order
+                            if call_id in tool_calls_by_id
+                        ],
+                        error_event=structured_event,
                     )
                     yield f"event: error\ndata: {json.dumps(structured_event)}\n\n"
                     return
@@ -659,6 +764,21 @@ async def stream_chat(
                 provider=chat_resolution.provider,
             )
             chat_stream_errors_total.labels(type="server_error").inc()
+            _persist_terminal_stream_error(
+                user_id=user_id,
+                conversation_uuid=conversation_uuid,
+                message=message,
+                user_message_id=user_message_id,
+                assistant_message_id=assistant_message_id,
+                message_visibility=normalized_message_visibility,
+                assistant_content="".join(assistant_content_parts),
+                tool_calls=[
+                    tool_calls_by_id[call_id]
+                    for call_id in tool_call_order
+                    if call_id in tool_calls_by_id
+                ],
+                error_event=error_event,
+            )
             yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
         finally:
             chat_streaming_duration_seconds.observe(

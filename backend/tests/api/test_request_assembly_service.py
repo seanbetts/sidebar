@@ -106,6 +106,58 @@ def test_normalize_conversation_history_excludes_hidden_internal_instructions():
     ]
 
 
+def test_normalize_conversation_history_replays_hidden_assistant_error_diagnostics():
+    history = RequestAssemblyService.normalize_conversation_history(
+        [
+            {
+                "id": "assistant-1",
+                "role": "assistant",
+                "content": "I couldn't complete the response.",
+                "status": "error",
+                "error": "The AI provider account needs billing attention.",
+            },
+            {
+                "id": "diag-1",
+                "role": "assistant",
+                "content": "Assistant diagnostic context for the previous failed response.",
+                "status": "complete",
+                "visibility": "hidden",
+                "kind": "assistant_error_diagnostics",
+                "related_message_id": "assistant-1",
+                "diagnostics": {
+                    "category": "provider_billing",
+                    "provider": "openai",
+                    "request_id": "req_123",
+                    "http_status": 429,
+                },
+            },
+        ],
+        user_message_id=None,
+    )
+
+    assert len(history) == 2
+    assert history[1]["role"] == "assistant"
+    assert "assistant-only diagnostic context" in history[1]["content"].lower()
+    assert "provider_billing" in history[1]["content"]
+    assert "req_123" in history[1]["content"]
+
+
+def test_hidden_internal_instruction_still_does_not_replay():
+    history = RequestAssemblyService.normalize_conversation_history(
+        [
+            {
+                "id": "hidden-user-1",
+                "role": "user",
+                "content": "Internal instruction",
+                "visibility": "hidden",
+            }
+        ],
+        user_message_id=None,
+    )
+
+    assert history == []
+
+
 def test_normalize_conversation_history_includes_hidden_error_details_for_assistant():
     history = RequestAssemblyService.normalize_conversation_history(
         [

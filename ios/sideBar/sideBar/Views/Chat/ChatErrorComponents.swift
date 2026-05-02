@@ -145,10 +145,6 @@ struct ChatErrorPopoverContent: View {
                 if let requestID = presentation.requestID {
                     detailSection(title: "Request ID", text: requestID)
                 }
-
-                if let details = presentation.details, !details.isEmpty {
-                    detailSection(title: "Details", text: details)
-                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

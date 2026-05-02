@@ -2,6 +2,37 @@ import XCTest
 @testable import sideBar
 
 final class ChatStreamStructuredErrorMappingTests: XCTestCase {
+    func testStructuredAssistantContextIsNotMappedToVisibleDetails() {
+        let explanation = "I couldn't complete this response because OpenAI reported " +
+            "that the account needs billing attention."
+        let payload: [String: Any] = [
+            "type": "error",
+            "version": 2,
+            "error": "The AI provider account needs billing attention.",
+            "category": "provider_billing",
+            "retryable": false,
+            "request_id": "req_123",
+            "assistant_explanation": explanation,
+            "assistant_context": [
+                "visibility": "assistant_only",
+                "provider": "openai",
+                "message": "quota exhausted"
+            ]
+        ]
+
+        let presentation = ErrorMapping.chatStreamPresentation(fromEventPayload: payload)
+
+        XCTAssertEqual(presentation.category, .providerBilling)
+        XCTAssertEqual(
+            presentation.userMessage,
+            "The AI provider account needs billing attention."
+        )
+        XCTAssertEqual(presentation.requestID, "req_123")
+        XCTAssertNil(presentation.details)
+        XCTAssertTrue(presentation.assistantContext?.contains("quota exhausted") == true)
+        XCTAssertEqual(presentation.assistantExplanation, explanation)
+    }
+
     func testMapsStructuredProviderBillingPayloadBeforeRawFallback() {
         let payload: [String: Any] = [
             "error": "The response hit an error. Please try again.",

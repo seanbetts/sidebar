@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import UUID
+from typing import Any
+from uuid import UUID, uuid4
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
@@ -208,6 +209,57 @@ class ConversationService:
         db.commit()
         db.refresh(conversation)
         return conversation
+
+    @staticmethod
+    def build_assistant_error_diagnostic_message(
+        *,
+        message_id: str,
+        related_message_id: str,
+        timestamp: str,
+        diagnostics: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build a hidden transcript message for assistant-only diagnostics."""
+        category = str(diagnostics.get("category") or "unknown")
+        provider = diagnostics.get("provider")
+        request_id = diagnostics.get("request_id")
+        summary_parts = [
+            f"Assistant diagnostic context for previous failed response: {category}."
+        ]
+        if provider:
+            summary_parts.append(f"Provider: {provider}.")
+        if request_id:
+            summary_parts.append(f"Request ID: {request_id}.")
+        return {
+            "id": message_id,
+            "role": "assistant",
+            "content": " ".join(summary_parts),
+            "status": "complete",
+            "timestamp": timestamp,
+            "visibility": "hidden",
+            "kind": "assistant_error_diagnostics",
+            "related_message_id": related_message_id,
+            "diagnostics": diagnostics,
+        }
+
+    @staticmethod
+    def append_hidden_assistant_error_diagnostics(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        *,
+        related_message_id: str,
+        diagnostics: dict[str, Any],
+        timestamp: str,
+        diagnostic_message_id: str | None = None,
+    ) -> Conversation:
+        """Append assistant-only error diagnostics without changing visible count."""
+        message = ConversationService.build_assistant_error_diagnostic_message(
+            message_id=diagnostic_message_id or str(uuid4()),
+            related_message_id=related_message_id,
+            timestamp=timestamp,
+            diagnostics=diagnostics,
+        )
+        return ConversationService.add_message(db, user_id, conversation_id, message)
 
     @staticmethod
     def update_conversation(

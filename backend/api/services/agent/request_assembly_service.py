@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,6 +26,11 @@ _OVERSIZE_CONTEXT_MESSAGE = (
     "Message context is too large. Remove some attachments or close open items "
     "and try again."
 )
+
+_REPLAYABLE_HIDDEN_KINDS = {
+    "conversation_compaction_summary",
+    "assistant_error_diagnostics",
+}
 
 
 @dataclass(frozen=True)
@@ -62,7 +68,7 @@ class RequestAssemblyService:
         """Keep hidden internal instructions out of future prompt replay."""
         if not cls.is_hidden_message(message):
             return False
-        return message.get("kind") != "conversation_compaction_summary"
+        return message.get("kind") not in _REPLAYABLE_HIDDEN_KINDS
 
     @classmethod
     def extract_persisted_bootstrap_history(
@@ -153,7 +159,7 @@ class RequestAssemblyService:
             history.append(
                 {
                     "role": role,
-                    "content": RequestAssemblyService._content_with_error_context(
+                    "content": RequestAssemblyService._normalized_message_content(
                         role=role,
                         content=content,
                         message=message,
@@ -162,6 +168,39 @@ class RequestAssemblyService:
             )
 
         return history
+
+    @classmethod
+    def _normalized_message_content(
+        cls,
+        *,
+        role: str,
+        content: Any,
+        message: dict[str, Any],
+    ) -> str:
+        if message.get("kind") == "assistant_error_diagnostics":
+            return cls._diagnostic_message_content(message)
+        return cls._content_with_error_context(
+            role=role,
+            content=content,
+            message=message,
+        )
+
+    @staticmethod
+    def _diagnostic_message_content(message: dict[str, Any]) -> str:
+        """Format hidden diagnostics as model-only replay context."""
+        diagnostics = message.get("diagnostics")
+        if isinstance(diagnostics, dict):
+            diagnostic_text = json.dumps(diagnostics, sort_keys=True)
+        else:
+            diagnostic_text = str(diagnostics or "").strip()
+
+        base = str(message.get("content") or "").strip()
+        parts = ["Internal assistant-only diagnostic context."]
+        if base:
+            parts.append(base)
+        if diagnostic_text:
+            parts.append(f"Diagnostics: {diagnostic_text}")
+        return " ".join(parts)
 
     @staticmethod
     def _content_with_error_context(

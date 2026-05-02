@@ -1,6 +1,8 @@
 import inspect
 import json
 import logging
+import os
+import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -18,7 +20,10 @@ from api.services.agent.request_budget_service import (
     PreparedChatRequest,
     RequestBudgetReport,
 )
+from api.models.conversation import Conversation
 from api.services.conversation_service import ConversationService
+
+TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 @pytest.fixture(autouse=True)
@@ -109,11 +114,82 @@ def test_stream_chat_normalizes_error_event_payload(test_client, monkeypatch):
     assert response.status_code == 200
     payload = _sse_event_payload(response.text, "error")
     assert payload["type"] == "error"
-    assert payload["version"] == 1
+    assert payload["version"] == 2
+    assert payload["category"] == "provider_rate_limited"
+    assert payload["retryable"] is True
+    assert payload["assistant_context"]["provider"] == "anthropic"
     assert payload["error_details"]["category"] == "provider_rate_limited"
     assert payload["error_details"]["provider"] == "anthropic"
     assert payload["error_details"]["retryable"] is True
     assert "event: complete" not in response.text
+
+
+def test_stream_chat_persists_failed_turn_and_hidden_diagnostics(
+    test_client,
+    test_db,
+    monkeypatch,
+):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Provider failure",
+        messages=[],
+        message_count=0,
+        first_message=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
+                "type": "error",
+                "error": "insufficient_quota",
+                "category": "provider_billing",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={
+            "message": "Hi",
+            "conversation_id": str(conversation_id),
+            "user_message_id": "user-1",
+            "assistant_message_id": "assistant-1",
+        },
+    )
+
+    assert response.status_code == 200
+    test_db.refresh(conversation)
+    assert conversation.message_count == 2
+    assert [message["id"] for message in conversation.messages] == [
+        "user-1",
+        "assistant-1",
+        "diag-assistant-1",
+    ]
+    assert conversation.messages[1]["status"] == "error"
+    assert (
+        conversation.messages[1]["error"]
+        == "The AI provider account needs billing attention."
+    )
+    assert conversation.messages[1]["content"].startswith(
+        "I couldn't complete this response"
+    )
+    assert conversation.messages[1].get("errorDetails") is None
+    assert conversation.messages[2]["visibility"] == "hidden"
+    assert conversation.messages[2]["kind"] == "assistant_error_diagnostics"
+    assert conversation.messages[2]["related_message_id"] == "assistant-1"
+    assert conversation.messages[2]["diagnostics"]["category"] == "provider_billing"
 
 
 def test_stream_chat_route_has_no_db_dependency():

@@ -31,6 +31,12 @@ def _details(payload: dict[str, Any]) -> dict[str, Any]:
     return details
 
 
+def _assistant_context(payload: dict[str, Any]) -> dict[str, Any]:
+    assistant_context = payload["assistant_context"]
+    assert isinstance(assistant_context, dict)
+    return assistant_context
+
+
 def test_openai_insufficient_quota_maps_to_provider_billing() -> None:
     error = FakeProviderError(
         "quota exhausted",
@@ -48,9 +54,16 @@ def test_openai_insufficient_quota_maps_to_provider_billing() -> None:
 
     payload = build_chat_stream_error_event(error, provider="openai")
     details = _details(payload)
+    assistant_context = _assistant_context(payload)
 
     assert payload["type"] == "error"
-    assert payload["version"] == 1
+    assert payload["version"] == 2
+    assert payload["error"] == "The AI provider account needs billing attention."
+    assert payload["category"] == "provider_billing"
+    assert payload["retryable"] is False
+    assert payload["request_id"] == "req_openai"
+    assert payload["error_details"] == payload["assistant_context"]
+    assert assistant_context["visibility"] == "assistant_only"
     assert details["category"] == "provider_billing"
     assert details["provider"] == "openai"
     assert details["provider_error_type"] == "insufficient_quota"
@@ -59,6 +72,43 @@ def test_openai_insufficient_quota_maps_to_provider_billing() -> None:
     assert details["request_id"] == "req_openai"
     assert details["retryable"] is False
     assert details["user_action_required"] is True
+    assert assistant_context["source"] == "chat_stream"
+    assert assistant_context["exception_class"] == "FakeProviderError"
+
+
+def test_provider_body_is_sanitized_for_assistant_context() -> None:
+    error = FakeProviderError(
+        "quota exhausted",
+        status_code=429,
+        body={
+            "error": {"type": "insufficient_quota", "message": "quota exhausted"},
+            "api_key": "sk-secret",
+            "request_id": "req_openai",
+        },
+        request_id="req_openai",
+    )
+
+    payload = build_chat_stream_error_event(error, provider="openai")
+    assistant_context = _assistant_context(payload)
+
+    assert assistant_context["provider_error_body"]["api_key"] == "[redacted]"
+    assert assistant_context["provider_error_body"]["request_id"] == "req_openai"
+
+
+def test_provider_billing_event_includes_visible_assistant_explanation() -> None:
+    payload = build_chat_stream_error_event(
+        FakeProviderError(
+            "quota exhausted",
+            status_code=429,
+            body={"type": "insufficient_quota", "message": "quota exhausted"},
+        ),
+        provider="openai",
+    )
+
+    assert (
+        payload["assistant_explanation"]
+        == "I couldn't complete this response because OpenAI reported that the account needs billing attention. Update the provider billing or switch providers, then try again."
+    )
 
 
 def test_openai_rate_limit_without_quota_text_maps_to_rate_limited() -> None:

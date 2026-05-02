@@ -117,27 +117,37 @@ nonisolated extension ErrorMapping {
                 title: "Request timed out",
                 userMessage: fallbackUserMessage ?? "The request timed out. Please try again."
             ),
-            ChatStreamPresentationRule(
-                matches: sourceText.contains("offline")
-                    || sourceText.contains("nsurlerrordomain error -1003")
-                    || sourceText.contains("nsurlerrordomain error -1004")
-                    || sourceText.contains("nsurlerrordomain error -1005")
-                    || sourceText.contains("nsurlerrordomain error -1009")
-                    || sourceText.contains("not connected to internet")
-                    || sourceText.contains("network connection")
-                    || sourceText.contains("could not reach the server")
-                    || sourceText.contains("cannot connect to host")
-                    || sourceText.contains("cannot find host")
-                    || sourceText.contains("connection lost")
-                    || sourceText.contains("stream ended unexpectedly")
-                    || sourceText.contains("secure connection")
-                    || sourceText.contains("tls")
-                    || sourceText.contains("ssl"),
-                category: .transportFailure,
-                title: "Network error",
-                userMessage: fallbackUserMessage ?? "The network connection was interrupted. Please try again."
+            transportFailureRule(
+                sourceText: sourceText,
+                fallbackUserMessage: fallbackUserMessage
             )
         ]
+    }
+
+    private static func transportFailureRule(
+        sourceText: String,
+        fallbackUserMessage: String?
+    ) -> ChatStreamPresentationRule {
+        ChatStreamPresentationRule(
+            matches: sourceText.contains("offline")
+                || sourceText.contains("nsurlerrordomain error -1003")
+                || sourceText.contains("nsurlerrordomain error -1004")
+                || sourceText.contains("nsurlerrordomain error -1005")
+                || sourceText.contains("nsurlerrordomain error -1009")
+                || sourceText.contains("not connected to internet")
+                || sourceText.contains("network connection")
+                || sourceText.contains("could not reach the server")
+                || sourceText.contains("cannot connect to host")
+                || sourceText.contains("cannot find host")
+                || sourceText.contains("connection lost")
+                || sourceText.contains("stream ended unexpectedly")
+                || sourceText.contains("secure connection")
+                || sourceText.contains("tls")
+                || sourceText.contains("ssl"),
+            category: .transportFailure,
+            title: "Network error",
+            userMessage: fallbackUserMessage ?? "The network connection was interrupted. Please try again."
+        )
     }
 
     private static func nonRetryableChatStreamRules(
@@ -149,7 +159,8 @@ nonisolated extension ErrorMapping {
                 matches: sourceText.contains("maximum tool rounds reached"),
                 category: .toolExhaustion,
                 title: "Too many tool steps",
-                userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up."
+                userMessage: "I couldn't finish this response because it needed too many tool steps. " +
+                    "Try a narrower follow-up."
             ),
             ChatStreamPresentationRule(
                 matches: sourceText.contains("no api key configured for provider"),
@@ -218,140 +229,15 @@ nonisolated extension ErrorMapping {
         )
     }
 
-    private static func structuredChatStreamPresentation(
-        from payload: [String: Any]?,
-        rawError: String?,
-        fallbackUserMessage: String?
-    ) -> ChatStreamErrorPresentation? {
-        guard let payload,
-              let errorDetails = payload["error_details"] as? [String: Any],
-              let category = chatStreamCategory(from: errorDetails["category"] as? String) else {
-            return nil
-        }
-        let text = structuredChatStreamText(
-            for: category,
-            fallbackUserMessage: fallbackUserMessage
-        )
-        let requestID = (errorDetails["request_id"] as? String)?.trimmedOrNil
-            ?? extractRequestID(from: rawError)
-        return makeChatStreamPresentation(
-            category: category,
-            title: text.title,
-            userMessage: text.userMessage,
-            details: eventPayloadDetails(payload) ?? rawError?.trimmedOrNil,
-            requestID: requestID,
-            isRetryable: errorDetails["retryable"] as? Bool
-        )
-    }
-
-    private static func chatStreamCategory(from rawCategory: String?) -> ChatStreamErrorCategory? {
-        guard let rawCategory = rawCategory?.trimmedOrNil else {
-            return nil
-        }
-        return [
-            "provider_billing": .providerBilling,
-            "provider_rate_limited": .providerRateLimited,
-            "auth_or_permission": .authOrPermission,
-            "provider_overloaded": .providerOverloaded,
-            "request_timeout": .requestTimeout,
-            "context_too_large": .contextTooLarge,
-            "transport_failure": .transportFailure,
-            "empty_response": .emptyResponse,
-            "tool_exhaustion": .toolExhaustion,
-            "provider_error": .providerError,
-            "user_cancelled": .userCancelled,
-            "unknown": .unknown
-        ][rawCategory]
-    }
-
-    private static func structuredChatStreamText(
-        for category: ChatStreamErrorCategory,
-        fallbackUserMessage: String?
-    ) -> (title: String, userMessage: String) {
-        let fallbackRules = fallbackStructuredChatStreamText(fallbackUserMessage: fallbackUserMessage)
-        if let text = fallbackRules[category] {
-            return text
-        }
-        return fixedStructuredChatStreamText[category] ?? (
-            title: "Response error",
-            userMessage: "The response hit an error. Please try again."
-        )
-    }
-
-    private static let fixedStructuredChatStreamText: [ChatStreamErrorCategory: (title: String, userMessage: String)] = [
-        .providerBilling: (
-            title: "Provider billing",
-            userMessage: "The AI provider account needs billing attention."
-        ),
-        .providerRateLimited: (
-            title: "Rate limited",
-            userMessage: "The AI provider is rate limited right now. Please wait a moment and try again."
-        ),
-        .providerOverloaded: (
-            title: "Provider busy",
-            userMessage: "The AI provider is busy right now. Please try again in a moment."
-        ),
-        .emptyResponse: (
-            title: "Empty response",
-            userMessage: "The AI provider returned an empty response. Please try again."
-        ),
-        .toolExhaustion: (
-            title: "Too many tool steps",
-            userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up."
-        ),
-        .providerError: (
-            title: "Provider error",
-            userMessage: "The AI provider hit an error. Please try again."
-        )
-    ]
-
-    private static func fallbackStructuredChatStreamText(
-        fallbackUserMessage: String?
-    ) -> [ChatStreamErrorCategory: (title: String, userMessage: String)] {
-        [
-            .authOrPermission: (
-                title: "Authentication required",
-                userMessage: fallbackUserMessage ?? "Authentication failed for the AI provider."
-            ),
-            .requestTimeout: (
-                title: "Request timed out",
-                userMessage: fallbackUserMessage ?? "The request timed out. Please try again."
-            ),
-            .contextTooLarge: (
-                title: "Context too large",
-                userMessage: fallbackUserMessage ?? "This request is too large to retry without reducing context."
-            ),
-            .transportFailure: (
-                title: "Network error",
-                userMessage: fallbackUserMessage ?? "The network connection was interrupted. Please try again."
-            ),
-            .userCancelled: (
-                title: "Request cancelled",
-                userMessage: fallbackUserMessage ?? "The request was cancelled before it completed."
-            ),
-            .unknown: (
-                title: fallbackTitle(for: fallbackUserMessage ?? ""),
-                userMessage: fallbackUserMessage ?? "The response hit an error. Please try again."
-            )
-        ]
-    }
-
-    private static func eventPayloadDetails(_ payload: [String: Any]) -> String? {
-        if JSONSerialization.isValidJSONObject(payload),
-           let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
-           let details = String(data: data, encoding: .utf8) {
-            return details
-        }
-        return String(describing: payload)
-    }
-
-    private static func makeChatStreamPresentation(
+    static func makeChatStreamPresentation(
         category: ChatStreamErrorCategory,
         title: String,
         userMessage: String,
         details: String?,
         requestID: String?,
-        isRetryable: Bool? = nil
+        isRetryable: Bool? = nil,
+        assistantContext: String? = nil,
+        assistantExplanation: String? = nil
     ) -> ChatStreamErrorPresentation {
         ChatStreamErrorPresentation(
             category: category,
@@ -360,7 +246,9 @@ nonisolated extension ErrorMapping {
             pillText: title,
             userMessage: userMessage,
             details: details,
-            requestID: requestID
+            requestID: requestID,
+            assistantContext: assistantContext,
+            assistantExplanation: assistantExplanation
         )
     }
 
@@ -375,7 +263,7 @@ nonisolated extension ErrorMapping {
         ].contains(category)
     }
 
-    private static func extractRequestID(from rawError: String?) -> String? {
+    static func extractRequestID(from rawError: String?) -> String? {
         guard let rawError = rawError?.trimmedOrNil else {
             return nil
         }
@@ -400,7 +288,7 @@ nonisolated extension ErrorMapping {
         return nil
     }
 
-    private static func fallbackTitle(for message: String) -> String {
+    static func fallbackTitle(for message: String) -> String {
         let lowered = message.lowercased()
         if lowered.contains("unexpectedly") || lowered.contains("interrupted") {
             return "Response interrupted"

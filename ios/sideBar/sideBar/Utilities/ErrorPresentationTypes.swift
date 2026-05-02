@@ -8,6 +8,30 @@ public nonisolated struct ChatStreamErrorPresentation: Equatable {
     public let userMessage: String
     public let details: String?
     public let requestID: String?
+    public let assistantContext: String?
+    public let assistantExplanation: String?
+
+    public init(
+        category: ChatStreamErrorCategory,
+        isRetryable: Bool,
+        title: String,
+        pillText: String,
+        userMessage: String,
+        details: String?,
+        requestID: String?,
+        assistantContext: String? = nil,
+        assistantExplanation: String? = nil
+    ) {
+        self.category = category
+        self.isRetryable = isRetryable
+        self.title = title
+        self.pillText = pillText
+        self.userMessage = userMessage
+        self.details = details
+        self.requestID = requestID
+        self.assistantContext = assistantContext
+        self.assistantExplanation = assistantExplanation
+    }
 }
 
 public nonisolated enum ChatStreamErrorCategory: Equatable {

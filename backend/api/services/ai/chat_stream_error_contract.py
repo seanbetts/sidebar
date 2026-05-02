@@ -52,6 +52,18 @@ _USER_ACTION_REQUIRED_CATEGORIES = {
     "context_too_large",
 }
 
+_ASSISTANT_EXPLANATION_CATEGORIES = {
+    "provider_billing",
+    "provider_rate_limited",
+    "auth_or_permission",
+    "provider_overloaded",
+    "request_timeout",
+    "context_too_large",
+    "transport_failure",
+    "empty_response",
+    "provider_error",
+}
+
 _SAFE_MESSAGES: dict[str, str] = {
     "provider_billing": "The AI provider account needs billing attention.",
     "provider_rate_limited": (
@@ -83,7 +95,7 @@ def build_chat_stream_error_event(
     provider: AIProvider | str | None = None,
     category: ChatStreamErrorCategory | str | None = None,
 ) -> dict[str, Any]:
-    """Return a structured SSE error payload with legacy fallback text."""
+    """Return a structured SSE error payload with UI-safe and assistant lanes."""
     raw_message = str(error)
     extracted = _extract_error_fields(error)
     normalized_category = _normalize_category(
@@ -95,15 +107,20 @@ def build_chat_stream_error_event(
         error_class=type(error).__name__ if not isinstance(error, str) else None,
     )
     safe_message = _SAFE_MESSAGES[normalized_category]
-    details: dict[str, Any] = {
+    provider_name = _clean_string(provider)
+    assistant_context: dict[str, Any] = {
+        "visibility": "assistant_only",
         "category": normalized_category,
         "message": extracted["message"] or raw_message,
         "retryable": normalized_category in _RETRYABLE_CATEGORIES,
         "user_action_required": normalized_category in _USER_ACTION_REQUIRED_CATEGORIES,
+        "source": "chat_stream",
     }
-    provider_name = _clean_string(provider)
+    if not isinstance(error, str):
+        assistant_context["exception_class"] = type(error).__name__
+        assistant_context["raw_message"] = raw_message
     if provider_name:
-        details["provider"] = provider_name
+        assistant_context["provider"] = provider_name
     for source_key, target_key in (
         ("provider_error_type", "provider_error_type"),
         ("provider_error_code", "provider_error_code"),
@@ -113,14 +130,38 @@ def build_chat_stream_error_event(
     ):
         value = extracted[source_key]
         if value is not None:
-            details[target_key] = value
+            assistant_context[target_key] = value
 
-    return {
+    body = _mapping_or_none(getattr(error, "body", None))
+    if body:
+        assistant_context["provider_error_body"] = _sanitize_diagnostic_value(body)
+    details = _mapping_or_none(getattr(error, "details", None))
+    if details:
+        assistant_context["provider_error_details"] = _sanitize_diagnostic_value(
+            details
+        )
+
+    payload: dict[str, Any] = {
         "type": "error",
-        "version": 1,
+        "version": 2,
         "error": safe_message,
-        "error_details": details,
+        "category": normalized_category,
+        "retryable": assistant_context["retryable"],
+        "user_action_required": assistant_context["user_action_required"],
+        "assistant_context": assistant_context,
+        "error_details": assistant_context,
     }
+    request_id = assistant_context.get("request_id")
+    if request_id is not None:
+        payload["request_id"] = request_id
+
+    assistant_explanation = _assistant_explanation(
+        normalized_category,
+        provider_name,
+    )
+    if assistant_explanation:
+        payload["assistant_explanation"] = assistant_explanation
+    return payload
 
 
 def _extract_error_fields(error: Exception | str) -> dict[str, Any]:
@@ -318,3 +359,92 @@ def _clean_string(value: Any) -> str | None:
 def _normalize_token(value: Any) -> str:
     cleaned = _clean_string(value)
     return cleaned.lower() if cleaned else ""
+
+
+def _assistant_explanation(category: str, provider: str | None) -> str | None:
+    if category not in _ASSISTANT_EXPLANATION_CATEGORIES:
+        return None
+
+    provider_label = _provider_label(provider)
+    if category == "provider_billing":
+        return (
+            f"I couldn't complete this response because {provider_label} reported "
+            "that the account needs billing attention. Update the provider billing "
+            "or switch providers, then try again."
+        )
+    if category == "provider_rate_limited":
+        return (
+            f"I couldn't complete this response because {provider_label} is rate "
+            "limited right now. Wait a moment or switch providers, then try again."
+        )
+    if category == "auth_or_permission":
+        return (
+            f"I couldn't complete this response because {provider_label} rejected "
+            "the request for authentication or permission reasons. Check the provider "
+            "API key or account access, then try again."
+        )
+    if category == "provider_overloaded":
+        return (
+            f"I couldn't complete this response because {provider_label} is busy "
+            "right now. Try again in a moment."
+        )
+    if category == "context_too_large":
+        return (
+            "I couldn't complete this response because the request is too large for "
+            "the selected model. Reduce attachments or open context, then try again."
+        )
+    if category == "request_timeout":
+        return (
+            f"I couldn't complete this response because {provider_label} took too "
+            "long to respond. Try again in a moment."
+        )
+    if category == "transport_failure":
+        return (
+            "I couldn't complete this response because the connection to the AI "
+            "provider was interrupted. Please try again."
+        )
+    if category == "empty_response":
+        return (
+            f"I couldn't complete this response because {provider_label} returned "
+            "an empty response. Please try again."
+        )
+    return (
+        "I couldn't complete this response because the AI provider returned an "
+        "error. Please try again."
+    )
+
+
+def _provider_label(provider: str | None) -> str:
+    labels = {
+        "anthropic": "Anthropic",
+        "openai": "OpenAI",
+        "google": "Google",
+    }
+    return labels.get((provider or "").lower(), "the AI provider")
+
+
+def _sanitize_diagnostic_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            str(key): (
+                "[redacted]"
+                if _is_sensitive_diagnostic_key(str(key))
+                else _sanitize_diagnostic_value(nested_value)
+            )
+            for key, nested_value in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_diagnostic_value(item) for item in value]
+    return value
+
+
+def _is_sensitive_diagnostic_key(key: str) -> bool:
+    normalized = key.lower().replace("-", "_")
+    return normalized in {
+        "api_key",
+        "authorization",
+        "auth_token",
+        "password",
+        "secret",
+        "token",
+    }
