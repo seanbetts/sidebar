@@ -33,4 +33,47 @@ final class ContentViewSignedInBootstrapTests: XCTestCase {
         XCTAssertFalse(ContentView.shouldResetSignedInBootstrapState(authState: .active))
         XCTAssertFalse(ContentView.shouldResetSignedInBootstrapState(authState: .staleRecoverable))
     }
+
+    func testSignedInBootstrapActionCentralizesStartResetAndNoopDecisions() {
+        XCTAssertEqual(
+            ContentView.signedInBootstrapAction(
+                authState: .active,
+                isProtectedContentReady: true,
+                didLoadSettings: false
+            ),
+            .start
+        )
+        XCTAssertEqual(
+            ContentView.signedInBootstrapAction(
+                authState: .active,
+                isProtectedContentReady: false,
+                didLoadSettings: false
+            ),
+            .none
+        )
+        XCTAssertEqual(
+            ContentView.signedInBootstrapAction(
+                authState: .staleRecoverable,
+                isProtectedContentReady: true,
+                didLoadSettings: false
+            ),
+            .none
+        )
+        XCTAssertEqual(
+            ContentView.signedInBootstrapAction(
+                authState: .reauthenticationRequired,
+                isProtectedContentReady: false,
+                didLoadSettings: true
+            ),
+            .reset
+        )
+        XCTAssertEqual(
+            ContentView.signedInBootstrapAction(
+                authState: .signedOut,
+                isProtectedContentReady: false,
+                didLoadSettings: true
+            ),
+            .reset
+        )
+    }
 }

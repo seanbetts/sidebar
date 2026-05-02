@@ -219,9 +219,12 @@ public struct ContentView: View {
     }
 
     private func handleRootAuthStateChange(_ authState: AuthState) {
-        guard Self.shouldResetSignedInBootstrapState(authState: authState) else { return }
-        didEnsureInitialPhoneChatInterface = false
-        didLoadSettings = false
+        guard Self.signedInBootstrapAction(
+            authState: authState,
+            isProtectedContentReady: environment.isProtectedContentReady,
+            didLoadSettings: didLoadSettings
+        ) == .reset else { return }
+        resetSignedInBootstrapState()
     }
 
     private func handleOnboardingDismissed() {

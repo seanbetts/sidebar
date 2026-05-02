@@ -1,6 +1,30 @@
 import Foundation
 
+enum SignedInBootstrapAction: Equatable {
+    case start
+    case reset
+    case none
+}
+
 extension ContentView {
+    static func signedInBootstrapAction(
+        authState: AuthState,
+        isProtectedContentReady: Bool,
+        didLoadSettings: Bool
+    ) -> SignedInBootstrapAction {
+        if shouldResetSignedInBootstrapState(authState: authState) {
+            return .reset
+        }
+        if shouldStartSignedInBootstrap(
+            authState: authState,
+            isProtectedContentReady: isProtectedContentReady,
+            didLoadSettings: didLoadSettings
+        ) {
+            return .start
+        }
+        return .none
+    }
+
     static func shouldStartSignedInBootstrap(
         authState: AuthState,
         isProtectedContentReady: Bool,
@@ -18,15 +42,12 @@ extension ContentView {
         }
     }
 
-    func triggerSignedInProtectedContentLoadIfNeeded(source: String) {
-        _ = source
-        guard environment.authState == .active, environment.isProtectedContentReady else { return }
-
-        guard Self.shouldStartSignedInBootstrap(
+    func triggerSignedInProtectedContentLoadIfNeeded() {
+        guard Self.signedInBootstrapAction(
             authState: environment.authState,
             isProtectedContentReady: environment.isProtectedContentReady,
             didLoadSettings: didLoadSettings
-        ) else { return }
+        ) == .start else { return }
 
         didLoadSettings = true
         Task {
@@ -48,5 +69,10 @@ extension ContentView {
 
     private func loadSignedInBootstrapProfileImage() async {
         await environment.settingsViewModel.loadProfileImage()
+    }
+
+    func resetSignedInBootstrapState() {
+        didEnsureInitialPhoneChatInterface = false
+        didLoadSettings = false
     }
 }

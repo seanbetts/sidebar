@@ -302,18 +302,17 @@ extension ContentView {
                     }
                 }
                 #endif
-                triggerSignedInProtectedContentLoadIfNeeded(source: "auth_state")
+                triggerSignedInProtectedContentLoadIfNeeded()
                 Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
             } else {
-                didEnsureInitialPhoneChatInterface = false
-                didLoadSettings = false
+                resetSignedInBootstrapState()
             }
         })
         content = AnyView(content.onChange(of: biometricUnlockEnabled) { _, isEnabled in
             environment.updateBiometricUnlockPreference(isEnabled: isEnabled)
         })
         content = AnyView(content.onChange(of: environment.isBiometricUnlocked) { _, _ in
-            triggerSignedInProtectedContentLoadIfNeeded(source: "biometric_unlock")
+            triggerSignedInProtectedContentLoadIfNeeded()
         })
         content = AnyView(content.onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
             Task {
@@ -353,7 +352,7 @@ extension ContentView {
         })
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
-            triggerSignedInProtectedContentLoadIfNeeded(source: "signed_in_task")
+            triggerSignedInProtectedContentLoadIfNeeded()
         })
         #if !os(macOS)
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
