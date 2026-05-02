@@ -43,11 +43,11 @@ final class ToolCallPopoverTests: XCTestCase {
 
         XCTAssertEqual(
             sections.map(\.kind),
-            [.summary, .workspaceActions, .promptPreview, .technicalDetail]
+            [.summary, .workspaceActions, .promptPreview]
         )
     }
 
-    func testTechnicalDetailFallsBackWhenResultIsNotNormalized() {
+    func testNonNormalizedResultDoesNotExposeTechnicalDetail() {
         let toolCall = ToolCall(
             id: "tool-2",
             name: "lookup-weather",
@@ -67,7 +67,7 @@ final class ToolCallPopoverTests: XCTestCase {
 
         XCTAssertEqual(summary.primaryText, "lookup-weather")
         XCTAssertEqual(summary.secondaryText, nil)
-        XCTAssertEqual(sections.map(\.kind), [.summary, .technicalDetail])
+        XCTAssertEqual(sections.map(\.kind), [.summary])
     }
 
     private func makePromptPreviewToolCall() -> ToolCall {

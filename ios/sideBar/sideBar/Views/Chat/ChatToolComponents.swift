@@ -8,10 +8,12 @@ struct ChatToolSummaryPresentation: Equatable {
     let hasError: Bool
 
     static func from(toolCalls: [ToolCall]) -> ChatToolSummaryPresentation {
-        let errorCount = toolCalls.filter { $0.status == .error }.count
+        let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
+        let presentedToolCalls = visibleToolCalls.isEmpty ? toolCalls : visibleToolCalls
+        let errorCount = presentedToolCalls.filter { $0.status == .error }.count
         let hasError = errorCount > 0
 
-        if toolCalls.count == 1, let toolCall = toolCalls.first {
+        if presentedToolCalls.count == 1, let toolCall = presentedToolCalls.first {
             return ChatToolSummaryPresentation(
                 text: hasError ? "\(toolCall.name) failed" : toolCall.name,
                 iconName: hasError
@@ -25,12 +27,12 @@ struct ChatToolSummaryPresentation: Equatable {
         if hasError {
             iconName = "exclamationmark.circle"
         } else {
-            let uniqueIcons = Set(toolCalls.map { SkillIconResolver.iconName(for: $0) })
+            let uniqueIcons = Set(presentedToolCalls.map { SkillIconResolver.iconName(for: $0) })
             iconName = uniqueIcons.count == 1 ? uniqueIcons.first ?? "square.stack.3d.up" : "square.stack.3d.up"
         }
 
         return ChatToolSummaryPresentation(
-            text: "\(toolCalls.count) skills used",
+            text: "\(presentedToolCalls.count) skills used",
             iconName: iconName,
             hasError: hasError
         )
@@ -203,19 +205,20 @@ struct ToolCallPopoverContent: View {
 
     init(toolCalls: [ToolCall]) {
         self.toolCalls = toolCalls
-        _selectedToolCallID = State(initialValue: toolCalls.first?.id ?? "")
+        let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
+        _selectedToolCallID = State(initialValue: visibleToolCalls.first?.id ?? toolCalls.first?.id ?? "")
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                if toolCalls.count > 1 {
+                if visibleToolCalls.count > 1 {
                     Text("Skills Used")
                         .appFont(.captionSemibold)
                         .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        ForEach(toolCalls) { toolCall in
+                        ForEach(visibleToolCalls) { toolCall in
                             Button {
                                 selectedToolCallID = toolCall.id
                             } label: {
@@ -242,15 +245,19 @@ struct ToolCallPopoverContent: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
+    private var visibleToolCalls: [ToolCall] {
+        let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
+        return visibleToolCalls.isEmpty ? toolCalls : visibleToolCalls
+    }
+
     private var selectedToolCall: ToolCall? {
-        toolCalls.first(where: { $0.id == selectedToolCallID }) ?? toolCalls.first
+        visibleToolCalls.first(where: { $0.id == selectedToolCallID }) ?? visibleToolCalls.first
     }
 }
 
 struct ToolCallDetailView: View {
     let toolCall: ToolCall
     @State private var isPromptPreviewExpanded = false
-    @State private var isTechnicalDetailExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -279,16 +286,6 @@ struct ToolCallDetailView: View {
                             )
                         }
                     }
-                case .technicalDetail:
-                    if let technicalDetail {
-                        ToolCallDisclosureCard(
-                            title: section.title,
-                            subtitle: section.subtitle,
-                            isExpanded: $isTechnicalDetailExpanded
-                        ) {
-                            ToolCallTechnicalDetailView(detail: technicalDetail)
-                        }
-                    }
                 }
             }
         }
@@ -304,10 +301,6 @@ struct ToolCallDetailView: View {
 
     private var promptPreview: ChatPromptPreview? {
         PromptPreviewPayloadParser.parseToolResult(toolCall.result)
-    }
-
-    private var technicalDetail: ChatToolTechnicalDetail? {
-        ChatToolPresentation.technicalDetail(for: toolCall)
     }
 
     private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {

@@ -15,25 +15,8 @@ enum ChatToolDetailSectionKind: String, Equatable, Identifiable {
     case summary
     case workspaceActions
     case promptPreview
-    case technicalDetail
 
     var id: String { rawValue }
-}
-
-struct ChatToolTechnicalDetailRow: Equatable, Identifiable {
-    let key: String
-    let value: String
-
-    var id: String { key }
-}
-
-struct ChatToolTechnicalDetail: Equatable {
-    let parameterRows: [ChatToolTechnicalDetailRow]
-    let resultText: String?
-
-    var hasContent: Bool {
-        !parameterRows.isEmpty || resultText != nil
-    }
 }
 
 enum ChatToolPresentation {
@@ -41,6 +24,29 @@ enum ChatToolPresentation {
         let primaryText: String
         let secondaryText: String?
         let showsToolList: Bool
+    }
+
+    static func visibleToolCalls(from toolCalls: [ToolCall]) -> [ToolCall] {
+        var recoveredToolRuns = Set<String>()
+        var visibleToolCalls = [ToolCall]()
+
+        for toolCall in toolCalls.reversed() {
+            let identity = toolRunIdentity(for: toolCall)
+
+            if toolCall.status == .success {
+                recoveredToolRuns.insert(identity)
+                visibleToolCalls.append(toolCall)
+                continue
+            }
+
+            if toolCall.status == .error, recoveredToolRuns.contains(identity) {
+                continue
+            }
+
+            visibleToolCalls.append(toolCall)
+        }
+
+        return visibleToolCalls.reversed()
     }
 
     static func summary(for toolCall: ToolCall) -> Summary {
@@ -102,30 +108,7 @@ enum ChatToolPresentation {
             )
         }
 
-        if let technicalDetail = technicalDetail(for: toolCall),
-           technicalDetail.hasContent {
-            sections.append(
-                ChatToolDetailSection(
-                    kind: .technicalDetail,
-                    title: "Technical Detail",
-                    subtitle: "Raw parameters and result payload",
-                    isCollapsible: true,
-                    startsExpanded: false
-                )
-            )
-        }
-
         return sections
-    }
-
-    static func technicalDetail(for toolCall: ToolCall) -> ChatToolTechnicalDetail? {
-        let parameterRows = toolCall.parameters
-            .map { ChatToolTechnicalDetailRow(key: $0.key, value: formattedValue($0.value.value)) }
-            .sorted { $0.key < $1.key }
-
-        let resultText = toolCall.result.map { formattedValue($0.value) }
-        let detail = ChatToolTechnicalDetail(parameterRows: parameterRows, resultText: resultText)
-        return detail.hasContent ? detail : nil
     }
 
     private static func normalizedSummary(from result: AnyCodable?) -> String? {
@@ -229,17 +212,22 @@ enum ChatToolPresentation {
         result?.value as? [String: Any]
     }
 
-    private static func formattedValue(_ value: Any) -> String {
-        if let stringValue = value as? String {
-            return stringValue
+    private static func toolRunIdentity(for toolCall: ToolCall) -> String {
+        let toolIdentifier = toolCall.skillId?.trimmedOrNil ?? toolCall.name.trimmedOrNil ?? toolCall.id
+        return "\(toolIdentifier.lowercased())|\(canonicalParameterIdentity(toolCall.parameters))"
+    }
+
+    private static func canonicalParameterIdentity(_ parameters: [String: AnyCodable]) -> String {
+        let rawParameters = parameters.mapValues(\.value)
+        guard JSONSerialization.isValidJSONObject(rawParameters),
+              let data = try? JSONSerialization.data(withJSONObject: rawParameters, options: [.sortedKeys]),
+              let json = String(data: data, encoding: .utf8) else {
+            return parameters
+                .sorted { $0.key < $1.key }
+                .map { "\($0.key)=\(String(describing: $0.value.value))" }
+                .joined(separator: "&")
         }
 
-        if JSONSerialization.isValidJSONObject(value),
-           let data = try? JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted]),
-           let jsonString = String(data: data, encoding: .utf8) {
-            return jsonString
-        }
-
-        return String(describing: value)
+        return json
     }
 }
