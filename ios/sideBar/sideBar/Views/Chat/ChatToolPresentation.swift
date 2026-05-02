@@ -83,7 +83,7 @@ enum ChatToolPresentation {
         if let normalizedSummary = normalizedSummary(from: toolCall.result) {
             return Summary(
                 primaryText: normalizedSummary,
-                secondaryText: entitiesTouchedSummary(from: toolCall.result),
+                secondaryText: nil,
                 showsToolList: false
             )
         }
@@ -147,39 +147,6 @@ enum ChatToolPresentation {
         return nil
     }
 
-    private static func entitiesTouchedSummary(from result: AnyCodable?) -> String? {
-        guard let payload = resultPayload(from: result) else {
-            return nil
-        }
-
-        let entities = (payload["entities_touched"] as? [[String: Any]])
-            ?? ((payload["data"] as? [String: Any])?["entities_touched"] as? [[String: Any]])
-            ?? []
-        guard !entities.isEmpty else {
-            return nil
-        }
-
-        let changes = entities.compactMap { ($0["change"] as? String)?.trimmedOrNil }
-        let entityNames = entities.compactMap { entityDisplayName(from: $0) }
-        guard !entityNames.isEmpty else {
-            return nil
-        }
-
-        if let firstChange = changes.first,
-           changes.allSatisfy({ $0.caseInsensitiveCompare(firstChange) == .orderedSame }) {
-            return "\(firstChange.capitalized) \(joinedList(entityNames))"
-        }
-
-        let fragments = zip(entityNames.indices, entityNames).map { index, entityName in
-            if index < changes.count {
-                return "\(changes[index].capitalized) \(entityName)"
-            }
-            return entityName.capitalized
-        }
-
-        return joinedList(fragments)
-    }
-
     private static func legacyErrorText(from result: AnyCodable?) -> String? {
         guard let payload = resultPayload(from: result) else {
             return nil
@@ -195,36 +162,6 @@ enum ChatToolPresentation {
         }
 
         return nil
-    }
-
-    private static func entityDisplayName(from entity: [String: Any]) -> String? {
-        let preferredKeys = ["title", "name", "label", "entity_name"]
-        for key in preferredKeys {
-            if let value = entity[key] as? String,
-               let trimmed = value.trimmedOrNil {
-                return trimmed
-            }
-        }
-
-        if let entityType = entity["entity_type"] as? String,
-           let trimmed = entityType.trimmedOrNil {
-            return trimmed.replacingOccurrences(of: "_", with: " ")
-        }
-
-        return nil
-    }
-
-    private static func joinedList(_ values: [String]) -> String {
-        switch values.count {
-        case 0:
-            return ""
-        case 1:
-            return values[0]
-        case 2:
-            return "\(values[0]) and \(values[1])"
-        default:
-            return values.dropLast().joined(separator: ", ") + ", and " + (values.last ?? "")
-        }
     }
 
     private static func resultPayload(from result: AnyCodable?) -> [String: Any]? {

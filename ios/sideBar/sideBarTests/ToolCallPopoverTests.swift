@@ -34,7 +34,7 @@ final class ToolCallPopoverTests: XCTestCase {
         let summary = ChatToolPresentation.summary(for: toolCall)
 
         XCTAssertEqual(summary.primaryText, "Created note: Shopping List")
-        XCTAssertEqual(summary.secondaryText, "Created note")
+        XCTAssertEqual(summary.secondaryText, nil)
         XCTAssertFalse(summary.showsToolList)
     }
 
