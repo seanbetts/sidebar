@@ -114,7 +114,8 @@ enum ChatToolPresentation {
             )
         ]
 
-        if !ToolResultWorkspaceSurfaceParser.parse(toolCall).isEmpty {
+        if displayName(for: toolCall) != "Prompt Preview",
+           !ToolResultWorkspaceSurfaceParser.parse(toolCall).isEmpty {
             sections.append(
                 ChatToolDetailSection(
                     kind: .workspaceActions,

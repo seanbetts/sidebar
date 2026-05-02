@@ -38,12 +38,12 @@ final class ToolCallPopoverTests: XCTestCase {
         XCTAssertFalse(summary.showsToolList)
     }
 
-    func testPromptPreviewIsSecondaryDetail() {
+    func testPromptPreviewDoesNotShowWorkspaceActionInPopover() {
         let sections = ChatToolPresentation.detailSections(for: makePromptPreviewToolCall())
 
         XCTAssertEqual(
             sections.map(\.kind),
-            [.summary, .workspaceActions]
+            [.summary]
         )
     }
 
