@@ -227,7 +227,10 @@ def get_notes_definitions() -> dict:
             "build_args": pm.build_notes_delete_folder_args,
         },
         "Get Note": {
-            "description": "Fetch a note by ID.",
+            "description": (
+                "Fetch a note by ID and open it in the workspace when the user asks "
+                "to view, show, or open an existing note."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {

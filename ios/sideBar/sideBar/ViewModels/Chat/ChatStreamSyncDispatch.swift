@@ -139,8 +139,7 @@ extension ChatViewModel {
             return false
         }
 
-        if payload.change == ChatStreamChangeType.created.rawValue,
-           payload.patch?["open_in_workspace"]?.value as? Bool == true {
+        if payload.patch?["open_in_workspace"]?.value as? Bool == true {
             onOpenNoteRequested?(payload.entityId)
         }
 

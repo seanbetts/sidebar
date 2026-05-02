@@ -69,6 +69,7 @@ public enum ChatStreamChangeType: String, CaseIterable {
     case created
     case deleted
     case moved
+    case opened
     case pinned
     case renamed
     case unarchived

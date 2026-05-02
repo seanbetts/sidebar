@@ -59,6 +59,27 @@ def test_normalize_tool_result_adds_collection_summary_for_profile_update() -> N
     ]
 
 
+def test_normalize_tool_result_adds_summary_for_get_note_open() -> None:
+    result = {
+        "success": True,
+        "data": {
+            "id": "note-1",
+            "title": "Orion - Project Brief",
+        },
+    }
+
+    normalized = normalize_tool_result("Get Note", result)
+
+    assert normalized["summary"] == "Opened note Orion - Project Brief"
+    assert normalized["entities_touched"] == [
+        {
+            "entity_type": "note",
+            "entity_id": "note-1",
+            "change": "opened",
+        }
+    ]
+
+
 def test_normalize_tool_result_leaves_non_mutating_tool_result_unchanged() -> None:
     result = {
         "success": True,

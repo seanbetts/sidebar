@@ -23,6 +23,7 @@ _COLLECTION_INVALIDATION_TOOL_NAMES = {
 
 _ENTITY_CHANGED_TOOL_NAMES = {
     "Create Note",
+    "Get Note",
     "Edit Note",
     "Pin Note",
     "Move Note",
@@ -75,6 +76,8 @@ def _touches_for_note(display_name: str, data: dict[str, Any]) -> list[dict[str,
         return [
             _entity_touch(entity_type="note", entity_id=entity_id, change="created")
         ]
+    if display_name == "Get Note":
+        return [_entity_touch(entity_type="note", entity_id=entity_id, change="opened")]
     if display_name == "Delete Note":
         return [
             _entity_touch(entity_type="note", entity_id=entity_id, change="deleted")
@@ -170,6 +173,9 @@ def _summary_for_entities(
     if display_name == "Create Note":
         title = data.get("title") or data.get("name") or "note"
         return f"Created note {title}"
+    if display_name == "Get Note":
+        title = data.get("title") or data.get("name") or "note"
+        return f"Opened note {title}"
     if display_name == "Delete Note":
         return "Deleted note"
     if display_name == "Edit Note":
@@ -241,6 +247,7 @@ def _enrich_mutating_result(
     if display_name in _ENTITY_CHANGED_TOOL_NAMES:
         if display_name in {
             "Create Note",
+            "Get Note",
             "Edit Note",
             "Pin Note",
             "Move Note",

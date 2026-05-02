@@ -38,6 +38,7 @@ CHAT_STREAM_CHANGE_TYPES = frozenset(
         "created",
         "deleted",
         "moved",
+        "opened",
         "pinned",
         "renamed",
         "unarchived",

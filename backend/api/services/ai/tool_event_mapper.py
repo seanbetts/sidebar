@@ -93,6 +93,21 @@ def _note_entity_changed(
     if not entity_id:
         return None
     invalidate = ["notes", f"note:{entity_id}"]
+    if display_name == "Get Note":
+        patch = {
+            "id": entity_id,
+            "title": result_data.get("title"),
+            "path": result_data.get("path"),
+            "updated_at": result_data.get("updated_at"),
+            "open_in_workspace": True,
+        }
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="opened",
+            patch=patch,
+            invalidate=invalidate,
+        )
     if display_name == "Create Note":
         patch = {
             "id": entity_id,

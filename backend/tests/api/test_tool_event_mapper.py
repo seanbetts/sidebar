@@ -35,6 +35,40 @@ def test_tool_side_effect_events_maps_create_note_with_workspace_opening() -> No
     ]
 
 
+def test_tool_side_effect_events_maps_get_note_with_workspace_opening() -> None:
+    events = tool_side_effect_events(
+        "Get Note",
+        {
+            "success": True,
+            "data": {
+                "id": "note-1",
+                "title": "Orion - Project Brief",
+                "path": "Projects/Orion",
+                "updated_at": "2026-05-02T20:00:00Z",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "entity_changed",
+            "data": {
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "change": "opened",
+                "patch": {
+                    "id": "note-1",
+                    "title": "Orion - Project Brief",
+                    "path": "Projects/Orion",
+                    "updated_at": "2026-05-02T20:00:00Z",
+                    "open_in_workspace": True,
+                },
+                "invalidate": ["notes", "note:note-1"],
+            },
+        }
+    ]
+
+
 def test_tool_side_effect_events_emits_workspace_patch_event() -> None:
     events = tool_side_effect_events(
         "Unknown Tool",
