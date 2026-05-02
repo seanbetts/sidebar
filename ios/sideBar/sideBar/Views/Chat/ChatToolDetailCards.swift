@@ -1,33 +1,62 @@
 import SwiftUI
 
+enum WorkspaceSurfaceActionPresentation: Equatable {
+    case singleButton(ToolResultWorkspaceSurfaceTarget)
+    case grouped([ToolResultWorkspaceSurfaceTarget])
+
+    static func from(targets: [ToolResultWorkspaceSurfaceTarget]) -> WorkspaceSurfaceActionPresentation? {
+        guard !targets.isEmpty else {
+            return nil
+        }
+
+        if targets.count == 1, let target = targets.first {
+            return .singleButton(target)
+        }
+
+        return .grouped(targets)
+    }
+}
+
 struct WorkspaceSurfaceActionGroup: View {
     @EnvironmentObject private var environment: AppEnvironment
     let targets: [ToolResultWorkspaceSurfaceTarget]
 
     var body: some View {
-        ChatInlineActionCard(
-            title: "Workspace",
-            subtitle: targets.count == 1
-                ? "Open the surface produced by this skill"
-                : "Open one of the surfaces produced by this skill"
-        ) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                ForEach(targets) { target in
-                    Button {
-                        environment.presentAgentSurface(
-                            target.surface,
-                            in: target.pane,
-                            source: "chat_workspace_surface_link"
-                        )
-                    } label: {
-                        Label(target.label, systemImage: target.iconName)
-                            .appFont(.captionSemibold)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            switch WorkspaceSurfaceActionPresentation.from(targets: targets) {
+            case .singleButton(let target):
+                actionButton(target)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            case .grouped(let groupedTargets):
+                ChatInlineActionCard(
+                    title: "Workspace",
+                    subtitle: "Open one of the surfaces produced by this skill"
+                ) {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        ForEach(groupedTargets) { target in
+                            actionButton(target)
+                        }
                     }
-                    .buttonStyle(.bordered)
                 }
+            case nil:
+                EmptyView()
             }
         }
+    }
+
+    private func actionButton(_ target: ToolResultWorkspaceSurfaceTarget) -> some View {
+        Button {
+            environment.presentAgentSurface(
+                target.surface,
+                in: target.pane,
+                source: "chat_workspace_surface_link"
+            )
+        } label: {
+            Label(target.label, systemImage: target.iconName)
+                .appFont(.captionSemibold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.bordered)
     }
 }
 
@@ -36,30 +65,33 @@ struct WorkspaceSurfaceInlineActionsBar: View {
     let targets: [ToolResultWorkspaceSurfaceTarget]
 
     var body: some View {
-        ChatInlineActionCard(
-            title: targets.count == 1 ? "Workspace Handoff" : "Workspace Handoffs",
-            subtitle: targets.count == 1
-                ? "Open the result in the workspace"
-                : "Open one of the results in the workspace"
-        ) {
-            Group {
-                if targets.count == 1, let target = targets.first {
+        Group {
+            switch WorkspaceSurfaceActionPresentation.from(targets: targets) {
+            case .singleButton(let target):
+                HStack {
+                    Spacer(minLength: 0)
+                    actionButton(target, prominent: true)
+                        .frame(maxWidth: 280)
+                    Spacer(minLength: 0)
+                }
+            case .grouped(let groupedTargets):
+                ChatInlineActionCard(
+                    title: "Workspace Handoffs",
+                    subtitle: "Open one of the results in the workspace"
+                ) {
                     HStack {
-                        Spacer(minLength: 0)
-                        actionButton(target, prominent: true)
-                            .frame(maxWidth: 280)
-                        Spacer(minLength: 0)
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DesignTokens.Spacing.xs) {
-                            ForEach(targets) { target in
-                                actionButton(target, prominent: false)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: DesignTokens.Spacing.xs) {
+                                ForEach(groupedTargets) { target in
+                                    actionButton(target, prominent: false)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .center)
                         }
-                        .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
+            case nil:
+                EmptyView()
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -152,55 +184,5 @@ struct ToolCallSummaryCard: View {
         case .error:
             return DesignTokens.Colors.error
         }
-    }
-}
-
-struct ToolCallDisclosureCard<Content: View>: View {
-    let title: String
-    let subtitle: String?
-    @Binding var isExpanded: Bool
-    let content: Content
-
-    init(
-        title: String,
-        subtitle: String?,
-        isExpanded: Binding<Bool>,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self._isExpanded = isExpanded
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            DisclosureGroup(isExpanded: $isExpanded) {
-                content
-                    .padding(.top, DesignTokens.Spacing.xs)
-            } label: {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
-                    Text(title)
-                        .appFont(.subheadlineSemibold)
-
-                    if let subtitle {
-                        Text(subtitle)
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .tint(DesignTokens.Colors.textPrimary)
-        }
-        .padding(DesignTokens.Spacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
     }
 }

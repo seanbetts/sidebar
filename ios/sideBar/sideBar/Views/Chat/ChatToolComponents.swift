@@ -14,8 +14,9 @@ struct ChatToolSummaryPresentation: Equatable {
         let hasError = errorCount > 0
 
         if presentedToolCalls.count == 1, let toolCall = presentedToolCalls.first {
+            let displayName = ChatToolPresentation.displayName(for: toolCall)
             return ChatToolSummaryPresentation(
-                text: hasError ? "\(toolCall.name) failed" : toolCall.name,
+                text: hasError ? "\(displayName) failed" : displayName,
                 iconName: hasError
                     ? "exclamationmark.circle"
                     : SkillIconResolver.iconName(for: toolCall),
@@ -156,7 +157,7 @@ struct ToolCallRow: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
-            Text(toolCall.name)
+            Text(ChatToolPresentation.displayName(for: toolCall))
                 .appFont(.subheadlineSemibold)
             Spacer(minLength: 8)
             Text(toolCall.status.rawValue.capitalized)
@@ -257,7 +258,6 @@ struct ToolCallPopoverContent: View {
 
 struct ToolCallDetailView: View {
     let toolCall: ToolCall
-    @State private var isPromptPreviewExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -272,20 +272,6 @@ struct ToolCallDetailView: View {
                     if !workspaceSurfaceTargets.isEmpty {
                         WorkspaceSurfaceActionGroup(targets: workspaceSurfaceTargets)
                     }
-                case .promptPreview:
-                    if let promptPreview {
-                        ToolCallDisclosureCard(
-                            title: section.title,
-                            subtitle: section.subtitle,
-                            isExpanded: $isPromptPreviewExpanded
-                        ) {
-                            PromptPreviewView(
-                                promptPreview: promptPreview,
-                                showsHeader: false,
-                                showsBackground: false
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -297,10 +283,6 @@ struct ToolCallDetailView: View {
 
     private var summaryPresentation: ChatToolPresentation.Summary {
         ChatToolPresentation.summary(for: toolCall)
-    }
-
-    private var promptPreview: ChatPromptPreview? {
-        PromptPreviewPayloadParser.parseToolResult(toolCall.result)
     }
 
     private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {

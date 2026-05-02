@@ -14,7 +14,6 @@ struct ChatToolDetailSection: Equatable, Identifiable {
 enum ChatToolDetailSectionKind: String, Equatable, Identifiable {
     case summary
     case workspaceActions
-    case promptPreview
 
     var id: String { rawValue }
 }
@@ -24,6 +23,16 @@ enum ChatToolPresentation {
         let primaryText: String
         let secondaryText: String?
         let showsToolList: Bool
+    }
+
+    static func displayName(for toolCall: ToolCall) -> String {
+        let skillID = toolCall.skillId
+            ?? toolCall.iconKey
+            ?? SkillIconResolver.skillId(forToolDisplayName: toolCall.name)
+        if skillID == "prompt-preview" {
+            return "Prompt Preview"
+        }
+        return toolCall.name
     }
 
     static func visibleToolCalls(from toolCalls: [ToolCall]) -> [ToolCall] {
@@ -63,6 +72,14 @@ enum ChatToolPresentation {
     }
 
     static func summary(for toolCall: ToolCall) -> Summary {
+        if displayName(for: toolCall) == "Prompt Preview" {
+            return Summary(
+                primaryText: "Prompt Preview",
+                secondaryText: nil,
+                showsToolList: false
+            )
+        }
+
         if let normalizedSummary = normalizedSummary(from: toolCall.result) {
             return Summary(
                 primaryText: normalizedSummary,
@@ -80,7 +97,7 @@ enum ChatToolPresentation {
         }
 
         return Summary(
-            primaryText: toolCall.name,
+            primaryText: displayName(for: toolCall),
             secondaryText: nil,
             showsToolList: false
         )
@@ -105,18 +122,6 @@ enum ChatToolPresentation {
                     subtitle: "Open what this skill produced",
                     isCollapsible: false,
                     startsExpanded: true
-                )
-            )
-        }
-
-        if PromptPreviewPayloadParser.parseToolResult(toolCall.result) != nil {
-            sections.append(
-                ChatToolDetailSection(
-                    kind: .promptPreview,
-                    title: "Prompt Preview",
-                    subtitle: "Transparency into the assembled prompt",
-                    isCollapsible: true,
-                    startsExpanded: false
                 )
             )
         }

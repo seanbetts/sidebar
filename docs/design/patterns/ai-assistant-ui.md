@@ -301,11 +301,11 @@ The user is always identified as "You". This is not configurable.
 7. **Inline action cards never interrupt the conversation flow.** They appear in the message area as part of the chat — never as sheets, alerts, or modals.
 8. **Decline is final and feeds back into the assistant.** A declined confirmation injects a deterministic result into the model context so the assistant can respond without retrying.
 9. **Workspace surface headers follow the standard layout.** Icon, title, subtitle, and action row in that order. Never omit the header.
-10. **All assistant inline actions use the shared card component.** Navigational, confirmation, and undo variants share the same container and anatomy — they are never loose buttons or modals.
+10. **Assistant inline actions use the shared presentation rules.** Multi-action affordances use the shared card component. A single workspace handoff may render as a bare button instead of a titled container. They are never modals.
 11. **All assistant navigation routes through the deep link system.** `presentAgentSurface` converts to `sidebar://` before routing. No direct navigation bypasses the handler.
 12. **`assistantDisplayName` must be used for all references to the assistant.** Never hardcode a name.
 13. **Reduce motion must be respected for all assistant animations.** Thinking dismissal, streaming reveal, and any other assistant-driven motion must have instant fallbacks.
-14. **Skill detail leads with a human-readable summary.** Parameters, result payloads, and prompt preview are secondary — collapsible, never the primary disclosure.
+14. **Skill detail leads with a human-readable summary.** Parameters and raw result payloads are never primary. Prompt preview handoffs should surface as direct workspace buttons, not extra diagnostic cards.
 15. **Content-bearing skill results present through the coordinated dispatch.** Domain objects auto-present with a left panel section switch on iPad/Mac. Dynamic surfaces auto-present without a panel switch. On iPhone, an inline action button is the sole trigger. No skill should implement its own navigation logic for content presentation. See [Content Presentation](./content-presentation).
 
 ---

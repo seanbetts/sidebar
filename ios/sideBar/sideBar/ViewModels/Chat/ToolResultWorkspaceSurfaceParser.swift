@@ -28,7 +28,7 @@ enum ToolResultWorkspaceSurfaceParser {
             let promptPreviewTarget = ToolResultWorkspaceSurfaceTarget(
                 surface: surface,
                 pane: .primary,
-                label: "Show System Prompt",
+                label: "Show Prompt Preview",
                 iconName: skillIconName
             )
             if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
