@@ -216,7 +216,7 @@ def test_fly_deploy_workflow_builds_before_registry_push() -> None:
         step for step in deploy_steps if step.get("name") == "Push image to Fly registry"
     )
 
-    assert build_step["uses"] == "docker/build-push-action@v6"
+    assert build_step["uses"] == "docker/build-push-action@v7"
     assert build_step["with"]["push"] == "false"
     assert build_step["with"]["load"] == "true"
     assert build_step["with"]["tags"] == "${{ steps.image.outputs.ref }}"

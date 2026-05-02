@@ -7,6 +7,7 @@ import json
 from api.services import (
     web_save_includes,
     web_save_parser,
+    web_save_parser_cleanup,
     web_save_parser_twitter,
     web_save_parser_wsj,
 )
@@ -2826,7 +2827,7 @@ def test_extract_openai_body_html_prefers_article_and_removes_nav():
       </body>
     </html>
     """
-    extracted = web_save_parser.extract_openai_body_html(html)
+    extracted = web_save_parser_cleanup.extract_openai_body_html(html)
     assert extracted is not None
     assert "Keep this." in extracted
     assert "Nav" not in extracted
@@ -2849,7 +2850,7 @@ def test_extract_verge_body_html_combines_body_components():
       </body>
     </html>
     """
-    extracted = web_save_parser.extract_verge_body_html(html)
+    extracted = web_save_parser_cleanup.extract_verge_body_html(html)
     assert extracted is not None
     assert "First paragraph" in extracted
     assert "Second paragraph" in extracted
@@ -2860,7 +2861,7 @@ def test_extract_verge_body_html_combines_body_components():
 
 def test_extract_verge_body_html_returns_none_when_no_body_components():
     html = "<html><body><p>No article structure</p></body></html>"
-    extracted = web_save_parser.extract_verge_body_html(html)
+    extracted = web_save_parser_cleanup.extract_verge_body_html(html)
     assert extracted is None
 
 
