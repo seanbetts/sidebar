@@ -27,26 +27,39 @@ enum ChatToolPresentation {
     }
 
     static func visibleToolCalls(from toolCalls: [ToolCall]) -> [ToolCall] {
-        var recoveredToolRuns = Set<String>()
-        var visibleToolCalls = [ToolCall]()
-
-        for toolCall in toolCalls.reversed() {
-            let identity = toolRunIdentity(for: toolCall)
-
-            if toolCall.status == .success {
-                recoveredToolRuns.insert(identity)
-                visibleToolCalls.append(toolCall)
-                continue
-            }
-
-            if toolCall.status == .error, recoveredToolRuns.contains(identity) {
-                continue
-            }
-
-            visibleToolCalls.append(toolCall)
+        guard toolCalls.count > 1 else {
+            return toolCalls
         }
 
-        return visibleToolCalls.reversed()
+        var hiddenIndices = Set<Int>()
+        var runStart = 0
+
+        while runStart < toolCalls.count {
+            let family = toolFamily(for: toolCalls[runStart])
+            var runEnd = runStart + 1
+            while runEnd < toolCalls.count, toolFamily(for: toolCalls[runEnd]) == family {
+                runEnd += 1
+            }
+
+            var recoverableErrors = [Int]()
+            for index in runStart..<runEnd {
+                switch toolCalls[index].status {
+                case .error:
+                    recoverableErrors.append(index)
+                case .success:
+                    hiddenIndices.formUnion(recoverableErrors)
+                    recoverableErrors.removeAll(keepingCapacity: true)
+                case .pending:
+                    continue
+                }
+            }
+
+            runStart = runEnd
+        }
+
+        return toolCalls.enumerated().compactMap { index, toolCall in
+            hiddenIndices.contains(index) ? nil : toolCall
+        }
     }
 
     static func summary(for toolCall: ToolCall) -> Summary {
@@ -212,22 +225,7 @@ enum ChatToolPresentation {
         result?.value as? [String: Any]
     }
 
-    private static func toolRunIdentity(for toolCall: ToolCall) -> String {
-        let toolIdentifier = toolCall.skillId?.trimmedOrNil ?? toolCall.name.trimmedOrNil ?? toolCall.id
-        return "\(toolIdentifier.lowercased())|\(canonicalParameterIdentity(toolCall.parameters))"
-    }
-
-    private static func canonicalParameterIdentity(_ parameters: [String: AnyCodable]) -> String {
-        let rawParameters = parameters.mapValues(\.value)
-        guard JSONSerialization.isValidJSONObject(rawParameters),
-              let data = try? JSONSerialization.data(withJSONObject: rawParameters, options: [.sortedKeys]),
-              let json = String(data: data, encoding: .utf8) else {
-            return parameters
-                .sorted { $0.key < $1.key }
-                .map { "\($0.key)=\(String(describing: $0.value.value))" }
-                .joined(separator: "&")
-        }
-
-        return json
+    private static func toolFamily(for toolCall: ToolCall) -> String {
+        (toolCall.skillId?.trimmedOrNil ?? toolCall.name.trimmedOrNil ?? toolCall.id).lowercased()
     }
 }

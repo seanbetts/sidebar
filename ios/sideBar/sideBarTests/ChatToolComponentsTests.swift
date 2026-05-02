@@ -14,7 +14,12 @@ final class ChatToolComponentsTests: XCTestCase {
             ToolCall(
                 id: "tool-2",
                 name: "Create Note",
-                parameters: ["title": AnyCodable("Shopping List")],
+                parameters: [
+                    "title": AnyCodable("Shopping List"),
+                    "document": AnyCodable([
+                        ["type": "checkbox", "checked": false]
+                    ])
+                ],
                 status: .success
             )
         ]
@@ -44,13 +49,23 @@ final class ChatToolComponentsTests: XCTestCase {
             ToolCall(
                 id: "tool-1",
                 name: "Create Note",
-                parameters: ["title": AnyCodable("Shopping List")],
+                parameters: [
+                    "title": AnyCodable("Shopping List"),
+                    "document": AnyCodable([
+                        ["type": "checkbox", "checked": "false"]
+                    ])
+                ],
                 status: .error
             ),
             ToolCall(
                 id: "tool-2",
                 name: "Create Note",
-                parameters: ["title": AnyCodable("Shopping List")],
+                parameters: [
+                    "title": AnyCodable("Shopping List"),
+                    "document": AnyCodable([
+                        ["type": "checkbox", "checked": false]
+                    ])
+                ],
                 status: .success
             )
         ]
@@ -61,13 +76,35 @@ final class ChatToolComponentsTests: XCTestCase {
         )
     }
 
-    func testVisibleToolCallsKeepDistinctFailedOperationWhenParametersDiffer() {
+    func testVisibleToolCallsCollapseRecoveredRetryFailuresWhenParametersDiffer() {
         let toolCalls = [
             ToolCall(
                 id: "tool-1",
                 name: "Create Note",
                 parameters: ["title": AnyCodable("First Note")],
                 status: .error
+            ),
+            ToolCall(
+                id: "tool-2",
+                name: "Create Note",
+                parameters: ["title": AnyCodable("Second Note")],
+                status: .success
+            )
+        ]
+
+        XCTAssertEqual(
+            ChatToolPresentation.visibleToolCalls(from: toolCalls).map(\.id),
+            ["tool-2"]
+        )
+    }
+
+    func testVisibleToolCallsKeepDistinctSuccessfulOperationsForRepeatedSkill() {
+        let toolCalls = [
+            ToolCall(
+                id: "tool-1",
+                name: "Create Note",
+                parameters: ["title": AnyCodable("First Note")],
+                status: .success
             ),
             ToolCall(
                 id: "tool-2",
