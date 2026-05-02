@@ -76,12 +76,15 @@ Tapping the pill opens a popover (sheet on compact).
 
 **Multiple skills:** show a list first (name, status indicator, status label), then detail for the selected skill.
 
+If a later run of the same skill with the same effective input succeeds, recovered intermediate failures are hidden from the user-facing list and do not turn the pill into an error state. Distinct operations still appear separately.
+
 **Skill detail view:**
 
 1. **Summary** — a human-readable description of what the skill did (e.g. "Deleted note: My Shopping List"). This is the primary content.
 2. **Workspace surface links** — action buttons to open any surfaces produced by this skill.
 3. **Prompt preview** — collapsible section showing system prompt sections, budget report, and prompt content. Available to all users for transparency into what the assistant was working with.
-4. **Technical detail** — collapsible section with raw parameters and result payload, for power users and debugging.
+
+Raw parameters, result payloads, and recovered tool errors are not part of the default user-facing tool result UI. Those details should be logged for diagnostics rather than surfaced in the popover.
 
 **Status colors:**
 
