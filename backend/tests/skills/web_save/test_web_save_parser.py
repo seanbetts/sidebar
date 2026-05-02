@@ -341,6 +341,84 @@ def _build_sidebar_docs_html() -> str:
     """
 
 
+def _build_gameinformer_article_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>Spoiler-Free Tips And Tricks To Know Before Starting Saros - Game Informer</title>
+        <meta
+          property="og:title"
+          content="Spoiler-Free Tips And Tricks To Know Before Starting Saros"
+        />
+        <meta
+          property="og:image"
+          content="https://gameinformer.com/sites/default/files/styles/thumbnail/public/2026/04/28/26f93a2b/header.jpg.webp"
+        />
+        <meta
+          property="article:published_time"
+          content="2026-04-29T10:45:00-04:00"
+        />
+        <link
+          rel="canonical"
+          href="https://gameinformer.com/tips-tricks/2026/04/29/spoiler-free-tips-and-tricks-to-know-before-starting-saros"
+        />
+      </head>
+      <body>
+        <main>
+          <section class="field field--name-field-image">
+            <picture>
+              <img
+                src="/sites/default/files/styles/thumbnail/public/2026/04/28/26f93a2b/header.jpg.webp"
+                alt="Spoiler-Free Tips And Tricks To Know Before Starting Saros"
+              />
+            </picture>
+          </section>
+          <h1 class="page-title">
+            Spoiler-Free Tips And Tricks To Know Before Starting Saros
+          </h1>
+          <div
+            class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden gi5-body gi5-text-with-summary field__item"
+            property="schema:text"
+          >
+            <p>
+              Like its spiritual predecessor <a href="https://gameinformer.com/review/returnal/returnal-review-haunting-harmony">Returnal</a>,
+              Saros is a challenging game, but not an insurmountable one.
+            </p>
+            <article class="embedded-entity">
+              <picture>
+                <img
+                  src="/sites/default/files/styles/body_default/public/2026/04/28/414603b6/chaos.jpg.webp"
+                  alt="Spoiler-Free Tips And Tricks To Know Before Starting Saros"
+                />
+              </picture>
+            </article>
+            <h2>Absorb Blue, Dodge Yellow, Counter Red</h2>
+            <p>
+              There are three different colored projectiles you have to worry about in Saros.
+            </p>
+            <article class="embedded-entity">
+              <picture>
+                <img
+                  src="/sites/default/files/styles/body_default/public/2026/04/28/4928bf17/smartrifle.jpg.webp"
+                  alt="Spoiler-Free Tips And Tricks To Know Before Starting Saros"
+                />
+              </picture>
+            </article>
+            <h2>The Smart Gun Is The Smart Choice</h2>
+            <p>
+              The Smart Guns do a lot of the aiming so you don’t have to.
+            </p>
+          </div>
+          <aside>
+            <h2>More Like This</h2>
+            <a href="/preview/example">Unrelated sidebar promo</a>
+          </aside>
+        </main>
+      </body>
+    </html>
+    """
+
+
 def test_parse_url_local_builds_frontmatter(monkeypatch):
     html = """
     <html>
@@ -416,6 +494,54 @@ def test_parse_url_local_sidebar_docs_preserves_heading_and_hero_image(monkeypat
     assert heading_index < image_index < intro_index < app_index
     assert "Navigate to header" not in markdown
     assert "<svg" not in markdown
+
+
+def test_parse_url_local_gameinformer_uses_domain_extractor(monkeypatch):
+    html = _build_gameinformer_article_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://gameinformer.com/tips-tricks/2026/04/29/spoiler-free-tips-and-tricks-to-know-before-starting-saros",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://gameinformer.com/tips-tricks/2026/04/29/spoiler-free-tips-and-tricks-to-know-before-starting-saros"
+    )
+
+    assert parsed.title == "Spoiler-Free Tips And Tricks To Know Before Starting Saros"
+    assert parsed.published_at == datetime(2026, 4, 29, 14, 45, tzinfo=UTC)
+    assert "# Spoiler-Free Tips And Tricks To Know Before Starting Saros" in parsed.content
+    assert (
+        "Like its spiritual predecessor [Returnal]"
+        "(https://gameinformer.com/review/returnal/returnal-review-haunting-harmony)"
+        in parsed.content
+    )
+    assert "## Absorb Blue, Dodge Yellow, Counter Red" in parsed.content
+    assert "## The Smart Gun Is The Smart Choice" in parsed.content
+    assert "There are three different colored projectiles" in parsed.content
+    assert "The Smart Guns do a lot of the aiming so you don’t have to." in parsed.content
+    assert "More Like This" not in parsed.content
+    assert "Unrelated sidebar promo" not in parsed.content
+    assert (
+        "![Spoiler-Free Tips And Tricks To Know Before Starting Saros]"
+        "(https://gameinformer.com/sites/default/files/styles/thumbnail/public/2026/04/28/26f93a2b/header.jpg.webp)"
+        in parsed.content
+    )
+    assert (
+        "https://gameinformer.com/sites/default/files/styles/body_default/public/2026/04/28/414603b6/chaos.jpg.webp"
+        in parsed.content
+    )
+    assert (
+        "https://gameinformer.com/sites/default/files/styles/body_default/public/2026/04/28/4928bf17/smartrifle.jpg.webp"
+        in parsed.content
+    )
 
 
 def test_extract_steamcommunity_body_html_parses_event_store():

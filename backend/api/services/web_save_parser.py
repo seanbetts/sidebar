@@ -24,16 +24,12 @@ from api.services import web_save_parser_metadata
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
 from api.services.web_save_parser_apple_news import maybe_unwrap_apple_news
-from api.services.web_save_parser_blog_google import extract_blog_google_body_html
 from api.services.web_save_parser_cleanup import (
     cleanup_gizmodo_markdown,
     cleanup_verge_markdown,
     cleanup_youtube_markdown,
     dedupe_markdown_blocks,
     dedupe_markdown_images,
-    extract_openai_body_html,
-    extract_verge_body_html,
-    extract_wired_body_html,
     filter_non_content_images,
     is_paywalled,
     normalize_image_captions,
@@ -45,13 +41,15 @@ from api.services.web_save_parser_cleanup import (
     simplify_linked_images,
     wrap_gallery_blocks,
 )
+from api.services.web_save_parser_domain_extractors import (
+    apply_domain_specific_extractor,
+)
 from api.services.web_save_parser_fallback import (
     LocalParseFallbackError,
     raise_antibot_fallback_if_needed,
 )
 from api.services.web_save_parser_forbes import extract_forbes_article_markdown
 from api.services.web_save_parser_github import cleanup_github_markdown
-from api.services.web_save_parser_hbr import extract_hbr_body_html
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 from api.services.web_save_parser_metadata import extract_metadata
 from api.services.web_save_parser_openai import cleanup_openai_markdown
@@ -61,10 +59,7 @@ from api.services.web_save_parser_paywall import (
     extract_paywall_preview_markdown,
     is_anti_bot_challenge_page,
 )
-from api.services.web_save_parser_reuters import extract_reuters_payload
-from api.services.web_save_parser_sidebar_docs import extract_sidebar_docs_body_html
 from api.services.web_save_parser_snapshots import maybe_build_snapshot_render
-from api.services.web_save_parser_steam import extract_steamcommunity_payload_for_url
 from api.services.web_save_parser_substack import (
     cleanup_substack_markdown,
     preserve_substack_native_video_embeds,
@@ -536,44 +531,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                     "web-save readability failed url=%s error=%s", final_url, exc
                 )
                 article_html = html
-        if urlparse(final_url).netloc.endswith("openai.com"):
-            openai_html = extract_openai_body_html(raw_html_original)
-            if openai_html:
-                article_html = openai_html
-        elif urlparse(final_url).netloc.endswith("wired.com"):
-            wired_html = extract_wired_body_html(raw_html_original)
-            if wired_html:
-                article_html = wired_html
-        elif urlparse(final_url).netloc.endswith("theverge.com"):
-            verge_html = extract_verge_body_html(raw_html_original)
-            if verge_html:
-                article_html = verge_html
-        elif steam_payload := extract_steamcommunity_payload_for_url(
-            raw_html_original, final_url
-        ):
-            steam_html, steam_meta = steam_payload
-            article_html = steam_html
-            metadata.update(steam_meta)
-        elif reuters_payload := extract_reuters_payload(raw_html_original, final_url):
-            reuters_html, reuters_meta = reuters_payload
-            article_html = reuters_html
-            metadata.update(reuters_meta)
-        elif urlparse(final_url).netloc.endswith("docs.trysidebar.ai"):
-            sidebar_docs_html = extract_sidebar_docs_body_html(raw_html_original)
-            if sidebar_docs_html:
-                article_html = sidebar_docs_html
-        elif urlparse(final_url).netloc.endswith("blog.google"):
-            blog_google_html = extract_blog_google_body_html(raw_html_original)
-            if blog_google_html:
-                article_html = blog_google_html
-                used_blog_google_ordered_extraction = True
-        elif urlparse(final_url).netloc.endswith("hbr.org"):
-            hbr_payload = extract_hbr_body_html(raw_html_original)
-            if hbr_payload:
-                article_html, hbr_meta = hbr_payload
-                metadata.update(
-                    {key: value for key, value in hbr_meta.items() if value}
-                )
+        article_html, domain_metadata, used_blog_google_ordered_extraction = (
+            apply_domain_specific_extractor(
+                article_html,
+                final_url=final_url,
+                raw_html=raw_html_original,
+            )
+        )
+        metadata.update({key: value for key, value in domain_metadata.items() if value})
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,
