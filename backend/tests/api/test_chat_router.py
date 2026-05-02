@@ -61,6 +61,13 @@ def _patch_stream_gateway(monkeypatch, events):
     monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
 
 
+def _sse_event_payload(body: str, event_name: str) -> dict:
+    marker = f"event: {event_name}\ndata: "
+    start = body.index(marker) + len(marker)
+    end = body.index("\n\n", start)
+    return json.loads(body[start:end])
+
+
 def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
     monkeypatch.setattr(
@@ -80,6 +87,33 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     assert "event: token" in body
     assert json.dumps({"type": "token", "content": "Hello"}) in body
     assert "event: complete" in body
+
+
+def test_stream_chat_normalizes_error_event_payload(test_client, monkeypatch):
+    _patch_stream_gateway(
+        monkeypatch,
+        [{"type": "error", "error": "rate_limit_error: rate limit reached"}],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+
+    assert response.status_code == 200
+    payload = _sse_event_payload(response.text, "error")
+    assert payload["type"] == "error"
+    assert payload["version"] == 1
+    assert payload["error_details"]["category"] == "provider_rate_limited"
+    assert payload["error_details"]["provider"] == "anthropic"
+    assert payload["error_details"]["retryable"] is True
+    assert "event: complete" not in response.text
 
 
 def test_stream_chat_route_has_no_db_dependency():

@@ -1056,9 +1056,13 @@ async def test_gateway_stream_chat_google_emits_error_for_empty_response(
 
     assert len(events) == 1
     assert events[0]["type"] == "error"
-    assert "no text and no tool calls" in events[0]["error"]
-    assert "prompt_block_reason=SAFETY" in events[0]["error"]
-    assert "finish_reason=SAFETY" in events[0]["error"]
+    assert events[0]["version"] == 1
+    assert events[0]["error_details"]["category"] == "empty_response"
+    assert events[0]["error_details"]["provider"] == "google"
+    assert events[0]["error_details"]["retryable"] is True
+    assert events[0]["error"] == "The AI provider returned an empty response. Please try again."
+    assert "prompt_block_reason=SAFETY" in events[0]["error_details"]["message"]
+    assert "finish_reason=SAFETY" in events[0]["error_details"]["message"]
 
 
 @pytest.mark.asyncio

@@ -11,8 +11,10 @@ public nonisolated struct ChatStreamErrorPresentation: Equatable {
 }
 
 public nonisolated enum ChatStreamErrorCategory: Equatable {
+    case providerBilling
     case providerOverloaded
     case providerRateLimited
+    case providerError
     case requestTimeout
     case transportFailure
     case emptyResponse

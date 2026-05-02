@@ -17,6 +17,7 @@ from api.services.ai.chat_stream_debug_trace import (
     is_chat_stream_debug_enabled,
     visible_whitespace_preview,
 )
+from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
@@ -486,4 +487,4 @@ async def stream_with_tools(
                         "Failed to rollback streaming session",
                         exc_info=rollback_error,
                     )
-        yield {"type": "error", "error": str(e)}
+        yield build_chat_stream_error_event(e, provider="anthropic")

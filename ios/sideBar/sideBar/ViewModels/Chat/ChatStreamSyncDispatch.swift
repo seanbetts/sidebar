@@ -18,9 +18,10 @@ extension ChatViewModel {
                 self?.finalizeStreaming(status: .complete)
             },
             .error: { [weak self] (event: ChatStreamEvent) in
+                let payload = self?.dictionaryValue(from: event.data)
                 let rawStreamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
                 let presentation = ErrorMapping.chatStreamPresentation(
-                    from: rawStreamError,
+                    fromEventPayload: payload,
                     fallbackUserMessage: "The response hit an error. Please try again."
                 )
                 self?.logTerminalStreamError(rawStreamError)

@@ -39,6 +39,7 @@ from api.services.agent.request_budget_feedback_service import (
     RequestBudgetFeedbackService,
 )
 from api.services.agent.skills.catalog import SkillCatalogService
+from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_protocol import CUSTOM_CHAT_STREAM_EVENT_TYPES
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
@@ -314,11 +315,10 @@ async def stream_chat(
                     model=chat_resolution.model,
                 )
         except Exception as error:
-            error_message = str(error)
+            error_event = build_chat_stream_error_event(error)
 
             async def error_generator():
                 chat_stream_errors_total.labels(type="server_error").inc()
-                error_event = {"type": "error", "error": error_message}
                 yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
 
             return StreamingResponse(
@@ -563,7 +563,19 @@ async def stream_chat(
                 elif event_type == "error":
                     # Error occurred
                     chat_stream_errors_total.labels(type="stream_error").inc()
-                    yield f"event: error\ndata: {json.dumps(event)}\n\n"
+                    structured_event = (
+                        event
+                        if event.get("version") == 1
+                        and isinstance(event.get("error_details"), dict)
+                        else build_chat_stream_error_event(
+                            str(event.get("error") or "Unknown stream error"),
+                            provider=chat_resolution.provider,
+                            category=event.get("category")
+                            if isinstance(event.get("category"), str)
+                            else None,
+                        )
+                    )
+                    yield f"event: error\ndata: {json.dumps(structured_event)}\n\n"
                     return
 
             if conversation_uuid is not None:
@@ -642,7 +654,10 @@ async def stream_chat(
             yield "event: complete\ndata: {}\n\n"
 
         except Exception as e:
-            error_event = {"type": "error", "error": str(e)}
+            error_event = build_chat_stream_error_event(
+                e,
+                provider=chat_resolution.provider,
+            )
             chat_stream_errors_total.labels(type="server_error").inc()
             yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
         finally:

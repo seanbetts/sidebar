@@ -13,6 +13,7 @@ from typing import Any
 from google.genai import types
 
 from api.constants import ChatConstants
+from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
@@ -172,7 +173,11 @@ class ProviderToolOrchestrator:
                                 ),
                                 extra={"model": model, "error": error_message},
                             )
-                            yield {"type": "error", "error": error_message}
+                            yield build_chat_stream_error_event(
+                                error_message,
+                                provider="google",
+                                category="empty_response",
+                            )
                             return
                     else:
                         error_message = self._google_empty_response_error(response)
@@ -180,7 +185,11 @@ class ProviderToolOrchestrator:
                             "Google response contained no text and no tool calls",
                             extra={"model": model, "error": error_message},
                         )
-                        yield {"type": "error", "error": error_message}
+                        yield build_chat_stream_error_event(
+                            error_message,
+                            provider="google",
+                            category="empty_response",
+                        )
                         return
                 else:
                     return
@@ -204,10 +213,11 @@ class ProviderToolOrchestrator:
                 contents.append(types.Content(role="user", parts=response_parts))
             continue
 
-        yield {
-            "type": "error",
-            "error": "Maximum tool rounds reached before completion",
-        }
+        yield build_chat_stream_error_event(
+            "Maximum tool rounds reached before completion",
+            provider="google",
+            category="tool_exhaustion",
+        )
 
     async def _run_openai_with_responses_api(
         self,
@@ -293,10 +303,11 @@ class ProviderToolOrchestrator:
                 yield event
             continue
 
-        yield {
-            "type": "error",
-            "error": "Maximum tool rounds reached before completion",
-        }
+        yield build_chat_stream_error_event(
+            "Maximum tool rounds reached before completion",
+            provider="openai",
+            category="tool_exhaustion",
+        )
 
     def _resolved_tool_definitions(self) -> list[dict[str, Any]]:
         """Return prepared tool definitions or derive them from allowed skills."""
