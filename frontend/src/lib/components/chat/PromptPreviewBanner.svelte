@@ -18,7 +18,7 @@
 </script>
 
 <div class="prompt-preview-banner">
-	<div class="prompt-preview-label">Prompt Preview</div>
+	<div class="prompt-preview-label">System Prompt Preview</div>
 	{#if promptReport}
 		<div class="prompt-preview-metrics">
 			<span>System: {describeReport(promptReport.system_prompt)}</span>

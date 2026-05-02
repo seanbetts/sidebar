@@ -22,7 +22,12 @@ def get_misc_definitions() -> dict:
             "build_args": None,
         },
         "Generate Prompts": {
-            "description": "Generate the current system prompt output for preview.",
+            "description": (
+                "Generate the current system prompt output for System Prompt "
+                "Preview. Use this instead of refusing when the user asks to "
+                "view the generated system prompt, injected prompt, prompt "
+                "context, or instructions sideBar is running under."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {},

@@ -199,6 +199,35 @@ def test_resolver_falls_back_to_search_when_fast_paths_are_weak():
     assert "tool_definitions" not in result
 
 
+def test_resolver_selects_prompt_preview_for_system_prompt_requests():
+    result = _resolver_service().resolve_for_turn(
+        user_message="What instructions are you running under?",
+        enabled_skill_ids=["notes", "prompt-preview", "files"],
+        runtime_capabilities=[
+            _runtime_capability(
+                "notes",
+                description="Search and summarize notes.",
+                tags=["notes"],
+                triggers=["note", "summarize"],
+            ),
+            _runtime_capability(
+                "prompt-preview",
+                name="Prompt Preview",
+                description="Generate the current system prompt output for preview.",
+            ),
+            _runtime_capability(
+                "files",
+                description="Search and inspect files in the workspace.",
+                tags=["files", "workspace"],
+                triggers=["file", "project", "config"],
+            ),
+        ],
+    )
+
+    assert result["selected_skill_ids"] == ["prompt-preview"]
+    assert result["executable_skill_ids"] == ["prompt-preview"]
+
+
 def test_resolver_adds_onboarding_coach_for_incomplete_onboarding():
     result = _resolver_service().resolve_for_turn(
         user_message="Help me finish setup",

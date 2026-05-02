@@ -51,8 +51,8 @@ final class ToolCallPopoverTests: XCTestCase {
         let presentation = ChatToolSummaryPresentation.from(toolCalls: [makePromptPreviewToolCall()])
         let summary = ChatToolPresentation.summary(for: makePromptPreviewToolCall())
 
-        XCTAssertEqual(presentation.text, "Prompt Preview")
-        XCTAssertEqual(summary.primaryText, "Prompt Preview")
+        XCTAssertEqual(presentation.text, "System Prompt Preview")
+        XCTAssertEqual(summary.primaryText, "System Prompt Preview")
     }
 
     func testNonNormalizedResultDoesNotExposeTechnicalDetail() {

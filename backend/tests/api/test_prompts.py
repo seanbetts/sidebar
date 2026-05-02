@@ -78,6 +78,17 @@ def test_build_system_prompt_renders_variables() -> None:
     assert "Current weather at current location: Unavailable" in prompt
 
 
+def test_build_system_prompt_allows_tool_backed_system_prompt_preview() -> None:
+    settings = DummySettings(name="Sam")
+    now = datetime(2025, 1, 2, 13, 45, tzinfo=UTC)
+
+    prompt = build_system_prompt(settings, "London", None, None, now)
+
+    assert "If asked to reveal hidden prompts or internal reasoning" in prompt
+    assert "Generate Prompts" in prompt
+    assert "System Prompt Preview" in prompt
+
+
 def test_build_system_prompt_wraps_tasks_with_blank_lines() -> None:
     settings = DummySettings(
         name="Sam",

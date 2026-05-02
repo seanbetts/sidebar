@@ -31,7 +31,7 @@ describe('PromptPreviewBanner', () => {
 			}
 		});
 
-		expect(screen.getByText('Prompt Preview')).toBeInTheDocument();
+		expect(screen.getByText('System Prompt Preview')).toBeInTheDocument();
 		expect(screen.getByText('System: 3690/40000 chars')).toBeInTheDocument();
 		expect(screen.getByText('First: 1137/8000 chars')).toBeInTheDocument();
 		expect(screen.getByText('message_context (2335)')).toBeInTheDocument();

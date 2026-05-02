@@ -108,6 +108,11 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert set(by_id) == expected_ids
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
+    assert str(by_id["prompt-preview"]["name"]) == "System Prompt Preview"
+    assert (
+        str(by_id["prompt-preview"]["description"])
+        == "View the generated system prompt and prompt context"
+    )
     assert by_id["settings-other-preferences"]["tier"] == "standard"
     assert by_id["settings-other-preferences"]["installable"] is False
     assert str(by_id["settings-other-preferences"]["name"]) == "Settings"

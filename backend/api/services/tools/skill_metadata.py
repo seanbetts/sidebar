@@ -61,8 +61,8 @@ SKILL_DISPLAY = {
         "description": "Allow {name} to switch between light and dark mode",
     },
     "prompt-preview": {
-        "name": "Prompt Preview",
-        "description": "Generate the current system prompt output for preview",
+        "name": "System Prompt Preview",
+        "description": "View the generated system prompt and prompt context",
     },
     "assistant-identity": {
         "name": "Assistant Identity",
@@ -209,6 +209,7 @@ SKILL_TAGS: dict[str, tuple[str, ...]] = {
     "subdomain-discover": ("web", "security"),
     "web-crawler-policy": ("web", "analysis"),
     "onboarding-coach": ("onboarding", "setup", "recovery"),
+    "prompt-preview": ("prompt", "system", "debugging", "transparency"),
 }
 
 SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
@@ -233,6 +234,12 @@ SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
     "subdomain-discover": ("subdomain", "dns"),
     "web-crawler-policy": ("robots", "llms.txt"),
     "onboarding-coach": ("finish setup", "connect api key", "continue onboarding"),
+    "prompt-preview": (
+        "show system prompt",
+        "view prompt",
+        "prompt preview",
+        "what instructions",
+    ),
 }
 
 SKILL_TOKEN_ESTIMATES: dict[str, int] = {

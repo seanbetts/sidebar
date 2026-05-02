@@ -29,10 +29,10 @@ final class WorkspaceSurfaceActionPresentationTests: XCTestCase {
             surface: AgentWorkspaceSurfaceDescriptor(
                 type: .markdown,
                 surfaceId: id,
-                title: "Prompt Preview"
+                title: "System Prompt Preview"
             ),
             pane: .primary,
-            label: "Show Prompt Preview",
+            label: "Show System Prompt Preview",
             iconName: "eye"
         )
     }

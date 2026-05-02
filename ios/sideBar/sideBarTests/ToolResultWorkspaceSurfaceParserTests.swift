@@ -98,7 +98,7 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
 
         XCTAssertEqual(targets.count, 1)
         XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
-        XCTAssertEqual(targets.first?.label, "Show Prompt Preview")
+        XCTAssertEqual(targets.first?.label, "Show System Prompt Preview")
         XCTAssertEqual(targets.first?.iconName, "eye")
     }
 

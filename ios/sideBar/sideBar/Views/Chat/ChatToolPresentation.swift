@@ -19,6 +19,8 @@ enum ChatToolDetailSectionKind: String, Equatable, Identifiable {
 }
 
 enum ChatToolPresentation {
+    private static let promptPreviewDisplayName = "System Prompt Preview"
+
     struct Summary: Equatable {
         let primaryText: String
         let secondaryText: String?
@@ -30,7 +32,7 @@ enum ChatToolPresentation {
             ?? toolCall.iconKey
             ?? SkillIconResolver.skillId(forToolDisplayName: toolCall.name)
         if skillID == "prompt-preview" {
-            return "Prompt Preview"
+            return promptPreviewDisplayName
         }
         return toolCall.name
     }
@@ -72,9 +74,9 @@ enum ChatToolPresentation {
     }
 
     static func summary(for toolCall: ToolCall) -> Summary {
-        if displayName(for: toolCall) == "Prompt Preview" {
+        if displayName(for: toolCall) == promptPreviewDisplayName {
             return Summary(
-                primaryText: "Prompt Preview",
+                primaryText: promptPreviewDisplayName,
                 secondaryText: nil,
                 showsToolList: false
             )
@@ -114,7 +116,7 @@ enum ChatToolPresentation {
             )
         ]
 
-        if displayName(for: toolCall) != "Prompt Preview",
+        if displayName(for: toolCall) != promptPreviewDisplayName,
            !ToolResultWorkspaceSurfaceParser.parse(toolCall).isEmpty {
             sections.append(
                 ChatToolDetailSection(

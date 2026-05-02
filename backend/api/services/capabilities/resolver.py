@@ -11,6 +11,7 @@ class CapabilityResolverService:
     """Resolve turn-relevant skills without loading instructions or tools."""
 
     _ONBOARDING_COACH_SKILL_ID = "onboarding-coach"
+    _PROMPT_PREVIEW_SKILL_ID = "prompt-preview"
     _NOTE_KEYWORDS = {"note", "notes", "summarize", "summary"}
     _FILE_KEYWORDS = {"file", "files", "folder", "project", "workspace", "config"}
     _WEBSITE_KEYWORDS = {
@@ -34,6 +35,21 @@ class CapabilityResolverService:
     }
     _EXCLUSIVE_ONBOARDING_STEPS = {"provider_recovery", "permission_recovery"}
     _AUGMENTED_ONBOARDING_STEPS = {"feature_discovery"}
+    _PROMPT_PREVIEW_PHRASES = (
+        "system prompt",
+        "prompt preview",
+        "injected prompt",
+        "generated prompt",
+        "current prompt",
+        "hidden prompt",
+        "show prompt",
+        "view prompt",
+        "what prompt",
+        "your prompt",
+        "your instructions",
+        "what instructions",
+        "running under",
+    )
 
     @staticmethod
     def _catalog_capabilities(
@@ -67,6 +83,12 @@ class CapabilityResolverService:
         selected: list[str] = []
 
         if (
+            cls._PROMPT_PREVIEW_SKILL_ID in visible_skill_ids
+            and cls._is_prompt_preview_request(user_message)
+        ):
+            return [cls._PROMPT_PREVIEW_SKILL_ID]
+
+        if (
             isinstance(open_context, dict)
             and open_context.get("note") is not None
             and "notes" in visible_skill_ids
@@ -91,6 +113,13 @@ class CapabilityResolverService:
             selected.append("web-save")
 
         return selected
+
+    @classmethod
+    def _is_prompt_preview_request(cls, user_message: str) -> bool:
+        normalized_message = " ".join(user_message.lower().split())
+        return any(
+            phrase in normalized_message for phrase in cls._PROMPT_PREVIEW_PHRASES
+        )
 
     @staticmethod
     def _compact_blocked_skill(capability: dict[str, Any]) -> dict[str, Any]:
