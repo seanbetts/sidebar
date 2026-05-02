@@ -79,6 +79,17 @@ extension ConversationsPanelView {
         )
     }
 
+    var listPresentationState: ContentListPresentationState {
+        ContentListPresentationState.resolve(
+            loadState: viewModel.conversationsLoadState,
+            isLoading: viewModel.conversationsLoadState.isLoading,
+            errorMessage: listLoadErrorMessage,
+            searchQuery: searchQuery,
+            hasLoadedContent: !viewModel.conversations.isEmpty,
+            contentCount: filteredGroups.reduce(0) { $0 + $1.conversations.count }
+        )
+    }
+
     static func conversationMatchesSearchQuery(_ normalizedQuery: String, conversation: Conversation) -> Bool {
         SearchTextMatcher.contains(
             normalizedQuery: normalizedQuery,

@@ -72,6 +72,84 @@ final class LoadableStateTests: XCTestCase {
         XCTAssertEqual(ContentListLoadState.failure(message: " Session expired ").errorMessage, "Session expired")
         XCTAssertEqual(ContentListLoadState.failure(message: "   ").errorMessage, "Unable to load content")
     }
+
+    func testContentListPresentationStateRequiresLoadedStateBeforeEmptyState() {
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .idle,
+                isLoading: false,
+                errorMessage: nil,
+                searchQuery: "",
+                hasLoadedContent: false,
+                contentCount: 0
+            ),
+            .loading
+        )
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .loaded,
+                isLoading: false,
+                errorMessage: nil,
+                searchQuery: "",
+                hasLoadedContent: false,
+                contentCount: 0
+            ),
+            .empty
+        )
+    }
+
+    func testContentListPresentationStatePrefersRetryForEmptyFailedLoads() {
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .failed("Session expired. Please sign in again."),
+                isLoading: false,
+                errorMessage: "Session expired. Please sign in again.",
+                searchQuery: "",
+                hasLoadedContent: false,
+                contentCount: 0
+            ),
+            .retry(message: "Session expired. Please sign in again.")
+        )
+    }
+
+    func testContentListPresentationStateKeepsExistingContentVisibleDuringRefreshOrError() {
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .loading,
+                isLoading: true,
+                errorMessage: nil,
+                searchQuery: "",
+                hasLoadedContent: true,
+                contentCount: 1
+            ),
+            .content
+        )
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .failed("Refresh failed"),
+                isLoading: false,
+                errorMessage: "Refresh failed",
+                searchQuery: "",
+                hasLoadedContent: true,
+                contentCount: 1
+            ),
+            .content
+        )
+    }
+
+    func testContentListPresentationStateUsesSearchWhenQueryIsPresentAfterInitialLoad() {
+        XCTAssertEqual(
+            ContentListPresentationState.resolve(
+                loadState: .loaded,
+                isLoading: false,
+                errorMessage: nil,
+                searchQuery: "docs",
+                hasLoadedContent: false,
+                contentCount: 0
+            ),
+            .search
+        )
+    }
 }
 
 @MainActor

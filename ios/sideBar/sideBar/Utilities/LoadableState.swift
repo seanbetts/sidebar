@@ -55,6 +55,42 @@ public enum ContentListLoadState: Equatable {
     }
 }
 
+/// Shared presentation state for content list panels.
+public enum ContentListPresentationState: Equatable {
+    case loading
+    case retry(message: String)
+    case search
+    case empty
+    case content
+
+    public static func resolve(
+        loadState: ContentListLoadState,
+        isLoading: Bool,
+        errorMessage: String?,
+        searchQuery: String,
+        hasLoadedContent: Bool,
+        contentCount: Int
+    ) -> ContentListPresentationState {
+        let hasVisibleContent = hasLoadedContent || contentCount > 0
+        if isLoading && !hasVisibleContent {
+            return .loading
+        }
+        if let errorMessage, !hasVisibleContent {
+            return .retry(message: errorMessage)
+        }
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .search
+        }
+        if !loadState.canShowEmptyState && contentCount == 0 {
+            if let message = loadState.errorMessage {
+                return .retry(message: message)
+            }
+            return .loading
+        }
+        return contentCount == 0 ? .empty : .content
+    }
+}
+
 /// Base class for ViewModels with common loading/error state.
 @MainActor
 open class LoadableViewModel: ObservableObject {

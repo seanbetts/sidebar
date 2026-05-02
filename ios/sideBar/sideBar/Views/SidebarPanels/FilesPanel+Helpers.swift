@@ -11,6 +11,17 @@ extension FilesPanelView {
         }
     }
 
+    var listPresentationState: ContentListPresentationState {
+        ContentListPresentationState.resolve(
+            loadState: viewModel.listLoadState,
+            isLoading: viewModel.listLoadState.isLoading,
+            errorMessage: viewModel.listLoadState.errorMessage,
+            searchQuery: viewModel.panelSearchQuery,
+            hasLoadedContent: !viewModel.items.isEmpty,
+            contentCount: filteredItems.count
+        )
+    }
+
     var pinnedItems: [IngestionListItem] {
         let items = viewModel.panelPinnedItems
         guard !pinnedReorderDisplayedIDs.isEmpty else { return items }

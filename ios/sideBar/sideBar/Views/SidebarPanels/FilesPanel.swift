@@ -172,9 +172,10 @@ extension FilesPanelView {
             if showsHeader {
                 header
             }
-            if viewModel.listLoadState.isLoading && viewModel.items.isEmpty {
+            switch listPresentationState {
+            case .loading:
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-            } else if let message = viewModel.listLoadState.errorMessage, viewModel.items.isEmpty {
+            case .retry(let message):
                 SidebarPanelPlaceholder(
                     title: "Unable to load files",
                     subtitle: message,
@@ -183,31 +184,27 @@ extension FilesPanelView {
                 ) {
                     Task { await viewModel.load() }
                 }
-            } else if filteredItems.isEmpty && viewModel.listLoadState.canShowEmptyState {
-                if viewModel.panelSearchQuery.trimmed.isEmpty {
-                    let emptyState = EmptyStateContent.noContentYet(
-                        title: "No files yet",
-                        subtitle: "Upload or create a file to get started.",
-                        systemImage: "folder"
-                    )
-                    EmptyStateView(
-                        title: emptyState.title,
-                        subtitle: emptyState.subtitle,
-                        systemImage: emptyState.systemImage
-                    )
+            case .search:
+                let emptyState = EmptyStateContent.noResults()
+                EmptyStateView(
+                    title: emptyState.title,
+                    subtitle: emptyState.subtitle,
+                    systemImage: emptyState.systemImage
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    let emptyState = EmptyStateContent.noResults()
-                    EmptyStateView(
-                        title: emptyState.title,
-                        subtitle: emptyState.subtitle,
-                        systemImage: emptyState.systemImage
-                    )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            } else if filteredItems.isEmpty {
-                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-            } else {
+            case .empty:
+                let emptyState = EmptyStateContent.noContentYet(
+                    title: "No files yet",
+                    subtitle: "Upload or create a file to get started.",
+                    systemImage: "folder"
+                )
+                EmptyStateView(
+                    title: emptyState.title,
+                    subtitle: emptyState.subtitle,
+                    systemImage: emptyState.systemImage
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .content:
                 filesListView
             }
         }

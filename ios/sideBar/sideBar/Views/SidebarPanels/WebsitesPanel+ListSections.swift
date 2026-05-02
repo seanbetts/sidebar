@@ -50,19 +50,26 @@ extension WebsitesPanelView {
         pendingCount: Int,
         listLoadState: ContentListLoadState = .loaded
     ) -> PanelState {
-        if isLoading && !hasLoadedContent {
+        let presentationState = ContentListPresentationState.resolve(
+            loadState: listLoadState,
+            isLoading: isLoading,
+            errorMessage: hasError ? listLoadState.errorMessage ?? "Unable to load content" : nil,
+            searchQuery: panelSearchQuery,
+            hasLoadedContent: hasLoadedContent,
+            contentCount: pinnedCount + mainCount + pendingCount
+        )
+        switch presentationState {
+        case .loading:
             return .loading
-        }
-        if hasError && !hasLoadedContent {
+        case .retry:
             return .error
-        }
-        if !panelSearchQuery.trimmed.isEmpty {
+        case .search:
             return .search
+        case .empty:
+            return .sparse
+        case .content:
+            return .content
         }
-        if !listLoadState.canShowEmptyState && pinnedCount == 0 && mainCount == 0 && pendingCount == 0 {
-            return listLoadState.errorMessage == nil ? .loading : .error
-        }
-        return (pinnedCount == 0 && mainCount == 0 && pendingCount == 0) ? .sparse : .content
     }
 
     static func listSectionLayout(

@@ -29,19 +29,26 @@ extension NotesPanelView {
         mainNodeCount: Int,
         treeLoadState: ContentListLoadState = .loaded
     ) -> PanelState {
-        if !isTreeLoaded && hasError {
-            return .error
-        }
-        if !isTreeLoaded {
+        let presentationState = ContentListPresentationState.resolve(
+            loadState: treeLoadState,
+            isLoading: !isTreeLoaded && !hasError,
+            errorMessage: hasError ? treeLoadState.errorMessage ?? "Unable to load content" : nil,
+            searchQuery: searchQuery,
+            hasLoadedContent: isTreeLoaded,
+            contentCount: pinnedCount + mainNodeCount
+        )
+        switch presentationState {
+        case .loading:
             return .loading
-        }
-        if !searchQuery.trimmed.isEmpty {
+        case .retry:
+            return .error
+        case .search:
             return .search
+        case .empty:
+            return .sparse
+        case .content:
+            return .content
         }
-        if !treeLoadState.canShowEmptyState && pinnedCount == 0 && mainNodeCount == 0 {
-            return treeLoadState.errorMessage == nil ? .loading : .error
-        }
-        return (pinnedCount == 0 && mainNodeCount == 0) ? .sparse : .content
     }
 
     var panelState: PanelState {

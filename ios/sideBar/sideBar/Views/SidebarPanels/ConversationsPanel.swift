@@ -47,11 +47,10 @@ struct ConversationsPanelView: View {
         VStack(spacing: 0) {
             header
             Group {
-                if viewModel.conversationsLoadState.isLoading && viewModel.conversations.isEmpty {
+                switch listPresentationState {
+                case .loading:
                     SidebarListSkeleton(rowCount: 8, showSubtitle: true)
-                } else if isSearchLoading && filteredGroups.isEmpty {
-                    SidebarListSkeleton(rowCount: 3, showSubtitle: false)
-                } else if let loadErrorMessage = listLoadErrorMessage {
+                case .retry(let loadErrorMessage):
                     SidebarPanelPlaceholder(
                         title: "Unable to load chats",
                         subtitle: loadErrorMessage,
@@ -60,21 +59,10 @@ struct ConversationsPanelView: View {
                     ) {
                         Task { await viewModel.loadConversations(force: true) }
                     }
-                } else if filteredGroups.isEmpty && viewModel.conversationsLoadState.canShowEmptyState {
-                    if searchQuery.isEmpty {
-                        let emptyState = EmptyStateContent.noContentYet(
-                            title: "No conversations",
-                            subtitle: "Start a new chat to begin.",
-                            systemImage: "bubble"
-                        )
-                        EmptyStateView(
-                            title: emptyState.title,
-                            subtitle: emptyState.subtitle,
-                            systemImage: emptyState.systemImage
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(PlatformTokens.sidebarPanelBackground)
-                    } else {
+                case .search:
+                    if isSearchLoading && filteredGroups.isEmpty {
+                        SidebarListSkeleton(rowCount: 3, showSubtitle: false)
+                    } else if filteredGroups.isEmpty {
                         let searchEmptyState = EmptyStateContent.noResults(subtitle: searchErrorMessage)
                         SidebarPanelPlaceholder(
                             title: searchEmptyState.title,
@@ -82,10 +70,23 @@ struct ConversationsPanelView: View {
                             style: searchErrorMessage == nil ? .standard : .error,
                             iconName: searchEmptyState.systemImage
                         )
+                    } else {
+                        conversationsList
                     }
-                } else if filteredGroups.isEmpty {
-                    SidebarListSkeleton(rowCount: 8, showSubtitle: true)
-                } else {
+                case .empty:
+                    let emptyState = EmptyStateContent.noContentYet(
+                        title: "No conversations",
+                        subtitle: "Start a new chat to begin.",
+                        systemImage: "bubble"
+                    )
+                    EmptyStateView(
+                        title: emptyState.title,
+                        subtitle: emptyState.subtitle,
+                        systemImage: emptyState.systemImage
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(PlatformTokens.sidebarPanelBackground)
+                case .content:
                     conversationsList
                 }
             }

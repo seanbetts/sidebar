@@ -138,13 +138,12 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
     func testFilesPanelOnlyShowsLoadPlaceholderWhenListContentIsEmpty() throws {
         let normalized = try source(named: "Views/SidebarPanels/FilesPanel.swift")
             .normalizedForSourceAssertions()
+        let helpersNormalized = try source(named: "Views/SidebarPanels/FilesPanel+Helpers.swift")
+            .normalizedForSourceAssertions()
 
-        XCTAssertTrue(
-            normalized.contains(
-                "}elseifletmessage=viewModel.listLoadState.errorMessage,"
-                    + "viewModel.items.isEmpty{"
-            )
-        )
+        XCTAssertTrue(helpersNormalized.contains("hasLoadedContent:!viewModel.items.isEmpty"))
+        XCTAssertTrue(normalized.contains("case.retry(letmessage):"))
+        XCTAssertTrue(normalized.contains("title:\"Unabletoloadfiles\""))
     }
 
     func testChatViewUsesSharedOfflineUnavailablePlaceholder() throws {
