@@ -5,7 +5,7 @@ extension AppEnvironment {
         let baseContext = Self.makeRefreshContext(
             workspaceState: workspaceStore.state,
             refreshCoordinator: refreshCoordinator,
-            canAttemptServerRead: connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
+            canAttemptServerRead: canAttemptProtectedServerRead
         )
         guard baseContext.visibleSection == nil else {
             return baseContext
@@ -53,10 +53,9 @@ extension AppEnvironment {
     }
 
     func prepareVisibleSectionForPresentation(_ section: AppSection?) async {
-        let canAttemptServerRead = connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
         await refreshCoordinator.prepareVisibleSectionForPresentation(
             section,
-            canAttemptServerRead: canAttemptServerRead
+            canAttemptServerRead: canAttemptProtectedServerRead
         )
     }
 
@@ -107,6 +106,11 @@ extension AppEnvironment {
         return candidates
             .compactMap { $0 }
             .first(where: AppSection.primaryNavigationSections.contains)
+    }
+
+    private var canAttemptProtectedServerRead: Bool {
+        connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
+            && protectedContentReadiness.canAttemptServerRead
     }
 
 }

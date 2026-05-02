@@ -48,6 +48,7 @@ final class TasksViewModelAPIStub: TasksProviding {
     var createGroupResult: Result<TaskGroup, Error> = .failure(TasksTestStubError.unused)
     var deleteGroupResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
     var deleteProjectResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
+    var listErrorByScope: [String: Error] = [:]
     var countsResponse = TaskCountsResponse(
         generatedAt: nil,
         counts: TaskCounts(today: 1, upcoming: 1, completed: 1),
@@ -72,6 +73,9 @@ final class TasksViewModelAPIStub: TasksProviding {
 
     func list(scope: String) async throws -> TaskListResponse {
         listCallCount += 1
+        if let error = listErrorByScope[scope] {
+            throw error
+        }
         if var responses = queuedListResponsesByScope[scope], !responses.isEmpty {
             let first = responses.removeFirst()
             queuedListResponsesByScope[scope] = responses

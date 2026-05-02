@@ -139,7 +139,12 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
         let normalized = try source(named: "Views/SidebarPanels/FilesPanel.swift")
             .normalizedForSourceAssertions()
 
-        XCTAssertTrue(normalized.contains("}elseifletmessage=viewModel.errorMessage,viewModel.items.isEmpty{"))
+        XCTAssertTrue(
+            normalized.contains(
+                "}elseifletmessage=viewModel.listLoadState.errorMessage,"
+                    + "viewModel.items.isEmpty{"
+            )
+        )
     }
 
     func testChatViewUsesSharedOfflineUnavailablePlaceholder() throws {

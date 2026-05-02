@@ -6,6 +6,27 @@ import sideBarShared
 @MainActor
 // swiftlint:disable:next type_body_length
 final class TasksViewModelTests: XCTestCase {
+    func testTaskListLoadStateTracksEmptyFailureAndRecovery() async {
+        let api = TasksViewModelAPIStub()
+        api.listErrorByScope["today"] = APIClientError.requestFailed(503)
+        let sut = makeSUT(api: api, networkAvailable: true)
+        let viewModel = sut.viewModel
+
+        await viewModel.load(selection: .today)
+
+        XCTAssertEqual(
+            viewModel.listLoadState,
+            .failed("Server is busy right now. Please try again.")
+        )
+
+        api.listErrorByScope.removeValue(forKey: "today")
+        api.enqueueListResponse(scope: "today", tasks: [])
+        await viewModel.load(selection: .today, force: true)
+
+        XCTAssertEqual(viewModel.listLoadState, .loaded)
+        XCTAssertTrue(viewModel.listLoadState.canShowEmptyState)
+    }
+
     func testCompleteTaskFailureRestoresTaskAndUsesToastPresentation() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")

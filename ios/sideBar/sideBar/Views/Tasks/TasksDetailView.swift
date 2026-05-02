@@ -307,7 +307,8 @@ extension TasksDetailView {
            !viewModel.hasCachedSelection(selection: state.selection),
            state.sections.isEmpty {
             DetailOfflineUnavailablePlaceholder(resource: .taskList)
-        } else if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
+        } else if viewModel.listLoadState.isLoading || viewModel.isLoading
+                    || (isSearchSelection(state.selection) && viewModel.searchPending) {
             LoadingView(
                 message: isSearchSelection(state.selection)
                     ? "Loading search results..."
@@ -316,7 +317,7 @@ extension TasksDetailView {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.store.errorMessage != nil, !canAttemptServerRead, state.selection != .none {
             DetailOfflineUnavailablePlaceholder(resource: .taskList)
-        } else if let error = viewModel.errorMessage {
+        } else if let error = viewModel.listLoadState.errorMessage ?? viewModel.errorMessage {
             PlaceholderView(
                 title: "Unable to load tasks",
                 subtitle: error,
@@ -496,5 +497,4 @@ extension TasksDetailView {
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
     }
-
 }

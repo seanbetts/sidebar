@@ -16,6 +16,7 @@ public final class TasksViewModel: ObservableObject {
     @Published public internal(set) var panelOrphanProjects: [TaskProject] = []
     @Published public internal(set) var panelGroupCounts: [String: Int] = [:]
     @Published public internal(set) var panelProjectCounts: [String: Int] = [:]
+    @Published public private(set) var listLoadState: ContentListLoadState = .idle
 
     let api: any TasksProviding
     let store: TasksStore
@@ -78,13 +79,22 @@ public final class TasksViewModel: ObservableObject {
     public func load(selection: TaskSelection, force: Bool = false) async {
         localErrorMessage = nil
         if selection == .none {
+            listLoadState = .idle
             await store.load(selection: selection, force: force)
             return
+        }
+        if tasks.isEmpty {
+            listLoadState = .loading
         }
         if !selection.isSearch {
             lastNonSearchSelection = selection
         }
         await store.load(selection: selection, force: force)
+        if let errorMessage, tasks.isEmpty {
+            listLoadState = .failure(message: errorMessage)
+        } else {
+            listLoadState = .loaded
+        }
 
         // Update the cached filtered upcoming count when loading Upcoming
         if case .upcoming = selection {
@@ -206,6 +216,7 @@ public final class TasksViewModel: ObservableObject {
         searchDebounce = nil
         realtimeRefreshTask?.cancel()
         localErrorMessage = nil
+        listLoadState = .idle
         searchQuery = ""
         newTaskDraft = nil
         newTaskSaving = false

@@ -238,10 +238,13 @@ public final class AppEnvironment: ObservableObject {
         self.passwordResetState = initialPasswordResetState
         let authSession = container.authSession
         let refreshContextProvider = {
-            Self.makeRefreshContext(
+            let canAttemptProtectedServerRead = authSession.authState == .active
+                && authSession.authorizationToken != nil
+            return Self.makeRefreshContext(
                 workspaceState: workspaceStore.state,
                 refreshCoordinator: resolvedRefreshCoordinator,
                 canAttemptServerRead: dependencies.connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
+                    && canAttemptProtectedServerRead
             )
         }
         self.syncCoordinator = SyncCoordinator(
@@ -317,12 +320,7 @@ public final class AppEnvironment: ObservableObject {
 
     /// Indicates whether the current auth state represents a signed-in user.
     public var isAuthenticated: Bool {
-        switch authState {
-        case .active, .staleRecoverable:
-            return true
-        case .reauthenticationRequired, .signedOut:
-            return false
-        }
+        protectedContentReadiness.isAuthenticated
     }
 
     /// Indicates whether biometric lock is enabled for the current app profile.
@@ -332,12 +330,22 @@ public final class AppEnvironment: ObservableObject {
 
     /// Indicates whether protected signed-in content may be surfaced immediately.
     public var isProtectedContentReady: Bool {
-        isAuthenticated && (!isBiometricUnlockEnabled || isBiometricUnlocked)
+        protectedContentReadiness.canShowProtectedContent
     }
 
     /// Indicates whether the local biometric gate is currently blocking authenticated content.
     public var isBiometricUnlockRequired: Bool {
-        isAuthenticated && isBiometricUnlockEnabled && !isBiometricUnlocked
+        protectedContentReadiness.requiresBiometricUnlock
+    }
+
+    /// Current protected-content readiness policy.
+    public var protectedContentReadiness: ProtectedContentReadiness {
+        ProtectedContentReadiness(
+            authState: authState,
+            hasAuthorizationToken: container.authSession.authorizationToken != nil,
+            isBiometricUnlockEnabled: isBiometricUnlockEnabled,
+            isBiometricUnlocked: isBiometricUnlocked
+        )
     }
 
     /// Selected command palette section routed through the navigation coordinator.
