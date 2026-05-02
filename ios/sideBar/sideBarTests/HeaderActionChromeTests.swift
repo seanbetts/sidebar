@@ -153,6 +153,15 @@ final class HeaderActionChromeTests: XCTestCase {
         )
     }
 
+    func testSharedHeaderActionMenuControlIsolatesIOSMenuPresentation() throws {
+        let normalized = try headerActionComponentSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(".iOSMenuPresentationIsolation()")
+        )
+    }
+
     func testSharedIOSMenuButtonUsesSharedHeaderActionMenuControl() throws {
         let normalized = try headerActionComponentSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -190,14 +199,14 @@ final class HeaderActionChromeTests: XCTestCase {
     }
 
     func testAgentWorkspaceExpandActionUsesSharedHeaderActionButton() throws {
-        let normalized = try headerActionSource(named: "AgentWorkspaceSurfaceView.swift")
+        let normalized = try headerActionSource(named: "AgentWorkspaceSurfaceView+Helpers.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(
-            normalized.contains("privatevarexpandButton:someView{HeaderActionButton(")
+            normalized.contains("varexpandButton:someView{HeaderActionButton(")
         )
         XCTAssertFalse(
-            normalized.contains("privatevarexpandButton:someView{Button(action:expandWorkspaceView)")
+            normalized.contains("varexpandButton:someView{Button(action:expandWorkspaceView)")
         )
     }
 
@@ -242,6 +251,10 @@ private func headerActionSource(
             .appendingPathComponent("SidebarPanels")
             .appendingPathComponent(fileName)
     case "AgentWorkspaceSurfaceView.swift":
+        sourceURL = sourceRoot
+            .appendingPathComponent("AgentWorkspace")
+            .appendingPathComponent(fileName)
+    case "AgentWorkspaceSurfaceView+Helpers.swift":
         sourceURL = sourceRoot
             .appendingPathComponent("AgentWorkspace")
             .appendingPathComponent(fileName)

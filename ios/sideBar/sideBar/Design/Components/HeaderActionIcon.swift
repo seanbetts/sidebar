@@ -123,11 +123,23 @@ struct HeaderActionMenuControl<MenuContent: View>: View {
                 .headerActionControlChrome(chromeStyle, isHovered: isHovered)
         }
         .buttonStyle(.plain)
+        .iOSMenuPresentationIsolation()
 #if os(macOS)
         .menuIndicator(.hidden)
 #endif
         .accessibilityLabel(accessibilityLabel)
         .sidebarHover($isHovered)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func iOSMenuPresentationIsolation() -> some View {
+#if os(iOS)
+        compositingGroup()
+#else
+        self
+#endif
     }
 }
 
