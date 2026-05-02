@@ -99,37 +99,37 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func loadTree() async {
-        errorMessage = nil
-        if tree == nil {
-            treeLoadState = .loading
-        }
+        ContentListReadRecovery.begin(hasVisibleContent: tree != nil)
+            .apply(errorMessage: &errorMessage, loadState: &treeLoadState)
         do {
             try await store.loadTree()
             tree = store.tree
-            treeLoadState = .loaded
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &errorMessage, loadState: &treeLoadState)
         } catch {
-            if tree == nil {
-                let message = ErrorMapping.message(for: error)
-                errorMessage = message
-                treeLoadState = .failure(message: message)
+            if let failureTransition = ContentListReadRecovery.failure(
+                error: error,
+                hasVisibleContent: tree != nil
+            ) {
+                failureTransition.apply(errorMessage: &errorMessage, loadState: &treeLoadState)
             }
         }
     }
 
     public func refreshTree(force: Bool = false) async {
-        if tree == nil {
-            treeLoadState = .loading
-        }
+        ContentListReadRecovery.begin(hasVisibleContent: tree != nil)
+            .apply(errorMessage: &errorMessage, loadState: &treeLoadState)
         do {
             try await store.loadTree(force: force)
             tree = store.tree
-            treeLoadState = .loaded
-            errorMessage = nil
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &errorMessage, loadState: &treeLoadState)
         } catch {
-            if tree == nil {
-                let message = ErrorMapping.message(for: error)
-                errorMessage = message
-                treeLoadState = .failure(message: message)
+            if let failureTransition = ContentListReadRecovery.failure(
+                error: error,
+                hasVisibleContent: tree != nil
+            ) {
+                failureTransition.apply(errorMessage: &errorMessage, loadState: &treeLoadState)
             } else {
                 toastCenter.show(message: "Failed to refresh notes")
             }

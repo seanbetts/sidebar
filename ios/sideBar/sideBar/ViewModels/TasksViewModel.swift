@@ -77,15 +77,14 @@ public final class TasksViewModel: ObservableObject {
     public var errorMessage: String? { localErrorMessage ?? store.errorMessage }
 
     public func load(selection: TaskSelection, force: Bool = false) async {
-        localErrorMessage = nil
+        let beginTransition = ContentListReadRecovery.begin(hasVisibleContent: !tasks.isEmpty)
         if selection == .none {
+            localErrorMessage = beginTransition.errorMessage
             listLoadState = .idle
             await store.load(selection: selection, force: force)
             return
         }
-        if tasks.isEmpty {
-            listLoadState = .loading
-        }
+        beginTransition.apply(errorMessage: &localErrorMessage, loadState: &listLoadState)
         if !selection.isSearch {
             lastNonSearchSelection = selection
         }
@@ -93,7 +92,8 @@ public final class TasksViewModel: ObservableObject {
         if let errorMessage, tasks.isEmpty {
             listLoadState = .failure(message: errorMessage)
         } else {
-            listLoadState = .loaded
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &localErrorMessage, loadState: &listLoadState)
         }
 
         // Update the cached filtered upcoming count when loading Upcoming

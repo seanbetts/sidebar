@@ -464,18 +464,19 @@ extension WebsitesViewModel {
         }
         if items.isEmpty {
             isLoading = true
-            listLoadState = .loading
         }
-        errorMessage = nil
+        ContentListReadRecovery.begin(hasVisibleContent: !items.isEmpty)
+            .apply(errorMessage: &errorMessage, loadState: &listLoadState)
         do {
             try await store.loadList(force: effectiveForce)
-            listLoadState = .loaded
-            errorMessage = nil
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &errorMessage, loadState: &listLoadState)
         } catch {
-            if items.isEmpty {
-                let message = ErrorMapping.message(for: error)
-                errorMessage = message
-                listLoadState = .failure(message: message)
+            if let failureTransition = ContentListReadRecovery.failure(
+                error: error,
+                hasVisibleContent: !items.isEmpty
+            ) {
+                failureTransition.apply(errorMessage: &errorMessage, loadState: &listLoadState)
             }
         }
         isLoading = false

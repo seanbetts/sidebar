@@ -91,6 +91,54 @@ public enum ContentListPresentationState: Equatable {
     }
 }
 
+/// Shared transition returned by content list read recovery helpers.
+public struct ContentListReadTransition: Equatable {
+    public let errorMessage: String?
+    public let loadState: ContentListLoadState?
+
+    public init(errorMessage: String?, loadState: ContentListLoadState?) {
+        self.errorMessage = errorMessage
+        self.loadState = loadState
+    }
+
+    public func apply(
+        errorMessage: inout String?,
+        loadState: inout ContentListLoadState
+    ) {
+        errorMessage = self.errorMessage
+        if let nextLoadState = self.loadState {
+            loadState = nextLoadState
+        }
+    }
+}
+
+/// Centralizes stale error clearing and empty-list retry state for protected reads.
+public enum ContentListReadRecovery {
+    public static func begin(hasVisibleContent: Bool) -> ContentListReadTransition {
+        ContentListReadTransition(
+            errorMessage: nil,
+            loadState: hasVisibleContent ? nil : .loading
+        )
+    }
+
+    public static func success() -> ContentListReadTransition {
+        ContentListReadTransition(errorMessage: nil, loadState: .loaded)
+    }
+
+    public static func failure(
+        error: Error,
+        hasVisibleContent: Bool,
+        mapError: (Error) -> String = ErrorMapping.message(for:)
+    ) -> ContentListReadTransition? {
+        guard !hasVisibleContent else { return nil }
+        let message = mapError(error)
+        return ContentListReadTransition(
+            errorMessage: message,
+            loadState: .failure(message: message)
+        )
+    }
+}
+
 /// Base class for ViewModels with common loading/error state.
 @MainActor
 open class LoadableViewModel: ObservableObject {

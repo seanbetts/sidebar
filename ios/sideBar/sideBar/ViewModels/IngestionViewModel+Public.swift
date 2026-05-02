@@ -4,24 +4,22 @@ import Foundation
 import UniformTypeIdentifiers
 
 // MARK: - IngestionViewModel+Public
-
 extension IngestionViewModel {
     public func load(force: Bool = false) async {
-        if items.isEmpty { isLoading = true; listLoadState = .loading }
-        errorMessage = nil
+        if items.isEmpty { isLoading = true }
+        ContentListReadRecovery.begin(hasVisibleContent: !items.isEmpty)
+            .apply(errorMessage: &errorMessage, loadState: &listLoadState)
         do {
             try await store.loadList(force: force)
-            listLoadState = .loaded
-            errorMessage = nil
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &errorMessage, loadState: &listLoadState)
         } catch {
-            if items.isEmpty {
-                let message = ingestionErrorMessage(
-                    for: error,
-                    operation: "ingestion.list",
-                    requestKind: .foregroundRead
-                )
-                errorMessage = message
-                listLoadState = .failure(message: message)
+            if let failureTransition = ContentListReadRecovery.failure(
+                error: error,
+                hasVisibleContent: !items.isEmpty,
+                mapError: { ingestionErrorMessage(for: $0, operation: "ingestion.list", requestKind: .foregroundRead) }
+            ) {
+                failureTransition.apply(errorMessage: &errorMessage, loadState: &listLoadState)
             }
         }
         isLoading = false

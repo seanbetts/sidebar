@@ -48,20 +48,19 @@ extension ChatViewModel {
     }
 
     public func loadConversations(force: Bool = false, silent: Bool = false) async {
-        errorMessage = nil
-        if conversations.isEmpty {
-            conversationsLoadState = .loading
-        }
+        ContentListReadRecovery.begin(hasVisibleContent: !conversations.isEmpty)
+            .apply(errorMessage: &errorMessage, loadState: &conversationsLoadState)
         if !silent { isLoadingConversations = true }
         do {
             try await chatStore.loadConversations(force: force)
-            conversationsLoadState = .loaded
-            errorMessage = nil
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &errorMessage, loadState: &conversationsLoadState)
         } catch {
-            if conversations.isEmpty {
-                let message = ErrorMapping.message(for: error)
-                errorMessage = message
-                conversationsLoadState = .failure(message: message)
+            if let failureTransition = ContentListReadRecovery.failure(
+                error: error,
+                hasVisibleContent: !conversations.isEmpty
+            ) {
+                failureTransition.apply(errorMessage: &errorMessage, loadState: &conversationsLoadState)
             }
         }
         if !silent { isLoadingConversations = false }

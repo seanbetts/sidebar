@@ -150,6 +150,43 @@ final class LoadableStateTests: XCTestCase {
             .search
         )
     }
+
+    func testContentListReadRecoveryCentralizesBeginSuccessAndEmptyFailureState() {
+        XCTAssertEqual(
+            ContentListReadRecovery.begin(hasVisibleContent: false),
+            ContentListReadTransition(errorMessage: nil, loadState: .loading)
+        )
+        XCTAssertEqual(
+            ContentListReadRecovery.begin(hasVisibleContent: true),
+            ContentListReadTransition(errorMessage: nil, loadState: nil)
+        )
+        XCTAssertEqual(
+            ContentListReadRecovery.success(),
+            ContentListReadTransition(errorMessage: nil, loadState: .loaded)
+        )
+
+        let emptyFailure = ContentListReadRecovery.failure(
+            error: APIClientError.missingToken,
+            hasVisibleContent: false
+        )
+        XCTAssertEqual(emptyFailure?.errorMessage, "Authentication required. Please sign in.")
+        XCTAssertEqual(emptyFailure?.loadState, .failed("Authentication required. Please sign in."))
+        XCTAssertNil(
+            ContentListReadRecovery.failure(
+                error: APIClientError.missingToken,
+                hasVisibleContent: true
+            )
+        )
+
+        var errorMessage: String? = "Previous error"
+        var loadState = ContentListLoadState.failed("Previous error")
+        ContentListReadRecovery.success().apply(
+            errorMessage: &errorMessage,
+            loadState: &loadState
+        )
+        XCTAssertNil(errorMessage)
+        XCTAssertEqual(loadState, .loaded)
+    }
 }
 
 @MainActor
