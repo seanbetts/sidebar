@@ -401,6 +401,23 @@ extension AppEnvironmentDeepLinkTests {
         return environment
     }
 
+    func makeActiveEnvironment(
+        storage: AppEnvironmentStorage,
+        websitesAPI: (any WebsitesProviding)? = nil,
+        refreshCoordinator: RefreshCoordinatorType? = nil
+    ) -> AppEnvironment {
+        makeEnvironment(
+            storage: storage,
+            authSession: PlaceholderAuthSession(
+                accessToken: "token-123",
+                userId: "user-123",
+                authState: .active
+            ),
+            websitesAPI: websitesAPI,
+            refreshCoordinator: refreshCoordinator
+        )
+    }
+
     func requireEnvironment(
         storage: AppEnvironmentStorage? = nil,
         file: StaticString = #filePath,

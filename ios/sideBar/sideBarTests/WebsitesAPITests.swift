@@ -169,7 +169,7 @@ final class WebsitesAPITests: XCTestCase {
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: router.baseURL,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         let session = router.makeSession()
         return APIClient(config: config, session: session)

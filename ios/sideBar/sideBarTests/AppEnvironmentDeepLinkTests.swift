@@ -397,8 +397,8 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     }
 
     func testHandleSignedInActivationConsumesExtensionEvents() async {
+        environment = makeActiveEnvironment(storage: storage)
         let environment = requireEnvironment()
-        environment.authState = .active
         let url = "https://example.com/articles/\(UUID().uuidString)"
 
         storage.extensionEventStore.recordWebsiteSaved(url: url)
@@ -433,9 +433,8 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             deletedAt: nil
         )
         let websitesAPI = WidgetRefreshWebsitesAPI(items: [item])
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeActiveEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
-        environment.authState = .active
 
         let before: WidgetWebsiteData = storage.widgetDataManager.load(for: .websites)
         XCTAssertEqual(before.totalCount, 0)

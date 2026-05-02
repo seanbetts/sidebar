@@ -22,9 +22,8 @@ extension AppEnvironmentDeepLinkTests {
                 WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
             )
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeActiveEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
-        environment.authState = .active
         let url = "https://example.com/articles/\(UUID().uuidString)"
 
         storage.extensionEventStore.recordWebsiteSaved(url: url)

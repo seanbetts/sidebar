@@ -64,7 +64,7 @@ final class InternalDiagnosticsAPITests: XCTestCase {
         APIClient(
             config: APIClientConfig(
                 baseUrl: router.baseURL,
-                accessTokenProvider: { nil }
+                accessTokenProvider: { "token-123" }
             ),
             session: router.makeSession()
         )

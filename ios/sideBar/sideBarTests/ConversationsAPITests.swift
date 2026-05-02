@@ -196,7 +196,7 @@ final class ConversationsAPITests: XCTestCase {
         }
         let config = APIClientConfig(
             baseUrl: resolvedRouter.baseURL,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)

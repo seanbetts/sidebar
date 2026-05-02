@@ -74,7 +74,7 @@ final class PlacesViewModelTests: XCTestCase {
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [PlacesURLProtocolMock.self]

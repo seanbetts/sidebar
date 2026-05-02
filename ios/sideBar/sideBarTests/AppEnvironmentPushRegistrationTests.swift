@@ -264,9 +264,10 @@ final class AppEnvironmentPushRegistrationTests: XCTestCase {
 
     private func makeEnvironment(userId: String) -> AppEnvironment {
         let authSession = PushMutableAuthSession(authState: .active, userId: userId)
+        authSession.accessToken = "token-123"
         let config = APIClientConfig(
             baseUrl: router.baseURL,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { authSession.authorizationToken }
         )
         let deviceTokensAPI = DeviceTokensAPI(
             client: APIClient(config: config, session: router.makeSession())

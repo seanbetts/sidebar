@@ -39,8 +39,8 @@ extension AppEnvironmentDeepLinkTests {
     }
 
     func testHandleSignedInActivationConsumesPendingWidgetCompletionFallbackWhenOffline() async {
+        environment = makeActiveEnvironment(storage: storage)
         let environment = requireEnvironment()
-        environment.authState = .active
 
         let taskId = UUID().uuidString
         let task = TaskItem(
@@ -100,9 +100,8 @@ extension AppEnvironmentDeepLinkTests {
                 await replayGate.wait()
             }
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeActiveEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
-        environment.authState = .active
 
         storage.extensionEventStore.recordWebsiteSaved(url: url)
 
@@ -164,9 +163,8 @@ extension AppEnvironmentDeepLinkTests {
                 await replayGate.wait()
             }
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeActiveEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
-        environment.authState = .active
 
         storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
 

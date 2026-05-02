@@ -201,7 +201,7 @@ final class OnboardingAPITests: XCTestCase {
         }
         let config = APIClientConfig(
             baseUrl: resolvedRouter.baseURL,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         return APIClient(config: config, session: resolvedRouter.makeSession())
     }

@@ -155,7 +155,7 @@ class ChatViewModelTestCase: XCTestCase {
     private static let sharedAPIClient = APIClient(
         config: APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
     )
     private static let sharedThemeManager: ThemeManager = {
@@ -247,7 +247,7 @@ class ChatViewModelTestCase: XCTestCase {
     ) -> IngestionAPI {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         let sessionConfig = URLSessionConfiguration.ephemeral
         sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]
@@ -271,7 +271,7 @@ class ChatViewModelTestCase: XCTestCase {
     ) -> IngestionAPI {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { "token-123" }
         )
         let sessionConfig = URLSessionConfiguration.ephemeral
         sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]

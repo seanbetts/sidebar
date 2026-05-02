@@ -89,7 +89,7 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         let session = makeSession()
         let client = URLSessionChatStreamClient(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil },
+            accessTokenProvider: { "token" },
             session: session
         )
         URLProtocolStreamingMock.statusCode = 500
@@ -121,7 +121,7 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         let session = makeSession()
         let client = URLSessionChatStreamClient(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil },
+            accessTokenProvider: { "token" },
             session: session
         )
         URLProtocolStreamingMock.statusCode = 400
@@ -160,7 +160,7 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         let session = makeSession()
         let client = URLSessionChatStreamClient(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil },
+            accessTokenProvider: { "token" },
             session: session
         )
         let signalExpectation = expectation(description: "Chat stream failure signal")

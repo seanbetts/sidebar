@@ -216,7 +216,7 @@ final class IngestionAPITests: XCTestCase {
 
     private func makeClientAndSession(
         router: ScopedURLProtocolRouter? = nil,
-        accessToken: String? = nil
+        accessToken: String? = "token-123"
     ) -> (APIClient, URLSession) {
         guard let resolvedRouter = router ?? self.router else {
             fatalError("Expected scoped router to be configured before creating APIClient")
