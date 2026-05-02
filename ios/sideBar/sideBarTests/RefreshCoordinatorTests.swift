@@ -148,6 +148,52 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertFalse(registry.hasVisibleDetail(for: .files))
         XCTAssertEqual(registry.pinnedSections(), [.notes, .websites])
     }
+
+    func testSectionRefreshAdapterCentralizesListAndDetailRefreshChecks() async {
+        var prepareCalls: [Bool] = []
+        var listRefreshCount = 0
+        var detailRefreshCount = 0
+        let adapter = SectionRefreshAdapter(
+            section: .websites,
+            hasVisibleDetail: { true },
+            hasPinnedMetadata: { true },
+            prepareForPresentation: { canAttemptServerRead in
+                prepareCalls.append(canAttemptServerRead)
+            },
+            refreshesListWhen: { plan, section in
+                plan.containsListOrPinnedMetadata(for: section)
+            },
+            refreshList: {
+                listRefreshCount += 1
+            },
+            refreshVisibleDetail: {
+                detailRefreshCount += 1
+            }
+        )
+
+        XCTAssertTrue(adapter.hasVisibleDetail)
+        XCTAssertTrue(adapter.hasPinnedMetadata)
+
+        await adapter.prepareForPresentation(canAttemptServerRead: true)
+        await adapter.refresh(
+            plan: RefreshPlan(
+                trigger: .manualRefresh,
+                targets: [.sectionList(.websites), .visibleDetail(.websites)],
+                requiresQueueReplayFirst: false
+            )
+        )
+        await adapter.refresh(
+            plan: RefreshPlan(
+                trigger: .manualRefresh,
+                targets: [.chatList],
+                requiresQueueReplayFirst: false
+            )
+        )
+
+        XCTAssertEqual(prepareCalls, [true])
+        XCTAssertEqual(listRefreshCount, 1)
+        XCTAssertEqual(detailRefreshCount, 1)
+    }
 }
 
 @MainActor

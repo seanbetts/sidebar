@@ -15,3 +15,61 @@ extension DomainRefreshAdapter {
 
     func prepareForPresentation(canAttemptServerRead: Bool) async {}
 }
+
+@MainActor
+class SectionRefreshAdapter: DomainRefreshAdapter {
+    let section: AppSection
+
+    private let hasVisibleDetailHandler: @MainActor () -> Bool
+    private let hasPinnedMetadataHandler: @MainActor () -> Bool
+    private let prepareForPresentationHandler: @MainActor (Bool) async -> Void
+    private let refreshesListHandler: @MainActor (RefreshPlan, AppSection) -> Bool
+    private let refreshListHandler: @MainActor () async -> Void
+    private let refreshVisibleDetailHandler: @MainActor () async -> Void
+
+    var hasVisibleDetail: Bool {
+        hasVisibleDetailHandler()
+    }
+
+    var hasPinnedMetadata: Bool {
+        hasPinnedMetadataHandler()
+    }
+
+    init(
+        section: AppSection,
+        hasVisibleDetail: @escaping @MainActor () -> Bool = { false },
+        hasPinnedMetadata: @escaping @MainActor () -> Bool = { false },
+        prepareForPresentation: @escaping @MainActor (Bool) async -> Void = { _ in },
+        refreshesListWhen: @escaping @MainActor (RefreshPlan, AppSection) -> Bool = { plan, section in
+            plan.containsListOrPinnedMetadata(for: section)
+        },
+        refreshList: @escaping @MainActor () async -> Void,
+        refreshVisibleDetail: @escaping @MainActor () async -> Void = {}
+    ) {
+        self.section = section
+        self.hasVisibleDetailHandler = hasVisibleDetail
+        self.hasPinnedMetadataHandler = hasPinnedMetadata
+        self.prepareForPresentationHandler = prepareForPresentation
+        self.refreshesListHandler = refreshesListWhen
+        self.refreshListHandler = refreshList
+        self.refreshVisibleDetailHandler = refreshVisibleDetail
+    }
+
+    func prepareForPresentation(canAttemptServerRead: Bool) async {
+        await prepareForPresentationHandler(canAttemptServerRead)
+    }
+
+    func refresh(plan: RefreshPlan) async {
+        guard plan.containsRefreshWork(for: section) else {
+            return
+        }
+
+        if refreshesListHandler(plan, section) {
+            await refreshListHandler()
+        }
+
+        if plan.containsVisibleDetail(for: section) {
+            await refreshVisibleDetailHandler()
+        }
+    }
+}
