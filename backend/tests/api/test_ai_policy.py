@@ -1056,11 +1056,19 @@ async def test_gateway_stream_chat_google_emits_error_for_empty_response(
 
     assert len(events) == 1
     assert events[0]["type"] == "error"
-    assert events[0]["version"] == 1
+    assert events[0]["version"] == 2
+    assert events[0]["category"] == "empty_response"
+    assert events[0]["retryable"] is True
+    assert events[0]["user_action_required"] is False
     assert events[0]["error_details"]["category"] == "empty_response"
     assert events[0]["error_details"]["provider"] == "google"
     assert events[0]["error_details"]["retryable"] is True
+    assert events[0]["assistant_context"] == events[0]["error_details"]
     assert events[0]["error"] == "The AI provider returned an empty response. Please try again."
+    assert events[0]["assistant_explanation"] == (
+        "I couldn't complete this response because Google returned an empty response. "
+        "Please try again."
+    )
     assert "prompt_block_reason=SAFETY" in events[0]["error_details"]["message"]
     assert "finish_reason=SAFETY" in events[0]["error_details"]["message"]
 

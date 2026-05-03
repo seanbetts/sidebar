@@ -874,7 +874,16 @@ async def test_stream_with_tools_emits_error_on_exception():
         output.append(event)
 
     assert output[-1]["type"] == "error"
-    assert output[-1]["error"] == "boom"
+    assert output[-1]["version"] == 2
+    assert output[-1]["error"] == "The response hit an error. Please try again."
+    assert output[-1]["category"] == "unknown"
+    assert output[-1]["retryable"] is False
+    assert output[-1]["user_action_required"] is False
+    assert output[-1]["assistant_context"] == output[-1]["error_details"]
+    assert output[-1]["error_details"]["provider"] == "anthropic"
+    assert output[-1]["error_details"]["message"] == "boom"
+    assert output[-1]["error_details"]["raw_message"] == "boom"
+    assert output[-1]["error_details"]["exception_class"] == "RuntimeError"
     assert dummy_db.rolled_back is True
 
 
@@ -939,5 +948,17 @@ async def test_stream_with_tools_does_not_retry_without_optional_features():
     ):
         output.append(event)
 
-    assert output == [{"type": "error", "error": "Connection error."}]
+    assert len(output) == 1
+    error = output[0]
+    assert error["type"] == "error"
+    assert error["version"] == 2
+    assert error["error"] == "The network connection was interrupted. Please try again."
+    assert error["category"] == "transport_failure"
+    assert error["retryable"] is True
+    assert error["user_action_required"] is False
+    assert error["assistant_context"] == error["error_details"]
+    assert error["error_details"]["provider"] == "anthropic"
+    assert error["error_details"]["message"] == "Connection error."
+    assert error["error_details"]["raw_message"] == "Connection error."
+    assert error["error_details"]["exception_class"] == "RuntimeError"
     assert len(messages.called_args_history) == 1
