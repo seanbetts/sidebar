@@ -33,6 +33,28 @@ def get_conversations_definitions() -> dict:
             "script": "search_conversations.py",
             "build_args": pm.build_conversations_search_args,
         },
+        "Open Chat": {
+            "description": (
+                "Open an existing chat conversation in the app workspace by ID."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "description": "Conversation UUID to open.",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Optional chat title for the UI handoff.",
+                    },
+                },
+                "required": ["conversation_id"],
+            },
+            "skill": "conversations",
+            "script": None,
+            "build_args": None,
+        },
         "Rename Conversation": {
             "description": (
                 "Rename a conversation by ID only when the user explicitly asks."

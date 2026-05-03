@@ -174,6 +174,33 @@ def test_tasks_definitions_include_context_menu_parity_tools():
     assert "completed" in list_scope
 
 
+def test_tool_definitions_include_route_backed_open_tools():
+    definitions = get_tool_definitions()
+
+    for name in [
+        "Open Note",
+        "Open Website",
+        "Open File",
+        "Open Chat",
+        "Open Scratchpad",
+        "Open Tasks",
+    ]:
+        assert name in definitions
+        assert definitions[name]["script"] is None
+
+
+def test_open_tasks_definition_supports_app_route_scopes():
+    definitions = get_tasks_definitions()
+
+    open_tasks = definitions["Open Tasks"]
+    properties = open_tasks["input_schema"]["properties"]
+
+    assert properties["target"]["enum"] == ["today", "task", "project", "group"]
+    assert "task_id" in properties
+    assert "project_id" in properties
+    assert "group_id" in properties
+
+
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
     assert "Package Skill" not in definitions

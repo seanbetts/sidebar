@@ -61,6 +61,26 @@ def get_fs_definitions() -> dict:
             "build_args": pm.build_fs_read_args,
             "validate_read": True,
         },
+        "Open File": {
+            "description": (
+                "Open an ingested file in the app workspace by file ID without "
+                "reading extracted content into chat."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "file_id": {"type": "string", "description": "Ingested file ID"},
+                    "title": {
+                        "type": "string",
+                        "description": "Optional file title for the UI handoff",
+                    },
+                },
+                "required": ["file_id"],
+            },
+            "skill": "files",
+            "script": None,
+            "build_args": None,
+        },
         "Write File": {
             "description": (
                 "Create/update ingested text files (stored in R2 + DB). "

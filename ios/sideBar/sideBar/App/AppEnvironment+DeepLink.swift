@@ -95,6 +95,13 @@ extension AppEnvironment {
             #if !os(macOS)
             tasksPhoneDetailRouteId = selection.cacheKey
             #endif
+        } else if taskScopedSelectionID(in: url, prefix: "/task/") != nil {
+            Task {
+                await tasksViewModel.load(selection: .today, force: true)
+            }
+            #if !os(macOS)
+            tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
+            #endif
         }
     }
 
@@ -214,6 +221,9 @@ extension AppEnvironment {
             }
             if path.hasPrefix("/group/") {
                 return "Opened Task Group via Deep Link"
+            }
+            if path.hasPrefix("/task/") {
+                return "Opened Task via Deep Link"
             }
             return "Opened Tasks via Deep Link"
         }

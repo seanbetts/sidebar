@@ -130,6 +130,9 @@ struct ChatMessageRow: View {
             if !workspaceSurfaceTargets.isEmpty {
                 WorkspaceSurfaceInlineActionsBar(targets: workspaceSurfaceTargets)
             }
+            if !workspaceOpenEntityTargets.isEmpty {
+                WorkspaceOpenEntityInlineActionsBar(targets: workspaceOpenEntityTargets)
+            }
 
             HStack {
                 Spacer()
@@ -247,6 +250,15 @@ struct ChatMessageRow: View {
             return []
         }
         return ToolResultWorkspaceSurfaceParser.parse(toolCalls: toolCalls)
+    }
+
+    private var workspaceOpenEntityTargets: [ToolResultWorkspaceOpenEntityTarget] {
+        guard message.role == .assistant,
+              let toolCalls = message.toolCalls,
+              !toolCalls.isEmpty else {
+            return []
+        }
+        return ToolResultWorkspaceOpenEntityParser.parse(toolCalls: toolCalls)
     }
 
     private var errorPresentation: ChatStreamErrorPresentation? {

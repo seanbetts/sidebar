@@ -242,6 +242,26 @@ def get_notes_definitions() -> dict:
             "script": "read_note.py",
             "build_args": pm.build_notes_read_args,
         },
+        "Open Note": {
+            "description": (
+                "Open an existing note in the app workspace by ID without reading "
+                "the note content into chat. Use after finding the note ID."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note UUID"},
+                    "title": {
+                        "type": "string",
+                        "description": "Optional note title for the UI handoff",
+                    },
+                },
+                "required": ["note_id"],
+            },
+            "skill": "notes",
+            "script": None,
+            "build_args": None,
+        },
         "Download Note": {
             "description": (
                 "Export a note as plain-text content plus filename metadata."
@@ -287,6 +307,16 @@ def get_notes_definitions() -> dict:
             "skill": "notes",
             "script": "scratchpad_get.py",
             "build_args": pm.build_scratchpad_get_args,
+        },
+        "Open Scratchpad": {
+            "description": "Open the scratchpad in the app workspace.",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
+            },
+            "skill": "notes",
+            "script": None,
+            "build_args": None,
         },
         "Update Scratchpad": {
             "description": "Update the scratchpad semantic document.",

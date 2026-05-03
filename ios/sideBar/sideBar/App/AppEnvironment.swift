@@ -261,11 +261,8 @@ public final class AppEnvironment: ObservableObject {
                 authSession.authState == .active
             }
         )
-        self.chatViewModel.workspaceActionDispatcher = { [workspaceStore = self.workspaceStore] action in
-            workspaceStore.dispatch(
-                action,
-                source: "chat_workspace_patch"
-            )
+        self.chatViewModel.workspaceActionDispatcher = { [weak self] action in
+            self?.dispatchChatWorkspaceAction(action)
         }
         self.authState = container.authSession.authState
         self.isBiometricUnlocked = (authState == .active || authState == .staleRecoverable) && !isBiometricUnlockEnabled

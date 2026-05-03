@@ -59,6 +59,38 @@ final class ChatWorkspacePatchParserTests: XCTestCase {
         )
     }
 
+    func testParseOpenEntityWorkspacePatchWithNativeRoute() {
+        let result = ChatWorkspacePatchParser.parse(data: AnyCodable([
+            "version": 1,
+            "operations": [[
+                "op": "open_entity",
+                "entity": [
+                    "type": "note",
+                    "id": "note-123",
+                    "title": "Orion — Project Brief"
+                ],
+                "route_url": "sidebar://notes/note-123",
+                "section": "notes",
+                "pane": "primary"
+            ]]
+        ]))
+
+        guard case .accepted(let actions, let ignoredOperations) = result else {
+            return XCTFail("Expected workspace patch to be accepted")
+        }
+        XCTAssertEqual(ignoredOperations, 0)
+        XCTAssertEqual(actions.count, 1)
+        guard case .openEntity(let request) = actions[0] else {
+            return XCTFail("Expected open entity action")
+        }
+        XCTAssertEqual(request.entity.type, "note")
+        XCTAssertEqual(request.entity.id, "note-123")
+        XCTAssertEqual(request.entity.title, "Orion — Project Brief")
+        XCTAssertEqual(request.routeURL?.absoluteString, "sidebar://notes/note-123")
+        XCTAssertEqual(request.section, .notes)
+        XCTAssertEqual(request.pane, .primary)
+    }
+
     func testParseRejectsUnsupportedVersion() {
         let result = ChatWorkspacePatchParser.parse(data: AnyCodable([
             "version": 3,

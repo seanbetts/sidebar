@@ -137,6 +137,70 @@ struct WorkspaceSurfaceInlineActionsBar: View {
     }
 }
 
+struct WorkspaceOpenEntityInlineActionsBar: View {
+    @EnvironmentObject private var environment: AppEnvironment
+    let targets: [ToolResultWorkspaceOpenEntityTarget]
+
+    var body: some View {
+        if targets.count == 1, let target = targets.first {
+            HStack {
+                Spacer(minLength: 0)
+                actionButton(target, prominent: true)
+                    .frame(maxWidth: 280)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        } else if !targets.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    ForEach(targets) { target in
+                        actionButton(target, prominent: false)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    @ViewBuilder
+    private func actionButton(
+        _ target: ToolResultWorkspaceOpenEntityTarget,
+        prominent: Bool
+    ) -> some View {
+        if prominent {
+            Button {
+                environment.openWorkspaceEntity(
+                    target.request,
+                    source: "chat_workspace_open_entity_inline"
+                )
+            } label: {
+                Label(target.label, systemImage: target.iconName)
+                    .appFont(.captionSemibold)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .controlSize(.regular)
+        } else {
+            Button {
+                environment.openWorkspaceEntity(
+                    target.request,
+                    source: "chat_workspace_open_entity_inline"
+                )
+            } label: {
+                Label(target.label, systemImage: target.iconName)
+                    .appFont(.captionSemibold)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .controlSize(.regular)
+        }
+    }
+}
+
 struct ToolCallSummaryCard: View {
     let summary: ChatToolPresentation.Summary
     let status: ToolStatus

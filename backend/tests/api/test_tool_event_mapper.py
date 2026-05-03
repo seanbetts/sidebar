@@ -91,6 +91,55 @@ def test_tool_side_effect_events_emits_workspace_patch_event() -> None:
     ]
 
 
+def test_tool_side_effect_events_emits_open_entity_workspace_patch() -> None:
+    events = tool_side_effect_events(
+        "Open Note",
+        {
+            "success": True,
+            "data": {
+                "workspace_patch": {
+                    "version": 1,
+                    "operations": [
+                        {
+                            "op": "open_entity",
+                            "entity": {
+                                "type": "note",
+                                "id": "note-123",
+                                "title": "Orion — Project Brief",
+                            },
+                            "route_url": "sidebar://notes/note-123",
+                            "section": "notes",
+                            "pane": "primary",
+                        }
+                    ],
+                }
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "workspace_patch",
+            "data": {
+                "version": 1,
+                "operations": [
+                    {
+                        "op": "open_entity",
+                        "entity": {
+                            "type": "note",
+                            "id": "note-123",
+                            "title": "Orion — Project Brief",
+                        },
+                        "route_url": "sidebar://notes/note-123",
+                        "section": "notes",
+                        "pane": "primary",
+                    }
+                ],
+            },
+        }
+    ]
+
+
 def test_tool_side_effect_events_emits_workspace_patch_events_from_array() -> None:
     events = tool_side_effect_events(
         "Unknown Tool",

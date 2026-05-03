@@ -59,4 +59,48 @@ final class ChatViewModelWorkspaceOpeningTests: ChatViewModelTestCase {
 
         XCTAssertEqual(requestedNoteID, "note-1")
     }
+
+    func testWorkspacePatchOpenEntityDispatchesGenericWorkspaceOpenRequest() async {
+        let cache = TestCacheClient()
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        var dispatchedActions: [WorkspaceAction] = []
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            workspaceActionDispatcher: { action in
+                dispatchedActions.append(action)
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .workspacePatch,
+            data: AnyCodable([
+                "version": 1,
+                "operations": [
+                    [
+                        "op": "open_entity",
+                        "entity": [
+                            "type": "note",
+                            "id": "note-1",
+                            "title": "Orion — Project Brief"
+                        ],
+                        "route_url": "sidebar://notes/note-1",
+                        "section": "notes",
+                        "pane": "primary"
+                    ]
+                ]
+            ])
+        ))
+
+        XCTAssertEqual(dispatchedActions.count, 1)
+        guard case .openEntity(let request) = dispatchedActions.first else {
+            return XCTFail("Expected open entity action")
+        }
+        XCTAssertEqual(request.entity.type, "note")
+        XCTAssertEqual(request.entity.id, "note-1")
+        XCTAssertEqual(request.entity.title, "Orion — Project Brief")
+        XCTAssertEqual(request.routeURL?.absoluteString, "sidebar://notes/note-1")
+        XCTAssertEqual(request.section, .notes)
+        XCTAssertEqual(request.pane, .primary)
+    }
 }

@@ -161,3 +161,70 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
     }
 }
+
+final class ToolResultWorkspaceOpenEntityParserTests: XCTestCase {
+    func testParseReturnsOpenEntityTargetFromDataWorkspacePatch() {
+        let result = AnyCodable([
+            "success": true,
+            "data": [
+                "workspace_patch": [
+                    "version": 1,
+                    "operations": [
+                        [
+                            "op": "open_entity",
+                            "entity": [
+                                "type": "note",
+                                "id": "note-123",
+                                "title": "Orion — Project Brief"
+                            ],
+                            "route_url": "sidebar://notes/note-123",
+                            "section": "notes",
+                            "pane": "primary"
+                        ]
+                    ]
+                ]
+            ]
+        ])
+
+        let targets = ToolResultWorkspaceOpenEntityParser.parse(result)
+
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(targets.first?.id, "primary:note:note-123")
+        XCTAssertEqual(targets.first?.label, "Open Orion — Project Brief")
+        XCTAssertEqual(targets.first?.iconName, "doc.text")
+        XCTAssertEqual(targets.first?.request.entity.type, "note")
+        XCTAssertEqual(targets.first?.request.routeURL?.absoluteString, "sidebar://notes/note-123")
+    }
+
+    func testParseToolCallsDeduplicatesOpenEntityTargetsAcrossCalls() {
+        let result = AnyCodable([
+            "data": [
+                "workspace_patch": [
+                    "version": 1,
+                    "operations": [
+                        [
+                            "op": "open_entity",
+                            "entity": [
+                                "type": "website",
+                                "id": "site-1",
+                                "title": "Research"
+                            ],
+                            "route_url": "sidebar://websites/site-1",
+                            "section": "websites",
+                            "pane": "primary"
+                        ]
+                    ]
+                ]
+            ]
+        ])
+        let firstCall = ToolCall(id: "call-1", name: "Open Website", parameters: [:], status: .success, result: result)
+        let secondCall = ToolCall(id: "call-2", name: "Open Website", parameters: [:], status: .success, result: result)
+
+        let targets = ToolResultWorkspaceOpenEntityParser.parse(toolCalls: [firstCall, secondCall])
+
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(targets.first?.id, "primary:website:site-1")
+        XCTAssertEqual(targets.first?.label, "Open Research")
+        XCTAssertEqual(targets.first?.iconName, "globe")
+    }
+}

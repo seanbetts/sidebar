@@ -12,6 +12,16 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
     }
 }
 
+struct ToolResultWorkspaceOpenEntityTarget: Equatable, Identifiable {
+    let request: WorkspaceEntityOpenRequest
+    let label: String
+    let iconName: String
+
+    var id: String {
+        "\(request.pane.rawValue):\(request.entity.type):\(request.entity.id)"
+    }
+}
+
 enum ToolResultWorkspaceSurfaceParser {
     static func parse(_ toolCall: ToolCall) -> [ToolResultWorkspaceSurfaceTarget] {
         let skillIconName = SkillIconResolver.iconName(for: toolCall)
@@ -121,5 +131,128 @@ enum ToolResultWorkspaceSurfaceParser {
             options: .regularExpression
         )
         return withSpaces.prefix(1).uppercased() + withSpaces.dropFirst()
+    }
+}
+
+enum ToolResultWorkspaceOpenEntityParser {
+    static func parse(_ toolCall: ToolCall) -> [ToolResultWorkspaceOpenEntityTarget] {
+        parse(toolCall.result)
+    }
+
+    static func parse(toolCalls: [ToolCall]) -> [ToolResultWorkspaceOpenEntityTarget] {
+        var targets: [ToolResultWorkspaceOpenEntityTarget] = []
+        var seenTargetIDs: Set<String> = []
+
+        for toolCall in toolCalls {
+            for target in parse(toolCall) {
+                guard seenTargetIDs.insert(target.id).inserted else { continue }
+                targets.append(target)
+            }
+        }
+        return targets
+    }
+
+    static func parse(_ result: AnyCodable?) -> [ToolResultWorkspaceOpenEntityTarget] {
+        guard let payload = result?.value as? [String: Any] else {
+            return []
+        }
+
+        let patchPayloads = workspacePatchPayloads(from: payload)
+        var targets: [ToolResultWorkspaceOpenEntityTarget] = []
+        var seenTargetIDs: Set<String> = []
+
+        for patchPayload in patchPayloads {
+            switch ChatWorkspacePatchParser.parse(data: AnyCodable(patchPayload)) {
+            case .accepted(let actions, _):
+                for action in actions {
+                    guard case .openEntity(let request) = action else {
+                        continue
+                    }
+                    let target = ToolResultWorkspaceOpenEntityTarget(
+                        request: request,
+                        label: label(for: request),
+                        iconName: iconName(for: request.entity.type)
+                    )
+                    if seenTargetIDs.insert(target.id).inserted {
+                        targets.append(target)
+                    }
+                }
+            case .rejected:
+                continue
+            }
+        }
+        return targets
+    }
+
+    private static func workspacePatchPayloads(
+        from payload: [String: Any]
+    ) -> [[String: Any]] {
+        var patches: [[String: Any]] = []
+        appendWorkspacePatches(from: payload, into: &patches)
+        if let dataPayload = payload["data"] as? [String: Any] {
+            appendWorkspacePatches(from: dataPayload, into: &patches)
+        }
+        return patches
+    }
+
+    private static func appendWorkspacePatches(
+        from payload: [String: Any],
+        into patches: inout [[String: Any]]
+    ) {
+        if let patch = payload["workspace_patch"] as? [String: Any] {
+            patches.append(patch)
+        }
+        if let patchArray = payload["workspace_patches"] as? [[String: Any]] {
+            patches.append(contentsOf: patchArray)
+        }
+    }
+
+    private static func label(for request: WorkspaceEntityOpenRequest) -> String {
+        if let title = request.entity.title?.trimmedOrNil {
+            return "Open \(title)"
+        }
+        return "Open \(fallbackTitle(for: request.entity.type))"
+    }
+
+    private static func fallbackTitle(for entityType: String) -> String {
+        switch entityType {
+        case "note":
+            return "Note"
+        case "website":
+            return "Website"
+        case "file":
+            return "File"
+        case "conversation":
+            return "Chat"
+        case "scratchpad":
+            return "Scratchpad"
+        case "task", "task_scope", "task_project", "task_group":
+            return "Tasks"
+        default:
+            let withSpaces = entityType.replacingOccurrences(
+                of: "_",
+                with: " "
+            )
+            return withSpaces.prefix(1).uppercased() + withSpaces.dropFirst()
+        }
+    }
+
+    private static func iconName(for entityType: String) -> String {
+        switch entityType {
+        case "note":
+            return "doc.text"
+        case "website":
+            return "globe"
+        case "file":
+            return "folder"
+        case "conversation":
+            return "bubble.left"
+        case "scratchpad":
+            return "square.and.pencil"
+        case "task", "task_scope", "task_project", "task_group":
+            return "checkmark.square"
+        default:
+            return "arrow.up.forward.app"
+        }
     }
 }

@@ -29,6 +29,42 @@ def get_tasks_definitions() -> dict:
             "script": "list_tasks.py",
             "build_args": pm.build_tasks_list_args,
         },
+        "Open Tasks": {
+            "description": (
+                "Open the Tasks workspace to today, a task, a project, or a group. "
+                "Use this for UI navigation rather than reading task details into chat."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "enum": ["today", "task", "project", "group"],
+                        "description": "Task destination to open",
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID when target is task",
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID when target is project",
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "Group ID when target is group",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Optional destination title for the UI handoff",
+                    },
+                },
+                "required": ["target"],
+            },
+            "skill": "tasks",
+            "script": None,
+            "build_args": None,
+        },
         "Search Tasks": {
             "description": (
                 "Search tasks by title or notes content. "

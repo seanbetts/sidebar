@@ -51,6 +51,37 @@ public struct AgentWorkspaceBoundEntityReference: Equatable {
     }
 }
 
+public struct WorkspaceEntityReference: Equatable {
+    public let type: String
+    public let id: String
+    public let title: String?
+
+    public init(type: String, id: String, title: String? = nil) {
+        self.type = type
+        self.id = id
+        self.title = title
+    }
+}
+
+public struct WorkspaceEntityOpenRequest: Equatable {
+    public let entity: WorkspaceEntityReference
+    public let routeURL: URL?
+    public let section: AppSection?
+    public let pane: WorkspacePane
+
+    public init(
+        entity: WorkspaceEntityReference,
+        routeURL: URL?,
+        section: AppSection?,
+        pane: WorkspacePane = .primary
+    ) {
+        self.entity = entity
+        self.routeURL = routeURL
+        self.section = section
+        self.pane = pane
+    }
+}
+
 public enum AgentWorkspaceCollaborationScope: Equatable {
     case none
     case conversationBoundEntity(entityType: String, entityId: String)
@@ -451,6 +482,7 @@ public enum WorkspaceAction: Equatable {
     case setPrimaryContent(WorkspaceContentDescriptor)
     case setSecondaryContent(WorkspaceContentDescriptor?)
     case presentAgentSurface(AgentWorkspaceSurfaceDescriptor, pane: WorkspacePane)
+    case openEntity(WorkspaceEntityOpenRequest)
     case closePane(WorkspacePane)
     case setAgentSurfacePinned(surfaceId: String, isPinned: Bool)
     case swapPanes

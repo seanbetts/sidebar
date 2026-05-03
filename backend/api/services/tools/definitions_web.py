@@ -140,6 +140,26 @@ def get_web_definitions() -> dict:
             "script": "read_website.py",
             "build_args": pm.build_website_read_args,
         },
+        "Open Website": {
+            "description": (
+                "Open an existing saved website in the app workspace by ID without "
+                "writing the website content into chat."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "website_id": {"type": "string", "description": "Website UUID"},
+                    "title": {
+                        "type": "string",
+                        "description": "Optional website title for the UI handoff",
+                    },
+                },
+                "required": ["website_id"],
+            },
+            "skill": "web-save",
+            "script": None,
+            "build_args": None,
+        },
         "Download Website": {
             "description": (
                 "Export a website as markdown content plus filename metadata."

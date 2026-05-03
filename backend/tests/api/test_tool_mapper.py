@@ -124,6 +124,39 @@ async def test_execute_tool_ui_theme_handler(monkeypatch):
     assert result["data"]["theme"] == "dark"
 
 
+@pytest.mark.asyncio
+async def test_execute_tool_open_note_returns_route_backed_workspace_patch(monkeypatch):
+    mapper = ToolMapper()
+    monkeypatch.setattr(
+        tool_mapper_module.AuditLogger, "log_tool_call", lambda **_: None
+    )
+
+    result = await mapper.execute_tool(
+        "Open Note",
+        {"note_id": "note-123", "title": "Orion — Project Brief"},
+        allowed_skills=["notes"],
+    )
+
+    assert result["success"] is True
+    assert result["data"]["summary"] == "Open note Orion — Project Brief"
+    assert result["data"]["workspace_patch"] == {
+        "version": 1,
+        "operations": [
+            {
+                "op": "open_entity",
+                "entity": {
+                    "type": "note",
+                    "id": "note-123",
+                    "title": "Orion — Project Brief",
+                },
+                "route_url": "sidebar://notes/note-123",
+                "section": "notes",
+                "pane": "primary",
+            }
+        ],
+    }
+
+
 def test_get_claude_tools_filters_skills():
     tools = {
         "Read File": {

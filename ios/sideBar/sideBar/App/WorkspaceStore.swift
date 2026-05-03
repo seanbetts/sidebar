@@ -53,6 +53,9 @@ enum WorkspaceReducer {
         case .presentAgentSurface(let surface, let pane):
             applyPresentedAgentSurface(surface, pane: pane, state: &state)
 
+        case .openEntity:
+            break
+
         case .closePane(let pane):
             applyClosedPane(pane, state: &state)
 

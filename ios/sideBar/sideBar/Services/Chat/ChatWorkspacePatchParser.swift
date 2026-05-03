@@ -58,6 +58,9 @@ enum ChatWorkspacePatchParser {
         case "upsert_agent_surface", "present_agent_surface", "update_agent_surface":
             return parseSurfaceMutationOperation(operation)
 
+        case "open_entity":
+            return parseOpenEntityOperation(operation)
+
         case "close_pane":
             return parseClosePaneOperation(operation)
 
@@ -85,6 +88,46 @@ enum ChatWorkspacePatchParser {
             return nil
         }
         return .presentAgentSurface(surface, pane: pane)
+    }
+
+    private static func parseOpenEntityOperation(
+        _ operation: [String: Any]
+    ) -> WorkspaceAction? {
+        guard let rawEntity = dictionaryValue(from: operation, keys: ["entity"]),
+              let entityType = firstString(
+                  in: rawEntity,
+                  keys: ["type", "entity_type", "entityType"]
+              ),
+              let entityId = firstString(
+                  in: rawEntity,
+                  keys: ["id", "entity_id", "entityId"]
+              ) else {
+            return nil
+        }
+
+        let routeURL = firstString(
+            in: operation,
+            keys: ["route_url", "routeURL", "url"]
+        ).flatMap(URL.init(string:))
+        let section = firstString(
+            in: operation,
+            keys: ["section"]
+        ).flatMap(AppSection.init(rawValue:))
+        let pane = paneValue(from: operation, keys: ["pane"]) ?? .primary
+        let entity = WorkspaceEntityReference(
+            type: entityType,
+            id: entityId,
+            title: firstString(in: rawEntity, keys: ["title", "name"])
+        )
+
+        return .openEntity(
+            WorkspaceEntityOpenRequest(
+                entity: entity,
+                routeURL: routeURL,
+                section: section,
+                pane: pane
+            )
+        )
     }
 
     private static func parseClosePaneOperation(
