@@ -102,10 +102,14 @@ Deep links are the universal navigation primitive. Spotlight results, widget nav
 | Specific website | `websites/{websiteId}` |
 | Files list | `files` |
 | Specific file | `files/{fileId}` |
+| File by path fallback | `files/{path}` |
 | Chat list | `chat` |
 | New conversation | `chat/new` |
 | Specific conversation | `chat/{chatId}` |
 | Scratchpad | `scratchpad` |
+| Specific task | `tasks/task/{taskId}` |
+| Task project | `tasks/project/{projectId}` |
+| Task group | `tasks/group/{groupId}` |
 
 ### Queuing on launch
 

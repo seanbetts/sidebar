@@ -83,9 +83,9 @@ before they will work.
 
 **Skill error shown in chat**
 The skill ran but hit an error. Tap the skill pill in the conversation to see
-the full error detail. Common causes are a missing or invalid API key, a
-network failure, or an unsupported input. Check the skill's requirements in
-the [Skills docs](/skills/store/).
+a short summary. Common causes are a missing or invalid API key, a network
+failure, or an unsupported input. Check the skill's requirements in the
+[Skills docs](/skills/store/).
 
 **Store skill shows as "unavailable"**
 The skill is installed but is missing a required API key or credential. Tap the

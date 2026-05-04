@@ -222,8 +222,12 @@ URL scheme: `sidebar://`
 | `sidebar://tasks` | Navigate to Tasks |
 | `sidebar://tasks/today` | Navigate to Tasks, select Today view |
 | `sidebar://tasks/new` | Navigate to Tasks, trigger new task |
+| `sidebar://tasks/task/{taskId}` | Navigate to Tasks, focus a specific task |
+| `sidebar://tasks/project/{projectId}` | Navigate to Tasks, select project |
+| `sidebar://tasks/group/{groupId}` | Navigate to Tasks, select group |
 | `sidebar://websites/{websiteId}` | Navigate to Websites, select website |
 | `sidebar://files/{fileId}` | Navigate to Files, select file |
+| `sidebar://files/{path}` | Navigate to Files, resolve a stored file by path and select it |
 | `sidebar://scratchpad` | Open scratchpad |
 
 Deep links are handled in `AppEnvironment+DeepLink.swift`. On iPhone they set `NavigationCoordinator` phone detail route IDs and select the appropriate tab. On iPad/Mac they dispatch workspace store actions.

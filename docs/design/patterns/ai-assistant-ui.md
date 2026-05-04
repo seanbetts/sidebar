@@ -81,10 +81,11 @@ If a later run of the same skill with the same effective input succeeds, recover
 **Skill detail view:**
 
 1. **Summary** — a human-readable description of what the skill did (e.g. "Deleted note: My Shopping List"). This is the primary content.
-2. **Workspace surface links** — action buttons to open any surfaces produced by this skill.
-3. **Prompt preview** — collapsible section showing system prompt sections, budget report, and prompt content. Available to all users for transparency into what the assistant was working with.
+2. **Workspace surface links** — action buttons to open dynamic surfaces produced by this skill when those links are useful in the popover.
 
-Raw parameters, result payloads, and recovered tool errors are not part of the default user-facing tool result UI. Those details should be logged for diagnostics rather than surfaced in the popover.
+Route-backed open actions and prompt preview handoffs belong in the assistant message as direct inline buttons, not duplicated inside the skill pill popover.
+
+Raw parameters, result payloads, recovered tool errors, and technical diagnostics are not part of the default user-facing tool result UI. Those details should be logged for diagnostics rather than surfaced in the popover.
 
 **Status colors:**
 
@@ -191,7 +192,7 @@ Appears after the assistant produces a result that corresponds to a product dest
 
 | Count | Layout |
 |---|---|
-| 1 target | Full-width prominent button (`.borderedProminent`) |
+| 1 target | Full-width prominent button with explicit light/dark contrast |
 | 2+ targets | Horizontal scrolling row of bordered buttons |
 
 Action labels come from the workspace surface target. Icons use the relevant section's SF Symbol. Tapping routes through the standard deep link handler. See [Handoffs](./handoffs) for routing rules.
@@ -305,7 +306,7 @@ The user is always identified as "You". This is not configurable.
 11. **All assistant navigation routes through the deep link system.** `presentAgentSurface` converts to `sidebar://` before routing. No direct navigation bypasses the handler.
 12. **`assistantDisplayName` must be used for all references to the assistant.** Never hardcode a name.
 13. **Reduce motion must be respected for all assistant animations.** Thinking dismissal, streaming reveal, and any other assistant-driven motion must have instant fallbacks.
-14. **Skill detail leads with a human-readable summary.** Parameters and raw result payloads are never primary. Prompt preview handoffs should surface as direct workspace buttons, not extra diagnostic cards.
+14. **Skill detail leads with a human-readable summary.** Parameters, raw result payloads, recovered errors, and technical diagnostics are never primary. Prompt preview and route-backed open handoffs surface as direct message buttons, not extra diagnostic cards in the skill pill.
 15. **Content-bearing skill results present through the coordinated dispatch.** Domain objects auto-present with a left panel section switch on iPad/Mac. Dynamic surfaces auto-present without a panel switch. On iPhone, an inline action button is the sole trigger. No skill should implement its own navigation logic for content presentation. See [Content Presentation](./content-presentation).
 
 ---

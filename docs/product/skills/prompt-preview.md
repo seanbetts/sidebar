@@ -43,9 +43,15 @@ Only when you ask for it explicitly:
 
 System Prompt Preview is enabled by default. To toggle it, go to **Settings → Skills**.
 
+## Opening the preview
+
+When the preview is ready, sideBar shows a button in the conversation to open
+it. The skills pill confirms that the skill ran, but the preview itself opens
+from the message button.
+
 ## What the preview shows
 
-The preview opens as a panel in the conversation and includes:
+The preview includes:
 
 - **System prompt**: the full text sent to your AI provider at the start of
   every message

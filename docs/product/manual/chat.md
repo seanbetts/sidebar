@@ -68,7 +68,7 @@ doesn't linger longer than you'd want.
 When sideBar uses a Skill to answer your message, a skills pill appears in
 the response. Each skills pill shows:
 
-- Its **name** (e.g. web search, notes lookup)
+- Its **name** for a single skill, or **N skills used** when several skills ran
 - Its **status**: running, success, or error
 
 While a skill is active, the skills pill shows its name and current status
@@ -76,6 +76,14 @@ at the top of the response.
 
 Multiple skills can run within a single response, so sideBar can do
 several things at once to answer your question.
+
+Tap the skills pill to see a plain-language summary of what happened. sideBar
+keeps technical inputs, raw result payloads, and recovered internal errors out
+of this view.
+
+If a skill creates or opens something you can view in the app, sideBar may add
+a button below the response, such as **Open note** or **Open file**. Use that
+button to jump back to the result later.
 
 ## Context sideBar Receives
 
