@@ -35,44 +35,14 @@ struct OnboardingAddKeyBanner: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open Settings")
-                .modifier(AddKeyBannerButtonChrome())
+                .glassChrome(.pill)
             }
             .padding(.leading, DesignTokens.Spacing.md)
             .padding(.trailing, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
             .frame(maxWidth: bannerMaxWidth)
-            .modifier(OnboardingAddKeyBannerChromeModifier())
+            .glassChrome(.statusPill)
         }
         .accessibilityElement(children: .contain)
-    }
-}
-
-private struct OnboardingAddKeyBannerChromeModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular, in: Capsule())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-        }
-    }
-}
-
-private struct AddKeyBannerButtonChrome: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-        }
     }
 }
