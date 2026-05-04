@@ -68,7 +68,7 @@ public extension AppIcon {
 }
 ```
 
-**Rule**: Feature code should use semantic `AppIcon` constants. Raw SF Symbol names belong in `AppIcon`, approved resolver boundaries, or explicit migration exceptions.
+**Rule**: Feature code should use semantic `AppIcon` constants. Raw SF Symbol names belong in `AppIcon` or approved dynamic resolver boundaries.
 
 ---
 
@@ -374,13 +374,12 @@ The web app uses `lucide-svelte`. Lucide does not have parity with SF Symbols, b
 
 ## Drift prevention
 
-New raw SF Symbol literals should be treated as design-system drift unless they are inside an approved resolver boundary.
+Raw SF Symbol literals are design-system drift unless they are inside an approved resolver boundary.
 
 Approved places for raw native symbol names:
 
 - `AppIcon`
 - source tests for `AppIcon`
-- temporary migration allowlists
 - explicit resolvers that ingest dynamic backend or widget payload values before mapping to an `AppIcon`
 
 **Rule**: Feature views and shared components should use `AppIcon`. A source check should block new direct `Image(systemName: "...")`, `Label(systemImage: "...")`, `UIImage(systemName: "...")`, and `NSImage(systemSymbolName: "...")` literals outside approved files.
