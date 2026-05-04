@@ -3,6 +3,8 @@ import SwiftUI
 enum GlassChrome {
     enum Kind {
         case pill
+        case statusPill
+        case metadataPill
         case card
         case panelHeader
         case actionButton
@@ -56,6 +58,20 @@ enum GlassChrome {
                 material: .interactive,
                 fallbackFill: .surface,
                 borderOpacity: 0.18
+            )
+        case .statusPill:
+            return Tokens(
+                shape: .capsule,
+                material: .regular,
+                fallbackFill: .surface,
+                borderOpacity: 0
+            )
+        case .metadataPill:
+            return Tokens(
+                shape: .capsule,
+                material: .regular,
+                fallbackFill: .surface,
+                borderOpacity: 1
             )
         case .card:
             return Tokens(
