@@ -37,7 +37,8 @@ extension AppEnvironment {
         container: ServiceContainer,
         isTestMode: Bool,
         widgetDataManager: WidgetDataManager,
-        workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
+        workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
+        workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
     ) -> EnvironmentDependencies {
         let core = CoreDependencyBuilder.build(container: container, isTestMode: isTestMode)
         let stores = StoreDependencyBuilder.build(
@@ -51,7 +52,8 @@ extension AppEnvironment {
             stores: stores,
             isTestMode: isTestMode,
             widgetDataManager: widgetDataManager,
-            workspaceStateProvider: workspaceStateProvider
+            workspaceStateProvider: workspaceStateProvider,
+            workspaceOpenFailureProvider: workspaceOpenFailureProvider
         )
 
         return EnvironmentDependencies(

@@ -91,6 +91,34 @@ final class ChatWorkspacePatchParserTests: XCTestCase {
         XCTAssertEqual(request.pane, .primary)
     }
 
+    func testParseOpenEntityWorkspacePatchPreservesFilePath() {
+        let result = ChatWorkspacePatchParser.parse(data: AnyCodable([
+            "version": 1,
+            "operations": [[
+                "op": "open_entity",
+                "entity": [
+                    "type": "file",
+                    "id": "Projects/Orion/brief.pdf",
+                    "title": "brief.pdf",
+                    "path": "Projects/Orion/brief.pdf"
+                ],
+                "route_url": "sidebar://files/Projects%2FOrion%2Fbrief.pdf",
+                "section": "files",
+                "pane": "primary"
+            ]]
+        ]))
+
+        guard case .accepted(let actions, let ignoredOperations) = result else {
+            return XCTFail("Expected workspace patch to be accepted")
+        }
+        XCTAssertEqual(ignoredOperations, 0)
+        guard case .openEntity(let request) = actions.first else {
+            return XCTFail("Expected open entity action")
+        }
+        XCTAssertEqual(request.entity.id, "Projects/Orion/brief.pdf")
+        XCTAssertEqual(request.entity.path, "Projects/Orion/brief.pdf")
+    }
+
     func testParseRejectsUnsupportedVersion() {
         let result = ChatWorkspacePatchParser.parse(data: AnyCodable([
             "version": 3,

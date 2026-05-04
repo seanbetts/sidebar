@@ -88,6 +88,7 @@ public final class AppEnvironment: ObservableObject {
     public let navigation: NavigationCoordinator
     /// Shadow workspace state store used for migration to a unified workspace engine.
     public let workspaceStore: WorkspaceStore
+    let workspaceOpenFailureStore: WorkspaceOpenFailureStore
     let persistenceController: PersistenceController
     let realtimeClient: RealtimeClient
     /// Environment configuration loading error captured at startup, when present.
@@ -190,11 +191,13 @@ public final class AppEnvironment: ObservableObject {
         self.container = container
         self.storage = resolvedStorage
         let workspaceStore = WorkspaceStore()
+        let workspaceOpenFailureStore = WorkspaceOpenFailureStore()
         let dependencies = Self.buildDependencies(
             container: container,
             isTestMode: isTestMode,
             widgetDataManager: resolvedStorage.widgetDataManager,
-            workspaceStateProvider: { workspaceStore.state }
+            workspaceStateProvider: { workspaceStore.state },
+            workspaceOpenFailureProvider: { workspaceOpenFailureStore.latest }
         )
         self.persistenceController = dependencies.persistenceController
         self.themeManager = dependencies.themeManager
@@ -216,6 +219,7 @@ public final class AppEnvironment: ObservableObject {
         self.tasksViewModel = dependencies.tasksViewModel
         self.navigation = NavigationCoordinator()
         self.workspaceStore = workspaceStore
+        self.workspaceOpenFailureStore = workspaceOpenFailureStore
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel

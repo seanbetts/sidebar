@@ -55,11 +55,13 @@ public struct WorkspaceEntityReference: Equatable {
     public let type: String
     public let id: String
     public let title: String?
+    public let path: String?
 
-    public init(type: String, id: String, title: String? = nil) {
+    public init(type: String, id: String, title: String? = nil, path: String? = nil) {
         self.type = type
         self.id = id
         self.title = title
+        self.path = path
     }
 }
 

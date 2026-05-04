@@ -63,19 +63,24 @@ def get_fs_definitions() -> dict:
         },
         "Open File": {
             "description": (
-                "Open an ingested file in the app workspace by file ID without "
-                "reading extracted content into chat."
+                "Request that the app opens an ingested file in the workspace "
+                "without reading extracted content into chat. Use file_id when "
+                "available, otherwise pass the storage path returned by file tools."
             ),
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "file_id": {"type": "string", "description": "Ingested file ID"},
+                    "path": {
+                        "type": "string",
+                        "description": "File path when an ingested file ID is unavailable",
+                    },
                     "title": {
                         "type": "string",
                         "description": "Optional file title for the UI handoff",
                     },
                 },
-                "required": ["file_id"],
+                "required": [],
             },
             "skill": "files",
             "script": None,

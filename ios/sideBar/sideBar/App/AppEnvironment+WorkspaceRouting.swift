@@ -31,6 +31,7 @@ extension AppEnvironment {
         _ request: WorkspaceEntityOpenRequest,
         source: String
     ) {
+        workspaceOpenFailureStore.clear()
         if let section = request.section {
             routeWorkspaceSelection(to: section, source: source)
         }
@@ -76,7 +77,11 @@ extension AppEnvironment {
         )
     }
 
-    private func openTaskScope(id: String, kind: String = "today") {
+    private func openTaskScope(
+        id: String,
+        kind: String = "today",
+        request: WorkspaceEntityOpenRequest
+    ) {
         let selection: TaskSelection
         switch kind {
         case "project":
@@ -89,6 +94,11 @@ extension AppEnvironment {
 
         Task {
             await tasksViewModel.load(selection: selection, force: true)
+            recordOpenFailureIfNeeded(
+                request,
+                message: tasksViewModel.errorMessage,
+                didOpen: tasksViewModel.errorMessage == nil
+            )
         }
         #if !os(macOS)
         tasksPhoneDetailRouteId = selection.cacheKey
@@ -100,18 +110,40 @@ extension AppEnvironment {
         case "note":
             Task {
                 await notesViewModel.loadNote(id: request.entity.id)
+                recordOpenFailureIfNeeded(
+                    request,
+                    message: notesViewModel.errorMessage,
+                    didOpen: notesViewModel.activeNote?.id == request.entity.id
+                )
             }
         case "website":
             Task {
                 await websitesViewModel.selectWebsite(id: request.entity.id)
+                recordOpenFailureIfNeeded(
+                    request,
+                    message: websitesViewModel.errorMessage,
+                    didOpen: websitesViewModel.active?.id == request.entity.id
+                )
             }
         case "file":
             Task {
-                await ingestionViewModel.selectFile(fileId: request.entity.id)
+                let fileID = await resolvedFileID(for: request)
+                let didOpen = await ingestionViewModel.selectFile(fileId: fileID)
+                recordOpenFailureIfNeeded(
+                    request,
+                    message: ingestionViewModel.errorMessage,
+                    didOpen: didOpen && ingestionViewModel.activeMeta?.file.id == fileID
+                )
             }
         case "conversation":
             Task {
                 await chatViewModel.selectConversation(id: request.entity.id)
+                recordOpenFailureIfNeeded(
+                    request,
+                    message: chatViewModel.errorMessage,
+                    didOpen: chatViewModel.errorMessage == nil
+                        && chatViewModel.selectedConversationId == request.entity.id
+                )
             }
         default:
             return false
@@ -124,16 +156,43 @@ extension AppEnvironment {
         case "scratchpad":
             pendingScratchpadDeepLink = true
         case "task_scope":
-            openTaskScope(id: request.entity.id)
+            openTaskScope(id: request.entity.id, request: request)
         case "task":
-            openTaskScope(id: "today")
+            openTaskScope(id: "today", request: request)
         case "task_project":
-            openTaskScope(id: request.entity.id, kind: "project")
+            openTaskScope(id: request.entity.id, kind: "project", request: request)
         case "task_group":
-            openTaskScope(id: request.entity.id, kind: "group")
+            openTaskScope(id: request.entity.id, kind: "group", request: request)
         default:
             return false
         }
         return true
+    }
+
+    private func resolvedFileID(for request: WorkspaceEntityOpenRequest) async -> String {
+        if let fileID = WorkspaceOpenFileResolver.resolveFileID(
+            request: request,
+            items: ingestionViewModel.items
+        ) {
+            return fileID
+        }
+
+        await ingestionViewModel.load(force: true)
+        return WorkspaceOpenFileResolver.resolveFileID(
+            request: request,
+            items: ingestionViewModel.items
+        ) ?? request.entity.id
+    }
+
+    private func recordOpenFailureIfNeeded(
+        _ request: WorkspaceEntityOpenRequest,
+        message: String?,
+        didOpen: Bool
+    ) {
+        guard !didOpen else { return }
+        workspaceOpenFailureStore.record(
+            request: request,
+            message: message ?? "The app could not open this content."
+        )
     }
 }

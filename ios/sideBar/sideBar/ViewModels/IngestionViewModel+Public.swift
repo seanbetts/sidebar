@@ -52,24 +52,26 @@ extension IngestionViewModel {
         }
     }
 
-    public func selectFile(fileId: String, forceRefresh: Bool = false) async {
+    @discardableResult
+    public func selectFile(fileId: String, forceRefresh: Bool = false) async -> Bool {
         prepareSelection(fileId: fileId)
         if !forceRefresh,
            !(networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true),
            !store.hasCachedMeta(fileId: fileId) {
             errorMessage = "This file isn't available offline yet."
-            return
+            return false
         }
         isSelecting = true
         defer { isSelecting = false }
         let didLoadMeta = await loadMeta(fileId: fileId, force: forceRefresh)
-        guard didLoadMeta else { return }
-        guard let meta = activeMeta else { return }
-        guard viewerState == nil else { return }
+        guard didLoadMeta else { return false }
+        guard let meta = activeMeta else { return false }
+        guard viewerState == nil else { return true }
         startJobPollingIfNeeded(fileId: fileId)
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
+        return true
     }
 
     public func prepareSelection(fileId: String) {

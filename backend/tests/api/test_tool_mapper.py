@@ -138,7 +138,7 @@ async def test_execute_tool_open_note_returns_route_backed_workspace_patch(monke
     )
 
     assert result["success"] is True
-    assert result["data"]["summary"] == "Open note Orion — Project Brief"
+    assert result["data"]["summary"] == "Requested opening note Orion — Project Brief"
     assert result["data"]["workspace_patch"] == {
         "version": 1,
         "operations": [
@@ -151,6 +151,40 @@ async def test_execute_tool_open_note_returns_route_backed_workspace_patch(monke
                 },
                 "route_url": "sidebar://notes/note-123",
                 "section": "notes",
+                "pane": "primary",
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_open_file_accepts_path_fallback(monkeypatch):
+    mapper = ToolMapper()
+    monkeypatch.setattr(
+        tool_mapper_module.AuditLogger, "log_tool_call", lambda **_: None
+    )
+
+    result = await mapper.execute_tool(
+        "Open File",
+        {"path": "Projects/Orion/brief.pdf", "title": "brief.pdf"},
+        allowed_skills=["files"],
+    )
+
+    assert result["success"] is True
+    assert result["data"]["summary"] == "Requested opening file brief.pdf"
+    assert result["data"]["workspace_patch"] == {
+        "version": 1,
+        "operations": [
+            {
+                "op": "open_entity",
+                "entity": {
+                    "type": "file",
+                    "id": "Projects/Orion/brief.pdf",
+                    "title": "brief.pdf",
+                    "path": "Projects/Orion/brief.pdf",
+                },
+                "route_url": "sidebar://files/Projects%2FOrion%2Fbrief.pdf",
+                "section": "files",
                 "pane": "primary",
             }
         ],

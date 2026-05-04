@@ -117,7 +117,8 @@ enum ChatWorkspacePatchParser {
         let entity = WorkspaceEntityReference(
             type: entityType,
             id: entityId,
-            title: firstString(in: rawEntity, keys: ["title", "name"])
+            title: firstString(in: rawEntity, keys: ["title", "name"]),
+            path: firstString(in: rawEntity, keys: ["path", "file_path", "filePath"])
         )
 
         return .openEntity(

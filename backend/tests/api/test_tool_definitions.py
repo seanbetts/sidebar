@@ -189,6 +189,17 @@ def test_tool_definitions_include_route_backed_open_tools():
         assert definitions[name]["script"] is None
 
 
+def test_open_file_definition_accepts_file_id_or_path():
+    definitions = get_fs_definitions()
+
+    open_file = definitions["Open File"]
+    properties = open_file["input_schema"]["properties"]
+
+    assert "file_id" in properties
+    assert "path" in properties
+    assert open_file["input_schema"]["required"] == []
+
+
 def test_open_tasks_definition_supports_app_route_scopes():
     definitions = get_tasks_definitions()
 

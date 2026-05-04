@@ -122,9 +122,13 @@ extension AppEnvironment {
             ingestionViewModel: IngestionViewModel,
             weatherViewModel: WeatherViewModel,
             currentLocationViewModel: CurrentLocationViewModel,
-            workspaceState: WorkspaceState?
+            workspaceState: WorkspaceState?,
+            workspaceOpenFailure: WorkspaceOpenFailure?
         ) -> ChatRequestContext {
             var openContext: [String: AnyCodable] = [:]
+            if let workspaceOpenFailure {
+                openContext["last_open_error"] = AnyCodable(workspaceOpenFailure.contextPayload)
+            }
             let visibleSections = orderedWorkspaceContextSections(workspaceState: workspaceState)
             let hasWorkspaceSections = !visibleSections.isEmpty
             let visibleSectionSet = Set(visibleSections.map(\.section))
@@ -275,7 +279,8 @@ extension AppEnvironment {
             stores: StoreDependencyBuilder.Output,
             isTestMode: Bool,
             widgetDataManager: WidgetDataManager,
-            workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
+            workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
+            workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
         ) -> Output {
             let settingsViewModel = makeSettingsViewModel(
                 container: container,
@@ -364,7 +369,8 @@ extension AppEnvironment {
                             ingestionViewModel: ingestionViewModel,
                             weatherViewModel: weatherViewModel,
                             currentLocationViewModel: currentLocationViewModel,
-                            workspaceState: workspaceStateProvider()
+                            workspaceState: workspaceStateProvider(),
+                            workspaceOpenFailure: workspaceOpenFailureProvider()
                         )
                     }
                 )

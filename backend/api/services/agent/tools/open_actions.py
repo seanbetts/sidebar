@@ -57,7 +57,7 @@ def handle_open_action(display_name: str, parameters: dict[str, Any]) -> dict[st
     if config is None:
         return {"success": False, "error": f"Unsupported open action: {display_name}"}
 
-    entity_id = _required_text(parameters, str(config["id_field"]))
+    entity_id = _open_entity_id(display_name, parameters, str(config["id_field"]))
     title = _optional_text(parameters, "title")
     route_url = _route(str(config["route_prefix"]), entity_id)
     entity = {
@@ -66,6 +66,10 @@ def handle_open_action(display_name: str, parameters: dict[str, Any]) -> dict[st
     }
     if title:
         entity["title"] = title
+    if display_name == "Open File":
+        path = _optional_text(parameters, "path")
+        if path:
+            entity["path"] = path
 
     return _success(
         summary=_summary(str(config["label"]), title),
@@ -77,7 +81,7 @@ def handle_open_action(display_name: str, parameters: dict[str, Any]) -> dict[st
 
 def _open_scratchpad() -> dict[str, Any]:
     return _success(
-        summary="Open scratchpad",
+        summary="Requested opening scratchpad",
         entity={"type": "scratchpad", "id": "scratchpad", "title": "Scratchpad"},
         route_url="sidebar://scratchpad",
         section="chat",
@@ -90,7 +94,7 @@ def _open_tasks(parameters: dict[str, Any]) -> dict[str, Any]:
     if target == "today":
         entity = {"type": "task_scope", "id": "today", "title": title or "Today"}
         return _success(
-            summary="Open tasks today",
+            summary="Requested opening tasks today",
             entity=entity,
             route_url="sidebar://tasks/today",
             section="tasks",
@@ -162,6 +166,16 @@ def _route(prefix: str, entity_id: str) -> str:
     return f"sidebar://{prefix}/{quote(entity_id, safe='')}"
 
 
+def _open_entity_id(
+    display_name: str, parameters: dict[str, Any], id_field: str
+) -> str:
+    if display_name == "Open File":
+        return _optional_text(parameters, id_field) or _required_text(
+            parameters, "path"
+        )
+    return _required_text(parameters, id_field)
+
+
 def _required_text(parameters: dict[str, Any], key: str) -> str:
     value = _optional_text(parameters, key)
     if not value:
@@ -179,5 +193,5 @@ def _optional_text(parameters: dict[str, Any], key: str) -> str | None:
 
 def _summary(label: str, title: str | None) -> str:
     if title:
-        return f"Open {label} {title}"
-    return f"Open {label}"
+        return f"Requested opening {label} {title}"
+    return f"Requested opening {label}"
