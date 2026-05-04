@@ -134,6 +134,34 @@ HeaderActionButton(
 
 ---
 
+## Rationalization
+
+`AppIcon` should be a curated vocabulary, not a one-to-one wrapper around every historical SF Symbol literal.
+
+When adding or migrating symbols, classify each icon by concept:
+
+| Category | Meaning | Design-system outcome |
+|---|---|---|
+| Canonical | Represents a stable sideBar concept | Add to `AppIcon` and use wherever the concept appears |
+| Replace | Duplicates an existing concept with local variation | Replace with the canonical `AppIcon` |
+| Context-specific | Low-frequency but meaningfully distinct | Keep as a named `AppIcon` |
+| Dynamic/external | Comes from backend, widget configuration, or a system payload | Keep behind an explicit dynamic resolver boundary |
+
+Do not collapse icons just to reduce the count. `paperclip` for attachments, `key.horizontal` for credentials, and `doc.viewfinder` for PDF fit are distinct concepts even if they are low-frequency.
+
+Do collapse local variation when the symbol does not carry different meaning. Common candidates for consolidation are:
+
+- success and completion variants
+- warning and error variants
+- generic document and file variants
+- close, dismiss, and clear affordances
+- share, export, and download actions
+- disclosure and navigation chevrons
+
+**Rule**: If a symbol cannot be given a clear semantic `AppIcon` name, review whether it should become an alias to an existing canonical icon.
+
+---
+
 ## Canonical native concepts
 
 ### Domains
