@@ -84,7 +84,8 @@
           "audits/patterns-audit",
           "audits/component-inventory",
           "audits/token-audit",
-          "audits/system-framework-usage-audit"
+          "audits/system-framework-usage-audit",
+          "audits/apple-icon-inventory-2026-05-04"
         ]
       }
     ]

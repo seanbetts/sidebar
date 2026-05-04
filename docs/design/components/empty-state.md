@@ -23,7 +23,7 @@ Use `EmptyStateView` when the content area loaded successfully but has nothing t
 EmptyStateView(
     title: String,
     subtitle: String? = nil,
-    systemImage: String? = nil
+    icon: AppIcon? = nil
 )
 ```
 
@@ -31,7 +31,7 @@ EmptyStateView(
 |---|---|---|
 | `title` | Yes | Primary message. One short sentence. |
 | `subtitle` | No | Supporting detail. Use sparingly. |
-| `systemImage` | No | SF Symbol name. Rendered at `Icon.lg` inside a muted circle. Decorative — hidden from VoiceOver. |
+| `icon` | No | Semantic `AppIcon`. Rendered at `Icon.lg` inside a muted circle. Decorative, hidden from VoiceOver. |
 
 ---
 
@@ -40,7 +40,7 @@ EmptyStateView(
 - Always use `EmptyStateView` for empty list and content states. Do not write ad-hoc empty state layouts inline in feature views.
 - Keep `title` short — one sentence, sentence case. "No notes yet." not "You don't have any notes yet. Create one to get started."
 - Use `subtitle` only when the reason or next step isn't obvious from the title alone.
-- `systemImage` is optional. Use it when the icon adds clarity, not just decoration.
+- `icon` is optional. Use it when the icon adds clarity, not just decoration.
 - Do not add a call-to-action button to `EmptyStateView`. If an action is needed, use [`PlaceholderView`](./placeholder) which has a built-in action slot, or place a button separately in the view hierarchy.
 
 ## Semantic categories

@@ -1,31 +1,250 @@
 ---
 title: Iconography
-description: SF Symbols usage, sizing, rendering modes, and the SkillIconResolver system for sideBar.
+description: Native SF Symbols, web Lucide mappings, semantic icon naming, sizing, rendering modes, and ownership rules for sideBar.
 ---
 
 ## Purpose
 
-Define how icons are used across sideBar: which system, how they are sized, how rendering modes are applied, and how the skill icon system works.
+Define the target icon system for sideBar across iOS, macOS, widgets, extensions, and web. Icon choices should feel native, restrained, and consistent across surfaces.
+
+This document describes the future-state design system. Current gaps are tracked in [Implementation Gaps](../implementation-gaps) and the Apple icon audit in [Apple Icon Inventory](../audits/apple-icon-inventory-2026-05-04).
 
 ---
 
-## Icon system
+## Icon systems
 
-sideBar uses **SF Symbols exclusively**. There are no custom icon assets in the app. Every icon is rendered via `Image(systemName:)` or `Label` with a system image.
+Native Apple surfaces use **SF Symbols**. Web surfaces use **Lucide Svelte**.
 
-This is intentional. SF Symbols:
-- Scale correctly with Dynamic Type and accessibility text sizes
-- Adapt automatically to light and dark mode
-- Support variable rendering modes (monochrome, palette, multicolor, hierarchical)
-- Stay visually consistent with native iOS and macOS UI
+Native icons are selected through semantic `AppIcon` constants, not raw `Image(systemName:)` strings at call sites. Web icons should use the closest Lucide equivalent for the same concept.
 
-**Rule**: Do not add custom icon assets. If SF Symbols does not have a suitable icon, raise it as a product decision — do not work around it with a custom asset.
+**Rules**:
+
+- Do not add custom native icon assets for concepts covered by SF Symbols.
+- Do not choose Lucide icons independently from native. Start from the native semantic concept, then pick the closest Lucide equivalent.
+- If no existing semantic concept fits, add one to `AppIcon` and update this doc before shipping the new icon.
+
+---
+
+## Native semantic API
+
+`AppIcon` is the canonical native icon vocabulary. It lives in shared Apple code so the main app, widgets, share extension, and Safari extension can reuse the same symbol choices.
+
+Target location:
+
+```swift
+ios/sideBar/sideBarShared/Utilities/AppIcon.swift
+```
+
+Target shape:
+
+```swift
+public struct AppIcon: RawRepresentable, Hashable, Sendable {
+    public let rawValue: String
+
+    public init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+}
+```
+
+Semantic constants are grouped by concept:
+
+```swift
+public extension AppIcon {
+    enum Action {
+        public static let add = AppIcon(rawValue: "plus")
+        public static let close = AppIcon(rawValue: "xmark")
+        public static let more = AppIcon(rawValue: "ellipsis")
+        public static let delete = AppIcon(rawValue: "trash")
+    }
+
+    enum Domain {
+        public static let chat = AppIcon(rawValue: "bubble")
+        public static let notes = AppIcon(rawValue: "text.document")
+        public static let tasks = AppIcon(rawValue: "checkmark.square")
+        public static let websites = AppIcon(rawValue: "globe")
+        public static let files = AppIcon(rawValue: "folder")
+    }
+}
+```
+
+**Rule**: Feature code should use semantic `AppIcon` constants. Raw SF Symbol names belong in `AppIcon`, approved resolver boundaries, or explicit migration exceptions.
+
+---
+
+## Rendering helpers
+
+`AppIcon` itself should stay UI-framework-free. Rendering helpers belong in UI-owning targets.
+
+Recommended SwiftUI helper:
+
+```swift
+extension Image {
+    init(appIcon: AppIcon) {
+        self.init(systemName: appIcon.rawValue)
+    }
+}
+```
+
+Recommended UIKit/AppKit helpers:
+
+```swift
+#if os(iOS)
+extension UIImage {
+    convenience init?(appIcon: AppIcon) {
+        self.init(systemName: appIcon.rawValue)
+    }
+}
+#endif
+
+#if os(macOS)
+extension NSImage {
+    convenience init?(appIcon: AppIcon, accessibilityDescription: String? = nil) {
+        self.init(systemSymbolName: appIcon.rawValue, accessibilityDescription: accessibilityDescription)
+    }
+}
+#endif
+```
+
+Components may accept `AppIcon` directly:
+
+```swift
+HeaderActionButton(
+    icon: AppIcon.Action.add,
+    accessibilityLabel: "New note"
+) { ... }
+```
+
+---
+
+## Semantic ownership
+
+`AppIcon` owns raw symbol names. Domain resolvers still own domain mapping decisions.
+
+| Owner | Responsibility |
+|---|---|
+| `AppIcon` | Canonical SF Symbol raw values for native concepts |
+| `AppSection` | Which app section uses which `AppIcon.Domain` value |
+| `SkillIconResolver` | Which skill ID or icon key maps to which `AppIcon` |
+| `SidebarMenuItem` | Which action title, role, and `AppIcon.Action` belong together |
+| Empty-state helpers | Which empty-state semantic category maps to which `AppIcon` |
+| Widget models | Which widget selection state maps to which shared `AppIcon` |
+
+**Rule**: Keep semantic decisions close to the domain. Keep raw symbol values in `AppIcon`.
+
+---
+
+## Canonical native concepts
+
+### Domains
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Chat | `Domain.chat` | `bubble` |
+| Notes | `Domain.notes` | `text.document` |
+| Tasks | `Domain.tasks` | `checkmark.square` |
+| Websites | `Domain.websites` | `globe` |
+| Files | `Domain.files` | `folder` |
+| Skills Store | `Domain.skillsStore` | `command.circle` |
+| Settings | `Domain.settings` | `square.grid.2x2` |
+| Memories | `Domain.memories` | `bookmark` |
+
+### Actions
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Add or create | `Action.add` | `plus` |
+| Close or dismiss | `Action.close` | `xmark` |
+| Clear field | `Action.clearFilled` | `xmark.circle.fill` |
+| More options | `Action.more` | `ellipsis` |
+| Delete | `Action.delete` | `trash` |
+| Share | `Action.share` | `square.and.arrow.up` |
+| Share URL or text | `Action.shareOnSquare` | `square.and.arrow.up.on.square` |
+| Download | `Action.download` | `square.and.arrow.down` |
+| Copy | `Action.copy` | `doc.on.doc` |
+| Rename or edit | `Action.rename` | `pencil` |
+| Compose | `Action.compose` | `square.and.pencil` |
+| Move | `Action.move` | `arrow.forward.folder` |
+| Reorder | `Action.reorder` | `line.3.horizontal` |
+| Pin | `Action.pin` | `pin` |
+| Unpin | `Action.unpin` | `pin.slash` |
+| Archive | `Action.archive` | `archivebox` |
+| Unarchive | `Action.unarchive` | `archivebox.fill` |
+| Search | `Action.search` | `magnifyingglass` |
+| Send | `Action.send` | `arrow.up` |
+| Attach | `Action.attach` | `paperclip` |
+| Open external | `Action.openExternal` | `arrow.up.right.square` |
+| Sign out | `Action.signOut` | `rectangle.portrait.and.arrow.right` |
+
+### Navigation
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Back | `Navigation.back` | `chevron.left` |
+| Forward | `Navigation.forward` | `chevron.right` |
+| Disclosure right | `Navigation.chevronRight` | `chevron.right` |
+| Disclosure down | `Navigation.chevronDown` | `chevron.down` |
+| Expand picker | `Navigation.pickerDisclosure` | `chevron.up.chevron.down` |
+
+### States
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Success | `State.success` | `checkmark` |
+| Success in circle | `State.successCircle` | `checkmark.circle` |
+| Success filled | `State.successFilled` | `checkmark.circle.fill` |
+| Warning | `State.warning` | `exclamationmark.triangle` |
+| Warning filled | `State.warningFilled` | `exclamationmark.triangle.fill` |
+| Error | `State.error` | `exclamationmark.circle` |
+| Error filled | `State.errorFilled` | `exclamationmark.circle.fill` |
+| Empty circle | `State.emptyCircle` | `circle` |
+| Selected filled circle | `State.selectedCircle` | `circle.fill` |
+| Offline | `State.offline` | `wifi.slash` |
+| Network degraded | `State.networkWarning` | `wifi.exclamationmark` |
+| Syncing | `State.syncing` | `arrow.triangle.2.circlepath` |
+| Retry | `State.retry` | `arrow.clockwise` |
+
+### Content and media
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Note document | `Content.note` | `note.text` |
+| Text document | `Content.textDocument` | `doc.text` |
+| Generic document | `Content.document` | `doc` |
+| Filled document | `Content.documentFilled` | `doc.fill` |
+| Image placeholder | `Content.photo` | `photo` |
+| Website fallback | `Content.websiteFallback` | `globe` |
+| YouTube or video | `Media.video` | `play.rectangle` |
+| Play | `Media.playFilled` | `play.circle.fill` |
+| Audio transcription | `Media.waveform` | `waveform` |
+| Captions | `Media.captions` | `captions.bubble` |
+| PDF page fit | `PDF.fitPage` | `doc.viewfinder` |
+| Zoom in | `PDF.zoomIn` | `plus.magnifyingglass` |
+| Zoom out | `PDF.zoomOut` | `minus.magnifyingglass` |
+| Fit width | `PDF.fitWidth` | `distribute.horizontal` |
+| Fit height | `PDF.fitHeight` | `distribute.vertical` |
+
+### Settings, profile, and skills
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Profile | `Settings.profile` | `person.crop.circle` |
+| Profile filled | `Settings.profileFilled` | `person.crop.circle.fill` |
+| Add profile image | `Settings.profileAdd` | `person.crop.circle.badge.plus` |
+| User settings | `Settings.user` | `person.line.dotted.person` |
+| Assistant | `Settings.assistant` | `brain.fill` |
+| Credentials | `Settings.credentials` | `key.horizontal` |
+| Credentials connected | `Settings.credentialsFilled` | `key.horizontal.fill` |
+| Theme | `Settings.theme` | `paintpalette` |
+| Skill fallback | `Skills.fallback` | `puzzlepiece.extension` |
+| Skill category fallback | `Skills.categoryFallback` | `tag.fill` |
+| Skill tools | `Skills.tools` | `hammer` |
 
 ---
 
 ## Sizing
 
-Icon sizes come from `DesignTokens.Icon.*`. These define the frame size, not the symbol rendering size — the frame sets the visual footprint and touch target.
+Icon sizes come from `DesignTokens.Icon.*`. These define the frame size, not the symbol rendering size.
 
 | Token | Value | Use |
 |---|---|---|
@@ -35,19 +254,15 @@ Icon sizes come from `DesignTokens.Icon.*`. These define the frame size, not the
 | `Icon.xl` | 32pt | Section header icons, large actions |
 | `Icon.xxl` | 40pt | Splash or onboarding icons |
 
-### Sizing pattern
-
-SF Symbol rendering size is controlled by the font modifier, not `.imageScale`. The correct pattern is:
+SF Symbol optical size and weight are controlled by the font modifier. The frame controls footprint and touch target:
 
 ```swift
-Image(systemName: "square.and.pencil")
-    .font(.appFont(.label))       // controls symbol weight and optical size
-    .frame(width: Icon.md, height: Icon.md)  // sets footprint and touch target
+Image(appIcon: AppIcon.Action.compose)
+    .appFont(.labelMd)
+    .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
 ```
 
-`.imageScale(.medium)` is the system default and can be omitted. Do not use `.imageScale` to size icons — use the font modifier and frame together.
-
-**Exception — app logo**: `SidebarRail` uses a 26pt frame for the app logo image. This is intentional and should remain a component-local constant (`SidebarRail.logoSize = 26`), not a global token.
+**Rule**: Use font plus frame. Do not rely on `.imageScale` for sizing. `.imageScale(.medium)` is the default and should usually be omitted.
 
 ---
 
@@ -56,129 +271,143 @@ Image(systemName: "square.and.pencil")
 | Mode | When to use |
 |---|---|
 | `.monochrome` | Default for all UI icons. Single foreground color, adapts to context. |
-| `.hierarchical` | Icons with depth — primary element is fully opaque, secondary elements are reduced opacity. Use sparingly. |
-| `.palette` | Two explicit colors on a single symbol (e.g., skill store feature cards). Use only when the two-color distinction carries meaning. |
-| `.multicolor` | System-defined coloring (e.g., filled emoji-style symbols). Avoid in UI — too visually heavy. |
+| `.hierarchical` | Icons with depth where secondary elements should be quieter. Use sparingly. |
+| `.palette` | Two explicit colors when the distinction carries meaning, such as skill store feature cards. |
+| `.multicolor` | Avoid in core UI unless the system-defined color is the product decision. |
 
-**Rule**: Default to monochrome. Do not specify a rendering mode unless there is a specific reason. Explicitly set `.symbolRenderingMode(.monochrome)` only when overriding an inherited palette or multicolor mode.
+**Rule**: Default to monochrome. Set `.symbolRenderingMode(.monochrome)` only when overriding an inherited palette or multicolor mode.
 
 ---
 
-## `HeaderActionIcon`
+## Header actions
 
-`HeaderActionIcon` is the standard component for toolbar and panel header icon buttons. It wraps `Image(systemName:)` with consistent sizing and touch target:
+`HeaderActionIcon`, `HeaderActionButton`, and `HeaderActionMenuButton` are the standard components for toolbar and panel header icon buttons.
+
+Target API:
 
 ```swift
-struct HeaderActionIcon: View {
-    let systemName: String
+HeaderActionButton(
+    icon: AppIcon.Action.compose,
+    accessibilityLabel: "New note"
+) { ... }
 
-    var body: some View {
-        Image(systemName: systemName)
-            .appFont(.label)
-            .frame(width: 28, height: 20)
-            .imageScale(.medium)
-    }
-}
+HeaderActionMenuButton(
+    icon: AppIcon.Action.more,
+    accessibilityLabel: "More options",
+    items: menuItems
+)
 ```
 
-Use `HeaderActionButton` (wraps `HeaderActionIcon` in a `Button`) for interactive header actions. Use `HeaderActionMenuButton` on iOS when the button presents a menu.
-
-**Rule**: Use `HeaderActionIcon` / `HeaderActionButton` for all panel header and toolbar icon buttons. Do not build ad-hoc icon buttons inline in header views.
+**Rule**: Use `HeaderActionButton` for standalone header actions and `HeaderActionMenuButton` for overflow menus. Do not build ad-hoc icon buttons inline in header views.
 
 ---
 
 ## Skill icon system
 
-Skill icons are resolved centrally by `SkillIconResolver` in `Utilities/SkillIconResolver.swift`. This maps skill IDs and icon keys to SF Symbol names, with `puzzlepiece.extension` as the fallback for unknown skills.
+Skill icons are resolved centrally by `SkillIconResolver`. The resolver maps skill IDs and icon keys to `AppIcon` values, with `AppIcon.Skills.fallback` as the fallback for unknown skills.
 
-The resolver is the single source of truth for skill icon assignments. It is used by:
-- `SkillsStoreCardComponents` (store UI)
-- `ToolResultWorkspaceSurfaceParser` (chat tool results)
-- `AgentWorkspaceSurfaceView` (workspace)
+The resolver remains the single source of truth for skill icon assignments. It is used by:
 
-**Rule**: Do not hardcode skill icon names outside `SkillIconResolver`. Add new skill-to-symbol mappings there.
+- Skills Store surfaces
+- chat tool result surfaces
+- agent workspace surfaces
+- settings skill rows
+
+**Rule**: Do not hardcode skill symbol names outside `SkillIconResolver`. Add new skill-to-icon mappings there, using `AppIcon`.
 
 ---
 
 ## Action icon system
 
-Context menu and swipe action icons are centralised in `SidebarMenuItem` (`Design/Components/SidebarMenuItem.swift`). It provides factory methods for all common row actions with pre-assigned SF Symbol names:
+Context menu and swipe action icons are centralized in `SidebarMenuItem`. Factory methods bind action titles, roles, and `AppIcon` values:
 
-| Action | SF Symbol |
+| Action | `AppIcon` |
 |---|---|
-| Pin / Unpin | `pin` / `pin.slash` |
-| Archive / Unarchive | `archivebox` / `archivebox.fill` |
-| Rename | `pencil` |
-| Move | `arrow.forward.folder` |
-| Reorder | `line.3.horizontal` |
-| Copy | `doc.on.doc` |
-| Download | `square.and.arrow.down` |
-| Share | `square.and.arrow.up.on.square` |
-| Delete | `trash` (destructive role) |
+| Pin / Unpin | `Action.pin` / `Action.unpin` |
+| Archive / Unarchive | `Action.archive` / `Action.unarchive` |
+| Rename | `Action.rename` |
+| Move | `Action.move` |
+| Reorder | `Action.reorder` |
+| Copy | `Action.copy` |
+| Download | `Action.download` |
+| Share URL / Text | `Action.shareOnSquare` |
+| Delete | `Action.delete` |
 
-**Rule**: Use `SidebarMenuItem` factory methods for all context menu and swipe actions. Do not assign SF Symbol names to action items inline in views — add a factory method to `SidebarMenuItem` if one does not exist.
-
----
-
-## Tab bar icons
-
-Tab bar items use `Label` with `Image(systemName:)` and `.symbolVariant(.none)`. The tab bar tint is set via `.tint(tabBarTint)` at the tab view level. Do not override tint on individual tab items.
+**Rule**: Use `SidebarMenuItem` factory methods for context menu and swipe actions. Do not assign icon names inline in views.
 
 ---
 
-## Web icons (Lucide)
+## Web icon mapping
 
-The web app uses **Lucide Svelte** (`lucide-svelte`) for icons. Lucide does not have parity with SF Symbols, but the same semantic concepts should map to visually equivalent icons across platforms. The table below is the canonical mapping:
+The web app uses `lucide-svelte`. Lucide does not have parity with SF Symbols, but concepts should remain aligned across platforms.
 
-| Concept | SF Symbol (native) | Lucide (web) |
-|---|---|---|
-| Notes section | `text.document` | `FileText` |
-| Tasks section | `checkmark.square` | `CheckSquare` |
-| Websites section | `globe` | `Globe` |
-| Files section | `folder` | `FolderOpen` |
-| Chat section | `bubble` | `MessageSquare` |
-| Skills Store | `puzzlepiece.extension` | `Store` |
-| Toggle sidebar | — | `Menu` |
-| Search | `magnifyingglass` | `Search` |
-| Add / Create | `plus` | `Plus` |
-| Pin / Unpin | `pin` / `pin.slash` | `Pin` / `PinOff` |
-| Rename | `pencil` | `Pencil` |
-| Delete | `trash` | `Trash2` |
-| Copy | `doc.on.doc` | `Copy` |
-| Download | `square.and.arrow.down` | `Download` |
-| Close / Dismiss | `xmark` | `X` |
-| More options | `ellipsis` | `MoreHorizontal` |
-| Warning / Error | `exclamationmark.triangle.fill` | `AlertTriangle` |
-| Success / Check | `checkmark` | `Check` / `CheckCircle2` |
-| User / Profile | `person.crop.circle` | `User` |
-| Memory / Brain | `brain` | `Brain` |
-| Key / Credentials | `key.horizontal` | `Key` |
-| Send / Submit | `arrow.up` | `ArrowUp` |
-| Attach | `paperclip` | `Paperclip` |
-| Chevron right | `chevron.right` | `ChevronRight` |
-| Folder | `folder` | `Folder` / `FolderOpen` |
-| Sign out | `rectangle.portrait.and.arrow.right` | `LogOut` |
+| Concept | Native `AppIcon` | SF Symbol | Lucide |
+|---|---|---|---|
+| Notes section | `Domain.notes` | `text.document` | `FileText` |
+| Tasks section | `Domain.tasks` | `checkmark.square` | `CheckSquare` |
+| Websites section | `Domain.websites` | `globe` | `Globe` |
+| Files section | `Domain.files` | `folder` | `FolderOpen` |
+| Chat section | `Domain.chat` | `bubble` | `MessageSquare` |
+| Skills Store | `Domain.skillsStore` | `command.circle` | `Store` |
+| Search | `Action.search` | `magnifyingglass` | `Search` |
+| Add / Create | `Action.add` | `plus` | `Plus` |
+| Pin / Unpin | `Action.pin` / `Action.unpin` | `pin` / `pin.slash` | `Pin` / `PinOff` |
+| Rename | `Action.rename` | `pencil` | `Pencil` |
+| Delete | `Action.delete` | `trash` | `Trash2` |
+| Copy | `Action.copy` | `doc.on.doc` | `Copy` |
+| Download | `Action.download` | `square.and.arrow.down` | `Download` |
+| Close / Dismiss | `Action.close` | `xmark` | `X` |
+| More options | `Action.more` | `ellipsis` | `MoreHorizontal` |
+| Warning / Error | `State.warningFilled` | `exclamationmark.triangle.fill` | `AlertTriangle` |
+| Success / Check | `State.success` | `checkmark` | `Check` / `CheckCircle2` |
+| Profile | `Settings.profile` | `person.crop.circle` | `User` |
+| Memory / Brain | `Domain.memories` / `Settings.assistant` | `bookmark` / `brain.fill` | `Bookmark` / `Brain` |
+| Credentials | `Settings.credentials` | `key.horizontal` | `Key` |
+| Send | `Action.send` | `arrow.up` | `ArrowUp` |
+| Attach | `Action.attach` | `paperclip` | `Paperclip` |
+| Chevron right | `Navigation.chevronRight` | `chevron.right` | `ChevronRight` |
+| Sign out | `Action.signOut` | `rectangle.portrait.and.arrow.right` | `LogOut` |
 
-**Rule**: When adding a new icon concept to both platforms, consult this table first. If the concept is new, add it to the table before shipping to both platforms so the mapping is documented.
+**Rule**: When adding a new icon concept to both platforms, update this table before shipping the cross-platform change.
+
+---
+
+## Drift prevention
+
+New raw SF Symbol literals should be treated as design-system drift unless they are inside an approved resolver boundary.
+
+Approved places for raw native symbol names:
+
+- `AppIcon`
+- source tests for `AppIcon`
+- temporary migration allowlists
+- explicit resolvers that ingest dynamic backend or widget payload values before mapping to an `AppIcon`
+
+**Rule**: Feature views and shared components should use `AppIcon`. A source check should block new direct `Image(systemName: "...")`, `Label(systemImage: "...")`, `UIImage(systemName: "...")`, and `NSImage(systemSymbolName: "...")` literals outside approved files.
 
 ---
 
 ## Rules summary
 
-1. **SF Symbols only on native.** No custom icon assets.
-2. **Lucide on web.** Use `lucide-svelte`. Consult the mapping table for cross-platform semantic alignment.
-3. **Size with tokens.** Use `DesignTokens.Icon.*` for frame sizing. Never use bare integer literals (20, 22, 28px) when a token exists.
-4. **Size with font modifier.** Use `.font(.appFont(style))` to control symbol weight and optical size. Do not rely on `.imageScale` for sizing.
-5. **Monochrome by default.** Only specify a rendering mode when the default is wrong for the context.
-6. **Use `HeaderActionIcon` for header buttons.** Do not build ad-hoc icon buttons in header views.
-7. **Use `SkillIconResolver` for skill icons.** Do not hardcode skill symbol names outside the resolver.
-8. **Use `SidebarMenuItem` factory methods for action icons.** Do not assign SF Symbol names to context menu or swipe actions inline in views.
+1. **SF Symbols on native.** No custom native icon assets for concepts covered by SF Symbols.
+2. **Lucide on web.** Use the closest Lucide equivalent for the native semantic concept.
+3. **Use `AppIcon`.** Do not put raw SF Symbol strings in feature views.
+4. **Keep resolvers semantic.** `AppSection`, `SkillIconResolver`, and `SidebarMenuItem` map domain concepts to `AppIcon`.
+5. **Size with tokens.** Use `DesignTokens.Icon.*` for icon frames.
+6. **Size with font.** Use `.appFont(...)` for symbol optical size and weight.
+7. **Monochrome by default.** Only specify rendering mode when the default is wrong.
+8. **Use header components.** Do not build ad-hoc icon-only header buttons.
+9. **Use menu factories.** Context menu and swipe action icons go through `SidebarMenuItem`.
+10. **Prevent drift.** New raw symbol literals should fail source checks unless explicitly approved.
 
 ---
 
 ## Related docs
 
 - [Token Model](./token-model)
+- [Header Actions](../components/header-actions)
+- [SidebarMenuItem](../components/sidebar-menu-item)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [macOS Conventions](../platform-strategy/macos-conventions)
+- [Apple Icon Inventory](../audits/apple-icon-inventory-2026-05-04)
 - [Implementation Gaps](../implementation-gaps)

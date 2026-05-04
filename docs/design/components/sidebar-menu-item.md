@@ -1,31 +1,31 @@
 ---
 title: SidebarMenuItem
-description: Factory type for all context menu and swipe action items — provides pre-configured actions with canonical SF Symbol assignments.
+description: Factory type for all context menu and swipe action items, with pre-configured actions and canonical AppIcon assignments.
 ---
 
 ## Purpose
 
-Provide a single source of truth for the title, SF Symbol, and destructive role of every action that appears in context menus or swipe actions across the app. Do not assign SF Symbol names to menu items inline in views — use `SidebarMenuItem` factory methods.
+Provide a single source of truth for the title, `AppIcon`, and destructive role of every action that appears in context menus or swipe actions across the app. Do not assign icon names to menu items inline in views, use `SidebarMenuItem` factory methods.
 
 ---
 
 ## Factory methods
 
-| Method | Title | Symbol | Role |
+| Method | Title | Icon | Role |
 |---|---|---|---|
-| `.pin(isPinned:)` | "Pin" / "Unpin" | `pin` / `pin.slash` | — |
-| `.archive(isArchived:)` | "Archive" / "Unarchive" | `archivebox` / `archivebox.fill` | — |
-| `.rename()` | "Rename" | `pencil` | — |
-| `.move()` | "Move" | `arrow.forward.folder` | — |
-| `.reorder()` | "Reorder" | `line.3.horizontal` | — |
-| `.copy()` | "Copy" | `doc.on.doc` | — |
-| `.copyText()` | "Copy Text" | `doc.on.doc` | — |
-| `.copyMarkdown()` | "Copy Markdown" | `doc.on.doc` | — |
-| `.copyTranscript()` | "Copy Transcript" | `doc.on.doc` | — |
-| `.download()` | "Download" | `square.and.arrow.down` | — |
-| `.share()` | "Share URL" | `square.and.arrow.up.on.square` | — |
-| `.shareText()` | "Share Text" | `square.and.arrow.up.on.square` | — |
-| `.delete()` | "Delete" | `trash` | `.destructive` |
+| `.pin(isPinned:)` | "Pin" / "Unpin" | `AppIcon.Action.pin` / `AppIcon.Action.unpin` | none |
+| `.archive(isArchived:)` | "Archive" / "Unarchive" | `AppIcon.Action.archive` / `AppIcon.Action.unarchive` | none |
+| `.rename()` | "Rename" | `AppIcon.Action.rename` | none |
+| `.move()` | "Move" | `AppIcon.Action.move` | none |
+| `.reorder()` | "Reorder" | `AppIcon.Action.reorder` | none |
+| `.copy()` | "Copy" | `AppIcon.Action.copy` | none |
+| `.copyText()` | "Copy Text" | `AppIcon.Action.copy` | none |
+| `.copyMarkdown()` | "Copy Markdown" | `AppIcon.Action.copy` | none |
+| `.copyTranscript()` | "Copy Transcript" | `AppIcon.Action.copy` | none |
+| `.download()` | "Download" | `AppIcon.Action.download` | none |
+| `.share()` | "Share URL" | `AppIcon.Action.shareOnSquare` | none |
+| `.shareText()` | "Share Text" | `AppIcon.Action.shareOnSquare` | none |
+| `.delete()` | "Delete" | `AppIcon.Action.delete` | `.destructive` |
 
 Each factory method takes a `handler: @escaping () -> Void` parameter.
 
@@ -51,7 +51,7 @@ The toggle methods (`.pin`, `.archive`) take an additional `Bool` parameter and 
 
 ```swift
 HeaderActionMenuButton(
-    systemImage: "ellipsis",
+    icon: AppIcon.Action.more,
     accessibilityLabel: "More options",
     items: [
         .archive(isArchived: note.isArchived, handler: { viewModel.toggleArchive(note) }),
@@ -73,8 +73,8 @@ SidebarSwipeActions(
 
 ## Key rules
 
-- **Never assign SF Symbol names to menu items inline.** Always use a `SidebarMenuItem` factory method. If the action you need does not have a factory method, add one.
-- **`.delete()` is always destructive.** It uses `ButtonRole.destructive` automatically — do not try to replicate this with a custom `SidebarMenuItem` initialiser.
+- **Never assign icon names to menu items inline.** Always use a `SidebarMenuItem` factory method. If the action you need does not have a factory method, add one.
+- **`.delete()` is always destructive.** It uses `ButtonRole.destructive` automatically. Do not replicate this with a custom `SidebarMenuItem` initializer.
 - **Destructive actions go at the bottom of the menu.** SwiftUI renders `.destructive` role items last automatically when using `sidebarMenuItemsView`.
 - **Use `sidebarMenuItemsView(_:)` to render items** inside a `contextMenu` or `Menu`. Do not iterate over items and build `Button` views manually.
 
@@ -85,7 +85,7 @@ SidebarSwipeActions(
 When a new context menu or swipe action is needed that does not exist as a factory method:
 
 1. Add a new `static func` to the `SidebarMenuItem` extension in `SidebarMenuItem.swift`
-2. Choose a symbol from the canonical action symbol table in [Iconography](../foundations/iconography)
+2. Choose an `AppIcon.Action` from the canonical action table in [Iconography](../foundations/iconography)
 3. Set `role: .destructive` if the action is irreversible
 4. Use the new factory method everywhere — do not create the `SidebarMenuItem` inline
 
@@ -95,4 +95,4 @@ When a new context menu or swipe action is needed that does not exist as a facto
 
 - [Header Actions](./header-actions) — `HeaderActionMenuButton` uses `SidebarMenuItem` items
 - [Menus and Shortcuts](../patterns/menus-and-shortcuts) — full context menu and swipe action rules
-- [Iconography](../foundations/iconography) — canonical SF Symbol assignments
+- [Iconography](../foundations/iconography) — canonical `AppIcon` assignments

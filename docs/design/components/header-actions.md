@@ -1,6 +1,6 @@
 ---
 title: Header Action Components
-description: Standard icon buttons and button groups for panel headers and content toolbars — HeaderActionButton, HeaderActionRow, and HeaderActionMenuButton.
+description: Standard icon buttons and button groups for panel headers and content toolbars, including HeaderActionButton, HeaderActionRow, and HeaderActionMenuButton.
 ---
 
 ## Purpose
@@ -17,7 +17,7 @@ A tappable icon button for a single action. Wraps `HeaderActionIcon` in a `Butto
 
 ```swift
 HeaderActionButton(
-    systemName: String,
+    icon: AppIcon,
     accessibilityLabel: String,   // required
     action: () -> Void,
     isDisabled: Bool = false
@@ -52,7 +52,7 @@ iOS-only. A button that presents a `Menu` using `UIKitMenuButton`, backed by `Si
 ```swift
 #if os(iOS)
 HeaderActionMenuButton(
-    systemImage: String,
+    icon: AppIcon,
     accessibilityLabel: String,   // required
     items: [SidebarMenuItem],
     isCompact: Bool = false
@@ -82,12 +82,12 @@ On macOS, use a standard SwiftUI `Menu` directly — `HeaderActionMenuButton` is
 PanelHeader(title: "Notes") {
     HeaderActionRow {
         HeaderActionButton(
-            systemName: "square.and.pencil",
+            icon: AppIcon.Action.compose,
             accessibilityLabel: "New note",
             action: viewModel.createNote
         )
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "More options",
             items: [
                 .archive(isArchived: false, handler: viewModel.archiveAll),
@@ -106,4 +106,4 @@ PanelHeader(title: "Notes") {
 - [ContentHeaderRow](./overview#contentHeaderRow) — the trailing slot for header actions in detail views
 - [SidebarMenuItem](./sidebar-menu-item) — factory methods for menu items used with `HeaderActionMenuButton`
 - [Accessibility](../foundations/accessibility) — accessibility label requirements
-- [Iconography](../foundations/iconography) — canonical SF Symbol assignments for actions
+- [Iconography](../foundations/iconography) — canonical `AppIcon` assignments for actions

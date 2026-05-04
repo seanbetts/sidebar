@@ -63,13 +63,13 @@ Every interactive element that lacks a visible text label must have an `.accessi
 ```swift
 // Correct — HeaderActionButton requires a label
 HeaderActionButton(
-    systemName: "square.and.pencil",
+    icon: AppIcon.Action.compose,
     accessibilityLabel: "Edit note"
 ) { ... }
 
 // Wrong — no label on an icon-only button
 Button { ... } label: {
-    Image(systemName: "square.and.pencil")
+    Image(appIcon: AppIcon.Action.compose)
 }
 ```
 

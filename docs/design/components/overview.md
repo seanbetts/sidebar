@@ -38,7 +38,7 @@ Two layout axes:
 **When to use**: Any content detail view that opens from a panel section. Do not build a custom icon-title-subtitle layout for content headers — use `ContentHeaderRow`.
 
 **Key rules**:
-- Pass `iconName:` for SF Symbol icons or `iconView:` for custom icon views. Do not render the icon separately outside the component.
+- Pass `icon:` for semantic `AppIcon` icons or `iconView:` for custom icon views. Do not render the icon separately outside the component.
 - The `trailing` slot is for `HeaderActionRow` / `HeaderActionButton` instances. Do not place arbitrary views there.
 - Use `.vertical` axis when the subtitle needs its own line (longer metadata strings). Use `.horizontal` for compact one-line headers.
 
@@ -74,7 +74,7 @@ Standard icon buttons and button groups for panel headers and toolbars. `accessi
 
 ### SidebarMenuItem
 
-Factory type for all context menu and swipe action items. Provides canonical SF Symbol assignments and destructive role handling. See [SidebarMenuItem](./sidebar-menu-item) for the full factory method table and usage rules.
+Factory type for all context menu and swipe action items. Provides canonical `AppIcon` assignments and destructive role handling. See [SidebarMenuItem](./sidebar-menu-item) for the full factory method table and usage rules.
 
 ### SidebarSwipeActions
 
@@ -222,7 +222,7 @@ These Apple components are used without wrapping. Apply them directly — do not
 2. **Do not override backgrounds on `PanelHeader`.** The platform-adaptive background is intentional.
 3. **`ContentHeaderRow` for all content detail headers.** Do not build custom icon-title layouts for right-side content views.
 4. **`HeaderActionButton` is mandatory for header icon buttons.** It enforces the accessibility label requirement.
-5. **`SidebarMenuItem` for all action icon assignments.** No inline SF Symbol name assignments for menu or swipe actions.
+5. **`SidebarMenuItem` for all action icon assignments.** No inline icon name assignments for menu or swipe actions.
 6. **`DeleteConfirmationAlert` for all delete confirmations.** Consistent wording is a UX requirement.
 7. **`.pillStyle()` is not for new transient chrome.** New floating surfaces use Liquid Glass.
 8. **`PhoneFloatingActionDock` is iPhone-only.** Do not render on iPad or Mac.

@@ -35,7 +35,7 @@ PlaceholderView(
     subtitle: String? = nil,
     actionTitle: String? = nil,
     action: (() -> Void)? = nil,
-    iconName: String? = nil
+    icon: AppIcon? = nil
 )
 ```
 
@@ -45,7 +45,7 @@ PlaceholderView(
 | `subtitle` | No | Supporting detail or hint. |
 | `actionTitle` | No | Button label. e.g. "Try Again". Required if `action` is provided. |
 | `action` | No | Retry callback. Should re-trigger the failed load. |
-| `iconName` | No | SF Symbol name for the icon above the title. |
+| `icon` | No | Semantic `AppIcon` for the icon above the title. |
 
 `actionTitle` and `action` must be provided together — the button only renders when both are set.
 

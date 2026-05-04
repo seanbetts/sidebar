@@ -68,7 +68,7 @@ Context menus appear on long-press (iOS) and right-click (macOS). They surface r
 
 Use `PlatformContextMenu` (`Design/Components/PlatformContextMenu.swift`) for all context menus. This adapter handles the difference between iOS `.contextMenu` and macOS right-click presentation.
 
-All menu item icons are provided by `SidebarMenuItem` (`Design/Components/SidebarMenuItem.swift`) factory methods. Do not assign SF Symbol names to menu items inline in views — use or add a `SidebarMenuItem` factory method.
+All menu item icons are provided by `SidebarMenuItem` (`Design/Components/SidebarMenuItem.swift`) factory methods. Do not assign icon names to menu items inline in views, use or add a `SidebarMenuItem` factory method.
 
 ### Action ordering
 
@@ -85,15 +85,15 @@ Context menus follow this ordering convention:
 
 These actions appear consistently across sections. Use `SidebarMenuItem` factory methods for all of them:
 
-| Action | SF Symbol | Destructive |
+| Action | `AppIcon` | Destructive |
 |---|---|---|
-| Rename | `pencil` | No |
-| Move | `folder` | No |
-| Pin / Unpin | `pin` / `pin.slash` | No |
-| Archive / Unarchive | `archivebox` / `archivebox.fill` | No |
-| Open in Browser | `safari` | No |
-| Share | `square.and.arrow.up` | No |
-| Delete | `trash` | Yes |
+| Rename | `Action.rename` | No |
+| Move | `Action.move` | No |
+| Pin / Unpin | `Action.pin` / `Action.unpin` | No |
+| Archive / Unarchive | `Action.archive` / `Action.unarchive` | No |
+| Open in Browser | `Action.openExternal` | No |
+| Share | `Action.share` | No |
+| Delete | `Action.delete` | Yes |
 
 ---
 
@@ -116,7 +116,7 @@ Use `SidebarSwipeActions` (`Design/Components/SidebarSwipeActions.swift`) for al
 
 ## Section header menus
 
-Content header bars in Notes, Websites, Files, and Tasks include a `HeaderActionMenuButton` — an `ellipsis` icon that opens a menu of actions for the currently open item.
+Content header bars in Notes, Websites, Files, and Tasks include a `HeaderActionMenuButton` with `AppIcon.Action.more` that opens a menu of actions for the currently open item.
 
 ### Implementation
 

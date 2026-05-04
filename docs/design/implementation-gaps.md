@@ -100,6 +100,7 @@ Single working list of every known divergence between the design system and the 
 | Files header buttons missing `.onHover` | `FilesHeaderActions.swift:79,153,196` | [ios-conventions](./platform-strategy/ios-conventions) |
 | iOS color tokens use UIKit semantic colors — migrate to custom hex values matching unified palette | `Color+Platform.swift` | [colour](./foundations/colour) |
 | macOS `MacOSPalette` branching in `Color+Platform.swift` — remove and replace with shared implementation | `Color+Platform.swift` | [colour](./foundations/colour) |
+| Native icon usage is not centralized through `AppIcon` — 287 direct SF Symbol literal occurrences remain across the Apple app, widgets, and share extension; create the shared `AppIcon` namespace, migrate shared providers, and add source checks | `ios/sideBar/**/*.swift` | [iconography](./foundations/iconography), [apple-icon-inventory](./audits/apple-icon-inventory-2026-05-04) |
 | Icon size drift: 20px should be `Icon.md` (18) | `TasksViewComponents.swift` | [token-audit](./audits/token-audit) |
 | Icon size drift: 22px should be `Icon.md` (18) | `WebsitesDetailView+MenuActions.swift` | [token-audit](./audits/token-audit) |
 | Icon size drift: 28px should be `Icon.xl` (32) | `TasksDetailView.swift` | [token-audit](./audits/token-audit) |
