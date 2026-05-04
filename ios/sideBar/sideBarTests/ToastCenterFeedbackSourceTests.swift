@@ -19,17 +19,16 @@ final class ToastCenterFeedbackSourceTests: XCTestCase {
     func testToastBannerUsesGlassChromeInsteadOfFlatSemanticFill() throws {
         let normalized = try toastCenterSource()
 
-        XCTAssertTrue(normalized.contains("structToastBannerChromeModifier:ViewModifier{"))
-        XCTAssertTrue(normalized.contains("content.glassEffect(.regular,in:Capsule())"))
-        XCTAssertTrue(normalized.contains("content.background(.ultraThinMaterial,in:Capsule())"))
+        XCTAssertTrue(normalized.contains("StatusPill("))
+        XCTAssertTrue(normalized.contains("tone:toast.style.statusPillTone"))
         XCTAssertFalse(normalized.contains(".background(toast.style.background)"))
+        XCTAssertFalse(normalized.contains("ToastBannerChromeModifier"))
     }
 
-    func testToastBannerUsesCurrentSubheadingTypographyToken() throws {
+    func testToastBannerUsesBannerStatusPillStyle() throws {
         let normalized = try toastCenterSource()
 
-        XCTAssertTrue(normalized.contains(".appFont(.subheading)"))
-        XCTAssertFalse(normalized.contains(".appFont(.subheadlineSemibold)"))
+        XCTAssertTrue(normalized.contains("style:.banner"))
     }
 
     private func toastCenterSource() throws -> String {

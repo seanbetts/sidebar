@@ -67,6 +67,14 @@ final class HeaderStatusPopoverTests: XCTestCase {
         XCTAssertTrue(normalized.contains("actionState=HeaderStatusActionPresentationState()"))
     }
 
+    func testPillButtonUsesSharedStatusPillInsteadOfGenericPillStyle() throws {
+        let normalized = try headerStatusPillButtonSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("StatusPill("))
+        XCTAssertTrue(normalized.contains("tone:pill.tone.statusPillTone"))
+        XCTAssertFalse(normalized.contains(".pillStyle()"))
+    }
+
     func testPopoverActionButtonsUseSharedIconChromeInsteadOfTextLabels() throws {
         let normalized = try headerStatusPopoverSource().normalizedForSourceAssertions()
         let expectedButtonStyle =

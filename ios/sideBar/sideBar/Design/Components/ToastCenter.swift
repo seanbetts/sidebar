@@ -38,39 +38,12 @@ public enum ToastStyle {
     case error
     case success
 
-    public var background: Color {
+    var statusPillTone: StatusPillTone {
         switch self {
         case .error:
-            return DesignTokens.Colors.errorSurface
+            return .error
         case .success:
-            return DesignTokens.Colors.successBackground
-        }
-    }
-
-    public var foreground: Color {
-        switch self {
-        case .error:
-            return DesignTokens.Colors.error
-        case .success:
-            return DesignTokens.Colors.success
-        }
-    }
-
-    public var border: Color {
-        switch self {
-        case .error:
-            return DesignTokens.Colors.errorBorder
-        case .success:
-            return DesignTokens.Colors.successBorder
-        }
-    }
-
-    public var iconName: String {
-        switch self {
-        case .error:
-            return "exclamationmark.triangle.fill"
-        case .success:
-            return "checkmark.circle"
+            return .success
         }
     }
 
@@ -92,37 +65,16 @@ public struct ToastBanner: View {
     }
 
     public var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xsPlus) {
-            iconView
-            Text(toast.message)
-                .appFont(.subheading)
-                .lineLimit(2)
-        }
-        .foregroundStyle(toast.style.foreground)
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .modifier(ToastBannerChromeModifier())
-        .overlay(
-            Capsule()
-                .stroke(toast.style.border, lineWidth: 1)
+        StatusPill(
+            title: toast.message,
+            tone: toast.style.statusPillTone,
+            style: .banner,
+            accessibilityLabel: toast.message
         )
-        .appShadow(color: Color.black.opacity(0.08), radius: DesignTokens.Spacing.xs, y: DesignTokens.Spacing.xxs)
-        .accessibilityLabel(toast.message)
-    }
-
-    @ViewBuilder
-    private var iconView: some View {
-        Image(systemName: toast.style.iconName)
-            .appFont(.labelMd)
-    }
-}
-
-private struct ToastBannerChromeModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular, in: Capsule())
-        } else {
-            content.background(.ultraThinMaterial, in: Capsule())
-        }
+        .appShadow(
+            color: Color.black.opacity(0.08),
+            radius: DesignTokens.Spacing.xs,
+            y: DesignTokens.Spacing.xxs
+        )
     }
 }

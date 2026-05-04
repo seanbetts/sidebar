@@ -51,20 +51,73 @@ enum StatusPillTone: String, CaseIterable {
     }
 }
 
+enum StatusPillStyle {
+    case compact
+    case banner
+
+    var fontStyle: AppFontStyle {
+        switch self {
+        case .compact:
+            return .captionSemibold
+        case .banner:
+            return .subheading
+        }
+    }
+
+    var symbolFontStyle: AppFontStyle {
+        switch self {
+        case .compact:
+            return .captionSemibold
+        case .banner:
+            return .labelMd
+        }
+    }
+
+    var horizontalPadding: CGFloat {
+        switch self {
+        case .compact:
+            return DesignTokens.Spacing.xs
+        case .banner:
+            return DesignTokens.Spacing.md
+        }
+    }
+
+    var verticalPadding: CGFloat {
+        switch self {
+        case .compact:
+            return DesignTokens.Spacing.xxs
+        case .banner:
+            return DesignTokens.Spacing.xsPlus
+        }
+    }
+
+    var progressControlSize: ControlSize {
+        switch self {
+        case .compact:
+            return .small
+        case .banner:
+            return .regular
+        }
+    }
+}
+
 struct StatusPill: View {
     let title: String
     let tone: StatusPillTone
+    let style: StatusPillStyle
     let action: (() -> Void)?
     let accessibilityLabel: String?
 
     init(
         title: String,
         tone: StatusPillTone,
+        style: StatusPillStyle = .compact,
         action: (() -> Void)? = nil,
         accessibilityLabel: String? = nil
     ) {
         self.title = title
         self.tone = tone
+        self.style = style
         self.action = action
         self.accessibilityLabel = accessibilityLabel
     }
@@ -89,12 +142,12 @@ struct StatusPill: View {
             leadingAccessory
 
             Text(title)
-                .appFont(.captionSemibold)
+                .appFont(style.fontStyle)
                 .foregroundStyle(tone.foregroundColor)
                 .lineLimit(2)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xs)
-        .padding(.vertical, DesignTokens.Spacing.xxs)
+        .padding(.horizontal, style.horizontalPadding)
+        .padding(.vertical, style.verticalPadding)
         .glassChrome(.statusPill)
         .overlay {
             Capsule()
@@ -106,11 +159,11 @@ struct StatusPill: View {
     private var leadingAccessory: some View {
         if tone == .loading {
             ProgressView()
-                .controlSize(.small)
+                .controlSize(style.progressControlSize)
                 .tint(DesignTokens.Colors.textSecondary)
         } else if let iconName = tone.iconName {
             Image(systemName: iconName)
-                .appFont(.captionSemibold)
+                .appFont(style.symbolFontStyle)
                 .foregroundStyle(tone.foregroundColor)
         }
     }

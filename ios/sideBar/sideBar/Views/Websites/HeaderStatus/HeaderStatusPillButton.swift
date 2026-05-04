@@ -20,20 +20,14 @@ struct HeaderStatusPillButton: View {
     }
 
     var body: some View {
-        Button {
-            isPresented = true
-        } label: {
-            HStack(spacing: 6) {
-                pillLeadingAccessory
-                Text(pill.label)
-                    .appFont(.captionSemibold)
-                    .foregroundStyle(.secondary)
-            }
-            .pillStyle()
-        }
+        StatusPill(
+            title: pill.label,
+            tone: pill.tone.statusPillTone,
+            action: { isPresented = true },
+            accessibilityLabel: pill.accessibilityLabel
+        )
         .fixedSize(horizontal: true, vertical: false)
         .buttonStyle(.plain)
-        .accessibilityLabel(pill.accessibilityLabel)
         .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
             MacPopoverShell(
                 type: headerStatusPopoverPanelType(),
@@ -51,24 +45,6 @@ struct HeaderStatusPillButton: View {
         .onChange(of: pill.popover) { _, _ in
             actionState = HeaderStatusActionPresentationState()
             popoverState = HeaderStatusPopoverState(rows: pill.popover.rows)
-        }
-    }
-
-    @ViewBuilder
-    private var pillLeadingAccessory: some View {
-        switch pill.tone {
-        case .progress:
-            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-        case .warning:
-            Circle()
-                .fill(DesignTokens.Colors.warning)
-                .frame(width: 8, height: 8)
-        case .error:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .appFont(.caption)
-                .foregroundStyle(DesignTokens.Colors.error)
-        case .success:
-            SuccessCheckBadge(size: 14, symbolSize: 8)
         }
     }
 
@@ -99,6 +75,21 @@ struct HeaderStatusPillButton: View {
                     popoverState = popoverState.applyingFailure(rowID: row.id, message: message)
                 }
             }
+        }
+    }
+}
+
+private extension HeaderStatusTone {
+    var statusPillTone: StatusPillTone {
+        switch self {
+        case .progress:
+            return .loading
+        case .warning:
+            return .warning
+        case .error:
+            return .error
+        case .success:
+            return .success
         }
     }
 }
