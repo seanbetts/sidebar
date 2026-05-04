@@ -115,8 +115,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .buttonStyle(ChatProminentInlineActionButtonStyle())
             .controlSize(.regular)
         } else {
             Button {
@@ -180,8 +179,7 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .buttonStyle(ChatProminentInlineActionButtonStyle())
             .controlSize(.regular)
         } else {
             Button {
@@ -198,6 +196,19 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
             .buttonBorderShape(.roundedRectangle(radius: 10))
             .controlSize(.regular)
         }
+    }
+}
+
+struct ChatProminentInlineActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, DesignTokens.Spacing.smPlus)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .foregroundStyle(DesignTokens.Colors.background)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(DesignTokens.Colors.textPrimary.opacity(configuration.isPressed ? 0.82 : 1))
+            )
     }
 }
 
