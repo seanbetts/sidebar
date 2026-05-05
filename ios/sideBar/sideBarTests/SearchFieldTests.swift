@@ -48,4 +48,34 @@ final class SearchFieldTests: XCTestCase {
             SearchField.verticalPadding(for: .standard, option: .system)
         )
     }
+
+    func testSearchFieldUsesBodyFontForInputText() throws {
+        let normalized = try searchFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".appFont(.body)"))
+        XCTAssertFalse(normalized.contains(".appFont(.subheadline)"))
+    }
+}
+
+private func searchFieldSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Design")
+        .appendingPathComponent("Components")
+        .appendingPathComponent("SearchField.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read SearchField.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }

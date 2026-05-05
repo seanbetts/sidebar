@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { tasksStore, type TaskNewTaskDraft } from '$lib/stores/tasks';
-	import type { Task, TaskSyncConflict } from '$lib/types/tasks';
+	import type { Task } from '$lib/types/tasks';
 	import TasksTitlebar from '$lib/components/tasks/TasksTitlebar.svelte';
 	import TasksContent from '$lib/components/tasks/TasksContent.svelte';
 	import TaskDialogs from '$lib/components/tasks/TaskDialogs.svelte';
@@ -55,7 +55,6 @@
 	let draftListName = '';
 	let titleInput: HTMLInputElement | null = null;
 	let conflictNotice = '';
-	let pendingConflicts: TaskSyncConflict[] = [];
 	$: {
 		view = computeTasksViewState($tasksStore);
 		newTaskDraft = view.newTaskDraft;
@@ -63,17 +62,6 @@
 		draftError = $tasksStore.newTaskError;
 		showDraft = view.showDraft;
 		conflictNotice = $tasksStore.conflictNotice;
-		pendingConflicts = $tasksStore.pendingConflicts;
-	}
-
-	$: activeConflict = pendingConflicts[0] ?? null;
-
-	function handleKeepLocal(conflict: TaskSyncConflict) {
-		tasksStore.dismissConflict(conflict.operationId);
-	}
-
-	$: if (activeConflict) {
-		handleKeepLocal(activeConflict);
 	}
 
 	$: {

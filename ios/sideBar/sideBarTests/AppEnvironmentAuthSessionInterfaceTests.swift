@@ -36,6 +36,26 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.clearAuthErrorCallCount, 1)
     }
 
+    func testConfigureSubscriptionsDismissesAuthErrorToastWhenSessionRecovers() async {
+        let authSession = ObservableAuthSessionDouble(authState: .reauthenticationRequired)
+        let environment = makeEnvironment(authSession: authSession)
+
+        environment.configureSubscriptions()
+        authSession.publishAuthError(message: "Session refresh failed.")
+        await Task.yield()
+
+        XCTAssertEqual(environment.toastCenter.toast?.message, "Session refresh failed.")
+
+        authSession.update(
+            accessToken: "access-token",
+            userId: "user-123",
+            authState: .active
+        )
+        await Task.yield()
+
+        XCTAssertNil(environment.toastCenter.toast)
+    }
+
     func testConfigureSubscriptionsRoutesProtectedAuthRejectionToReauthenticationRequired() async {
         let authSession = ObservableAuthSessionDouble(
             accessToken: "stale-token",

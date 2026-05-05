@@ -114,6 +114,8 @@ public struct SkillsStoreView: View {
                 PlaceholderView(
                     title: "Unable to load Skills Store",
                     subtitle: initialLoadError,
+                    actionTitle: "Retry",
+                    action: { Task { await reloadSkillsStore() } },
                     iconName: "exclamationmark.triangle"
                 )
             } else {
@@ -288,6 +290,11 @@ public struct SkillsStoreView: View {
         }
     }
 
+    private func reloadSkillsStore() async {
+        if viewModel.settings == nil { await viewModel.load() }
+        await viewModel.loadSkills()
+    }
+
     private func submitStoreInstallPrompt(_ prompt: StoreInstallPrompt) async {
         storeInstallPromptError = nil
         let providerKeys = prompt.missingProviders.compactMap { provider -> StoreSkillProviderKeyInput? in
@@ -422,17 +429,11 @@ public struct SkillsStoreView: View {
         false
         #endif
     }
-
-    private var isCompactPhone: Bool {
-        isCompact && isPhone
-    }
-
+    private var isCompactPhone: Bool { isCompact && isPhone }
     private var searchQueryBinding: Binding<String> { searchQuery ?? $localSearchQuery }
-
     private var showsInitialLoadingState: Bool {
         SkillsStoreLogic.showsInitialLoadingState(isLoadingSkills: viewModel.isLoadingSkills, storeSkills: storeSkills)
     }
-
     private var initialLoadError: String? {
         SkillsStoreLogic.initialLoadError(storeSkills: storeSkills, skillsError: viewModel.skillsError)
     }

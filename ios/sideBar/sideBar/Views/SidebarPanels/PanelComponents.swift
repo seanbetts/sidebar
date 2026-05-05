@@ -75,7 +75,7 @@ extension View {
         let header = padding(.bottom, sidebarPanelHeaderInlineSearchShadowBleed(showsInlineSearch: showsInlineSearch))
 
         if sidebarPanelHeaderUsesStandaloneBackground() {
-            header.background(PlatformTokens.panelHeaderBackground)
+            header.background(DesignTokens.Colors.sidebar)
         } else {
             header
         }

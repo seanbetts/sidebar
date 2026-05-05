@@ -75,7 +75,7 @@ public struct SidebarRail: View {
             .accessibilityLabel("Settings")
             .sidebarHover($isSettingsHovered)
         }
-        .frame(width: 56)
+        .frame(width: DesignTokens.Size.railWidth)
         .frame(maxHeight: .infinity)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(
@@ -140,7 +140,7 @@ public struct SidebarRail: View {
             }
         } label: {
             Image(systemName: iconName(for: section))
-                .font(.system(size: 18, weight: .semibold))
+                .appFont(.labelMd)
                 .scaleEffect(iconScale(for: section))
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)

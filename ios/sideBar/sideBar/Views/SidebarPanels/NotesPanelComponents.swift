@@ -39,6 +39,14 @@ struct NotesFolderOption: Identifiable, Hashable {
     }
 }
 
+func notesTreeRowAccessibilityLabel(for item: FileNodeItem) -> String {
+    var parts = [item.displayName, item.isFile ? "note" : "folder"]
+    if let dateText = item.formattedCreatedDate {
+        parts.append("created \(dateText)")
+    }
+    return parts.joined(separator: ", ")
+}
+
 struct NewFolderSheet: View {
     @Binding var name: String
     @Binding var selectedFolder: String
@@ -163,6 +171,7 @@ struct NotesTreeRow: View {
             row
         }
         .systemShareAnchor(id: item.isFile ? SystemShareAnchorID.notesSidebarRow(item.id) : nil)
+        .accessibilityLabel(notesTreeRowAccessibilityLabel(for: item))
         #if os(macOS)
         .sidebarListSwipeActions(
             leadingTitle: onRename == nil ? nil : "Rename",

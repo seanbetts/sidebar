@@ -73,7 +73,7 @@ def test_check_reports_notes_shell_markdown_layout_and_attribute_references(
 ) -> None:
     """Notes shell files should fail if markdown layout/attribute symbols are referenced directly."""
     editor_shell_file = (
-        tmp_path / "ios/sideBar/sideBar/Views/Notes/SwiftUINoteTextEditorSurface.swift"
+        tmp_path / "ios/sideBar/sideBar/Views/Notes/AttributedNoteEditorContainer.swift"
     )
     _write(
         editor_shell_file,
@@ -84,14 +84,9 @@ def test_check_reports_notes_shell_markdown_layout_and_attribute_references(
                 let markdownEditor: MarkdownEditorAttributes
             }
         }
-        struct SwiftUINoteTextEditorSurface: View {
-            @ObservedObject var viewModel: NativeNoteEditorViewModel
+        struct AttributedNoteEditorContainer: View {
             var body: some View {
-                TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-                    .attributedTextFormattingDefinition(NoteTextFormattingDefinition())
-                    .onChange(of: viewModel.attributedContent) { previous, _ in
-                        viewModel.handleContentChange(previous: previous)
-                    }
+                Text("Notes")
                     .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             }
         }

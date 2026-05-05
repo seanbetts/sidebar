@@ -43,14 +43,7 @@
 	.loading-row {
 		height: 0.5rem;
 		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--color-muted-foreground) 20%, transparent),
-			color-mix(in srgb, var(--color-muted-foreground) 45%, transparent),
-			color-mix(in srgb, var(--color-muted-foreground) 20%, transparent)
-		);
-		background-size: 200% 100%;
-		animation: loading-shimmer 1.6s ease-in-out infinite;
+		background: color-mix(in srgb, var(--color-muted-foreground) 22%, transparent);
 		opacity: 0.7;
 	}
 
@@ -64,14 +57,5 @@
 
 	.loading-row.long {
 		width: 85%;
-	}
-
-	@keyframes loading-shimmer {
-		0% {
-			background-position: 0% 50%;
-		}
-		100% {
-			background-position: 200% 50%;
-		}
 	}
 </style>

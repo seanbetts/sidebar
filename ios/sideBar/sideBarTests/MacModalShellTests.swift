@@ -13,7 +13,10 @@ final class MacModalShellTests: XCTestCase {
     }
 
     func testLargeInspectorUsesExpandedMaximumWidth() {
-        XCTAssertEqual(MacModalShell<EmptyView>.maximumWidth(for: .largeInspectorSheet), 1_120)
+        XCTAssertEqual(
+            MacModalShell<EmptyView>.maximumWidth(for: .largeInspectorSheet),
+            DesignTokens.Size.inspectorMaxWidth
+        )
     }
 
     func testSettingsMacModalDefersChromeToMacModalShell() throws {

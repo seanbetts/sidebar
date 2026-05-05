@@ -29,7 +29,7 @@ enum StatusPillTone: String, CaseIterable {
         case .success:
             return DesignTokens.Colors.successBorder
         case .warning:
-            return DesignTokens.Colors.warning
+            return DesignTokens.Colors.warningBorder
         case .error:
             return DesignTokens.Colors.errorBorder
         }

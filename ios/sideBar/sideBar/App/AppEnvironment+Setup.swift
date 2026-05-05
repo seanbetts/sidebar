@@ -100,8 +100,12 @@ extension AppEnvironment {
 
         authSession.authStatePublisher
             .removeDuplicates()
-            .sink { [weak self] _ in
-                self?.refreshAuthState()
+            .sink { [weak self] state in
+                guard let self else { return }
+                if state == .active {
+                    self.toastCenter.dismiss()
+                }
+                self.refreshAuthState()
             }
             .store(in: &cancellables)
 

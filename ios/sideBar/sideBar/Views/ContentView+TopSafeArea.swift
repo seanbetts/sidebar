@@ -12,7 +12,7 @@ extension ContentView {
         var color: Color {
             switch self {
             case .panelChrome:
-                return PlatformTokens.panelHeaderBackground
+                return DesignTokens.Colors.sidebar
             case .settingsChrome:
                 return DesignTokens.Colors.settingsBackground
             case .contentBackground:

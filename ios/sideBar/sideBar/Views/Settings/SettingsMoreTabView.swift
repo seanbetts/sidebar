@@ -37,7 +37,7 @@ struct SettingsMoreTabView: View {
 
     private func destinationRow(for destination: Destination) -> some View {
         Label(destination.title, systemImage: destination.systemImage)
-            .appFont(.subheadline)
+            .appFont(.body)
             .symbolRenderingMode(.monochrome)
             .foregroundStyle(DesignTokens.Colors.textPrimary)
             .padding(.vertical, DesignTokens.Spacing.xxsPlus)

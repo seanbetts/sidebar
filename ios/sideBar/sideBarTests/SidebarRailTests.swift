@@ -30,6 +30,14 @@ final class SidebarRailTests: XCTestCase {
         XCTAssertFalse(normalized.contains(".onHover{"))
         XCTAssertFalse(normalized.contains("#ifos(macOS).onHover"))
     }
+
+    func testSidebarRailUsesAppFontTokenForSectionIcons() throws {
+        let normalized = try sidebarRailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".appFont(.labelMd)"))
+        XCTAssertFalse(normalized.contains(".font(.system(size:18,weight:.semibold))"))
+    }
 }
 
 private func sidebarRailSource(

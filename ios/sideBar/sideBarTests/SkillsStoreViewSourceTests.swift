@@ -18,6 +18,14 @@ final class SkillsStoreViewSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".sidebarHover($isHovered)"))
         XCTAssertTrue(normalized.contains("DesignTokens.Colors.sidebarHoverBackground"))
     }
+
+    func testInitialSkillsStoreErrorPlaceholderOffersRetry() throws {
+        let normalized = try skillsStoreViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("actionTitle:\"Retry\""))
+        XCTAssertTrue(normalized.contains("Task{awaitreloadSkillsStore()}"))
+    }
 }
 
 private func skillsStoreViewSource(

@@ -79,6 +79,10 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Share URL", systemImage: "square.and.arrow.up.on.square", role: nil, handler: handler)
     }
 
+    static func shareFile(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Share", systemImage: "square.and.arrow.up", role: nil, handler: handler)
+    }
+
     static func shareText(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(
             title: "Share Text",

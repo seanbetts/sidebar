@@ -324,7 +324,8 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(workspaceNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
-        XCTAssertTrue(splitNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
+        XCTAssertFalse(splitNormalized.contains("DragGesture("))
+        XCTAssertFalse(splitNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
     }
 
     func testWorkspaceLayoutUsesAdaptiveMacRightSidebarSnapPoints() throws {

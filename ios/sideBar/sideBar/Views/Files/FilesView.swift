@@ -10,7 +10,8 @@ public struct FilesView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
+    @AppStorage(AppStorageKeys.rightSidebarWidth)
+    private var rightSidebarWidth: Double = Double(DesignTokens.Size.rightSidebarDefaultWidth)
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     @StateObject private var pdfController = PDFViewerController()

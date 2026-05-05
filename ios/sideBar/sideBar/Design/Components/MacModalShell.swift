@@ -45,7 +45,7 @@ struct MacModalShell<Content: View>: View {
     }
 
     static func maximumWidth(for type: MacPanelType) -> CGFloat {
-        type == .largeInspectorSheet ? 1_120 : minimumWidth(for: type) + 80
+        type == .largeInspectorSheet ? DesignTokens.Size.inspectorMaxWidth : minimumWidth(for: type) + 80
     }
 }
 #else
@@ -71,7 +71,7 @@ struct MacModalShell<Content: View>: View {
     }
 
     static func maximumWidth(for type: MacPanelType) -> CGFloat {
-        type == .largeInspectorSheet ? 1_120 : minimumWidth(for: type) + 80
+        type == .largeInspectorSheet ? DesignTokens.Size.inspectorMaxWidth : minimumWidth(for: type) + 80
     }
 }
 #endif

@@ -66,10 +66,6 @@ func headerStatusPopoverPanelType() -> MacPanelType {
     .compactSheet
 }
 
-func queuedChangeResolutionPanelType() -> MacPanelType {
-    .decisionSheet
-}
-
 func storeSkillDetailPanelType() -> MacPanelType {
     .largeInspectorSheet
 }

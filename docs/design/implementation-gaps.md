@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-04. Resolved gaps were removed; partially addressed gaps were narrowed to the remaining divergence. Remaining count: 67 gaps, 39 open and 28 partial.
+**Last audit**: Reviewed against the codebase on 2026-05-04. Resolved gaps were removed; partially addressed gaps were narrowed to the remaining divergence. Remaining count: 44 gaps.
 
 ---
 
@@ -23,7 +23,6 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| Auth error toast not cleared on state recovery - `authError` is only cleared when the sink fires; if the session recovers, a stale error toast may persist | `AppEnvironment+Setup.swift` | [authentication](./patterns/authentication) |
 | Auth adapter still leaks as concrete Supabase implementation in app construction - product-facing protocol extensions exist, but the app still directly instantiates and depends on `SupabaseAuthAdapter`; finish isolating product code behind product-shaped auth interfaces | `SupabaseAuthAdapter.swift`, app composition | [authentication](./patterns/authentication) |
 | Shared request policy still not fully enforced across uploads, streaming, widgets, and extensions - `RequestExecutionPolicy` and `AppError` exist, but custom `URLSession` and extension flows still do not uniformly share auth refresh, retryability, diagnostics, and connectivity reporting | `APIClient.swift`, `SettingsAPI.swift`, `IngestionAPI.swift`, `URLSessionChatStreamClient.swift`, `IngestionUploadManager.swift`, `ShareExtensionEnvironment.swift` | [request-lifecycle](./patterns/request-lifecycle) |
 | Raw backend messages and `localizedDescription` still reach user-facing UI - unclassified backend text falls through `ErrorMapping`, and several surfaces render raw system strings directly | `ErrorMapping.swift`, `BiometricLockView.swift`, `SettingsViewModel.swift`, `SettingsSections+ProfileSupport.swift`, `ConversationsPanelView+Helpers.swift`, `QueuedChangesView.swift` | [error-handling](./patterns/error-handling), [error-presentation](./patterns/error-presentation) |
@@ -34,8 +33,6 @@ Single working list of every known divergence between the design system and the 
 | Share extension still has partly separate reachability/offline-handoff policy - shared classifiers and queue handlers exist, but extension preflight/queue behavior still does not fully follow the app-wide execute-classify-recover lifecycle | `ShareNetworkMonitor.swift`, `ShareViewController+MediaHandling.swift`, `ShareExtensionEnvironment.swift` | [request-lifecycle](./patterns/request-lifecycle) |
 | Phase 1.5 onboarding permission cards are only partially implemented - location and notification onboarding steps/requesters exist, but the shared `OnboardingPermissionCard` component and complete onboarding-phase recovery surface are still missing | `Views/Onboarding/`, `ChatView.swift` | [onboarding](./patterns/onboarding) |
 | Phase 2 AI-guided feature tour is partially implemented - `FeatureIntroCard`, `StaticFeatureCarousel`, onboarding-aware backend context, SSE events, and `onboarding-coach` exist, but a complete `FeatureTourManager`-owned tour flow is still missing | `Views/Onboarding/`, `backend/api/services/agent/` | [onboarding](./patterns/onboarding) |
-| Files header menu still has inline action construction - macOS now uses the shared header menu path with `SidebarMenuItem` items, but remaining file actions such as Share should use factory methods instead of inline item construction | `Views/Files/FilesHeaderActions.swift` | [menus-and-shortcuts](./patterns/menus-and-shortcuts) |
-| `warning` color tokens still alias neutral text colors - `success` has moved to a green token, but `warning`/warning background/border still need the target amber palette `#d97706`/`#fbbf24` | `DesignTokens.swift` | [colour](./foundations/colour) |
 
 ### Medium priority
 
@@ -53,18 +50,11 @@ Single working list of every known divergence between the design system and the 
 | `IngestionCenterView` still acts as an active per-file tracking panel - Live Activity infrastructure exists, but the center has not been reduced to a lightweight ingestion history summary | `IngestionCenterView.swift` | [wait-ux](./patterns/wait-ux) |
 | Note content edits bypass `WriteQueue` when online - `NotesEditorViewModel` calls the API directly; should apply locally first and sync in background | `NotesEditorViewModel.swift` | [wait-ux](./patterns/wait-ux) |
 | Website mutations (pin, rename, archive, delete) bypass `WriteQueue` when online - only queued when offline; should be consistently optimistic | `WebsitesViewModel.swift`, `WebsitesWriteQueueExecutor.swift` | [wait-ux](./patterns/wait-ux) |
-| `QueuedChangeResolutionSheet` conflict resolution modal should be removed - local always wins, no user input needed | `QueuedChangeResolutionSheet.swift`, `ContentView+SignedIn.swift` | [wait-ux](./patterns/wait-ux) |
-| `QueuedChangesView` in Settings shows conflict resolution buttons ("Keep Queued Change" / "Use Server Version") - remove conflict UI; keep failed write visibility and retry only | `QueuedChangesView.swift` | [wait-ux](./patterns/wait-ux) |
-| Web `TaskConflictDialog` conflict resolution modal should be removed - local always wins | `frontend/src/lib/components/tasks/TaskConflictDialog.svelte` | [wait-ux](./patterns/wait-ux) |
 | Web note and website mutations still have uneven in-session retry/error surfacing - note edit paths use foreground retry helpers, but website mutations and several note/sidebar mutations still perform one-shot calls before surfacing errors | `frontend/src/lib/` | [wait-ux](./patterns/wait-ux) |
 | iOS color tokens use UIKit semantic colors - migrate to custom hex values matching unified palette | `Color+Platform.swift` | [colour](./foundations/colour) |
 | macOS `MacOSPalette` branching in `Color+Platform.swift` - remove and replace with shared implementation | `Color+Platform.swift` | [colour](./foundations/colour) |
 | Native icon usage is not centralized through `AppIcon` - 287 direct SF Symbol literal occurrences remain across the Apple app, widgets, and share extension; rationalize low-use symbols, hard-migrate app-owned symbols to the shared `AppIcon` namespace, and add strict source checks | `ios/sideBar/**/*.swift` | [iconography](./foundations/iconography), [apple-icon-inventory](./audits/apple-icon-inventory-2026-05-04) |
-| Icon size drift: 20px should be `Icon.md` (18) | `TasksViewComponents.swift` | [token-audit](./audits/token-audit) |
-| Icon size drift: 30px should be `Icon.xl` (32) | `StoreSkillCredentialsView.swift` | [token-audit](./audits/token-audit) |
 | Icon size literals should reference tokens | `SettingsSections+Additional.swift`, `SidebarRail.swift`, `SettingsSections+Utilities.swift` | [token-audit](./audits/token-audit) |
-| SidebarRail font: `.font(.system(size: 18, weight: .semibold))` should be `.appFont(.label)` or equivalent | `SidebarRail.swift` | [macos-conventions](./platform-strategy/macos-conventions) |
-| Missing size tokens: `railWidth = 56`, `dividerWidth = 8`, `rightSidebarDefaultWidth = 360` | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
 | Spacing and radius literals in several views should reference existing tokens | `PanelHeader.swift`, `SidebarRail.swift`, `WorkspaceLayout.swift`, `PhoneFloatingActionMetrics` | [token-audit](./audits/token-audit) |
 | Liquid Glass adoption plan remains partially complete - key chrome surfaces now use `GlassChrome`/glass-style abstractions, but adoption is not complete across all listed surfaces and should be checked against the iOS/macOS 26 target APIs | Multiple files | [materials-and-appearance](./foundations/materials-and-appearance) |
 | Unified form field adoption remains incomplete - `FormField` exists and many Settings/Auth fields use it, but legacy wrappers (`ProfileIOSFieldRow`, `SettingsMacFieldRow`) and standalone auth fields still need to converge on one platform-adaptive form field system | `ProfileIOSFieldRow.swift`, `SettingsMacStyles.swift`, `SecureFieldWithToggle.swift`, onboarding views | [components](./components/overview) |
@@ -91,16 +81,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| Accessibility label coverage remains incomplete on list rows - chat message rows now have message labels, but notes and task content rows still do not have confirmed row-level `.accessibilityLabel` coverage | `ChatMessageRow.swift`, `NotesViewComponents.swift`, `TasksViewComponents.swift` | [accessibility](./foundations/accessibility) |
 | `AppFontStyle` scale rationalisation: reduce 25 styles to 13 by removing all semibold weight variants (structural styles become bold, content styles become regular), removing redundant size-named styles, and renaming remaining styles semantically. Highest-impact rename: `.labelMd` -> `.label` has 32 call sites across the codebase. Full plan in [typography](./foundations/typography#scale-rationalisation). | `AppFontStyle.swift` + callers | [typography](./foundations/typography) |
-| `SearchField` uses `.appFont(.subheadline)` - `.subheadline` is removed in the rationalisation; correct replacement is `.body` (search input text is body-weight content, not a subheading) | `SearchField.swift` | [typography](./foundations/typography) |
-| `SettingsMoreTabView` uses `.appFont(.subheadline)` - removed in rationalisation; replace with `.body` | `SettingsMoreTabView.swift` | [typography](./foundations/typography) |
-| `MacModalShell` inspector sheet `maxWidth: 1_120` is hardcoded - should be a `Size` token (`Size.inspectorMaxWidth`) | `MacModalShell.swift` | [components](./components/overview) |
-| `SkillsStoreDetailView` "Unable to load Skills Store" placeholder has no retry action - user cannot recover without navigating away and back | `SkillsStoreDetailView.swift:117` | [error-presentation](./patterns/error-presentation) |
-| `DesignTokens.Typography` is unused - parallel system to `AppFontStyle`, should be removed | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
-| `SwiftUINoteTextEditorSurface.swift` is dead code - no callers, not mounted at runtime; safe to delete | `Views/Notes/SwiftUINoteTextEditorSurface.swift` | [system-framework-usage-audit](./audits/system-framework-usage-audit) |
-| `PlatformTokens.panelHeaderBackground` is a single-value alias for `DesignTokens.Colors.sidebar` - remove and update callers | `PlatformTokens.swift` | [token-audit](./audits/token-audit) |
-| `SidebarSplitView.swift` contains remnant `DragGesture`-based resize handle code - remove | `SidebarSplitView.swift` | [macos-conventions](./platform-strategy/macos-conventions) |
 
 ---
 
@@ -116,10 +97,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| `SidebarLoading` has CSS shimmer animation (`loading-shimmer`) - remove and replace with static placeholder rows matching native `SidebarListSkeleton` | `frontend/src/lib/components/left-sidebar/SidebarLoading.svelte` | [wait-ux](./patterns/wait-ux) |
-| `SyncStatusIndicator` dead component remains - settings usage appears removed, but the unused component file still exists and should be deleted | `SyncStatusIndicator.swift` | [wait-ux](./patterns/wait-ux) |
 | Native chat missing inline tool execution states - web shows "Using {name}" / "Used {name}" / "Failed to use {name}" per message; native has no equivalent | `ChatToolBanners.swift` / chat message components | [wait-ux](./patterns/wait-ux) |
-| Web dark mode surface values lighter than native - `--background` dark is `oklch(0.16 0 0)`, should be `oklch(0.065 0 0)` (about `#0a0a0a`) | `frontend/src/app.css` | [colour](./foundations/colour) |
 
 ### Low priority
 
@@ -128,16 +106,6 @@ Single working list of every known divergence between the design system and the 
 | Web keyboard shortcuts incomplete - full shortcut audit needed | `frontend/src/` | [menus-and-shortcuts](./patterns/menus-and-shortcuts) |
 | Web tasks detail view is a modal form only - native has a dedicated detail panel; web should have an equivalent | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
 | Skills Store is nested inside the Settings modal on web - should be a standalone section matching native | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
-
----
-
-## Backend / system prompt
-
-### High priority
-
-| Gap | File(s) | Source |
-|---|---|---|
-| `<memory_guidance>` instructs the assistant to "Use Write File only for project files or documents in the workspace" - no Write File capability exists in the Files skill; the instruction should be removed | `backend/api/config/prompts.yaml` | [sideBar model](./patterns/sidebar-model) |
 
 ---
 

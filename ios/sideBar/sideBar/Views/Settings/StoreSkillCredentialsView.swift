@@ -188,7 +188,7 @@ struct StoreSkillCredentialsView: View {
                             .appFont(.size18Semibold)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
-                    .frame(width: 30, height: 30)
+                    .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                     .disabled(isProviderActionBusy(normalizedProvider))
                     .buttonStyle(.plain)
 
@@ -200,7 +200,7 @@ struct StoreSkillCredentialsView: View {
                                 .appFont(.size18Semibold)
                         }
                         .accessibilityLabel("Turn Off Skill")
-                        .frame(width: 30, height: 30)
+                        .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                         .disabled(isProviderActionBusy(normalizedProvider))
                         .buttonStyle(.plain)
                     }

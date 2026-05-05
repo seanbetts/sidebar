@@ -19,6 +19,28 @@ func taskRowCompletionAction(
     return .complete
 }
 
+func taskRowAccessibilityLabel(
+    task: TaskItem,
+    dueLabel: String?,
+    repeatLabel: String?,
+    selection: TaskSelection
+) -> String {
+    var parts = [task.title]
+    if taskRowCompletionAction(selection: selection, taskStatus: task.status) == .reopen {
+        parts.append("completed")
+    }
+    if let dueLabel, !dueLabel.isEmpty {
+        parts.append("due \(dueLabel)")
+    }
+    if let repeatLabel, !repeatLabel.isEmpty {
+        parts.append("repeats \(repeatLabel)")
+    }
+    if task.notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+        parts.append("has notes")
+    }
+    return parts.joined(separator: ", ")
+}
+
 struct TaskPill: View {
     let text: String
     let iconName: String?
@@ -89,7 +111,7 @@ struct TaskRow<MenuContent: View>: View {
                         Image(systemName: "repeat")
                             .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
-                            .frame(width: 20, height: 20)
+                            .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Repeat details")
@@ -124,7 +146,7 @@ struct TaskRow<MenuContent: View>: View {
                                 Circle()
                                     .fill(checkboxFillColor)
                                     .opacity(1)
-                                    .frame(width: 20, height: 20)
+                                    .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                                 Image(systemName: "checkmark")
                                     .appFont(.captionSemibold)
                                     .foregroundStyle(checkboxMarkColor)
@@ -133,14 +155,14 @@ struct TaskRow<MenuContent: View>: View {
                         } else {
                             Group {
                                 if isCompleting {
-                                    SuccessCheckBadge(size: 20, symbolSize: 11)
+                                    SuccessCheckBadge(size: DesignTokens.Icon.md, symbolSize: 11)
                                 } else {
                                     Image(systemName: "circle")
                                         .appFont(.body)
                                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 }
                             }
-                            .frame(width: 20, height: 20)
+                            .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                             .contentTransition(.symbolEffect(.replace))
                         }
                     }
@@ -234,6 +256,14 @@ struct TaskRow<MenuContent: View>: View {
                 }
             },
             including: taskRowTapGestureMask()
+        )
+        .accessibilityLabel(
+            taskRowAccessibilityLabel(
+                task: task,
+                dueLabel: dueLabel,
+                repeatLabel: repeatLabel,
+                selection: selection
+            )
         )
     }
 

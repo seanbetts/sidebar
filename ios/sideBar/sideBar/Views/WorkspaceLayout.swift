@@ -46,12 +46,13 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     private let shouldAnimateSidebar: Bool
     private let onShowSettings: (() -> Void)?
     private let leftPanelContent: (AppSection?) -> AnyView
-    @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
+    @AppStorage(AppStorageKeys.rightSidebarWidth)
+    private var rightSidebarWidth: Double = Double(DesignTokens.Size.rightSidebarDefaultWidth)
     @State private var draggingRightWidth: Double?
 
-    private let defaultRightSidebarWidth: Double = 360
-    private let railWidth: Double = 56
-    private let dividerWidth: Double = 8
+    private let defaultRightSidebarWidth: Double = Double(DesignTokens.Size.rightSidebarDefaultWidth)
+    private let railWidth: Double = Double(DesignTokens.Size.railWidth)
+    private let dividerWidth: Double = Double(DesignTokens.Size.dividerWidth)
     private let leftPanelWidth: Double = 280
     private let minRightSidebarWidth: Double = 280
     private let minMainWidth: Double = 320
