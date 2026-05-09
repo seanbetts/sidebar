@@ -194,6 +194,76 @@ def _build_reuters_main_only_html() -> str:
     """
 
 
+def _build_bbc_article_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>AI firms should pay tax on robots to limit job cuts, says tech boss - BBC News</title>
+        <meta property="article:published_time" content="2026-05-05T10:24:57.672000+00:00"/>
+        <link rel="canonical" href="https://www.bbc.com/news/articles/cjep33w1q7wo"/>
+        <script type="application/ld+json">{
+          "@context": "https://schema.org",
+          "@type": "ReportageNewsArticle",
+          "headline": "AI firms should pay tax on robots to limit job cuts, says tech boss",
+          "thumbnailUrl": "https://ichef.bbci.co.uk/news/1024/branded_news/e758/live/4e7ade30-4563-11f1-a66d-a173f5fb620e.jpg",
+          "author": [{"@type": "Person", "name": "Huw Thomas"}]
+        }</script>
+      </head>
+      <body>
+        <main>
+          <article>
+            <div data-component="headline-block">
+              <h1>AI firms should face 'minimum wage for robots' to limit job cuts, says tech boss</h1>
+            </div>
+            <div data-component="byline-block">
+              <p>3 days ago</p>
+              <p>Huw Thomas</p>
+            </div>
+            <div data-component="image-block">
+              <figure>
+                <img class="hide-when-no-script" src="https://static.files.bbci.co.uk/bbcdotcom/web/grey-placeholder.png"/>
+                <img
+                  alt="Getty Images A humanoid robot being demonstrated at an event."
+                  src="https://ichef.bbci.co.uk/news/1024/cpsprodpb/e758/live/4e7ade30-4563-11f1-a66d-a173f5fb620e.jpg.webp"
+                />
+                <span>Getty Images</span>
+                <figcaption>Whether the robots are physical or operating as AI agents inside computer systems, Charles Radclyffe says taxation would help control their impact on human jobs</figcaption>
+              </figure>
+            </div>
+            <div data-component="text-block">
+              <p>A tech entrepreneur has warned politicians are not ready for the impact of artificial intelligence (AI) on workplaces and said charging companies to use it could limit job losses.</p>
+            </div>
+            <div data-component="text-block">
+              <p>Charles Radclyffe, whose Wales-based company developed software that completes office tasks in seconds, said policymakers failed to grasp the speed and scale of the challenge.</p>
+            </div>
+            <div data-component="links-block">
+              <a href="https://www.bbc.com/news/articles/example-related">Fake damage and imaginary watches</a>
+            </div>
+            <div data-component="text-block">
+              <p>"If you really look at the individuals who are facing this transition now, and I would say white-collar workers in places like Cardiff are absolutely in firing line of AI, then I think this is a really serious problem," Radclyffe said.</p>
+            </div>
+            <div data-component="subheadline-block">
+              <p>Where do the political parties stand?</p>
+            </div>
+            <div data-component="text-block">
+              <p>Welsh Labour was focusing on using AI to cut bureaucracy in the public sector and building digital infrastructure.</p>
+            </div>
+            <div data-component="embed-block">
+              <div>embedded promo</div>
+            </div>
+            <div data-component="tag-list-block">
+              <a href="/news/topics/cp7r8vgl2dlt">Wales</a>
+            </div>
+            <div data-component="links-block">
+              <a href="https://www.bbc.com/news/articles/example-more-top-stories">More top stories</a>
+            </div>
+          </article>
+        </main>
+      </body>
+    </html>
+    """
+
+
 def _build_patreon_post_html() -> str:
     next_data = {
         "props": {
@@ -541,6 +611,57 @@ def test_parse_url_local_gameinformer_uses_domain_extractor(monkeypatch):
     )
     assert (
         "https://gameinformer.com/sites/default/files/styles/body_default/public/2026/04/28/4928bf17/smartrifle.jpg.webp"
+        in parsed.content
+    )
+
+
+def test_parse_url_local_bbc_article_uses_domain_extractor(monkeypatch):
+    html = _build_bbc_article_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.bbc.com/news/articles/cjep33w1q7wo",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.bbc.com/news/articles/cjep33w1q7wo"
+    )
+
+    assert (
+        parsed.title
+        == "AI firms should face 'minimum wage for robots' to limit job cuts, says tech boss"
+    )
+    assert parsed.published_at == datetime(
+        2026, 5, 5, 10, 24, 57, 672000, tzinfo=UTC
+    )
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["author"] == "Huw Thomas"
+    assert (
+        "A tech entrepreneur has warned politicians are not ready for the impact "
+        "of artificial intelligence"
+        in parsed.content
+    )
+    assert (
+        "\"If you really look at the individuals who are facing this transition now"
+        in parsed.content
+    )
+    assert "## Where do the political parties stand?" in parsed.content
+    assert "Welsh Labour was focusing on using AI" in parsed.content
+    assert "Fake damage and imaginary watches" not in parsed.content
+    assert "More top stories" not in parsed.content
+    assert "embedded promo" not in parsed.content
+    assert "Kenfig Artificial intelligence Employment Port Talbot" not in parsed.content
+    assert "grey-placeholder" not in parsed.content
+    assert (
+        "https://ichef.bbci.co.uk/news/1024/cpsprodpb/e758/live/4e7ade30-4563-11f1-a66d-a173f5fb620e.jpg.webp"
         in parsed.content
     )
 

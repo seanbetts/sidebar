@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from urllib.parse import urlparse
 
+from api.services.web_save_parser_bbc import extract_bbc_body_html
 from api.services.web_save_parser_blog_google import extract_blog_google_body_html
 from api.services.web_save_parser_cleanup import (
     extract_openai_body_html,
@@ -33,6 +34,11 @@ def apply_domain_specific_extractor(
         return extract_wired_body_html(raw_html) or article_html, empty_metadata, False
     if domain.endswith("theverge.com"):
         return extract_verge_body_html(raw_html) or article_html, empty_metadata, False
+    if domain.endswith("bbc.com"):
+        bbc_payload = extract_bbc_body_html(raw_html)
+        if bbc_payload:
+            bbc_html, bbc_meta = bbc_payload
+            return bbc_html, _coerce_metadata(bbc_meta), False
     if steam_payload := extract_steamcommunity_payload_for_url(raw_html, final_url):
         steam_html, steam_meta = steam_payload
         return steam_html, _coerce_metadata(steam_meta), False
