@@ -88,6 +88,8 @@ public final class AppEnvironment: ObservableObject {
     public let navigation: NavigationCoordinator
     /// Shadow workspace state store used for migration to a unified workspace engine.
     public let workspaceStore: WorkspaceStore
+    /// Persists per-device workspace restoration snapshots.
+    public let workspaceRestorationStore: WorkspaceRestorationStore
     let workspaceOpenFailureStore: WorkspaceOpenFailureStore
     let persistenceController: PersistenceController
     let realtimeClient: RealtimeClient
@@ -219,6 +221,7 @@ public final class AppEnvironment: ObservableObject {
         self.tasksViewModel = dependencies.tasksViewModel
         self.navigation = NavigationCoordinator()
         self.workspaceStore = workspaceStore
+        self.workspaceRestorationStore = WorkspaceRestorationStore(userDefaults: resolvedStorage.userDefaults)
         self.workspaceOpenFailureStore = workspaceOpenFailureStore
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
