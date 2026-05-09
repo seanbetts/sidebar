@@ -31,22 +31,6 @@ public struct UploadRequest {
     }
 }
 
-struct UploadPayload {
-    let fileURL: URL
-    let filename: String
-    let mimeType: String
-    let folder: String
-}
-
-private struct UploadResponse: Decodable {
-    let fileId: String?
-    let data: UploadResponseData?
-}
-
-private struct UploadResponseData: Decodable {
-    let fileId: String?
-}
-
 /// Handles background uploads for ingestion.
 public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
@@ -127,24 +111,51 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         let lifecycleClient = APIClient(config: self.config, session: session)
 
         markUploadStartRequested(uploadId: request.uploadId)
-        workQueue.async {
-            guard self.canProceedWithStart(uploadId: request.uploadId) else {
-                self.dispatchCompletion(onCompletion, result: .failure(URLError(.cancelled)))
-                return
-            }
-            let boundary = "Boundary-\(UUID().uuidString)"
+        Task { [weak self] in
+            guard let self else { return }
             let urlRequest: URLRequest
             do {
-                urlRequest = try lifecycleClient.buildRequest(
+                urlRequest = try await lifecycleClient.buildPreparedRequest(
                     intent.path,
                     method: intent.method,
-                    headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"]
+                    headers: ["Content-Type": "multipart/form-data; boundary=__pending__"],
+                    intent: intent
                 )
             } catch {
                 self.markUploadStartFinished(uploadId: request.uploadId)
                 self.dispatchCompletion(onCompletion, result: .failure(error))
                 return
             }
+            self.enqueuePreparedUploadStart(
+                request: request,
+                urlRequest: urlRequest,
+                session: session,
+                logger: logger,
+                onProgress: onProgress,
+                onCompletion: onCompletion
+            )
+        }
+    }
+
+    private func enqueuePreparedUploadStart(
+        request: UploadRequest,
+        urlRequest preparedRequest: URLRequest,
+        session: URLSession,
+        logger: Logger,
+        onProgress: @escaping (Double) -> Void,
+        onCompletion: @escaping (Result<String, Error>) -> Void
+    ) {
+        workQueue.async {
+            guard self.canProceedWithStart(uploadId: request.uploadId) else {
+                self.dispatchCompletion(onCompletion, result: .failure(URLError(.cancelled)))
+                return
+            }
+            let boundary = "Boundary-\(UUID().uuidString)"
+            var urlRequest = preparedRequest
+            urlRequest.setValue(
+                "multipart/form-data; boundary=\(boundary)",
+                forHTTPHeaderField: "Content-Type"
+            )
 
             let bodyURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString)")
             do {
@@ -262,17 +273,15 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             let message = APIClient.decodeErrorMessage(data: responseData, decoder: decoder)
-            lifecycleClient.postFailureNotification(
-                intent: intent,
-                statusCode: http.statusCode,
+            let appError = AppError.classify(
+                operation: intent.operation,
+                requestKind: intent.requestKind,
+                responseStatus: http.statusCode,
                 backendMessage: message,
                 transportError: nil
             )
-            if let message {
-                dispatchCompletion(onCompletion, result: .failure(APIClientError.apiError(message)))
-                return
-            }
-            dispatchCompletion(onCompletion, result: .failure(APIClientError.requestFailed(http.statusCode)))
+            lifecycleClient.postFailureNotification(intent: intent, appError: appError)
+            dispatchCompletion(onCompletion, result: .failure(APIClientError.appError(appError)))
             return
         }
         do {
@@ -280,6 +289,12 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             lifecycleClient.postSuccessNotification(intent: intent, statusCode: http.statusCode)
             dispatchCompletion(onCompletion, result: .success(fileId))
         } catch {
+            let appError = AppError.classify(
+                error: APIClientError.decodingFailed,
+                operation: intent.operation,
+                requestKind: intent.requestKind
+            )
+            lifecycleClient.postFailureNotification(intent: intent, appError: appError)
             dispatchCompletion(onCompletion, result: .failure(error))
         }
     }
@@ -382,73 +397,6 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
     }
 
-}
-
-enum IngestionUploadHelpers {
-    static func writeMultipartBody(
-        to url: URL,
-        boundary: String,
-        payload: UploadPayload,
-        logger: Logger
-    ) throws {
-        FileManager.default.createFile(atPath: url.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: url)
-        defer {
-            do {
-                try handle.close()
-            } catch {
-                logger.error("Upload body file close failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-
-        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
-        try handle.write(contentsOf: Data("\(payload.folder)\r\n".utf8))
-        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(payload.filename)\"\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Type: \(payload.mimeType)\r\n\r\n".utf8))
-
-        let input = try FileHandle(forReadingFrom: payload.fileURL)
-        defer {
-            do {
-                try input.close()
-            } catch {
-                logger.error("Upload source file close failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-        var writeError: Error?
-        while autoreleasepool(invoking: {
-            let chunk = input.readData(ofLength: 1024 * 1024)
-            if chunk.isEmpty {
-                return false
-            }
-            do {
-                try handle.write(contentsOf: chunk)
-            } catch {
-                writeError = error
-                return false
-            }
-            return true
-        }) { }
-        if let writeError {
-            throw writeError
-        }
-
-        try handle.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
-    }
-
-    static func parseUploadResponse(data: Data) throws -> String {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        let payload = try decoder.decode(UploadResponse.self, from: data)
-        if let fileId = payload.fileId {
-            return fileId
-        }
-        if let fileId = payload.data?.fileId {
-            return fileId
-        }
-        throw APIClientError.decodingFailed
-    }
 }
 
 extension IngestionUploadManager: URLSessionTaskDelegate, URLSessionDataDelegate {

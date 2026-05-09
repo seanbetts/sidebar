@@ -311,10 +311,14 @@ final class IngestionUploadManagerTests: XCTestCase {
         XCTAssertNil(client.failure)
     }
 
-    private func makeManager() -> IngestionUploadManager {
+    private func makeManager(
+        accessTokenProvider: @escaping () -> String? = { "token" },
+        refreshAuthIfNeeded: (() async -> Bool)? = nil
+    ) -> IngestionUploadManager {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: accessTokenProvider,
+            refreshAuthIfNeeded: refreshAuthIfNeeded
         )
         let sessionConfig = URLSessionConfiguration.ephemeral
         sessionConfig.protocolClasses = [IngestionUploadURLProtocolMock.self]

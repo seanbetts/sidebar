@@ -35,6 +35,21 @@ extension APIClient {
         )
     }
 
+    public func buildPreparedRequest(
+        _ path: String,
+        method: HTTPMethod,
+        headers: [String: String] = [:],
+        intent: RequestIntent
+    ) async throws -> URLRequest {
+        var request = try buildRequest(
+            path,
+            method: method,
+            headers: headers
+        )
+        try await prepareAuthorizationIfNeeded(for: &request, intent: intent)
+        return request
+    }
+
     public func executeStream(
         _ request: URLRequest,
         intent: RequestIntent

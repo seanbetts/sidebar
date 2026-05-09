@@ -651,12 +651,13 @@ final class IngestionViewModelTests: XCTestCase {
             ],
             persist: false
         )
+        let toastCenter = ToastCenter()
         let viewModel = IngestionViewModel(
             api: api,
             store: store,
             temporaryStore: .shared,
             uploadManager: MockIngestionUploadManager(),
-            toastCenter: ToastCenter()
+            toastCenter: toastCenter
         )
 
         let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
@@ -664,8 +665,44 @@ final class IngestionViewModelTests: XCTestCase {
 
         XCTAssertFalse(success)
         XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-a", "file-b"])
-        XCTAssertEqual(viewModel.errorMessage, "Failed to reorder pinned files")
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to reorder pinned files")
         XCTAssertEqual(recordedOrders, [["file-b", "file-a"]])
+    }
+
+    func testPinnedMutationFailureUsesToastWithoutReplacingLoadedFileDetail() async {
+        let file = makeFile(id: "file-1")
+        let meta = IngestionMetaResponse(
+            file: file,
+            job: makeJob(),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [makeListItem(id: file.id)])),
+            metaResult: .success(meta),
+            contentResult: .failure(MockError.forced),
+            pinResult: .failure(APIClientError.requestFailed(503)),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: toastCenter
+        )
+        store.applyListUpdate([makeListItem(id: file.id)], persist: false)
+        viewModel.selectedFileId = file.id
+        viewModel.activeMeta = meta
+
+        await viewModel.togglePinned(fileId: file.id, pinned: true)
+
+        XCTAssertNotNil(viewModel.activeMeta)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(toastCenter.toast?.message, "Server is busy right now. Please try again.")
     }
 
     func testReorderPinnedFilesDoesNotCallAPIWhenOffline() async {

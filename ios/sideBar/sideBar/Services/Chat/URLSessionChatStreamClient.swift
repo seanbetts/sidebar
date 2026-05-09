@@ -70,16 +70,21 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
 
             var buffer = Data()
             var previousByte: UInt8?
-            for try await byte in bytes {
-                if Task.isCancelled { break }
-                buffer.append(byte)
-                let reachedEventBoundary = previousByte == 0x0A && byte == 0x0A
-                let reachedFlushSize = buffer.count >= 512
-                if reachedEventBoundary || reachedFlushSize {
-                    await emitEvents(from: buffer)
-                    buffer.removeAll(keepingCapacity: true)
+            do {
+                for try await byte in bytes {
+                    if Task.isCancelled { break }
+                    buffer.append(byte)
+                    let reachedEventBoundary = previousByte == 0x0A && byte == 0x0A
+                    let reachedFlushSize = buffer.count >= 512
+                    if reachedEventBoundary || reachedFlushSize {
+                        await emitEvents(from: buffer)
+                        buffer.removeAll(keepingCapacity: true)
+                    }
+                    previousByte = byte
                 }
-                previousByte = byte
+            } catch {
+                client.postFailureNotification(intent: intent, transportError: error)
+                throw error
             }
             if !buffer.isEmpty {
                 await emitEvents(from: buffer)

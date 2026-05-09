@@ -16,6 +16,7 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         URLProtocolStreamingMock.requestHandler = nil
         URLProtocolStreamingMock.dataChunks = []
         URLProtocolStreamingMock.statusCode = 200
+        URLProtocolStreamingMock.failureAfterChunks = nil
         URLProtocolStreamingMock.resetLoadTracking()
         Self.protocolIsolationLock.unlock()
         super.tearDown()
@@ -107,8 +108,9 @@ final class URLSessionChatStreamClientTests: XCTestCase {
             XCTFail("Expected error")
         } catch let error as APIClientError {
             switch error {
-            case .requestFailed(let status):
-                XCTAssertEqual(status, 500)
+            case .appError(let appError):
+                XCTAssertEqual(appError.category, .serverBusy)
+                XCTAssertEqual(appError.diagnostics["statusCode"], "500")
             default:
                 XCTFail("Unexpected error: \(error)")
             }
@@ -142,12 +144,9 @@ final class URLSessionChatStreamClientTests: XCTestCase {
             XCTFail("Expected error")
         } catch let error as APIClientError {
             switch error {
-            case .apiError(let message):
-                XCTAssertEqual(message, "Message context is too large.")
-            case .requestFailed(let status):
-                // URLProtocol + URLSession.AsyncBytes can surface empty body data on non-2xx responses.
-                // In that case, the client should still expose the HTTP status fallback.
-                XCTAssertEqual(status, 400)
+            case .appError(let appError):
+                XCTAssertEqual(appError.category, .requestRejected)
+                XCTAssertEqual(appError.diagnostics["statusCode"], "400")
             default:
                 XCTFail("Unexpected error: \(error)")
             }
@@ -200,6 +199,56 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         XCTAssertEqual(receivedSignalCount, 1)
         XCTAssertEqual(receivedSignal?.requestKind, .sseStream)
         XCTAssertEqual(receivedSignal?.errorCategory, .serverUnreachable)
+    }
+
+    func testConnectEmitsFailureSignalWhenEstablishedStreamDrops() async {
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { "token" },
+            session: session
+        )
+        let signalExpectation = expectation(description: "Dropped stream failure signal")
+        var receivedSignal: RequestLifecycleSignal?
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestFailed,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "chat.stream" else {
+                return
+            }
+            receivedSignal = signal
+            signalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        URLProtocolStreamingMock.dataChunks = [
+            Data("event: token\ndata: {\"content\":\"Hello\"}\n\n".utf8)
+        ]
+        URLProtocolStreamingMock.failureAfterChunks = URLError(.networkConnectionLost)
+        URLProtocolStreamingMock.requestHandler = { request in
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+        }
+
+        do {
+            try await client.connect(request: ChatStreamRequest(message: "Hello"))
+            XCTFail("Expected dropped stream error")
+        } catch {
+            // Expected failure.
+        }
+
+        await fulfillment(of: [signalExpectation], timeout: 1.0)
+        XCTAssertEqual(receivedSignal?.requestKind, .sseStream)
+        XCTAssertEqual(receivedSignal?.errorCategory, .offline)
     }
 
     func testDefaultSessionDoesNotUseSharedSingleton() {
@@ -301,6 +350,7 @@ private final class URLProtocolStreamingMock: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> HTTPURLResponse)?
     static var dataChunks: [Data] = []
     static var statusCode: Int = 200
+    static var failureAfterChunks: Error?
 
     override static func canInit(with request: URLRequest) -> Bool {
         true
@@ -350,6 +400,10 @@ private final class URLProtocolStreamingMock: URLProtocol {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             for chunk in URLProtocolStreamingMock.dataChunks {
                 client?.urlProtocol(self, didLoad: chunk)
+            }
+            if let failure = URLProtocolStreamingMock.failureAfterChunks {
+                client?.urlProtocol(self, didFailWithError: failure)
+                return
             }
             client?.urlProtocolDidFinishLoading(self)
         } catch {

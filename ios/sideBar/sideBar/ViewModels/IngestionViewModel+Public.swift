@@ -108,12 +108,12 @@ extension IngestionViewModel {
                 if let previousPinned {
                     store.updatePinned(fileId: fileId, pinned: previousPinned)
                 }
-                errorMessage = "Sync queue full. Review pending changes."
+                presentMutationFailureMessage("Sync queue full. Review pending changes.")
             } catch {
                 if let previousPinned {
                     store.updatePinned(fileId: fileId, pinned: previousPinned)
                 }
-                errorMessage = "Failed to queue file update"
+                presentMutationFailureMessage("Failed to queue file update")
             }
             return
         }
@@ -128,11 +128,7 @@ extension IngestionViewModel {
             if let previousPinned {
                 store.updatePinned(fileId: fileId, pinned: previousPinned)
             }
-            errorMessage = ingestionErrorMessage(
-                for: error,
-                operation: "ingestion.pin",
-                requestKind: .foregroundMutation
-            )
+            presentMutationFailure(error, operation: "ingestion.pin")
         }
     }
 
@@ -150,7 +146,7 @@ extension IngestionViewModel {
             return true
         } catch {
             store.applyPinnedOrder(previousOrder)
-            errorMessage = "Failed to reorder pinned files"
+            presentMutationFailureMessage("Failed to reorder pinned files")
             return false
         }
     }
@@ -187,9 +183,9 @@ extension IngestionViewModel {
                 }
                 return true
             } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
+                presentMutationFailureMessage("Sync queue full. Review pending changes.")
             } catch {
-                errorMessage = "Failed to queue file delete"
+                presentMutationFailureMessage("Failed to queue file delete")
             }
             return false
         }
@@ -203,6 +199,7 @@ extension IngestionViewModel {
             return true
         } catch {
             await load(force: true)
+            presentMutationFailure(error, operation: "ingestion.delete")
             return false
         }
     }
@@ -281,9 +278,9 @@ extension IngestionViewModel {
                 try await store.enqueueRename(fileId: fileId, filename: filename)
                 return true
             } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
+                presentMutationFailureMessage("Sync queue full. Review pending changes.")
             } catch {
-                errorMessage = "Failed to queue file rename"
+                presentMutationFailureMessage("Failed to queue file rename")
             }
             return false
         }

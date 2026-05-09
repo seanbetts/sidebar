@@ -70,4 +70,19 @@ extension APIClient {
             userInfo: userInfo
         )
     }
+
+    public func postFailureNotification(intent: RequestIntent, appError: AppError) {
+        let signal = RequestLifecycleSignal(
+            operation: intent.operation,
+            requestKind: intent.requestKind,
+            stage: .failed,
+            errorCategory: appError.category,
+            metadata: appError.diagnostics
+        )
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: [APIClientNotificationUserInfoKey.signal: signal]
+        )
+    }
 }
