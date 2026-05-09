@@ -12,6 +12,7 @@ from api.services.web_save_parser_cleanup import (
     extract_verge_body_html,
     extract_wired_body_html,
 )
+from api.services.web_save_parser_fortune import extract_fortune_body_html
 from api.services.web_save_parser_gameinformer import extract_gameinformer_body_html
 from api.services.web_save_parser_hbr import extract_hbr_body_html
 from api.services.web_save_parser_reuters import extract_reuters_payload
@@ -39,6 +40,11 @@ def apply_domain_specific_extractor(
         if bbc_payload:
             bbc_html, bbc_meta = bbc_payload
             return bbc_html, _coerce_metadata(bbc_meta), False
+    if domain.endswith("fortune.com"):
+        fortune_payload = extract_fortune_body_html(raw_html)
+        if fortune_payload:
+            fortune_html, fortune_meta = fortune_payload
+            return fortune_html, _coerce_metadata(fortune_meta), False
     if steam_payload := extract_steamcommunity_payload_for_url(raw_html, final_url):
         steam_html, steam_meta = steam_payload
         return steam_html, _coerce_metadata(steam_meta), False

@@ -264,6 +264,52 @@ def _build_bbc_article_html() -> str:
     """
 
 
+def _build_fortune_article_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>Anthropic grew 80-fold in a single quarter. Now it’s renting Elon Musk’s data center to cope | Fortune</title>
+        <meta property="article:published_time" content="2026-05-08T14:45:45-00:00"/>
+        <meta property="og:image" content="https://fortune.com/img-assets/wp-content/uploads/2026/05/GettyImages-2256654494-1-e1778250677916.jpg?resize=1200,600"/>
+        <link rel="canonical" href="https://fortune.com/2026/05/08/anthropic-80fold-growth-quarter-renting-elon-musk-data-center/"/>
+        <script type="application/ld+json">{
+          "@context": ["https://schema.org"],
+          "@type": "NewsArticle",
+          "headline": "Anthropic grew 80-fold in a single quarter. Now it’s renting Elon Musk’s data center to cope",
+          "author": [{"@type": "Person", "name": "Marco Quiroz-Gutierrez"}],
+          "datePublished": "2026-05-08T14:45:45-00:00",
+          "thumbnailUrl": "https://fortune.com/img-assets/wp-content/uploads/2026/05/GettyImages-2256654494-1-e1778250677916.jpg"
+        }</script>
+      </head>
+      <body>
+        <main>
+          <h1>Anthropic grew 80-fold in a single quarter. Now it’s renting Elon Musk’s data center to cope</h1>
+          <article class="article-content max-md:[&_p]:text-lg" data-cy="article-content">
+            <p>Anthropic CEO Dario Amodei said the AI company had planned for 10x growth, but instead, its revenue and usage grew 80-fold in the first quarter on an annualized basis, a surge he called “just crazy” and “too hard to handle.”</p>
+            <div class="not-prose empty:contents [:has(*[data-empty=true])]:hidden clear-both">
+              <div id="related-video">Recommended Video</div>
+            </div>
+            <div class="paywall-selector"></div>
+            <div class="paywall">
+              <p>The company is growing so fast that its infrastructure has struggled to keep up, forcing it into an unlikely partnership with an industry rival: Elon Musk.</p>
+              <p>“That is the reason we have had difficulties with compute,” Amodei said during Anthropic’s developer conference in San Francisco Wednesday, <em>CNBC</em> <a href="https://www.cnbc.com/example">reported</a>.</p>
+              <div class="not-prose empty:contents [:has(*[data-empty=true])]:hidden clear-both">
+                <div data-empty="true"></div>
+              </div>
+              <p>Anthropic’s annualized revenue has climbed to $30 billion, a three-fold increase compared to last year.</p>
+              <p>Separately, Anthropic’s skyrocketing growth has turned into an infrastructure emergency, and as a result the company struck an agreement with an unlikely ally.</p>
+              <p>The deal gives Anthropic access to 220,000 NVIDIA GPUs and 300 megawatts of new compute within the month.</p>
+            </div>
+            <div class="not-prose empty:contents [:has(*[data-empty=true])]:hidden clear-both">
+              <p>In 2001, Fortune first convened the smartest people we know.</p>
+            </div>
+          </article>
+        </main>
+      </body>
+    </html>
+    """
+
+
 def _build_patreon_post_html() -> str:
     next_data = {
         "props": {
@@ -662,6 +708,54 @@ def test_parse_url_local_bbc_article_uses_domain_extractor(monkeypatch):
     assert "grey-placeholder" not in parsed.content
     assert (
         "https://ichef.bbci.co.uk/news/1024/cpsprodpb/e758/live/4e7ade30-4563-11f1-a66d-a173f5fb620e.jpg.webp"
+        in parsed.content
+    )
+
+
+def test_parse_url_local_fortune_article_uses_domain_extractor(monkeypatch):
+    html = _build_fortune_article_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://fortune.com/2026/05/08/anthropic-80fold-growth-quarter-renting-elon-musk-data-center/",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://fortune.com/2026/05/08/anthropic-80fold-growth-quarter-renting-elon-musk-data-center/"
+    )
+
+    assert (
+        parsed.title
+        == "Anthropic grew 80-fold in a single quarter. Now it’s renting Elon Musk’s data center to cope"
+    )
+    assert parsed.published_at == datetime(
+        2026, 5, 8, 14, 45, 45, tzinfo=UTC
+    )
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["author"] == "Marco Quiroz-Gutierrez"
+    assert (
+        "Anthropic CEO Dario Amodei said the AI company had planned for 10x growth"
+        in parsed.content
+    )
+    assert (
+        "The company is growing so fast that its infrastructure has struggled to keep up"
+        in parsed.content
+    )
+    assert "The deal gives Anthropic access to 220,000 NVIDIA GPUs" in parsed.content
+    assert "Recommended Video" not in parsed.content
+    assert "In 2001, Fortune first convened the smartest people we know." not in parsed.content
+    assert "Terms of Use" not in parsed.content
+    assert "Privacy Policy" not in parsed.content
+    assert (
+        "https://fortune.com/img-assets/wp-content/uploads/2026/05/GettyImages-2256654494-1-e1778250677916.jpg?resize=1200,600"
         in parsed.content
     )
 
