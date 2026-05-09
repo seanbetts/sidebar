@@ -187,33 +187,31 @@ extension ContentView {
             if horizontalSizeClass == .compact { environment.notesPhoneDetailRouteId = newValue }
             #endif
             if newValue != nil { handleNonChatSelection(.notes) }
-            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
-            if newValue != nil { handleNonChatSelection(.files) }
-            saveCurrentWorkspaceRestorationSnapshot()
+            guard newValue != nil else { return }
+            handleNonChatSelection(.files)
         })
         content = AnyView(content.onChange(of: environment.ingestionViewModel.readyFileNotification) { _, notification in
             guard let notification else { return }
             handleReadyFileNotification(notification)
         })
         content = AnyView(content.onReceive(environment.websitesViewModel.$selectedWebsiteId) { newValue in
-            if newValue != nil { handleNonChatSelection(.websites) }
-            saveCurrentWorkspaceRestorationSnapshot()
+            guard newValue != nil else { return }
+            handleNonChatSelection(.websites)
         })
-        content = AnyView(content.onReceive(environment.chatViewModel.$selectedConversationId) { _ in
-            saveCurrentWorkspaceRestorationSnapshot()
-        })
-        content = AnyView(content.onReceive(environment.chatViewModel.$isDraftConversationActive) { _ in
-            saveCurrentWorkspaceRestorationSnapshot()
-        })
-        content = AnyView(content.onReceive(environment.chatViewModel.$draftText) { _ in
-            saveCurrentWorkspaceRestorationSnapshot()
-        })
-        content = AnyView(content.onReceive(environment.chatViewModel.$attachments) { _ in
-            saveCurrentWorkspaceRestorationSnapshot()
-        })
-        content = AnyView(content.onReceive(environment.navigation.$tasksPhoneDetailRouteId) { _ in
+        let workspaceRestorationSaveTriggers = Publishers.MergeMany([
+            environment.notesRuntime.viewModel.$selectedNoteId.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.ingestionViewModel.$selectedFileId.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.websitesViewModel.$selectedWebsiteId.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.chatViewModel.$selectedConversationId.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.chatViewModel.$isDraftConversationActive.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.chatViewModel.$draftText.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.chatViewModel.$attachments.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.navigation.$tasksPhoneDetailRouteId.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            environment.navigation.$focusedWorkspacePane.dropFirst().removeDuplicates().map { _ in () }.eraseToAnyPublisher()
+        ])
+        content = AnyView(content.onReceive(workspaceRestorationSaveTriggers) { _ in
             saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: environment.commandSelection) { _, newValue in

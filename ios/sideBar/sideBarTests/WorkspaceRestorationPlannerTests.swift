@@ -291,4 +291,58 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
 
         XCTAssertEqual(route, PhoneWorkspaceRoute(section: .files, detail: .file(id: "file-1")))
     }
+
+    func testWorkspaceRestorationSaveOnlyObserversSuppressInitialEmission() throws {
+        let normalized = try contentViewSignedInSource().normalizedForSourceAssertions()
+        let saveOnlyPublishers = [
+            "environment.notesRuntime.viewModel.$selectedNoteId",
+            "environment.ingestionViewModel.$selectedFileId",
+            "environment.websitesViewModel.$selectedWebsiteId",
+            "environment.chatViewModel.$selectedConversationId",
+            "environment.chatViewModel.$isDraftConversationActive",
+            "environment.chatViewModel.$draftText",
+            "environment.chatViewModel.$attachments",
+            "environment.navigation.$tasksPhoneDetailRouteId"
+        ]
+
+        for publisher in saveOnlyPublishers {
+            XCTAssertTrue(normalized.contains("\(publisher).dropFirst().removeDuplicates().map{_in()}.eraseToAnyPublisher()"))
+        }
+        XCTAssertTrue(normalized.contains(".onReceive(workspaceRestorationSaveTriggers){_insaveCurrentWorkspaceRestorationSnapshot()}"))
+    }
+
+    func testWorkspaceRestorationSavesFocusedPaneChanges() throws {
+        let normalized = try contentViewSignedInSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains(
+            "environment.navigation.$focusedWorkspacePane.dropFirst().removeDuplicates().map{_in()}.eraseToAnyPublisher()"
+        ))
+    }
+}
+
+private extension String {
+    func normalizedForSourceAssertions() -> String {
+        replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    }
+}
+
+private func contentViewSignedInSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("Views")
+        .appendingPathComponent("ContentView+SignedIn.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read ContentView+SignedIn.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }
