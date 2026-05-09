@@ -13,12 +13,12 @@ from api.services.ai.registry import (
     supports_google_web_search,
     supports_openai_web_search,
 )
-from api.services.ai.tool_orchestrator import ProviderToolOrchestrator
 from api.services.ai.policy import (
     AICapabilityUnavailableError,
     AIPolicyService,
     AIUserPolicy,
 )
+from api.services.ai.tool_orchestrator import LLMToolCall, ProviderToolOrchestrator
 
 
 def test_policy_requires_primary_provider_when_unset() -> None:
@@ -144,6 +144,62 @@ def test_google_function_declarations_normalize_input_schema() -> None:
     recurrence_schema = declarations[0].parameters.properties["recurrence_rule"]
     assert recurrence_schema.type.value == "OBJECT"
     assert recurrence_schema.nullable is True
+
+
+@pytest.mark.asyncio
+async def test_provider_tool_orchestrator_requests_confirmation_before_destructive_tool() -> None:
+    class GuardedToolMapper:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict[str, Any]]] = []
+
+        def get_tool_display_name(self, name: str) -> str:
+            assert name == "delete_note"
+            return "Delete Note"
+
+        def get_tool_skill_id(self, name: str) -> str:
+            assert name == "delete_note"
+            return "notes"
+
+        def get_tool_icon_key(self, name: str) -> str:
+            assert name == "delete_note"
+            return "notes"
+
+        async def execute_tool(
+            self,
+            name: str,
+            arguments: dict[str, Any],
+            **_kwargs: Any,
+        ) -> dict[str, Any]:
+            self.calls.append((name, arguments))
+            return {"success": True}
+
+    mapper = GuardedToolMapper()
+    orchestrator = ProviderToolOrchestrator(
+        tool_mapper=mapper,
+        allowed_skills=[],
+        tool_definitions=[],
+        tool_context={"user_id": "user-1"},
+    )
+
+    events = [
+        event
+        async for event in orchestrator._execute_tool_calls(
+            [LLMToolCall("tool-1", "delete_note", {"note_id": "note-1"})]
+        )
+    ]
+
+    event_types = [event["type"] for event in events if "type" in event]
+    assert event_types == [
+        "tool_call",
+        "tool_confirmation_requested",
+        "tool_status",
+    ]
+    assert events[1]["data"]["tool_call_id"] == "tool-1"
+    assert events[1]["data"]["tool_name"] == "Delete Note"
+    assert events[1]["data"]["parameters"] == {"note_id": "note-1"}
+    assert events[1]["data"]["undo_supported"] is True
+    assert events[2]["data"]["status"] == "awaiting_confirmation"
+    assert mapper.calls == []
 
 
 @pytest.mark.asyncio

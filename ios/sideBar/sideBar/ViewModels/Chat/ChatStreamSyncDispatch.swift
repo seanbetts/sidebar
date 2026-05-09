@@ -271,7 +271,18 @@ extension ChatViewModel {
     }
 
     private func handleToolStatus(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseToolStatus(event.data) else {
+        let payload = ChatStreamSyncPayloadParser.parseToolStatus(event.data)
+        ChatStreamDebugTrace.log(
+            "tool_status.received",
+            details: [
+                "parsed=\(payload != nil)",
+                "name=\(payload?.name ?? "nil")",
+                "status=\(payload?.status ?? "nil")",
+                "target=\(targetMessageIdForToolActionEvent ?? "nil")",
+                "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
+            ]
+        )
+        guard let payload else {
             return
         }
         clearActiveToolTask?.cancel()
@@ -299,8 +310,22 @@ extension ChatViewModel {
     }
 
     private func handleToolConfirmationRequested(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseToolConfirmationRequested(event.data),
-              let messageId = targetMessageIdForToolActionEvent else {
+        let payload = ChatStreamSyncPayloadParser.parseToolConfirmationRequested(event.data)
+        let targetMessageId = targetMessageIdForToolActionEvent
+        ChatStreamDebugTrace.log(
+            "confirmation.received",
+            details: [
+                "parsed=\(payload != nil)",
+                "target=\(targetMessageId ?? "nil")",
+                "stream=\(activeStreamingMessageId ?? "nil")",
+                "activeAction=\(activeToolActionMessageId ?? "nil")",
+                "confirmationId=\(payload?.confirmationId ?? "nil")",
+                "toolCallId=\(payload?.toolCallId ?? "nil")",
+                "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
+            ]
+        )
+        guard let payload,
+              let messageId = targetMessageId else {
             return
         }
         let action = ChatToolAction(
@@ -317,11 +342,30 @@ extension ChatViewModel {
         )
         recordToolConfirmation(payload, messageId: messageId)
         upsertToolAction(action, messageId: messageId)
+        ChatStreamDebugTrace.log(
+            "confirmation.upserted",
+            details: [
+                "messageId=\(messageId)",
+                "confirmationId=\(payload.confirmationId)",
+                "toolCallId=\(payload.toolCallId ?? "nil")",
+                "actions=\(toolActionsByMessageId[messageId]?.count ?? 0)"
+            ]
+        )
         markNeedsNewline()
     }
 
     private func handleToolConfirmationResolved(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseToolConfirmationResolved(event.data) else {
+        let payload = ChatStreamSyncPayloadParser.parseToolConfirmationResolved(event.data)
+        ChatStreamDebugTrace.log(
+            "confirmation_resolved.received",
+            details: [
+                "parsed=\(payload != nil)",
+                "confirmationId=\(payload?.confirmationId ?? "nil")",
+                "decision=\(payload?.decision.rawValue ?? "nil")",
+                "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
+            ]
+        )
+        guard let payload else {
             return
         }
         updateToolAction(id: payload.confirmationId) { action in

@@ -298,10 +298,24 @@ extension ChatViewModel {
     }
 
     func handleToolCall(_ event: ChatStreamEvent) {
-        guard let toolCall = toolCallFromEvent(event, includeResult: false) else {
+        let toolCall = toolCallFromEvent(event, includeResult: false)
+        let targetMessageId = targetMessageIdForToolActionEvent
+        ChatStreamDebugTrace.log(
+            "tool_call.received",
+            details: [
+                "parsed=\(toolCall != nil)",
+                "target=\(targetMessageId ?? "nil")",
+                "stream=\(activeStreamingMessageId ?? "nil")",
+                "activeAction=\(activeToolActionMessageId ?? "nil")",
+                "toolCallId=\(toolCall?.id ?? "nil")",
+                "status=\(toolCall?.status.rawValue ?? "nil")",
+                "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
+            ]
+        )
+        guard let toolCall else {
             return
         }
-        guard let messageId = targetMessageIdForToolActionEvent else {
+        guard let messageId = targetMessageId else {
             return
         }
         updateMessage(id: messageId, persist: false) { message in
@@ -321,7 +335,18 @@ extension ChatViewModel {
     }
 
     func handleToolResult(_ event: ChatStreamEvent) {
-        guard let toolCall = toolCallFromEvent(event, includeResult: true) else {
+        let toolCall = toolCallFromEvent(event, includeResult: true)
+        ChatStreamDebugTrace.log(
+            "tool_result.received",
+            details: [
+                "parsed=\(toolCall != nil)",
+                "target=\(activeStreamingMessageId ?? "nil")",
+                "toolCallId=\(toolCall?.id ?? "nil")",
+                "status=\(toolCall?.status.rawValue ?? "nil")",
+                "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
+            ]
+        )
+        guard let toolCall else {
             return
         }
         guard let messageId = activeStreamingMessageId else {

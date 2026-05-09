@@ -10,9 +10,22 @@ extension ChatViewModel {
         let explicitActions = toolActionsByMessageId[messageId] ?? []
         guard explicitActions.isEmpty,
               let message = messages.first(where: { $0.id == messageId }) else {
+            traceResolvedToolActions(
+                messageId: messageId,
+                explicitCount: explicitActions.count,
+                synthesizedCount: 0,
+                toolCallCount: messages.first(where: { $0.id == messageId })?.toolCalls?.count ?? 0
+            )
             return explicitActions
         }
-        return synthesizedToolActions(from: message)
+        let synthesizedActions = synthesizedToolActions(from: message)
+        traceResolvedToolActions(
+            messageId: messageId,
+            explicitCount: explicitActions.count,
+            synthesizedCount: synthesizedActions.count,
+            toolCallCount: message.toolCalls?.count ?? 0
+        )
+        return synthesizedActions
     }
 
     func upsertToolAction(_ action: ChatToolAction, messageId: String) {
@@ -39,8 +52,20 @@ extension ChatViewModel {
 
     func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
         guard let toolCallId = payload.toolCallId else {
+            ChatStreamDebugTrace.log(
+                "confirmation.record_skipped",
+                details: [
+                    "messageId=\(messageId)",
+                    "confirmationId=\(payload.confirmationId)",
+                    "reason=missing_tool_call_id"
+                ]
+            )
             return
         }
+        let hadMatchingToolCall = messages
+            .first(where: { $0.id == messageId })?
+            .toolCalls?
+            .contains { $0.id == toolCallId } == true
         updateMessage(id: messageId, persist: false) { message in
             let updatedToolCalls = message.toolCalls?.map { toolCall in
                 guard toolCall.id == toolCallId else {
@@ -73,6 +98,15 @@ extension ChatViewModel {
                 errorDetails: message.errorDetails
             )
         }
+        ChatStreamDebugTrace.log(
+            "confirmation.recorded",
+            details: [
+                "messageId=\(messageId)",
+                "confirmationId=\(payload.confirmationId)",
+                "toolCallId=\(toolCallId)",
+                "matchedToolCall=\(hadMatchingToolCall)"
+            ]
+        )
     }
 
     func handleToolAction(_ action: ChatToolAction, decision: ChatToolActionDecision? = nil) {
@@ -183,6 +217,26 @@ extension ChatViewModel {
                 status: .pending
             )
         }
+    }
+
+    private func traceResolvedToolActions(
+        messageId: String,
+        explicitCount: Int,
+        synthesizedCount: Int,
+        toolCallCount: Int
+    ) {
+        guard explicitCount > 0 || synthesizedCount > 0 || toolCallCount > 0 else {
+            return
+        }
+        ChatStreamDebugTrace.log(
+            "actions.resolved",
+            details: [
+                "messageId=\(messageId)",
+                "explicit=\(explicitCount)",
+                "synthesized=\(synthesizedCount)",
+                "toolCalls=\(toolCallCount)"
+            ]
+        )
     }
 
     private func toolAction(_ action: ChatToolAction, status: ChatToolActionStatus) -> ChatToolAction {

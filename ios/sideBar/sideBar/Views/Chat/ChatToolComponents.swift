@@ -47,6 +47,7 @@ struct ToolCallListView: View {
     @State private var showPopover = false
     private let maxToolPillTextWidth: CGFloat = 120
     private let headerPillMinHeight: CGFloat = 22
+    private let popoverWidth: CGFloat = 280
     private var summaryPresentation: ChatToolSummaryPresentation {
         ChatToolSummaryPresentation.from(toolCalls: toolCalls)
     }
@@ -63,10 +64,15 @@ struct ToolCallListView: View {
         .fixedSize(horizontal: true, vertical: false)
         .buttonStyle(.plain)
         .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
-            MacPopoverShell(type: toolCallPopoverPanelType()) {
-                ToolCallPopoverContent(toolCalls: toolCalls)
-            }
-            .presentationCompactAdaptation(.sheet)
+            ToolCallPopoverContent(toolCalls: toolCalls)
+                .padding(DesignTokens.Spacing.md)
+                .frame(
+                    minWidth: popoverWidth,
+                    idealWidth: popoverWidth,
+                    maxWidth: popoverWidth,
+                    alignment: .topLeading
+                )
+                .presentationCompactAdaptation(.sheet)
         }
     }
 

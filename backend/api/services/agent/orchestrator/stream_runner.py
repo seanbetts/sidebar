@@ -368,12 +368,27 @@ async def stream_with_tools(
                                     and context_dict.get("user_id")
                                     else ""
                                 )
-                                if (
-                                    user_id
-                                    and skills_guard_service.requires_confirmation(
+                                requires_confirmation = (
+                                    skills_guard_service.requires_confirmation(
                                         display_name
                                     )
-                                ):
+                                    if user_id
+                                    else False
+                                )
+                                if is_chat_stream_debug_enabled():
+                                    logger.info(
+                                        (
+                                            "ChatStreamDebug claude.tool_call "
+                                            "tool_call_id=%s display_name=%s "
+                                            "user_id_present=%s "
+                                            "requires_confirmation=%s"
+                                        ),
+                                        tool_use["id"],
+                                        display_name,
+                                        bool(user_id),
+                                        requires_confirmation,
+                                    )
+                                if user_id and requires_confirmation:
                                     create_confirmation = (
                                         skills_guard_service
                                     ).create_confirmation_requested_event

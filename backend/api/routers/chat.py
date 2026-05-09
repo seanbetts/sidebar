@@ -34,6 +34,7 @@ from api.services.agent.request_budget_feedback_service import (
     RequestBudgetFeedbackService,
 )
 from api.services.agent.skills.catalog import SkillCatalogService
+from api.services.ai.chat_stream_debug_trace import is_chat_stream_debug_enabled
 from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_protocol import CUSTOM_CHAT_STREAM_EVENT_TYPES
 from api.services.ai.gateway import AIProviderGateway
@@ -65,6 +66,13 @@ from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
+
+
+def _chat_stream_trace(message: str, **fields: object) -> None:
+    if not is_chat_stream_debug_enabled():
+        return
+    detail = " ".join(f"{key}={value}" for key, value in fields.items())
+    logger.info("ChatStreamDebug %s %s", message, detail)
 
 
 def _bad_guard_request(error: ValueError) -> BadRequestError:
@@ -537,6 +545,39 @@ async def stream_chat(
                 chat_resolution=chat_resolution,
             ):
                 event_type = event.get("type")
+                if event_type in {
+                    "tool_call",
+                    "tool_result",
+                    "tool_status",
+                    "tool_confirmation_requested",
+                    "tool_confirmation_resolved",
+                    "complete",
+                    "error",
+                }:
+                    event_data = event.get("data")
+                    event_data_keys = (
+                        ",".join(sorted(event_data.keys()))
+                        if isinstance(event_data, dict)
+                        else ""
+                    )
+                    _chat_stream_trace(
+                        "router.event",
+                        conversation_id=conversation_id,
+                        assistant_message_id=assistant_message_id,
+                        event_type=event_type,
+                        event_id=event.get("id"),
+                        data_tool_call_id=(
+                            event_data.get("tool_call_id")
+                            if isinstance(event_data, dict)
+                            else None
+                        ),
+                        data_status=(
+                            event_data.get("status")
+                            if isinstance(event_data, dict)
+                            else None
+                        ),
+                        data_keys=event_data_keys,
+                    )
 
                 if event_type == "token":
                     # Stream text token
@@ -595,6 +636,23 @@ async def stream_chat(
                         attach_confirmation_metadata_to_tool_call(
                             tool_calls_by_id=tool_calls_by_id,
                             confirmation_data=event_data,
+                        )
+                        tool_call_id = event_data.get("tool_call_id")
+                        persisted_call = (
+                            tool_calls_by_id.get(tool_call_id)
+                            if isinstance(tool_call_id, str)
+                            else None
+                        )
+                        _chat_stream_trace(
+                            "router.confirmation_metadata",
+                            confirmation_id=event_data.get("confirmation_id"),
+                            tool_call_id=tool_call_id,
+                            has_tool_call=persisted_call is not None,
+                            persisted_keys=(
+                                ",".join(sorted(persisted_call.keys()))
+                                if isinstance(persisted_call, dict)
+                                else ""
+                            ),
                         )
                     if event_type == "tool_status" and isinstance(event_data, dict):
                         status = event_data.get("status")
@@ -661,6 +719,19 @@ async def stream_chat(
                     for call_id in tool_call_order
                     if call_id in tool_calls_by_id
                 ]
+                _chat_stream_trace(
+                    "router.persist",
+                    conversation_id=conversation_id,
+                    assistant_message_id=persisted_assistant_message_id,
+                    tool_calls=[
+                        {
+                            "id": call.get("id"),
+                            "status": call.get("status"),
+                            "confirmation_id": call.get("confirmation_id"),
+                        }
+                        for call in persisted_tool_calls
+                    ],
+                )
                 persisted_messages = []
                 if persisted_bootstrap_message is not None:
                     persisted_messages.append(persisted_bootstrap_message)

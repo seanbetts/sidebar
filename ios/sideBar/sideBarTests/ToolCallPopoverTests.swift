@@ -8,6 +8,13 @@ final class ToolCallPopoverTests: XCTestCase {
         XCTAssertEqual(toolCallPopoverPanelType(), .compactPopover)
     }
 
+    func testToolCallPopoverDoesNotWrapDetailContentInMacPopoverShell() throws {
+        let normalized = try normalizedChatToolComponentsSource()
+
+        XCTAssertFalse(normalized.contains("MacPopoverShell(type:toolCallPopoverPanelType()){"))
+        XCTAssertTrue(normalized.contains("ToolCallPopoverContent(toolCalls:toolCalls)"))
+    }
+
     func testChatErrorPopoverUsesCompactPopoverPanelType() {
         XCTAssertEqual(chatErrorPopoverPanelType(), .compactPopover)
     }
@@ -113,5 +120,28 @@ final class ToolCallPopoverTests: XCTestCase {
             skillId: "prompt-preview",
             iconKey: "prompt-preview"
         )
+    }
+}
+
+private func normalizedChatToolComponentsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Chat")
+        .appendingPathComponent("ChatToolComponents.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    } catch {
+        XCTFail("Failed to read ChatToolComponents.swift: \(error)", file: file, line: line)
+        throw error
     }
 }

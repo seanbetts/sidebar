@@ -13,6 +13,7 @@ from typing import Any
 from google.genai import types
 
 from api.constants import ChatConstants
+from api.services.ai.chat_stream_debug_trace import is_chat_stream_debug_enabled
 from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
@@ -200,6 +201,8 @@ class ProviderToolOrchestrator:
 
             response_parts: list[types.Part] = []
             async for event in self._execute_tool_calls(function_calls):
+                if isinstance(event, dict) and event.get("_tool_confirmation_pending"):
+                    return
                 if isinstance(event, dict) and event.get("_google_tool_part"):
                     response_parts.append(event["payload"])
                     continue
@@ -293,6 +296,8 @@ class ProviderToolOrchestrator:
 
             response_input = []
             async for event in self._execute_tool_calls(tool_calls):
+                if isinstance(event, dict) and event.get("_tool_confirmation_pending"):
+                    return
                 if isinstance(event, dict) and event.get("_openai_responses_input"):
                     response_input.append(event["payload"])
                     continue
@@ -613,6 +618,53 @@ class ProviderToolOrchestrator:
             if isinstance(icon_key, str) and icon_key:
                 tool_call_event["icon_key"] = icon_key
             yield tool_call_event
+            user_id = self._tool_context_user_id()
+            requires_confirmation = False
+            if user_id:
+                from api.services.agent.tools.skills_guard import skills_guard_service
+
+                requires_confirmation = skills_guard_service.requires_confirmation(
+                    display_name
+                )
+                if is_chat_stream_debug_enabled():
+                    logger.info(
+                        (
+                            "ChatStreamDebug provider.tool_call "
+                            "tool_call_id=%s display_name=%s "
+                            "user_id_present=%s requires_confirmation=%s"
+                        ),
+                        tool_call.call_id,
+                        display_name,
+                        bool(user_id),
+                        requires_confirmation,
+                    )
+                if requires_confirmation:
+                    yield skills_guard_service.create_confirmation_requested_event(
+                        user_id=user_id,
+                        tool_call_id=tool_call.call_id,
+                        tool_name=tool_call.name,
+                        display_name=display_name,
+                        parameters=tool_call.arguments,
+                        skill_id=skill_id,
+                        icon_key=icon_key,
+                    )
+                    yield build_tool_status(
+                        tool_call_id=tool_call.call_id,
+                        status="awaiting_confirmation",
+                        display_name=display_name,
+                    )
+                    yield {"_tool_confirmation_pending": True}
+                    return
+            elif is_chat_stream_debug_enabled():
+                logger.info(
+                    (
+                        "ChatStreamDebug provider.tool_call "
+                        "tool_call_id=%s display_name=%s "
+                        "user_id_present=False requires_confirmation=False"
+                    ),
+                    tool_call.call_id,
+                    display_name,
+                )
             yield build_tool_status(
                 tool_call_id=tool_call.call_id,
                 status="running",
@@ -673,3 +725,12 @@ class ProviderToolOrchestrator:
                     response={"result": content_value},
                 ),
             }
+
+    def _tool_context_user_id(self) -> str:
+        """Return the current tool-context user ID when one is available."""
+        if not isinstance(self._tool_context, dict):
+            return ""
+        user_id = self._tool_context.get("user_id")
+        if not user_id:
+            return ""
+        return str(user_id)
