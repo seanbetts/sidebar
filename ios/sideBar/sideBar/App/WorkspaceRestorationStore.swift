@@ -2,8 +2,6 @@ import Foundation
 
 public final class WorkspaceRestorationStore {
     private let userDefaults: UserDefaults
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
 
     private struct DueTodayAutoOpenMarker: Codable, Equatable {
         let userId: String?
@@ -12,13 +10,10 @@ public final class WorkspaceRestorationStore {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.encoder = JSONEncoder()
-        self.decoder = JSONDecoder()
-        self.encoder.dateEncodingStrategy = .iso8601
-        self.decoder.dateDecodingStrategy = .iso8601
     }
 
     func save(_ snapshot: DeviceWorkspaceSnapshot) {
+        let encoder = makeEncoder()
         guard let data = try? encoder.encode(snapshot) else { return }
         userDefaults.set(data, forKey: key(for: snapshot.family))
     }
@@ -27,6 +22,7 @@ public final class WorkspaceRestorationStore {
         family: DeviceWorkspaceFamily,
         expectedUserId: String?
     ) -> DeviceWorkspaceSnapshot? {
+        let decoder = makeDecoder()
         guard let data = userDefaults.data(forKey: key(for: family)),
               let snapshot = try? decoder.decode(DeviceWorkspaceSnapshot.self, from: data),
               snapshot.family == family,
@@ -52,11 +48,13 @@ public final class WorkspaceRestorationStore {
             userId: userId,
             localDateKey: localDateKey
         )
+        let encoder = makeEncoder()
         guard let data = try? encoder.encode(marker) else { return }
         userDefaults.set(data, forKey: AppStorageKeys.workspaceRestorationDueTodayAutoOpenDate)
     }
 
     func hasDueTodayAutoOpened(userId: String?, localDateKey: String) -> Bool {
+        let decoder = makeDecoder()
         guard let data = userDefaults.data(
             forKey: AppStorageKeys.workspaceRestorationDueTodayAutoOpenDate
         ),
@@ -73,5 +71,17 @@ public final class WorkspaceRestorationStore {
         case .workspace:
             return AppStorageKeys.workspaceRestorationWorkspace
         }
+    }
+
+    private func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    private func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }
