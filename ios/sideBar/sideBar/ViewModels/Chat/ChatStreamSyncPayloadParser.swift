@@ -18,6 +18,18 @@ enum ChatStreamSyncPayloadParser {
         decode(ChatToolStatusPayload.self, from: data)
     }
 
+    static func parseToolConfirmationRequested(_ data: AnyCodable?) -> ChatToolConfirmationRequestedPayload? {
+        decode(ChatToolConfirmationRequestedPayload.self, from: data)
+    }
+
+    static func parseToolConfirmationResolved(_ data: AnyCodable?) -> ChatToolConfirmationResolvedPayload? {
+        decode(ChatToolConfirmationResolvedPayload.self, from: data)
+    }
+
+    static func parseUndoAvailable(_ data: AnyCodable?) -> ChatUndoAvailablePayload? {
+        decode(ChatUndoAvailablePayload.self, from: data)
+    }
+
     private static func decode<T: Decodable>(_ type: T.Type, from data: AnyCodable?) -> T? {
         guard let data else {
             return nil

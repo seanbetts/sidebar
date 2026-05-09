@@ -217,6 +217,92 @@ def test_trash_task_series_removes_instances(db_session):
     assert all(item.status == "trashed" for item in trashed)
 
 
+def test_restore_task_series_restores_template_and_instances(db_session):
+    template = TaskService.create_task(
+        db_session,
+        "user",
+        "Repeat template",
+        repeating=True,
+        repeat_template=True,
+    )
+    template.repeat_template_id = template.id
+    instance = TaskService.create_task(
+        db_session,
+        "user",
+        "Repeat instance",
+        repeating=True,
+        repeat_template=False,
+        repeat_template_id=str(template.id),
+    )
+    db_session.commit()
+
+    TaskService.trash_task_series(db_session, "user", str(template.id))
+    db_session.commit()
+
+    restored = TaskService.restore_task_series(db_session, "user", str(template.id))
+    db_session.commit()
+
+    assert {item.id for item in restored} == {template.id, instance.id}
+    assert all(item.deleted_at is None for item in restored)
+    assert all(item.status == "active" for item in restored)
+
+
+def test_restore_task_project_restores_project_tasks(db_session):
+    project = TaskService.create_task_project(db_session, "user", "Launch")
+    task = TaskService.create_task(
+        db_session,
+        "user",
+        "Project task",
+        project_id=str(project.id),
+    )
+    db_session.commit()
+
+    TaskService.delete_task_project(db_session, "user", str(project.id))
+    db_session.commit()
+
+    restored = TaskService.restore_task_project(db_session, "user", str(project.id))
+    db_session.commit()
+
+    assert restored.id == project.id
+    assert restored.deleted_at is None
+    assert TaskService.get_task(db_session, "user", str(task.id)).deleted_at is None
+
+
+def test_restore_task_group_restores_group_projects_and_tasks(db_session):
+    group = TaskService.create_task_group(db_session, "user", "Home")
+    project = TaskService.create_task_project(
+        db_session,
+        "user",
+        "Chores",
+        group_id=str(group.id),
+    )
+    group_task = TaskService.create_task(
+        db_session,
+        "user",
+        "Group task",
+        group_id=str(group.id),
+    )
+    project_task = TaskService.create_task(
+        db_session,
+        "user",
+        "Project task",
+        project_id=str(project.id),
+    )
+    db_session.commit()
+
+    TaskService.delete_task_group(db_session, "user", str(group.id))
+    db_session.commit()
+
+    restored = TaskService.restore_task_group(db_session, "user", str(group.id))
+    db_session.commit()
+
+    assert restored.id == group.id
+    assert restored.deleted_at is None
+    assert TaskService.get_task_project(db_session, "user", str(project.id)).deleted_at is None
+    assert TaskService.get_task(db_session, "user", str(group_task.id)).deleted_at is None
+    assert TaskService.get_task(db_session, "user", str(project_task.id)).deleted_at is None
+
+
 def test_reopen_non_repeating_task_restores_active_status(db_session):
     task = TaskService.create_task(db_session, "user", "Follow up", status="active")
     db_session.commit()

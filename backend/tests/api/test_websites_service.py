@@ -168,6 +168,31 @@ def test_delete_website_clears_pinned_state(db_session):
     assert metadata.get("pinned_order") is None
 
 
+def test_restore_website_clears_deleted_timestamp(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/restore",
+        title="Restore",
+        content="Content",
+        source="https://example.com/restore",
+    )
+    WebsitesService.delete_website(db_session, "test_user", website.id)
+    db_session.commit()
+
+    restored = WebsitesService.restore_website(db_session, "test_user", website.id)
+    db_session.commit()
+
+    assert restored.id == website.id
+    assert restored.deleted_at is None
+    assert WebsitesService.get_website(
+        db_session,
+        "test_user",
+        website.id,
+        mark_opened=False,
+    ) is not None
+
+
 def test_list_websites_filters(db_session):
     now = datetime.now(UTC)
     earlier = now - timedelta(days=3)

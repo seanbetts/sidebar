@@ -410,6 +410,25 @@ class NotesService:
         return note
 
     @staticmethod
+    def restore_note(db: Session, user_id: str, note_id: uuid.UUID | str) -> Note:
+        """Restore a soft-deleted note for undo flows."""
+        parsed_id = uuid.UUID(str(note_id))
+        note = (
+            db.query(Note)
+            .filter(
+                Note.user_id == user_id,
+                Note.id == parsed_id,
+            )
+            .first()
+        )
+        if not note:
+            raise NoteNotFoundError(str(note_id))
+        note.deleted_at = None
+        note.updated_at = datetime.now(UTC)
+        db.commit()
+        return note
+
+    @staticmethod
     def get_note(
         db: Session,
         user_id: str,

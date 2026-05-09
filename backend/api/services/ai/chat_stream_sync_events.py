@@ -157,6 +157,58 @@ def build_tool_status(
     return _base_event("tool_status", data)
 
 
+def build_tool_confirmation_requested(data: dict[str, Any]) -> dict[str, Any]:
+    """Build a `tool_confirmation_requested` sync event."""
+    required = {
+        "confirmation_id",
+        "tool_call_id",
+        "tool_name",
+        "parameters",
+        "summary",
+        "undo_supported",
+        "expires_at",
+    }
+    missing = [field for field in required if field not in data]
+    if missing:
+        raise ValueError(f"Missing confirmation fields: {', '.join(missing)}")
+    if not isinstance(data.get("parameters"), dict):
+        raise ValueError("confirmation parameters must be a dictionary")
+    return _base_event("tool_confirmation_requested", data)
+
+
+def build_tool_confirmation_resolved(data: dict[str, Any]) -> dict[str, Any]:
+    """Build a `tool_confirmation_resolved` sync event."""
+    confirmation_id = _ensure_string(data.get("confirmation_id"), "confirmation_id")
+    decision = _ensure_string(data.get("decision"), "decision")
+    if decision not in {"accept", "decline"}:
+        raise ValueError("confirmation decision must be accept or decline")
+    resolved_at = _ensure_string(data.get("resolved_at"), "resolved_at")
+    payload = {
+        **data,
+        "confirmation_id": confirmation_id,
+        "decision": decision,
+        "resolved_at": resolved_at,
+    }
+    return _base_event("tool_confirmation_resolved", payload)
+
+
+def build_undo_available(data: dict[str, Any]) -> dict[str, Any]:
+    """Build an `undo_available` sync event."""
+    required = {"undo_token", "summary", "expires_at", "entity_type", "entity_id"}
+    missing = [field for field in required if field not in data]
+    if missing:
+        raise ValueError(f"Missing undo fields: {', '.join(missing)}")
+    payload = {
+        **data,
+        "undo_token": _ensure_string(data.get("undo_token"), "undo_token"),
+        "summary": _ensure_string(data.get("summary"), "summary"),
+        "expires_at": _ensure_string(data.get("expires_at"), "expires_at"),
+        "entity_type": _ensure_string(data.get("entity_type"), "entity_type"),
+        "entity_id": _ensure_string(data.get("entity_id"), "entity_id"),
+    }
+    return _base_event("undo_available", payload)
+
+
 def build_workspace_patch(data: dict[str, Any]) -> dict[str, Any]:
     """Build a `workspace_patch` sync event."""
     if not isinstance(data, dict):
@@ -202,6 +254,9 @@ __all__ = [
     "build_entity_deleted",
     "build_prompt_preview",
     "build_sync_event",
+    "build_tool_confirmation_requested",
+    "build_tool_confirmation_resolved",
     "build_tool_status",
+    "build_undo_available",
     "build_workspace_patch",
 ]

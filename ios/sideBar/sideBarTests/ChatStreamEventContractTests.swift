@@ -11,7 +11,10 @@ final class ChatStreamEventContractTests: ChatViewModelTestCase {
             "entity_changed",
             "entity_deleted",
             "prompt_preview",
+            "tool_confirmation_requested",
+            "tool_confirmation_resolved",
             "tool_status",
+            "undo_available",
             "workspace_patch"
         ]
         XCTAssertEqual(Set(chatStreamCustomEventNames), expectedEventNames)
@@ -84,8 +87,11 @@ final class ChatStreamEventContractTests: ChatViewModelTestCase {
             "prompt_preview",
             "token",
             "tool_call",
+            "tool_confirmation_requested",
+            "tool_confirmation_resolved",
             "tool_result",
             "tool_status",
+            "undo_available",
             "workspace_patch"
         ]
         let handlerEvents = Set(viewModel.streamEventHandlers.keys.map(\.rawValue))

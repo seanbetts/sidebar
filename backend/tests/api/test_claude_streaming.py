@@ -146,6 +146,61 @@ async def test_stream_with_tools_handles_tool_use():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_requests_confirmation_before_destructive_tool() -> None:
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="delete_note"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"note_id": "note-1"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class GuardedToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            _ = name
+            return "Delete Note"
+
+        def get_tool_skill_id(self, name):
+            _ = name
+            return "notes"
+
+        def get_tool_icon_key(self, name):
+            _ = name
+            return "notes"
+
+    tool_mapper = GuardedToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Delete it",
+        conversation_history=[],
+        allowed_skills=[],
+        tool_context={"user_id": "user-1"},
+    ):
+        output.append(event)
+
+    confirmation_event = next(
+        item for item in output if item["type"] == "tool_confirmation_requested"
+    )
+    assert confirmation_event["data"]["tool_call_id"] == "tool-1"
+    assert confirmation_event["data"]["tool_name"] == "Delete Note"
+    assert confirmation_event["data"]["parameters"] == {"note_id": "note-1"}
+    assert confirmation_event["data"]["undo_supported"] is True
+    assert tool_mapper.calls == []
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_skill_metadata_for_tool_events():
     events = [
         SimpleNamespace(

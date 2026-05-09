@@ -349,6 +349,31 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         return {"success": True}
 
     @staticmethod
+    def restore_folder(db: Session, user_id: str, path: str) -> dict:
+        """Restore soft-deleted notes under a folder path for undo flows."""
+        normalized_path = path.strip("/")
+        notes = (
+            db.query(Note)
+            .options(
+                load_only(Note.id, Note.folder_path, Note.updated_at, Note.deleted_at)
+            )
+            .filter(Note.user_id == user_id, Note.deleted_at.is_not(None))
+            .all()
+        )
+        now = datetime.now(UTC)
+        restored_count = 0
+        for note in notes:
+            note_folder = (note.folder_path or "").strip("/")
+            if note_folder == normalized_path or note_folder.startswith(
+                f"{normalized_path}/"
+            ):
+                note.deleted_at = None
+                note.updated_at = now
+                restored_count += 1
+        db.commit()
+        return {"success": True, "restored_count": restored_count}
+
+    @staticmethod
     def get_note(db: Session, user_id: str, note_id: str) -> dict:
         """Fetch a note and format it for the API response.
 

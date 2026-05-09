@@ -78,6 +78,38 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(payload?["tool_call_id"] as? String, "tool-1")
     }
 
+    func testIngestParsesToolConfirmationRequestedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = "event: tool_confirmation_requested\n" +
+            "data: {\"confirmation_id\":\"confirm-1\",\"tool_name\":\"Delete Note\",\"summary\":\"Delete note?\",\"undo_supported\":true}\n\n"
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .toolConfirmationRequested)
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["confirmation_id"] as? String, "confirm-1")
+        XCTAssertEqual(payload?["tool_name"] as? String, "Delete Note")
+        XCTAssertEqual(payload?["summary"] as? String, "Delete note?")
+        XCTAssertEqual(payload?["undo_supported"] as? Bool, true)
+    }
+
+    func testIngestParsesUndoAvailableEvent() {
+        var parser = ChatStreamParser()
+        let chunk = "event: undo_available\n" +
+            "data: {\"undo_token\":\"undo-1\",\"summary\":\"Restore deleted note\",\"entity_type\":\"note\",\"entity_id\":\"note-1\"}\n\n"
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .undoAvailable)
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["undo_token"] as? String, "undo-1")
+        XCTAssertEqual(payload?["summary"] as? String, "Restore deleted note")
+        XCTAssertEqual(payload?["entity_type"] as? String, "note")
+        XCTAssertEqual(payload?["entity_id"] as? String, "note-1")
+    }
+
     func testIngestParsesWorkspacePatchEvent() {
         var parser = ChatStreamParser()
         let chunk = """

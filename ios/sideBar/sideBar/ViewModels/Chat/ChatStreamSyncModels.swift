@@ -76,3 +76,86 @@ struct ChatToolStatusPayload: Decodable {
         self.conversationId = try container.decodeIfPresent(String.self, forKey: .conversationId)
     }
 }
+
+enum ChatToolActionKind: String, Equatable {
+    case confirmation
+    case undo
+}
+
+enum ChatToolActionStatus: String, Equatable {
+    case pending
+    case running
+    case accepted
+    case declined
+    case undone
+    case failed
+}
+
+struct ChatToolAction: Equatable, Identifiable {
+    let id: String
+    let kind: ChatToolActionKind
+    let summary: String
+    let toolName: String?
+    let guardReason: String?
+    let undoSupported: Bool
+    let expiresAt: String?
+    let entityType: String?
+    let entityId: String?
+    let status: ChatToolActionStatus
+}
+
+/// User decision for an inline destructive tool confirmation.
+public enum ChatToolActionDecision: String, Codable {
+    case accept
+    case decline
+}
+
+struct ChatToolConfirmationRequestedPayload: Decodable {
+    let confirmationId: String
+    let toolCallId: String?
+    let toolName: String
+    let summary: String
+    let guardReason: String?
+    let undoSupported: Bool
+    let expiresAt: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case confirmationId = "confirmation_id"
+        case toolCallId = "tool_call_id"
+        case toolName = "tool_name"
+        case summary
+        case guardReason = "guard_reason"
+        case undoSupported = "undo_supported"
+        case expiresAt = "expires_at"
+    }
+}
+
+struct ChatToolConfirmationResolvedPayload: Decodable {
+    let confirmationId: String
+    let decision: ChatToolActionDecision
+    let resolvedAt: String?
+    let assistantMessage: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case confirmationId = "confirmation_id"
+        case decision
+        case resolvedAt = "resolved_at"
+        case assistantMessage = "assistant_message"
+    }
+}
+
+struct ChatUndoAvailablePayload: Decodable {
+    let undoToken: String
+    let summary: String
+    let expiresAt: String?
+    let entityType: String
+    let entityId: String
+
+    private enum CodingKeys: String, CodingKey {
+        case undoToken = "undo_token"
+        case summary
+        case expiresAt = "expires_at"
+        case entityType = "entity_type"
+        case entityId = "entity_id"
+    }
+}

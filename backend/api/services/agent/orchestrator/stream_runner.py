@@ -13,6 +13,7 @@ from api.services.agent.orchestrator.event_emitter import (
     build_onboarding_milestone_completed_event,
     iter_initial_onboarding_events,
 )
+from api.services.agent.tools.skills_guard import skills_guard_service
 from api.services.ai.chat_stream_debug_trace import (
     is_chat_stream_debug_enabled,
     visible_whitespace_preview,
@@ -361,6 +362,38 @@ async def stream_with_tools(
                                     tool_call_event["icon_key"] = icon_key
                                 yield tool_call_event
 
+                                user_id = (
+                                    str(context_dict.get("user_id"))
+                                    if isinstance(context_dict, dict)
+                                    and context_dict.get("user_id")
+                                    else ""
+                                )
+                                if (
+                                    user_id
+                                    and skills_guard_service.requires_confirmation(
+                                        display_name
+                                    )
+                                ):
+                                    create_confirmation = (
+                                        skills_guard_service
+                                    ).create_confirmation_requested_event
+                                    confirmation_event = create_confirmation(
+                                        user_id=user_id,
+                                        tool_call_id=tool_use["id"],
+                                        tool_name=tool_use["name"],
+                                        display_name=display_name,
+                                        parameters=tool_use["input"],
+                                        skill_id=skill_id,
+                                        icon_key=icon_key,
+                                    )
+                                    yield confirmation_event
+                                    yield build_tool_status(
+                                        tool_call_id=tool_use["id"],
+                                        status="awaiting_confirmation",
+                                        display_name=display_name,
+                                    )
+                                    return
+
                                 result = await tool_mapper.execute_tool(
                                     tool_use["name"],
                                     tool_use["input"],
@@ -400,6 +433,18 @@ async def stream_with_tools(
                                     display_name, normalized_result
                                 ):
                                     yield side_effect_event
+                                if user_id:
+                                    create_undo = (
+                                        skills_guard_service.create_undo_available_event
+                                    )
+                                    undo_event = create_undo(
+                                        user_id=user_id,
+                                        display_name=display_name,
+                                        parameters=tool_use["input"],
+                                        result_data=result_data,
+                                    )
+                                    if undo_event is not None:
+                                        yield undo_event
                                 if normalized_result.get("success"):
                                     updated_onboarding_state = result_data.get(
                                         "onboarding_state"

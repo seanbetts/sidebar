@@ -63,13 +63,6 @@ Single working list of every known divergence between the design system and the 
 | Widget action intents are only partially routed through deep links - widget add/open intents now use `sidebar://` URLs, but app-side execution still relies on bespoke deferred flags such as `pendingNewTaskDeepLink` and `pendingNewNoteDeepLink` | `AppEnvironment+Widgets.swift`, `TasksViewModel.swift`, `NotesViewModel.swift` | [handoffs](./patterns/handoffs) |
 | Chat conversations can be exported but not fully shared - transcript export exists, but the share action still falls back to an unavailable toast instead of presenting a share sheet | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
 
-### AI assistant UI gaps
-
-| Gap | File(s) | Source |
-|---|---|---|
-| No confirmation gate for destructive skill actions - delete tools (note, folder, website, task, project, group, file) execute immediately without pausing for user confirmation; `SkillsGuardService`, `tool_confirmation_requested`/`tool_confirmation_resolved` SSE events, confirmation decision endpoint, and inline confirmation card UI all need to be built | `backend/api/services/agent/tools/skills_guard.py` (new), `stream_runner.py`, `tool_event_mapper.py`, `chat.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
-| No undo for reversible destructive skill actions - notes, folders, websites, tasks, projects, and groups are soft-delete-backed but have no restore service methods, no `undo_available` SSE event, no undo token endpoint, and no inline undo card UI | `notes_service.py`, `websites_service.py`, `tasks_service.py`, `projects_service.py`, `groups_service.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
-
 ### Low priority
 
 | Gap | File(s) | Source |

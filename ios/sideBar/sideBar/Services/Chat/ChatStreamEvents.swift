@@ -12,7 +12,10 @@ public enum ChatStreamEventType: String {
     case entityChanged = "entity_changed"
     case entityDeleted = "entity_deleted"
     case promptPreview = "prompt_preview"
+    case toolConfirmationRequested = "tool_confirmation_requested"
+    case toolConfirmationResolved = "tool_confirmation_resolved"
     case toolStatus = "tool_status"
+    case undoAvailable = "undo_available"
     case workspacePatch = "workspace_patch"
 }
 
@@ -89,7 +92,10 @@ public let chatStreamCustomEventNames: [String] = [
     "entity_changed",
     "entity_deleted",
     "prompt_preview",
+    "tool_confirmation_requested",
+    "tool_confirmation_resolved",
     "tool_status",
+    "undo_available",
     "workspace_patch"
 ]
 
@@ -102,8 +108,11 @@ public let chatStreamEventTypeByName: [String: ChatStreamEventType] = [
     "prompt_preview": .promptPreview,
     "token": .token,
     "tool_call": .toolCall,
+    "tool_confirmation_requested": .toolConfirmationRequested,
+    "tool_confirmation_resolved": .toolConfirmationResolved,
     "tool_result": .toolResult,
     "tool_status": .toolStatus,
+    "undo_available": .undoAvailable,
     "workspace_patch": .workspacePatch
 ]
 

@@ -146,7 +146,7 @@ private final class ChatViewModelTeardownBag {
     private let scratchpadStoreReference: ScratchpadStore?
     private let contextProvidersReference: [any ContextProvider]
 
-    var chatAPI: ChatAPI { network.chatAPI }
+    var chatAPI: any ChatAPIProviding { network.chatAPI }
     var conversationsAPI: ConversationsAPIProviding { network.conversationsAPI }
     var onboardingAPI: (any OnboardingProviding)? { network.onboardingAPI }
     var ingestionAPI: any IngestionProviding { network.ingestionAPI }
@@ -186,6 +186,8 @@ private final class ChatViewModelTeardownBag {
     var currentAssistantInitiatedStreamSuppressesErrors = false
     var didReceiveTerminalStreamEvent = false
     var pendingAssistantInitiatedStreams: [AssistantInitiatedStreamOptions] = []
+    @Published var toolActionsByMessageId: [String: [ChatToolAction]] = [:]
+    var activeToolActionMessageId: String?
     var assistantInitiatedStreamTask: Task<Void, Never>? {
         didSet {
             teardownBag.setAssistantInitiatedStreamTask(assistantInitiatedStreamTask)

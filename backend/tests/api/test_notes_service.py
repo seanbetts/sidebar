@@ -822,6 +822,23 @@ def test_soft_delete_note_clears_pinned_state(db_session):
     assert deleted.pinned_order is None
 
 
+def test_restore_note_clears_deleted_timestamp(db_session):
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        _document("# Restore Me\n\nBody"),
+    )
+    NotesService.soft_delete_note(db_session, "test_user", note.id)
+    db_session.commit()
+
+    restored = NotesService.restore_note(db_session, "test_user", note.id)
+    db_session.commit()
+
+    assert restored.id == note.id
+    assert restored.deleted_at is None
+    assert NotesService.get_note(db_session, "test_user", note.id) is not None
+
+
 def test_update_note_conflict(db_session):
     note = NotesService.create_note(
         db_session,

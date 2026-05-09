@@ -32,6 +32,7 @@ from api.routers import (
 )
 from api.routers import (
     chat,
+    chat_titles,
     conversations,
     device_tokens,
     events,
@@ -287,6 +288,7 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(metrics.router)
 app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+app.include_router(chat_titles.router, prefix="/api/v1", tags=["chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
 app.include_router(ingestion.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(notes.router, prefix="/api/v1", tags=["notes"])
@@ -315,6 +317,9 @@ app.include_router(
     auth_router.router, prefix="/api", tags=["auth-legacy"], deprecated=True
 )
 app.include_router(chat.router, prefix="/api", tags=["chat-legacy"], deprecated=True)
+app.include_router(
+    chat_titles.router, prefix="/api", tags=["chat-legacy"], deprecated=True
+)
 app.include_router(
     conversations.router, prefix="/api", tags=["conversations-legacy"], deprecated=True
 )

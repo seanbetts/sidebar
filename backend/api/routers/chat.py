@@ -1,24 +1,19 @@
 """Chat router with SSE streaming support."""
 # ruff: noqa: B008
 
-import hashlib
 import json
 import logging
 import time
 from datetime import UTC, datetime
-from typing import TypedDict, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from google import genai
-from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.config import settings
-from api.constants import ChatConstants
 from api.db.dependencies import get_current_user_id
-from api.db.session import get_db, user_scoped_session
+from api.db.session import user_scoped_session
 from api.exceptions import BadRequestError
 from api.metrics import (
     chat_messages_total,
@@ -42,7 +37,7 @@ from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_protocol import CUSTOM_CHAT_STREAM_EVENT_TYPES
 from api.services.ai.gateway import AIProviderGateway
-from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
+from api.services.ai.registry import AIProvider
 from api.services.capabilities.loader import CapabilityLoaderService
 from api.services.capabilities.resolver import CapabilityResolverService
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
@@ -52,7 +47,10 @@ from api.services.chat_router_support import (
     build_prompt_preview_payload,
     deliver_assistant_reply_notification,
     require_completed_soul_calibration,
-    select_title_messages,
+)
+from api.services.chat_tool_action_service import (
+    resolve_tool_confirmation_action,
+    undo_tool_action_token,
 )
 from api.services.conversation_service import ConversationService
 from api.services.device_token_service import DeviceTokenService
@@ -67,16 +65,9 @@ from api.utils.validation import parse_uuid
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
-TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
-TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
 
-
-class _TitleCacheEntry(TypedDict):
-    title: str
-    timestamp: float
-
-
-TITLE_CACHE: dict[str, _TitleCacheEntry] = {}
+def _bad_guard_request(error: ValueError) -> BadRequestError:
+    return BadRequestError(str(error))
 
 
 def _trimmed_string(value: object) -> str | None:
@@ -158,29 +149,6 @@ def _persist_terminal_stream_error(
         )
 
 
-def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
-    combined = f"{user_msg}\n{assistant_msg}"
-    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
-
-
-def _get_cached_title(cache_key: str) -> _TitleCacheEntry | None:
-    now = time.time()
-    entry = TITLE_CACHE.get(cache_key)
-    if not entry:
-        return None
-    if now - entry["timestamp"] > TITLE_CACHE_TTL_SECONDS:
-        TITLE_CACHE.pop(cache_key, None)
-        return None
-    return entry
-
-
-def _set_cached_title(cache_key: str, title: str) -> None:
-    if len(TITLE_CACHE) >= TITLE_CACHE_MAX_ENTRIES:
-        oldest_key = min(TITLE_CACHE.items(), key=lambda item: item[1]["timestamp"])[0]
-        TITLE_CACHE.pop(oldest_key, None)
-    TITLE_CACHE[cache_key] = {"title": title, "timestamp": time.time()}
-
-
 def _should_insert_synthetic_tool_newline(
     assistant_content: str, token_content: str
 ) -> bool:
@@ -190,28 +158,6 @@ def _should_insert_synthetic_tool_newline(
         and not assistant_content.endswith("\n")
         and not token_content.startswith("\n")
     )
-
-
-def _sanitize_title(raw_title: str) -> str:
-    title = (raw_title or "").strip()
-    if not title:
-        raise ValueError("Empty title returned")
-    if title.lower().startswith("title:"):
-        title = title.split(":", 1)[1].strip()
-    title = title.strip("\"'").strip()
-    if "\n" in title:
-        title = title.splitlines()[0].strip()
-    title = " ".join(title.split())
-
-    words = title.split()
-    if len(words) > ChatConstants.TITLE_MAX_WORDS:
-        title = " ".join(words[: ChatConstants.TITLE_MAX_WORDS])
-
-    if not title:
-        raise ValueError("Invalid title after sanitization")
-    if len(title) > 100:
-        title = title[:100].rstrip()
-    return title
 
 
 @router.post("/stream")
@@ -796,113 +742,34 @@ async def stream_chat(
     )
 
 
-@router.post("/generate-title")
-async def generate_title(
+@router.post("/tool-confirmations/{confirmation_id}")
+async def resolve_tool_confirmation(
+    confirmation_id: str,
     request: Request,
-    db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
-    _rate_limit: None = Depends(rate_limit_module.chat_generate_title_rate_limit),
+    _: str = Depends(verify_bearer_token),
 ):
-    """Generate a concise title for a conversation using Gemini.
-
-    Args:
-        request: Incoming request with conversation_id.
-        db: Database session.
-        user_id: Current authenticated user ID.
-
-    Returns:
-        Title payload with fallback flag.
-
-    Raises:
-        BadRequestError: For missing conversation_id or insufficient messages.
-        ConversationNotFoundError: If not found.
-    """
+    """Resolve a pending destructive tool confirmation."""
     data = await request.json()
-    conversation_id = data.get("conversation_id")
-
-    if not conversation_id:
-        raise BadRequestError("conversation_id required")
-
-    # Get conversation and verify ownership
-    conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
-    conversation = ConversationService.get_conversation(db, user_id, conversation_uuid)
-
-    if conversation.title_generated and conversation.title:
-        return {"title": conversation.title, "fallback": False}
-
-    # Find the first actual user/assistant pair rather than trusting positions.
-    messages = ConversationService.visible_messages(conversation.messages)
-
-    if not messages or len(messages) < 2:
-        raise BadRequestError("Need at least 2 messages to generate title")
-
-    user_msg, assistant_msg = select_title_messages(messages)
-    settings_record = UserSettingsService.get_settings(db, user_id)
-    cache_key = _build_title_cache_key(user_msg, assistant_msg)
-    cached = _get_cached_title(cache_key)
-    if cached:
-        cached_title = cached["title"]
-        ConversationService.set_title(
-            db,
-            user_id,
-            conversation_uuid,
-            cached_title,
-            generated=True,
-        )
-        return {"title": cached_title, "fallback": False}
-
+    decision = str(data.get("decision") or "").strip().lower()
     try:
-        ai_gateway = AIProviderGateway(settings, google_client_factory=genai.Client)
-
-        def provider_key_lookup(provider: AIProvider) -> str | None:
-            return UserAIProviderKeyService.get_active_key(db, user_id, provider)
-
-        preferred_provider = None
-        if isinstance(conversation.ai_provider, str):
-            candidate = conversation.ai_provider.strip().lower()
-            if candidate in VALID_AI_PROVIDERS:
-                preferred_provider = cast(AIProvider, candidate)
-        title_result = await ai_gateway.generate_title(
-            user_message=user_msg,
-            assistant_message=assistant_msg,
-            settings_record=settings_record,
-            preferred_provider=preferred_provider,
-            provider_key_lookup=provider_key_lookup,
+        return await resolve_tool_confirmation_action(
+            confirmation_id,
+            user_id=user_id,
+            decision=decision,
         )
-        raw_title = title_result.raw_title
-        title = _sanitize_title(raw_title)
+    except ValueError as error:
+        raise _bad_guard_request(error) from error
 
-        # Update conversation title
-        ConversationService.set_title(
-            db,
-            user_id,
-            conversation_uuid,
-            title,
-            generated=True,
-        )
-        _set_cached_title(cache_key, title)
 
-        return {"title": title, "fallback": False}
-
-    except Exception as error:
-        logger.warning(
-            "Title generation failed, using fallback",
-            exc_info=error,
-            extra={
-                "conversation_id": str(conversation_uuid),
-                "user_id": user_id,
-                "message_length": len(user_msg),
-                "error_type": type(error).__name__,
-            },
-        )
-        # Fallback to first message snippet
-        fallback_title = user_msg[:50] + ("..." if len(user_msg) > 50 else "")
-        ConversationService.set_title(
-            db,
-            user_id,
-            conversation_uuid,
-            fallback_title,
-            generated=False,
-        )
-
-        return {"title": fallback_title, "fallback": True}
+@router.post("/undo/{undo_token}")
+async def undo_tool_action(
+    undo_token: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Consume an undo token for a recent reversible destructive tool action."""
+    try:
+        return undo_tool_action_token(undo_token, user_id=user_id)
+    except ValueError as error:
+        raise _bad_guard_request(error) from error

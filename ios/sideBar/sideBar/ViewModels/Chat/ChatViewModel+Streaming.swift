@@ -244,7 +244,7 @@ extension ChatViewModel {
         guard let token = stringValue(from: event.data, key: "content") else {
             return
         }
-        guard let messageId = activeStreamingMessageId else {
+        guard let messageId = targetMessageIdForToolActionEvent else {
             return
         }
         guard let currentMessage = messages.first(where: { $0.id == messageId }) else {
@@ -301,7 +301,7 @@ extension ChatViewModel {
         guard let toolCall = toolCallFromEvent(event, includeResult: false) else {
             return
         }
-        guard let messageId = activeStreamingMessageId else {
+        guard let messageId = targetMessageIdForToolActionEvent else {
             return
         }
         updateMessage(id: messageId, persist: false) { message in

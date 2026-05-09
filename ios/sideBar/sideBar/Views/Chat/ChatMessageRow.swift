@@ -41,7 +41,9 @@ struct ChatMessageRow: View {
     let message: Message
     let assistantDisplayName: String
     let retryHeaderSlotState: ChatRetryHeaderSlotState
+    let toolActions: [ChatToolAction]
     let onRetry: () -> Void
+    let onToolAction: (ChatToolAction, ChatToolActionDecision?) -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
@@ -113,6 +115,13 @@ struct ChatMessageRow: View {
             }
             .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
             .animation(Motion.quick(reduceMotion: reduceMotion), value: showCompletionIndicator)
+
+            if !toolActions.isEmpty {
+                ChatToolActionListView(
+                    actions: toolActions,
+                    onAction: onToolAction
+                )
+            }
 
             if showsThinkingBody {
                 Text(thinkingText)
@@ -479,20 +488,6 @@ private extension DateFormatter {
     static let chatTimestamp: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter
-    }()
-
-    static let chatListCompact: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter
-    }()
-
-    static let chatHeader: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter
     }()

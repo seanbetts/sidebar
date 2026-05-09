@@ -52,8 +52,17 @@ extension ChatViewModel {
             .collectionInvalidated: { [weak self] (event: ChatStreamEvent) in
                 self?.handleCollectionInvalidated(event)
             },
+            .toolConfirmationRequested: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolConfirmationRequested(event)
+            },
+            .toolConfirmationResolved: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolConfirmationResolved(event)
+            },
             .toolStatus: { [weak self] (event: ChatStreamEvent) in
                 self?.handleToolStatus(event)
+            },
+            .undoAvailable: { [weak self] (event: ChatStreamEvent) in
+                self?.handleUndoAvailable(event)
             }
         ]
     }
@@ -287,5 +296,66 @@ extension ChatViewModel {
                 self?.activeTool = nil
             }
         }
+    }
+
+    private func handleToolConfirmationRequested(_ event: ChatStreamEvent) {
+        guard let payload = ChatStreamSyncPayloadParser.parseToolConfirmationRequested(event.data),
+              let messageId = targetMessageIdForToolActionEvent else {
+            return
+        }
+        let action = ChatToolAction(
+            id: payload.confirmationId,
+            kind: .confirmation,
+            summary: payload.summary,
+            toolName: payload.toolName,
+            guardReason: payload.guardReason,
+            undoSupported: payload.undoSupported,
+            expiresAt: payload.expiresAt,
+            entityType: nil,
+            entityId: nil,
+            status: .pending
+        )
+        upsertToolAction(action, messageId: messageId)
+        markNeedsNewline()
+    }
+
+    private func handleToolConfirmationResolved(_ event: ChatStreamEvent) {
+        guard let payload = ChatStreamSyncPayloadParser.parseToolConfirmationResolved(event.data) else {
+            return
+        }
+        updateToolAction(id: payload.confirmationId) { action in
+            ChatToolAction(
+                id: action.id,
+                kind: action.kind,
+                summary: action.summary,
+                toolName: action.toolName,
+                guardReason: action.guardReason,
+                undoSupported: action.undoSupported,
+                expiresAt: action.expiresAt,
+                entityType: action.entityType,
+                entityId: action.entityId,
+                status: payload.decision == .accept ? .accepted : .declined
+            )
+        }
+    }
+
+    private func handleUndoAvailable(_ event: ChatStreamEvent) {
+        guard let payload = ChatStreamSyncPayloadParser.parseUndoAvailable(event.data),
+              let messageId = targetMessageIdForToolActionEvent else {
+            return
+        }
+        let action = ChatToolAction(
+            id: payload.undoToken,
+            kind: .undo,
+            summary: payload.summary,
+            toolName: nil,
+            guardReason: nil,
+            undoSupported: false,
+            expiresAt: payload.expiresAt,
+            entityType: payload.entityType,
+            entityId: payload.entityId,
+            status: .pending
+        )
+        upsertToolAction(action, messageId: messageId)
     }
 }

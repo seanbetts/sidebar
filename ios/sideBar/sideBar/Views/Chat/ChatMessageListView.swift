@@ -42,7 +42,9 @@ struct ChatMessageListView: View {
                             message: message,
                             assistantDisplayName: assistantDisplayName,
                             retryHeaderSlotState: retryHeaderSlotState(for: message),
-                            onRetry: retryLatestFailedTurn
+                            toolActions: viewModel.toolActions(for: message.id),
+                            onRetry: retryLatestFailedTurn,
+                            onToolAction: viewModel.handleToolAction
                         )
                             .id(message.id)
                     }

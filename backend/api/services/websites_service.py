@@ -652,6 +652,24 @@ class WebsitesService:
         return website
 
     @staticmethod
+    def restore_website(
+        db: Session, user_id: str, website_id: uuid.UUID | str
+    ) -> Website:
+        """Restore a soft-deleted website for undo flows."""
+        parsed_id = uuid.UUID(str(website_id))
+        website = (
+            db.query(Website)
+            .filter(Website.user_id == user_id, Website.id == parsed_id)
+            .first()
+        )
+        if not website:
+            raise WebsiteNotFoundError(str(website_id))
+        website.deleted_at = None
+        website.updated_at = datetime.now(UTC)
+        db.commit()
+        return website
+
+    @staticmethod
     def get_website(
         db: Session,
         user_id: str,

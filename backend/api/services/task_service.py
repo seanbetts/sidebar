@@ -169,6 +169,45 @@ class TaskService:
         return group
 
     @staticmethod
+    def restore_task_group(db: Session, user_id: str, group_id: str) -> TaskGroup:
+        """Restore a soft-deleted task group with its projects and tasks."""
+        parsed_id = parse_uuid(group_id, "task group", "id")
+        group = (
+            db.query(TaskGroup)
+            .filter(TaskGroup.id == parsed_id, TaskGroup.user_id == user_id)
+            .one_or_none()
+        )
+        if not group:
+            raise TaskGroupNotFoundError(group_id)
+        now = datetime.now(UTC)
+        projects = (
+            db.query(TaskProject)
+            .filter(TaskProject.user_id == user_id, TaskProject.group_id == group.id)
+            .all()
+        )
+        project_ids = [project.id for project in projects]
+        for project in projects:
+            project.deleted_at = None
+            project.updated_at = now
+
+        tasks_query = db.query(Task).filter(Task.user_id == user_id)
+        if project_ids:
+            tasks_query = tasks_query.filter(
+                or_(Task.group_id == group.id, Task.project_id.in_(project_ids))
+            )
+        else:
+            tasks_query = tasks_query.filter(Task.group_id == group.id)
+        for task in tasks_query.all():
+            task.deleted_at = None
+            if task.status == "trashed":
+                task.status = "active"
+                task.trashed_at = None
+            task.updated_at = now
+        group.deleted_at = None
+        group.updated_at = now
+        return group
+
+    @staticmethod
     def create_task_project(
         db: Session,
         user_id: str,
@@ -265,6 +304,33 @@ class TaskService:
             task.deleted_at = now
             task.updated_at = now
         project.deleted_at = now
+        project.updated_at = now
+        return project
+
+    @staticmethod
+    def restore_task_project(db: Session, user_id: str, project_id: str) -> TaskProject:
+        """Restore a soft-deleted task project with its tasks."""
+        parsed_id = parse_uuid(project_id, "task project", "id")
+        project = (
+            db.query(TaskProject)
+            .filter(TaskProject.id == parsed_id, TaskProject.user_id == user_id)
+            .one_or_none()
+        )
+        if not project:
+            raise TaskProjectNotFoundError(project_id)
+        now = datetime.now(UTC)
+        tasks = (
+            db.query(Task)
+            .filter(Task.user_id == user_id, Task.project_id == project.id)
+            .all()
+        )
+        for task in tasks:
+            task.deleted_at = None
+            if task.status == "trashed":
+                task.status = "active"
+                task.trashed_at = None
+            task.updated_at = now
+        project.deleted_at = None
         project.updated_at = now
         return project
 
@@ -663,6 +729,35 @@ class TaskService:
             item.deleted_at = now
             item.updated_at = now
 
+        return tasks
+
+    @staticmethod
+    def restore_task_series(db: Session, user_id: str, task_id: str) -> list[Task]:
+        """Restore a soft-deleted task and any repeat instances in its series."""
+        parsed_id = parse_uuid(task_id, "task", "id")
+        task = (
+            db.query(Task)
+            .filter(Task.user_id == user_id, Task.id == parsed_id)
+            .one_or_none()
+        )
+        if not task:
+            raise TaskNotFoundError(task_id)
+        template_id = task.repeat_template_id or task.id
+        now = datetime.now(UTC)
+        tasks = (
+            db.query(Task)
+            .filter(
+                Task.user_id == user_id,
+                or_(Task.id == template_id, Task.repeat_template_id == template_id),
+            )
+            .all()
+        )
+        for item in tasks:
+            item.deleted_at = None
+            if item.status == "trashed":
+                item.status = "active"
+                item.trashed_at = None
+            item.updated_at = now
         return tasks
 
     @staticmethod

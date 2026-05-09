@@ -11,7 +11,10 @@ CUSTOM_CHAT_STREAM_EVENT_TYPES = frozenset(
         "entity_changed",
         "entity_deleted",
         "prompt_preview",
+        "tool_confirmation_requested",
+        "tool_confirmation_resolved",
         "tool_status",
+        "undo_available",
         "workspace_patch",
     }
 )
@@ -51,7 +54,10 @@ CHAT_STREAM_EVENT_PAYLOAD_TYPES = {
     "entity_changed": "entity_change",
     "entity_deleted": "entity_delete",
     "prompt_preview": "prompt_preview",
+    "tool_confirmation_requested": "tool_confirmation",
+    "tool_confirmation_resolved": "tool_confirmation_resolution",
     "tool_status": "tool_status",
+    "undo_available": "undo_available",
     "workspace_patch": "workspace_patch",
 }
 CHAT_STREAM_EVENT_CLIENT_ACTIONS = {
@@ -59,7 +65,10 @@ CHAT_STREAM_EVENT_CLIENT_ACTIONS = {
     "entity_changed": "patch_then_invalidate",
     "entity_deleted": "remove_then_invalidate",
     "prompt_preview": "replace",
+    "tool_confirmation_requested": "show_confirmation",
+    "tool_confirmation_resolved": "resolve_confirmation",
     "tool_status": "status_only",
+    "undo_available": "show_undo",
     "workspace_patch": "apply_patch",
 }
 
@@ -103,9 +112,21 @@ def load_chat_stream_sync_protocol() -> ChatStreamSyncProtocol:
                 payload="prompt_preview",
                 client_action="replace",
             ),
+            "tool_confirmation_requested": ChatStreamSyncEventContract(
+                payload="tool_confirmation",
+                client_action="show_confirmation",
+            ),
+            "tool_confirmation_resolved": ChatStreamSyncEventContract(
+                payload="tool_confirmation_resolution",
+                client_action="resolve_confirmation",
+            ),
             "tool_status": ChatStreamSyncEventContract(
                 payload="tool_status",
                 client_action="status_only",
+            ),
+            "undo_available": ChatStreamSyncEventContract(
+                payload="undo_available",
+                client_action="show_undo",
             ),
             "workspace_patch": ChatStreamSyncEventContract(
                 payload="workspace_patch",
