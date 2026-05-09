@@ -89,7 +89,7 @@ extension ChatViewModel {
             return Message(
                 id: message.id,
                 role: message.role,
-                content: message.content,
+                content: messageContent(message.content, confirming: payload),
                 status: message.status,
                 toolCalls: updatedToolCalls,
                 needsNewline: message.needsNewline,
@@ -107,6 +107,10 @@ extension ChatViewModel {
                 "matchedToolCall=\(hadMatchingToolCall)"
             ]
         )
+    }
+
+    func confirmationPrompt(for payload: ChatToolConfirmationRequestedPayload) -> String {
+        ChatToolAction.confirmationPrompt(for: payload.toolName)
     }
 
     func handleToolAction(_ action: ChatToolAction, decision: ChatToolActionDecision? = nil) {
@@ -252,6 +256,20 @@ extension ChatViewModel {
             entityId: action.entityId,
             status: status
         )
+    }
+
+    private func messageContent(
+        _ currentContent: String,
+        confirming payload: ChatToolConfirmationRequestedPayload
+    ) -> String {
+        let prompt = confirmationPrompt(for: payload)
+        guard currentContent.trimmedOrNil != nil else {
+            return prompt
+        }
+        guard !currentContent.contains(prompt) else {
+            return currentContent
+        }
+        return "\(currentContent)\n\n\(prompt)"
     }
 
     private func refreshContextAfterUndo(_ action: ChatToolAction) {

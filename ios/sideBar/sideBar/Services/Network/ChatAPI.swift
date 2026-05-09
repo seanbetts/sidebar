@@ -97,8 +97,22 @@ public struct ChatToolActionResponse: Decodable {
 
     private enum CodingKeys: String, CodingKey {
         case success
-        case toolResult = "tool_result"
+        case toolResult
         case events
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        toolResult = try container.decodeIfPresent(
+            ChatToolActionResponseEvent.self,
+            forKey: .toolResult
+        )
+        events = try container.decodeIfPresent(
+            [ChatToolActionResponseEvent].self,
+            forKey: .events
+        ) ?? []
+        success = try container.decodeIfPresent(Bool.self, forKey: .success)
+            ?? (toolResult?.status == ToolStatus.success.rawValue)
     }
 }
 
@@ -107,9 +121,49 @@ public struct ChatToolActionResponseEvent: Decodable {
     public let type: String
     public let data: AnyCodable?
 
+    private struct DynamicCodingKey: CodingKey {
+        var stringValue: String
+        var intValue: Int?
+
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+            self.intValue = nil
+        }
+
+        init?(intValue: Int) {
+            self.stringValue = "\(intValue)"
+            self.intValue = intValue
+        }
+    }
+
     private enum CodingKeys: String, CodingKey {
         case type
         case data
+    }
+
+    var status: String? {
+        guard let payload = data?.value as? [String: Any] else {
+            return nil
+        }
+        return payload["status"] as? String
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        if let explicitData = try container.decodeIfPresent(AnyCodable.self, forKey: .data) {
+            data = explicitData
+            return
+        }
+
+        let dynamicContainer = try decoder.container(keyedBy: DynamicCodingKey.self)
+        var eventPayload: [String: Any] = [:]
+        for key in dynamicContainer.allKeys where key.stringValue != CodingKeys.type.rawValue {
+            if let value = try dynamicContainer.decodeIfPresent(AnyCodable.self, forKey: key) {
+                eventPayload[key.stringValue] = value.value
+            }
+        }
+        data = AnyCodable(eventPayload)
     }
 
     public init(type: String, data: AnyCodable?) {

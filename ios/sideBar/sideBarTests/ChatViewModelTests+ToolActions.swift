@@ -42,6 +42,69 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.summary, "Delete note note-1?")
         XCTAssertEqual(actions.first?.status, .pending)
         XCTAssertEqual(actions.first?.undoSupported, true)
+        XCTAssertEqual(
+            viewModel.messages.first?.content,
+            "Please confirm that you want to delete this note."
+        )
+    }
+
+    func testToolConfirmationRequestedParsesLiveDestructiveToolPayload() {
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient()
+        )
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "",
+                status: .streaming,
+                toolCalls: [
+                    ToolCall(
+                        id: "toolu_01JWPzVV7KZyqAAmTg5qyx1W",
+                        name: "Delete Note",
+                        parameters: ["note_id": AnyCodable("note-1")],
+                        status: .pending,
+                        skillId: "notes",
+                        iconKey: "note"
+                    )
+                ],
+                needsNewline: nil,
+                timestamp: "",
+                error: nil
+            )
+        ]
+        viewModel.currentStreamMessageId = "assistant-1"
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .toolConfirmationRequested,
+            data: AnyCodable([
+                "confirmation_id": "confirm-1",
+                "expires_at": "2026-05-09T00:05:00Z",
+                "guard_reason": "destructive_action",
+                "icon_key": "note",
+                "parameters": ["note_id": "note-1"],
+                "skill_id": "notes",
+                "summary": "Delete note note-1?",
+                "tool_call_id": "toolu_01JWPzVV7KZyqAAmTg5qyx1W",
+                "tool_name": "Delete Note",
+                "undo_supported": true
+            ])
+        ))
+
+        let actions = viewModel.toolActions(for: "assistant-1")
+        let toolCall = viewModel.messages.first?.toolCalls?.first
+        XCTAssertEqual(actions.count, 1)
+        XCTAssertEqual(actions.first?.id, "confirm-1")
+        XCTAssertEqual(actions.first?.summary, "Delete note note-1?")
+        XCTAssertEqual(actions.first?.toolName, "Delete Note")
+        XCTAssertEqual(actions.first?.guardReason, "destructive_action")
+        XCTAssertEqual(toolCall?.confirmationId, "confirm-1")
+        XCTAssertEqual(toolCall?.confirmationSummary, "Delete note note-1?")
+        XCTAssertEqual(
+            viewModel.messages.first?.content,
+            "Please confirm that you want to delete this note."
+        )
     }
 
     func testUndoAvailableAddsInlineActionToResolvedToolActionMessage() {

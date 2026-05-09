@@ -116,24 +116,24 @@ struct ChatMessageRow: View {
             .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
             .animation(Motion.quick(reduceMotion: reduceMotion), value: showCompletionIndicator)
 
-            if !toolActions.isEmpty {
-                ChatToolActionListView(
-                    actions: toolActions,
-                    onAction: onToolAction
-                )
-            }
-
             if showsThinkingBody {
                 Text(thinkingText)
                     .appFont(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                SideBarMarkdown(text: message.content, style: .chat)
+                SideBarMarkdown(text: renderedMessageContent, style: .chat)
                     .textSelection(.enabled)
                     .accessibilityIdentifier("chat-message-content-\(message.id)-\(lookupToken)")
-                    .accessibilityLabel(message.content)
+                    .accessibilityLabel(renderedMessageContent)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !toolActions.isEmpty {
+                ChatToolActionListView(
+                    actions: toolActions,
+                    onAction: onToolAction
+                )
             }
 
             if !workspaceSurfaceTargets.isEmpty {
@@ -162,7 +162,7 @@ struct ChatMessageRow: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat-message-row-\(message.id)-\(lookupToken)")
-        .accessibilityValue(message.content)
+        .accessibilityValue(renderedMessageContent)
         .onDisappear {
             resetCopyFeedbackTask?.cancel()
             resetCopyFeedbackTask = nil
@@ -238,6 +238,12 @@ struct ChatMessageRow: View {
 
     private var showsThinkingPlaceholder: Bool {
         ChatMessagePresentation.showsThinkingPlaceholder(for: message)
+    }
+    private var renderedMessageContent: String {
+        guard message.role == .assistant, messageContentIsEffectivelyEmpty else {
+            return message.content
+        }
+        return toolActions.first { $0.kind == .confirmation }?.confirmationPrompt ?? message.content
     }
 
     private var messageContentIsEffectivelyEmpty: Bool {

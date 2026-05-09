@@ -10,12 +10,12 @@ final class ChatMessageRowAccessibilitySourceTests: XCTestCase {
         )
     }
 
-    func testChatMessageRowExposesRawMessageContentAsAccessibilityLabel() throws {
+    func testChatMessageRowExposesRenderedMessageContentAsAccessibilityLabel() throws {
         let source = try normalizedChatMessageRowSource()
 
         XCTAssertTrue(
-            source.contains(".accessibilityLabel(message.content)"),
-            "ChatMessageRow should expose raw message content through accessibility for UI tests and assistive technology."
+            source.contains(".accessibilityLabel(renderedMessageContent)"),
+            "ChatMessageRow should expose rendered message content through accessibility for UI tests and assistive technology."
         )
     }
 
@@ -28,12 +28,35 @@ final class ChatMessageRowAccessibilitySourceTests: XCTestCase {
         )
     }
 
-    func testChatMessageRowExposesRawMessageContentAsAccessibilityValue() throws {
+    func testChatMessageRowExposesRenderedMessageContentAsAccessibilityValue() throws {
         let source = try normalizedChatMessageRowSource()
 
         XCTAssertTrue(
-            source.contains(".accessibilityValue(message.content)"),
-            "ChatMessageRow should expose raw message content as an accessibility value for UI-test lookup."
+            source.contains(".accessibilityValue(renderedMessageContent)"),
+            "ChatMessageRow should expose rendered message content as an accessibility value for UI-test lookup."
+        )
+    }
+
+    func testChatMessageRowRendersToolActionsAfterMessageContent() throws {
+        let source = try normalizedChatMessageRowSource()
+        let contentIndex = try XCTUnwrap(source.range(of: "SideBarMarkdown(text:renderedMessageContent,style:.chat)")?.lowerBound)
+        let actionsIndex = try XCTUnwrap(source.range(of: "ChatToolActionListView(")?.lowerBound)
+
+        XCTAssertLessThan(
+            contentIndex,
+            actionsIndex,
+            "Inline tool actions should appear after the assistant message content."
+        )
+    }
+
+    func testChatMessageRowFallsBackToConfirmationPromptForEmptyAssistantMessage() throws {
+        let source = try normalizedChatMessageRowSource()
+
+        XCTAssertTrue(
+            source.contains("guardmessage.role==.assistant,messageContentIsEffectivelyEmptyelse")
+        )
+        XCTAssertTrue(
+            source.contains("toolActions.first{$0.kind==.confirmation}?.confirmationPrompt")
         )
     }
 

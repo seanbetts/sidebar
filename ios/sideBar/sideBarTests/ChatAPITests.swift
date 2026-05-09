@@ -32,6 +32,61 @@ final class ChatAPITests: XCTestCase {
         XCTAssertFalse(response.fallback)
     }
 
+    func testResolveToolConfirmationDecodesActionResponseWithoutRootSuccess() async throws {
+        let api = ChatAPI(client: makeClient())
+        ChatURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/chat/tool-confirmations/confirm-1")
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+            XCTAssertEqual(body?["decision"] as? String, "accept")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "confirmation_id": "confirm-1",
+              "decision": "accept",
+              "tool_result": {
+                "type": "tool_result",
+                "id": "tool-1",
+                "name": "Delete Note",
+                "result": {"success": true, "summary": "Deleted note"},
+                "status": "success",
+                "skill_id": "notes",
+                "icon_key": "notes"
+              },
+              "events": [
+                {
+                  "type": "tool_confirmation_resolved",
+                  "data": {
+                    "confirmation_id": "confirm-1",
+                    "tool_call_id": "tool-1",
+                    "decision": "accept"
+                  }
+                }
+              ]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.resolveToolConfirmation(
+            confirmationId: "confirm-1",
+            decision: .accept
+        )
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.toolResult?.type, "tool_result")
+        let toolPayload = response.toolResult?.data?.value as? [String: Any]
+        XCTAssertEqual(toolPayload?["id"] as? String, "tool-1")
+        XCTAssertEqual(toolPayload?["status"] as? String, "success")
+        XCTAssertEqual(response.events.first?.type, "tool_confirmation_resolved")
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
