@@ -6,10 +6,10 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
-{/* TODO: screenshot — tasks.png: Today list with a few tasks (iPad landscape) */}
+{/* TODO: screenshot: tasks.png, Today list with a few tasks (iPad landscape) */}
 <Frame>
-  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
-  <img src="/assets/screenshots/tasks.png" alt="sideBar tasks — Today list" />
+  {/* TODO: alt text: replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
+  <img src="/assets/screenshots/tasks.png" alt="sideBar tasks, Today list" />
 </Frame>
 
 ## Smart Lists
@@ -23,6 +23,12 @@ your tasks.
 
 Each smart list displays a count that refreshes as you add, complete, or modify
 tasks.
+
+## Opening Today Automatically
+
+If you have incomplete tasks due today, sideBar opens the Today list the first
+time you launch the app on that device each day. Later launches on the same day
+return to the workspace you were using before.
 
 ## Groups and Projects
 
