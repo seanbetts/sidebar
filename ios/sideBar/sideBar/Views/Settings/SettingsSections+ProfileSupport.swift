@@ -417,7 +417,7 @@ extension ProfileSettingsView {
         guard data.count > maxProfileImageUploadBytes else {
             return nil
         }
-        return "Profile photo is too large. Choose an image smaller than 5MB."
+        return profileImageTooLargeMessage()
     }
 
     static func profileImageQueueFailureMessage(from summaries: [PendingWriteSummary]) -> String? {
@@ -431,10 +431,25 @@ extension ProfileSettingsView {
         }
 
         if let apiError = storedAPIClientError(from: errorDescription) {
+            if isProfileImageTooLarge(apiError) {
+                return profileImageTooLargeMessage()
+            }
             return ErrorMapping.message(for: apiError)
         }
 
         return errorDescription
+    }
+
+    private static func isProfileImageTooLarge(_ error: APIClientError) -> Bool {
+        guard case .apiError(let message) = error else {
+            return false
+        }
+        let normalized = message.lowercased()
+        return normalized.contains("image too large") || normalized.contains("max 5mb")
+    }
+
+    private static func profileImageTooLargeMessage() -> String {
+        "Profile photo is too large. Choose an image smaller than 5MB."
     }
 
     private static func storedAPIClientError(from description: String) -> APIClientError? {

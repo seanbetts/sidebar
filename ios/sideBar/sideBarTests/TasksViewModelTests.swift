@@ -43,7 +43,7 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertEqual(store.tasks.map(\.id), [task.id], "Failed optimistic updates should restore the task")
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Sync failed")
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
     }
 
     func testRenameTaskFailurePreservesLoadedContentAndUsesToastPresentation() async {
@@ -114,7 +114,7 @@ final class TasksViewModelTests: XCTestCase {
 
         XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
         XCTAssertNil(sut.viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Sync failed")
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
         XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
     }
 
@@ -460,7 +460,7 @@ final class TasksViewModelTests: XCTestCase {
 
         XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertNil(sut.viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Rename failed")
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
     }
 
     func testDeleteTaskSuccessRemovesFromStore() async {

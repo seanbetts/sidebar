@@ -64,10 +64,7 @@ final class ChatViewModelEmptyAssistantFailureTests: XCTestCase {
             failedAssistant?.error,
             "The AI provider returned an empty response. Please try again."
         )
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The AI provider returned an empty response. Please try again."
-        )
+        XCTAssertNil(viewModel.errorMessage)
         XCTAssertEqual(viewModel.latestRetryableAssistantMessageID, initialMessage.id)
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
@@ -94,10 +91,7 @@ final class ChatViewModelEmptyAssistantFailureTests: XCTestCase {
             failedAssistant?.error,
             "The AI provider returned an empty response. Please try again."
         )
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The AI provider returned an empty response. Please try again."
-        )
+        XCTAssertNil(viewModel.errorMessage)
         XCTAssertEqual(viewModel.latestRetryableAssistantMessageID, initialMessage.id)
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }

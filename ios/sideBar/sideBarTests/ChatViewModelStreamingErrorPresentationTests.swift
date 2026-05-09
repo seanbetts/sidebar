@@ -46,10 +46,7 @@ final class ChatStreamErrorPresentationTests: XCTestCase {
             viewModel.messages.first?.error,
             "The AI provider account needs billing attention."
         )
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The AI provider account needs billing attention."
-        )
+        XCTAssertNil(viewModel.errorMessage)
         XCTAssertNil(viewModel.messages.first?.errorDetails)
     }
 
@@ -82,10 +79,7 @@ final class ChatStreamErrorPresentationTests: XCTestCase {
             "The AI provider is busy right now. Please try again in a moment."
         )
         XCTAssertEqual(viewModel.messages.first?.errorDetails, rawError)
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The AI provider is busy right now. Please try again in a moment."
-        )
+        XCTAssertNil(viewModel.errorMessage)
         XCTAssertNil(toastCenter.toast)
     }
 

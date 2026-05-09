@@ -4,9 +4,11 @@ import XCTest
 
 final class ToastCenterSuccessStyleSourceTests: XCTestCase {
     func testSuccessToastUsesDedicatedSuccessTokens() throws {
-        let normalized = try toastCenterSource()
+        let toastCenter = try toastCenterSource()
+        let statusPill = try source(named: "StatusPill.swift")
 
-        XCTAssertTrue(normalized.contains("returnDesignTokens.Colors.successBorder"))
+        XCTAssertTrue(toastCenter.contains("case.success:return.success"))
+        XCTAssertTrue(statusPill.contains("returnDesignTokens.Colors.successBorder"))
     }
 
     func testSuccessToastDoesNotUseHardcodedContrastBadge() throws {

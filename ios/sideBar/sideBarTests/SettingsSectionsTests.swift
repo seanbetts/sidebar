@@ -529,7 +529,7 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(message, "Profile photo is too large. Choose an image smaller than 5MB.")
     }
 
-    func testProfileImageQueueFailureMessageSurfacesStoredAPIError() {
+    func testProfileImageQueueFailureMessageMapsStoredAPIError() {
         let failedWrite = PendingWriteSummary(
             id: UUID(),
             operationType: WriteOperation.update.rawValue,
@@ -545,7 +545,7 @@ final class SettingsSectionsTests: XCTestCase {
 
         let message = ProfileSettingsView.profileImageQueueFailureMessage(from: [failedWrite])
 
-        XCTAssertEqual(message, "Image too large (max 5MB)")
+        XCTAssertEqual(message, "Profile photo is too large. Choose an image smaller than 5MB.")
     }
 
     func testNormalizedPickerSelectionUsesCanonicalOptionCasing() {

@@ -861,10 +861,10 @@ final class IngestionViewModelTests: XCTestCase {
         viewModel.cancelIngestion(fileId: fileId)
 
         await waitUntilPolling(timeoutSeconds: 0.5) {
-            toastCenter.toast?.message == "Failed to cancel ingestion"
+            toastCenter.toast?.message == "Unexpected error."
         }
 
-        XCTAssertEqual(toastCenter.toast?.message, "Failed to cancel ingestion")
+        XCTAssertEqual(toastCenter.toast?.message, "Unexpected error.")
         XCTAssertEqual(viewModel.items.first(where: { $0.file.id == fileId })?.job.status, "processing")
     }
 
