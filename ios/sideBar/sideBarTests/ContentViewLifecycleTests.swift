@@ -1,7 +1,10 @@
+// swiftlint:disable file_length
+
 import XCTest
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class ContentViewLifecycleTests: XCTestCase {
     func testCompactPhoneBottomTabSectionsUseMoreAsFinalTab() {
         let sections = ContentView.compactPhoneBottomTabSections
@@ -222,6 +225,72 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(destination, .dueTodayTasks)
     }
 
+    func testWorkspaceRestorationSaveSuppressionSkipsActiveAndQueuedLaunchSaves() {
+        var policy = RestorationSaveSuppressionPolicy(
+            isApplying: false,
+            queuedSaveSuppressions: 0
+        )
+
+        policy.beginLaunchApplication()
+
+        XCTAssertTrue(policy.shouldSuppressSave())
+        policy.finishLaunchApplication()
+        XCTAssertTrue(policy.shouldSuppressSave())
+        XCTAssertTrue(policy.shouldSuppressSave())
+
+        policy.clearQueuedSuppressions()
+
+        XCTAssertFalse(policy.shouldSuppressSave())
+    }
+
+    func testFreshLaunchTaskCountTreatsUnchangedCachedCountsAsUnknown() {
+        let previous = TaskCountsResponse(
+            generatedAt: "2026-05-09T10:00:00Z",
+            counts: TaskCounts(today: 3, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+        let current = TaskCountsResponse(
+            generatedAt: "2026-05-09T10:00:00Z",
+            counts: TaskCounts(today: 3, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+
+        XCTAssertEqual(
+            WorkspaceRestorationPlanner.freshTodayTaskCountForLaunch(
+                previousCounts: previous,
+                currentCounts: current,
+                errorMessage: nil
+            ),
+            0
+        )
+    }
+
+    func testFreshLaunchTaskCountUsesFreshCounts() {
+        let previous = TaskCountsResponse(
+            generatedAt: "2026-05-09T10:00:00Z",
+            counts: TaskCounts(today: 0, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+        let current = TaskCountsResponse(
+            generatedAt: "2026-05-09T10:00:01Z",
+            counts: TaskCounts(today: 2, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+
+        XCTAssertEqual(
+            WorkspaceRestorationPlanner.freshTodayTaskCountForLaunch(
+                previousCounts: previous,
+                currentCounts: current,
+                errorMessage: nil
+            ),
+            2
+        )
+    }
+
     func testMakeRegularLayoutPlanFromCompactSelectionForChat() {
         let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .chat)
         XCTAssertNil(plan.primarySection)
@@ -434,6 +503,9 @@ final class ContentViewLifecycleTests: XCTestCase {
         let normalized = try contentViewLifecycleSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
+        XCTAssertTrue(normalized.contains("guardenvironment.authState==.active,"))
+        XCTAssertTrue(normalized.contains("environment.isProtectedContentReadyelse{return}"))
+        XCTAssertTrue(normalized.contains("didSetInitialSelection=true"))
         XCTAssertTrue(normalized.contains("ifawaitapplyInitialLaunchDestinationIfAvailable()"))
         XCTAssertTrue(normalized.contains("applyDefaultInitialSelection()"))
     }
@@ -455,9 +527,10 @@ final class ContentViewLifecycleTests: XCTestCase {
         let normalized = try contentViewWorkspaceRestorationSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("guard!Self.isApplyingWorkspaceRestorationelse{return}"))
-        XCTAssertTrue(normalized.contains("Self.isApplyingWorkspaceRestoration=true"))
-        XCTAssertTrue(normalized.contains("defer{Self.isApplyingWorkspaceRestoration=false}"))
+        XCTAssertFalse(normalized.contains("staticvarisApplyingWorkspaceRestoration"))
+        XCTAssertTrue(normalized.contains("policy.shouldSuppressSave()"))
+        XCTAssertTrue(normalized.contains("isApplying=true"))
+        XCTAssertTrue(normalized.contains("pendingWorkspaceRestorationSaveSuppressions"))
     }
 
     private func contentViewLifecycleSource(

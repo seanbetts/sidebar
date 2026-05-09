@@ -31,6 +31,8 @@ public struct ContentView: View {
     @State var isShortcutsPresented = false
     @State var didEnsureInitialPhoneChatInterface = false
     @State var didSetInitialSelection = false
+    @State var isApplyingWorkspaceRestoration = false
+    @State var pendingWorkspaceRestorationSaveSuppressions = 0
     @State var didLoadSettings = false
     @State var activeAlert: ActiveAlert?
     @State var pendingBiometricUnavailableAlert = false
@@ -60,6 +62,11 @@ public struct ContentView: View {
             .onChange(of: environment.authState) { _, newValue in
                 handleRootAuthStateChange(newValue)
                 syncOnboardingPresentation()
+                applyInitialSelectionIfNeeded()
+            }
+            .onChange(of: environment.isProtectedContentReady) { _, isReady in
+                guard isReady else { return }
+                applyInitialSelectionIfNeeded()
             }
             .onChange(of: onboardingStatusRaw) { _, _ in
                 syncOnboardingPresentation()

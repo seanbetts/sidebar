@@ -214,6 +214,7 @@ extension ContentView {
     }
 
     func applyInitialSelectionIfNeeded() {
+        guard environment.authState == .active, environment.isProtectedContentReady else { return }
         guard !didSetInitialSelection else { return }
         didSetInitialSelection = true
         Task {

@@ -1,14 +1,63 @@
 import SwiftUI
 import sideBarShared
 
-private enum WorkspaceRestorationApplicationGate {
-    @MainActor static var isApplyingWorkspaceRestoration = false
+struct RestorationSaveSuppressionPolicy: Equatable {
+    static let launchApplicationQueuedSaveSuppressions = 4
+
+    var isApplying: Bool
+    var queuedSaveSuppressions: Int
+
+    mutating func beginLaunchApplication() {
+        isApplying = true
+        queuedSaveSuppressions = Self.launchApplicationQueuedSaveSuppressions
+    }
+
+    mutating func finishLaunchApplication() {
+        isApplying = false
+    }
+
+    mutating func shouldSuppressSave() -> Bool {
+        if isApplying {
+            return true
+        }
+        if queuedSaveSuppressions > 0 {
+            queuedSaveSuppressions -= 1
+            return true
+        }
+        return false
+    }
+
+    mutating func clearQueuedSuppressions() {
+        queuedSaveSuppressions = 0
+    }
+}
+
+extension WorkspaceRestorationPlanner {
+    static func freshTodayTaskCountForLaunch(
+        previousCounts: TaskCountsResponse?,
+        currentCounts: TaskCountsResponse?,
+        errorMessage: String?
+    ) -> Int {
+        guard errorMessage == nil, let currentCounts else { return 0 }
+        if let previousCounts, previousCounts.generatedAt == currentCounts.generatedAt {
+            return 0
+        }
+        return currentCounts.counts.today
+    }
 }
 
 extension ContentView {
-    static var isApplyingWorkspaceRestoration: Bool {
-        get { WorkspaceRestorationApplicationGate.isApplyingWorkspaceRestoration }
-        set { WorkspaceRestorationApplicationGate.isApplyingWorkspaceRestoration = newValue }
+    var saveSuppressionPolicy: RestorationSaveSuppressionPolicy {
+        get {
+            RestorationSaveSuppressionPolicy(
+                isApplying: isApplyingWorkspaceRestoration,
+                queuedSaveSuppressions: pendingWorkspaceRestorationSaveSuppressions
+            )
+        }
+        nonmutating set {
+            isApplyingWorkspaceRestoration = newValue.isApplying
+            pendingWorkspaceRestorationSaveSuppressions = newValue.queuedSaveSuppressions
+        }
     }
 
     var currentRestorationUserId: String? {
@@ -21,7 +70,12 @@ extension ContentView {
     }
 
     func saveCurrentWorkspaceRestorationSnapshot() {
-        guard !Self.isApplyingWorkspaceRestoration else { return }
+        var policy = saveSuppressionPolicy
+        guard !policy.shouldSuppressSave() else {
+            saveSuppressionPolicy = policy
+            return
+        }
+        saveSuppressionPolicy = policy
         guard environment.isAuthenticated else { return }
 
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
@@ -88,6 +142,20 @@ extension ContentView {
         )
     }
 
+    func applyWithWorkspaceRestorationSaveSuppression<T>(_ operation: () async -> T) async -> T {
+        var policy = saveSuppressionPolicy
+        policy.beginLaunchApplication()
+        saveSuppressionPolicy = policy
+
+        let result = await operation()
+        await Task.yield()
+
+        policy = saveSuppressionPolicy
+        policy.finishLaunchApplication()
+        saveSuppressionPolicy = policy
+        return result
+    }
+
     func applyInitialLaunchDestinationIfAvailable() async -> Bool {
         guard environment.authState == .active else { return false }
         guard environment.isProtectedContentReady else { return false }
@@ -99,8 +167,13 @@ extension ContentView {
             expectedUserId: currentRestorationUserId
         )
         let todayDateKey = TasksUtils.formatDateKey(Date())
-        await environment.tasksViewModel.loadCounts(force: false)
-        let todayTaskCount = environment.tasksViewModel.counts?.counts.today ?? 0
+        let previousCounts = environment.tasksViewModel.counts
+        await environment.tasksViewModel.loadCounts(force: true)
+        let todayTaskCount = WorkspaceRestorationPlanner.freshTodayTaskCountForLaunch(
+            previousCounts: previousCounts,
+            currentCounts: environment.tasksViewModel.counts,
+            errorMessage: environment.tasksViewModel.errorMessage
+        )
         let destination = WorkspaceRestorationPlanner.makeInitialLaunchDestination(
             hasExternalIntent: false,
             todayTaskCount: todayTaskCount,
@@ -115,24 +188,23 @@ extension ContentView {
         case .externalIntent, .fallbackChat:
             return false
         case .dueTodayTasks:
-            Self.isApplyingWorkspaceRestoration = true
-            defer { Self.isApplyingWorkspaceRestoration = false }
-            await applyDueTodayTasksLaunchOverride(localDateKey: todayDateKey)
-            return true
+            return await applyWithWorkspaceRestorationSaveSuppression {
+                await applyDueTodayTasksLaunchOverride(localDateKey: todayDateKey)
+            }
         case .restoredSnapshot:
             guard let snapshot else { return false }
-            Self.isApplyingWorkspaceRestoration = true
-            defer { Self.isApplyingWorkspaceRestoration = false }
-            return applyRestoredWorkspace(snapshot)
+            return await applyWithWorkspaceRestorationSaveSuppression {
+                await applyRestoredWorkspace(snapshot)
+            }
         }
     }
 
-    func applyRestoredWorkspace(_ snapshot: DeviceWorkspaceSnapshot) -> Bool {
+    func applyRestoredWorkspace(_ snapshot: DeviceWorkspaceSnapshot) async -> Bool {
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
         switch family {
         case .phone:
             guard let route = snapshot.phoneRoute else { return false }
-            applyPhoneRestoration(route)
+            await applyPhoneRestoration(route)
             return true
         case .workspace:
             guard let splitWorkspace = snapshot.splitWorkspace else { return false }
@@ -141,12 +213,16 @@ extension ContentView {
         }
     }
 
-    func applyDueTodayTasksLaunchOverride(localDateKey: String) async {
+    func applyDueTodayTasksLaunchOverride(localDateKey: String) async -> Bool {
+        await environment.tasksViewModel.load(selection: .today, force: true)
+        guard environment.tasksViewModel.selection == .today,
+              environment.tasksViewModel.errorMessage == nil else {
+            return false
+        }
         environment.workspaceRestorationStore.recordDueTodayAutoOpen(
             userId: currentRestorationUserId,
             localDateKey: localDateKey
         )
-        await environment.tasksViewModel.load(selection: .today, force: true)
         #if os(iOS)
         if isPhoneIdiom {
             phoneSelection = .tasks
@@ -154,7 +230,7 @@ extension ContentView {
             environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
             environment.workspaceStore.dispatch(.setLayout(.compact), source: "due_today_launch_override")
             environment.workspaceStore.dispatch(.selectSection(.tasks), source: "due_today_launch_override")
-            return
+            return true
         }
         #endif
         sidebarSelection = .tasks
@@ -165,9 +241,10 @@ extension ContentView {
         environment.workspaceStore.dispatch(.setPrimaryContent(.builtIn(.tasks)), source: "due_today_launch_override")
         environment.workspaceStore.dispatch(.setSecondaryContent(.builtIn(.chat)), source: "due_today_launch_override")
         environment.workspaceStore.dispatch(.selectSection(.tasks), source: "due_today_launch_override")
+        return true
     }
 
-    func applyPhoneRestoration(_ route: PhoneWorkspaceRoute) {
+    func applyPhoneRestoration(_ route: PhoneWorkspaceRoute) async {
         let plan = WorkspaceRestorationPlanner.makePhonePlan(
             route: route,
             hasMeaningfulChatDraft: hasMeaningfulChatDraftForRestoration
@@ -176,24 +253,24 @@ extension ContentView {
         sidebarSelection = plan.section
         environment.workspaceStore.dispatch(.setLayout(.compact), source: "workspace_restoration")
         environment.workspaceStore.dispatch(.selectSection(plan.section), source: "workspace_restoration")
-        applyPhoneRestorationDetail(plan.detail)
+        await applyPhoneRestorationDetail(plan.detail)
     }
 
-    func applyPhoneRestorationDetail(_ detail: PhoneWorkspaceDetail?) {
+    func applyPhoneRestorationDetail(_ detail: PhoneWorkspaceDetail?) async {
         switch detail {
         case .conversation(let id):
-            Task { await environment.chatViewModel.selectConversation(id: id) }
+            await environment.chatViewModel.selectConversation(id: id)
         case .chatDraft:
-            Task { await environment.chatViewModel.openDraftConversation() }
+            await environment.chatViewModel.openDraftConversation()
         case .note(let id):
             environment.notesPhoneDetailRouteId = id
-            Task { await environment.notesViewModel.loadNote(id: id) }
+            await environment.notesViewModel.loadNote(id: id)
         case .taskRoute(let id):
             environment.tasksPhoneDetailRouteId = id
         case .website(let id):
-            Task { await environment.websitesViewModel.selectWebsite(id: id) }
+            await environment.websitesViewModel.selectWebsite(id: id)
         case .file(let id):
-            Task { _ = await environment.ingestionViewModel.selectFile(fileId: id) }
+            _ = await environment.ingestionViewModel.selectFile(fileId: id)
         case nil:
             break
         }
