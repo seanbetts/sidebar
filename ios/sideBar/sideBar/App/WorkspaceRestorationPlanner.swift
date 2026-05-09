@@ -26,6 +26,41 @@ enum InitialLaunchDestination: Equatable {
 }
 
 enum WorkspaceRestorationPlanner {
+    static func makePhoneRoute(
+        section: AppSection,
+        selectedConversationId: String?,
+        isDraftConversationActive: Bool,
+        hasMeaningfulChatDraft: Bool,
+        selectedNoteId: String?,
+        selectedTaskRouteId: String?,
+        selectedWebsiteId: String?,
+        selectedFileId: String?
+    ) -> PhoneWorkspaceRoute {
+        let detail: PhoneWorkspaceDetail?
+        switch section {
+        case .chat:
+            if let selectedConversationId {
+                detail = .conversation(id: selectedConversationId)
+            } else if isDraftConversationActive && hasMeaningfulChatDraft {
+                detail = .chatDraft
+            } else {
+                detail = nil
+            }
+        case .notes:
+            detail = selectedNoteId.map { .note(id: $0) }
+        case .tasks:
+            detail = selectedTaskRouteId.map { .taskRoute(id: $0) }
+        case .websites:
+            detail = selectedWebsiteId.map { .website(id: $0) }
+        case .files:
+            detail = selectedFileId.map { .file(id: $0) }
+        case .skillsStore, .settings:
+            detail = nil
+        }
+
+        return PhoneWorkspaceRoute(section: section, detail: detail)
+    }
+
     static func makePhonePlan(
         route: PhoneWorkspaceRoute,
         hasMeaningfulChatDraft: Bool = false

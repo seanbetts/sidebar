@@ -186,4 +186,109 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
 
         XCTAssertEqual(destination, .fallbackChat)
     }
+
+    func testPhoneRouteOmitsEmptyChatDraft() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .chat,
+            selectedConversationId: nil,
+            isDraftConversationActive: true,
+            hasMeaningfulChatDraft: false,
+            selectedNoteId: nil,
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: nil,
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .chat, detail: nil))
+    }
+
+    func testPhoneRouteIncludesMeaningfulChatDraft() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .chat,
+            selectedConversationId: nil,
+            isDraftConversationActive: true,
+            hasMeaningfulChatDraft: true,
+            selectedNoteId: nil,
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: nil,
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .chat, detail: .chatDraft))
+    }
+
+    func testPhoneRouteIncludesSelectedConversation() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .chat,
+            selectedConversationId: "conversation-1",
+            isDraftConversationActive: true,
+            hasMeaningfulChatDraft: true,
+            selectedNoteId: nil,
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: nil,
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .chat, detail: .conversation(id: "conversation-1")))
+    }
+
+    func testPhoneRouteIncludesSelectedNote() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .notes,
+            selectedConversationId: nil,
+            isDraftConversationActive: false,
+            hasMeaningfulChatDraft: false,
+            selectedNoteId: "note-1",
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: nil,
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .notes, detail: .note(id: "note-1")))
+    }
+
+    func testPhoneRouteIncludesSelectedTaskRoute() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .tasks,
+            selectedConversationId: nil,
+            isDraftConversationActive: false,
+            hasMeaningfulChatDraft: false,
+            selectedNoteId: nil,
+            selectedTaskRouteId: "today",
+            selectedWebsiteId: nil,
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .tasks, detail: .taskRoute(id: "today")))
+    }
+
+    func testPhoneRouteIncludesSelectedWebsite() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .websites,
+            selectedConversationId: nil,
+            isDraftConversationActive: false,
+            hasMeaningfulChatDraft: false,
+            selectedNoteId: nil,
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: "site-1",
+            selectedFileId: nil
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .websites, detail: .website(id: "site-1")))
+    }
+
+    func testPhoneRouteIncludesSelectedFile() {
+        let route = WorkspaceRestorationPlanner.makePhoneRoute(
+            section: .files,
+            selectedConversationId: nil,
+            isDraftConversationActive: false,
+            hasMeaningfulChatDraft: false,
+            selectedNoteId: nil,
+            selectedTaskRouteId: nil,
+            selectedWebsiteId: nil,
+            selectedFileId: "file-1"
+        )
+
+        XCTAssertEqual(route, PhoneWorkspaceRoute(section: .files, detail: .file(id: "file-1")))
+    }
 }

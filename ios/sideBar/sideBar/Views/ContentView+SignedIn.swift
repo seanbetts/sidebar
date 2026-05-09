@@ -153,6 +153,7 @@ extension ContentView {
                 Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
             }
             updateActiveSection()
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
             handleSidebarSelectionChange(newValue)
@@ -160,6 +161,7 @@ extension ContentView {
         content = AnyView(content.onReceive(environment.workspaceStore.$state.dropFirst()) { state in
             syncLocalSectionSelectionFromWorkspaceState(state)
             updateActiveSection()
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: isSettingsPresented) { _, _ in
             environment.workspaceStore.dispatch(
@@ -173,6 +175,7 @@ extension ContentView {
                 .setLeftPanelExpanded(isLeftPanelExpanded),
                 source: "left_panel_expanded_change"
             )
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         #if !os(macOS)
         content = AnyView(content.onChange(of: horizontalSizeClass) { oldValue, newValue in
@@ -184,18 +187,34 @@ extension ContentView {
             if horizontalSizeClass == .compact { environment.notesPhoneDetailRouteId = newValue }
             #endif
             if newValue != nil { handleNonChatSelection(.notes) }
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
-            guard newValue != nil else { return }
-            handleNonChatSelection(.files)
+            if newValue != nil { handleNonChatSelection(.files) }
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: environment.ingestionViewModel.readyFileNotification) { _, notification in
             guard let notification else { return }
             handleReadyFileNotification(notification)
         })
         content = AnyView(content.onReceive(environment.websitesViewModel.$selectedWebsiteId) { newValue in
-            guard newValue != nil else { return }
-            handleNonChatSelection(.websites)
+            if newValue != nil { handleNonChatSelection(.websites) }
+            saveCurrentWorkspaceRestorationSnapshot()
+        })
+        content = AnyView(content.onReceive(environment.chatViewModel.$selectedConversationId) { _ in
+            saveCurrentWorkspaceRestorationSnapshot()
+        })
+        content = AnyView(content.onReceive(environment.chatViewModel.$isDraftConversationActive) { _ in
+            saveCurrentWorkspaceRestorationSnapshot()
+        })
+        content = AnyView(content.onReceive(environment.chatViewModel.$draftText) { _ in
+            saveCurrentWorkspaceRestorationSnapshot()
+        })
+        content = AnyView(content.onReceive(environment.chatViewModel.$attachments) { _ in
+            saveCurrentWorkspaceRestorationSnapshot()
+        })
+        content = AnyView(content.onReceive(environment.navigation.$tasksPhoneDetailRouteId) { _ in
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: environment.commandSelection) { _, newValue in
             guard let newValue else { return }
@@ -245,6 +264,7 @@ extension ContentView {
                 #endif
                 environment.commandSelection = nil
             updateActiveSection()
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         content = AnyView(content.onChange(of: environment.pendingMorningDigestDeepLink) { _, isPending in
             guard isPending else { return }
@@ -262,6 +282,7 @@ extension ContentView {
                 source: "workspace_expanded_change"
             )
             handleWorkspaceExpandedChange(isExpanded: newValue)
+            saveCurrentWorkspaceRestorationSnapshot()
         })
         #if os(iOS)
         content = AnyView(content.onChange(of: isWorkspaceExpandedByRotation) { _, newValue in
