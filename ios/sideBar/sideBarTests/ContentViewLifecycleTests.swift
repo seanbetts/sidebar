@@ -178,11 +178,11 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(plan.shouldConsumeCommandSelection)
     }
 
-    func testMakeInitialPhoneChatActionOpensDraftWhenConversationIsNotSelected() {
+    func testMakeInitialPhoneChatActionDoesNotOpenDraftWithoutRestoredDraft() {
         let action = ContentView.makeInitialPhoneChatAction(
             selectedConversationId: nil
         )
-        XCTAssertEqual(action, .openDraftConversation)
+        XCTAssertEqual(action, .none)
     }
 
     func testMakeInitialPhoneChatActionDoesNothingWhenConversationIsSelected() {
@@ -190,6 +190,36 @@ final class ContentViewLifecycleTests: XCTestCase {
             selectedConversationId: "conversation-1"
         )
         XCTAssertEqual(action, .none)
+    }
+
+    func testMakeMacInitialSelectionPlanStillDefaultsToChatWithoutSnapshot() {
+        let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)
+
+        XCTAssertNil(plan.primarySection)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertEqual(plan.sidebarSelection, .chat)
+    }
+
+    func testWorkspaceRestorationPlannerSkipsRestorationForPendingDeepLink() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: true,
+            hasPendingNewTaskDeepLink: false,
+            hasPendingNewNoteDeepLink: false,
+            hasPendingScratchpadDeepLink: false,
+            hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testInitialLaunchDestinationUsesDueTodayBeforeRestoration() {
+        let destination = WorkspaceRestorationPlanner.makeInitialLaunchDestination(
+            hasExternalIntent: false,
+            todayTaskCount: 1,
+            hasOpenedDueToday: false,
+            hasRestorationSnapshot: true
+        )
+
+        XCTAssertEqual(destination, .dueTodayTasks)
     }
 
     func testMakeRegularLayoutPlanFromCompactSelectionForChat() {
@@ -400,6 +430,36 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldExpand)
     }
 
+    func testInitialSelectionAttemptsLaunchDestinationBeforeDefaultSelection() throws {
+        let normalized = try contentViewLifecycleSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("ifawaitapplyInitialLaunchDestinationIfAvailable()"))
+        XCTAssertTrue(normalized.contains("applyDefaultInitialSelection()"))
+    }
+
+    func testDefaultInitialSelectionDoesNotEnsureInitialPhoneChatInterface() throws {
+        let source = try contentViewLifecycleSource()
+        let helperBody = try XCTUnwrap(
+            source.range(of: "func applyDefaultInitialSelection()")
+                .flatMap { startRange in
+                    source.range(of: "func updateActiveSection()", range: startRange.upperBound..<source.endIndex)
+                        .map { endRange in String(source[startRange.lowerBound..<endRange.lowerBound]) }
+                }
+        )
+
+        XCTAssertFalse(helperBody.contains("ensureInitialPhoneChatInterfaceIfNeeded"))
+    }
+
+    func testWorkspaceRestorationApplicationIsGatedFromSnapshotSaves() throws {
+        let normalized = try contentViewWorkspaceRestorationSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("guard!Self.isApplyingWorkspaceRestorationelse{return}"))
+        XCTAssertTrue(normalized.contains("Self.isApplyingWorkspaceRestoration=true"))
+        XCTAssertTrue(normalized.contains("defer{Self.isApplyingWorkspaceRestoration=false}"))
+    }
+
     private func contentViewLifecycleSource(
         file: StaticString = #filePath,
         line: UInt = #line
@@ -461,6 +521,31 @@ final class ContentViewLifecycleTests: XCTestCase {
             return try String(contentsOf: sourceURL, encoding: .utf8)
         } catch {
             XCTFail("Failed to read WebsitesView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func contentViewWorkspaceRestorationSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("ContentView+WorkspaceRestoration.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail(
+                "Failed to read ContentView+WorkspaceRestoration.swift: \(error)",
+                file: file,
+                line: line
+            )
             throw error
         }
     }

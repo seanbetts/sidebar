@@ -216,6 +216,20 @@ extension ContentView {
     func applyInitialSelectionIfNeeded() {
         guard !didSetInitialSelection else { return }
         didSetInitialSelection = true
+        Task {
+            if await applyInitialLaunchDestinationIfAvailable() {
+                ensureChatSidebarVisibleIfNeeded(for: sidebarSelection)
+                DispatchQueue.main.async {
+                    hasCompletedInitialSetup = true
+                }
+                updateActiveSection()
+                return
+            }
+            applyDefaultInitialSelection()
+        }
+    }
+
+    func applyDefaultInitialSelection() {
 #if os(iOS)
         if horizontalSizeClass == .compact {
             phoneSelection = .chat
@@ -247,9 +261,6 @@ extension ContentView {
             hasCompletedInitialSetup = true
         }
         updateActiveSection()
-#if os(iOS)
-        Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
-#endif
     }
 
     func updateActiveSection() {
@@ -436,10 +447,7 @@ extension ContentView {
     static func makeInitialPhoneChatAction(
         selectedConversationId: String?
     ) -> InitialPhoneChatAction {
-        if selectedConversationId == nil {
-            return .openDraftConversation
-        }
-        return .none
+        .none
     }
 
     @MainActor
