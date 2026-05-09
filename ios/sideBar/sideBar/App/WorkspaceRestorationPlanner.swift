@@ -103,6 +103,28 @@ enum WorkspaceRestorationPlanner {
         )
     }
 
+    static func makePhoneValidationFailurePlan(
+        route: PhoneWorkspaceRoute
+    ) -> PhoneWorkspaceRestorationPlan {
+        PhoneWorkspaceRestorationPlan(section: route.section, detail: nil)
+    }
+
+    static func makeWorkspaceValidationFailurePlan(
+        snapshot: SplitWorkspaceSnapshot,
+        invalidPane: WorkspacePane
+    ) -> SplitWorkspaceRestorationPlan {
+        var adjusted = snapshot
+        switch invalidPane {
+        case .primary:
+            adjusted.primaryDescriptor = fallbackDescriptor(
+                for: snapshot.sidebarSelection
+            )
+        case .secondary:
+            adjusted.secondaryDescriptor = .builtIn(.chat)
+        }
+        return makeWorkspacePlan(snapshot: adjusted)
+    }
+
     static func chatFallbackWorkspacePlan(
         isLeftPanelExpanded: Bool = true
     ) -> SplitWorkspaceRestorationPlan {
@@ -148,5 +170,12 @@ enum WorkspaceRestorationPlanner {
             return .restoredSnapshot
         }
         return .fallbackChat
+    }
+
+    private static func fallbackDescriptor(
+        for section: AppSection?
+    ) -> WorkspaceDescriptorSnapshot {
+        guard let section else { return .empty }
+        return .builtIn(section)
     }
 }

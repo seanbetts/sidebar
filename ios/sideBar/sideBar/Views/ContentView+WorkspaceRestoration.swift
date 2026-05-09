@@ -285,19 +285,48 @@ extension ContentView {
         switch detail {
         case .conversation(let id):
             await environment.chatViewModel.selectConversation(id: id)
+            await clearFailedConversationRestorationIfNeeded()
         case .chatDraft:
             await environment.chatViewModel.openDraftConversation()
         case .note(let id):
             environment.notesPhoneDetailRouteId = id
             await environment.notesViewModel.loadNote(id: id)
+            clearFailedNoteRestorationIfNeeded()
         case .taskRoute(let id):
             environment.tasksPhoneDetailRouteId = id
         case .website(let id):
             await environment.websitesViewModel.selectWebsite(id: id)
+            clearFailedWebsiteRestorationIfNeeded()
         case .file(let id):
-            _ = await environment.ingestionViewModel.selectFile(fileId: id)
+            let didOpen = await environment.ingestionViewModel.selectFile(fileId: id)
+            clearFailedFileRestorationIfNeeded(didOpen: didOpen)
         case nil:
             break
+        }
+    }
+
+    func clearFailedConversationRestorationIfNeeded() async {
+        if environment.chatViewModel.errorMessage != nil {
+            await environment.chatViewModel.selectConversation(id: nil)
+        }
+    }
+
+    func clearFailedNoteRestorationIfNeeded() {
+        if environment.notesViewModel.errorMessage != nil {
+            environment.notesPhoneDetailRouteId = nil
+            environment.notesRuntime.viewModel.clearSelection()
+        }
+    }
+
+    func clearFailedWebsiteRestorationIfNeeded() {
+        if environment.websitesViewModel.errorMessage != nil {
+            environment.websitesViewModel.clearSelection()
+        }
+    }
+
+    func clearFailedFileRestorationIfNeeded(didOpen: Bool) {
+        if !didOpen {
+            environment.ingestionViewModel.clearSelection()
         }
     }
 

@@ -77,6 +77,39 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
         XCTAssertFalse(plan.isWorkspaceExpanded)
     }
 
+    func testPhoneValidationFailurePlanFallsBackToSectionList() {
+        let route = PhoneWorkspaceRoute(section: .notes, detail: .note(id: "missing"))
+
+        let plan = WorkspaceRestorationPlanner.makePhoneValidationFailurePlan(
+            route: route
+        )
+
+        XCTAssertEqual(plan, PhoneWorkspaceRestorationPlan(section: .notes, detail: nil))
+    }
+
+    func testWorkspaceValidationFailurePlanReplacesInvalidPrimaryFromSidebarSelection() {
+        let snapshot = SplitWorkspaceSnapshot(
+            sidebarSelection: .tasks,
+            primaryDescriptor: .builtIn(.notes),
+            secondaryDescriptor: .builtIn(.chat),
+            focusedPane: .primary,
+            isLeftPanelExpanded: true,
+            isWorkspaceExpanded: false
+        )
+
+        let plan = WorkspaceRestorationPlanner.makeWorkspaceValidationFailurePlan(
+            snapshot: snapshot,
+            invalidPane: .primary
+        )
+
+        XCTAssertEqual(plan.sidebarSelection, .tasks)
+        XCTAssertEqual(plan.primaryDescriptor, .builtIn(.tasks))
+        XCTAssertEqual(plan.secondaryDescriptor, .builtIn(.chat))
+        XCTAssertEqual(plan.focusedPane, .primary)
+        XCTAssertTrue(plan.isLeftPanelExpanded)
+        XCTAssertFalse(plan.isWorkspaceExpanded)
+    }
+
     func testShouldSkipRestorationForExternalIntent() {
         XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
             commandSelection: .tasks,
