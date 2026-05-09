@@ -24,4 +24,8 @@ public enum AppStorageKeys {
     public nonisolated static let hasShownBiometricHint = "sidebar.hasShownBiometricHint"
     public nonisolated static let onboardingStatus = "sidebar.onboardingStatus"
     public nonisolated static let internalDiagnosticsUnlocked = "sidebar.internalDiagnosticsUnlocked"
+    public nonisolated static let workspaceRestorationPhone = "sidebar.workspaceRestoration.phone.v1"
+    public nonisolated static let workspaceRestorationWorkspace = "sidebar.workspaceRestoration.workspace.v1"
+    public nonisolated static let workspaceRestorationDueTodayAutoOpenDate =
+        "sidebar.workspaceRestoration.dueTodayAutoOpenDate.v1"
 }
