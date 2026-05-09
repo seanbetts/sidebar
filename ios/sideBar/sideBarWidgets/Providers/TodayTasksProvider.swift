@@ -166,7 +166,7 @@ struct TodayTasksProvider: AppIntentTimelineProvider {
                 let appError = AppError.classify(
                     error: error,
                     operation: "widget.tasks.refresh",
-                    requestKind: .foregroundRead
+                    requestKind: .widgetRefresh
                 )
                 var metadata = appError.diagnostics
                 metadata["provider"] = "TodayTasksProvider"

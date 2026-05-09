@@ -5,7 +5,6 @@ import sideBarShared
 final class ShareExtensionEnvironment {
     let apiClient: APIClient
     let websitesAPI: WebsitesAPI
-    private let session: URLSession
     private let keychain: KeychainAuthStateStore
     private let authRefresher: ShareExtensionAuthRefresher?
 
@@ -22,10 +21,11 @@ final class ShareExtensionEnvironment {
         // (in case main app refreshed the token while extension is active)
         let config = APIClientConfig(baseUrl: baseUrl, accessTokenProvider: {
             try? keychain.loadAccessToken()
+        }, refreshAuthIfNeeded: { [authRefresher] in
+            await authRefresher?.ensureValidSession(forceRefresh: true) ?? false
         })
         self.apiClient = APIClient(config: config)
         self.websitesAPI = WebsitesAPI(client: apiClient)
-        self.session = APIClient.makeDefaultSession()
     }
 
     func ensureValidAccessToken(forceRefresh: Bool = false) async -> Bool {
@@ -72,12 +72,20 @@ final class ShareExtensionEnvironment {
     /// Uploads a file URL to the ingestion API and returns the file ID.
     func uploadFile(fileURL: URL, filename: String, mimeType: String) async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
-        var request = URLRequest(url: apiClient.config.baseUrl.appendingPathComponent("files"))
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        if let token = apiClient.config.accessTokenProvider() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let intent = RequestIntent(
+            operation: "share_extension.upload_file",
+            path: "files",
+            method: .post,
+            requestKind: .multipartUpload,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
+        let request = try apiClient.buildRequest(
+            intent.path,
+            method: intent.method,
+            headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"]
+        )
 
         let bodyFileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("share-upload-body-\(UUID().uuidString)")
@@ -92,19 +100,7 @@ final class ShareExtensionEnvironment {
             try? FileManager.default.removeItem(at: bodyFileURL)
         }
 
-        let (responseData, response) = try await session.upload(for: request, fromFile: bodyFileURL)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIClientError.unknown
-        }
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 401 || http.statusCode == 403 {
-                throw APIClientError.requestFailed(http.statusCode)
-            }
-            if let errorMessage = Self.parseErrorMessage(from: responseData) {
-                throw APIClientError.apiError(errorMessage)
-            }
-            throw APIClientError.requestFailed(http.statusCode)
-        }
+        let (responseData, _) = try await apiClient.executeUpload(request, fromFile: bodyFileURL, intent: intent)
 
         struct UploadResponse: Codable { let fileId: String }
         let decoder = JSONDecoder()
@@ -141,12 +137,6 @@ final class ShareExtensionEnvironment {
             try output.write(contentsOf: chunk)
         }
         try output.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
-    }
-
-    private static func parseErrorMessage(from data: Data) -> String? {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return APIClient.decodeErrorMessage(data: data, decoder: decoder)
     }
 
     private static func apiBaseURL() throws -> URL {

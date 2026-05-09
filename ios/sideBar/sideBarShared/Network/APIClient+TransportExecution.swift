@@ -234,10 +234,15 @@ extension APIClient {
         let decoder = Self.makeDecoder()
         let message = Self.decodeErrorMessage(data: data, decoder: decoder)
         postFailureNotification(intent: intent, statusCode: statusCode, backendMessage: message, transportError: nil)
-        if let message {
-            return .apiError(message)
-        }
-        return .requestFailed(statusCode)
+        return .appError(
+            AppError.classify(
+                operation: intent.operation,
+                requestKind: intent.requestKind,
+                responseStatus: statusCode,
+                backendMessage: message,
+                transportError: nil
+            )
+        )
     }
 
     private func classifyStreamFailure(
@@ -257,10 +262,15 @@ extension APIClient {
 
         postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
         await notifyAuthRejectedIfNeeded(statusCode: http.statusCode, intent: intent, request: request)
-        if let message {
-            return .apiError(message)
-        }
-        return .requestFailed(http.statusCode)
+        return .appError(
+            AppError.classify(
+                operation: intent.operation,
+                requestKind: intent.requestKind,
+                responseStatus: http.statusCode,
+                backendMessage: message,
+                transportError: nil
+            )
+        )
     }
 
     private func collectBytes(from bytes: URLSession.AsyncBytes) async throws -> Data {

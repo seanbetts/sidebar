@@ -20,7 +20,8 @@ extension ChatViewModel {
                 fallbackUserMessage: mappedError
             )
             logStreamRequestFailure(mappedError)
-            if !shouldSuppressCurrentStreamErrors {
+            if shouldUseGlobalStreamErrorSurface(status: .error),
+               !shouldSuppressCurrentStreamErrors {
                 errorMessage = presentation.userMessage
             }
             finalizeStreaming(

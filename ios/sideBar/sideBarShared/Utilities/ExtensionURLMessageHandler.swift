@@ -157,6 +157,8 @@ public enum ExtensionURLMessageHandler {
     private static func isUnauthorized(_ error: Error) -> Bool {
         if let apiError = error as? APIClientError {
             switch apiError {
+            case .appError(let appError):
+                return appError.category == .authentication || appError.category == .permission
             case .requestFailed(401), .requestFailed(403):
                 return true
             case .apiError(let message):
@@ -178,33 +180,43 @@ public enum ExtensionURLMessageHandler {
         if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
             return .queue(.savedForLater)
         }
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .requestFailed(let statusCode):
-                if statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode) {
-                    return .queue(.savedForLater)
-                }
-            case .apiError(let message):
-                let lowered = message.lowercased()
-                if lowered == "unable to save website" || lowered == "failed to save website" {
-                    return .queue(.savedForLater)
-                }
-                if lowered.contains("timeout")
-                    || lowered.contains("timed out")
-                    || lowered.contains("temporar")
-                    || lowered.contains("try again")
-                    || lowered.contains("rate limit")
-                    || lowered.contains("too many request")
-                    || lowered.contains("unavailable")
-                    || lowered.contains("gateway")
-                    || lowered.contains("server error") {
-                    return .queue(.savedForLater)
-                }
-            default:
-                break
-            }
+        if let apiError = error as? APIClientError,
+           let disposition = retryDisposition(for: apiError) {
+            return disposition
         }
         return .fail(.uploadFailed)
+    }
+
+    private static func retryDisposition(for apiError: APIClientError) -> SaveFailureDisposition? {
+        switch apiError {
+        case .appError(let appError) where shouldQueueForRetry(appError):
+            return .queue(.savedForLater)
+        case .requestFailed(let statusCode) where statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode):
+            return .queue(.savedForLater)
+        case .apiError(let message) where shouldQueueForRetry(message):
+            return .queue(.savedForLater)
+        default:
+            return nil
+        }
+    }
+
+    private static func shouldQueueForRetry(_ appError: AppError) -> Bool {
+        [.offline, .timeout, .serverBusy, .serverUnreachable, .rateLimited].contains(appError.category)
+    }
+
+    private static func shouldQueueForRetry(_ message: String) -> Bool {
+        let lowered = message.lowercased()
+        return lowered == "unable to save website"
+            || lowered == "failed to save website"
+            || lowered.contains("timeout")
+            || lowered.contains("timed out")
+            || lowered.contains("temporar")
+            || lowered.contains("try again")
+            || lowered.contains("rate limit")
+            || lowered.contains("too many request")
+            || lowered.contains("unavailable")
+            || lowered.contains("gateway")
+            || lowered.contains("server error")
     }
 
     private static func response(

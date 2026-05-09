@@ -60,6 +60,8 @@ nonisolated extension ErrorMapping {
         requestKind: RequestKind?
     ) -> ErrorPresentationDecision {
         switch apiError {
+        case .appError(let appError):
+            return presentation(for: AppError.classify(error: appError, operation: operation, requestKind: requestKind))
         case .requestFailed(let status):
             return presentation(
                 for: AppError.classify(

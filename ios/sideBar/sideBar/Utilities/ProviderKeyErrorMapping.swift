@@ -5,6 +5,11 @@ extension ErrorMapping {
     public static func providerKeyMessage(for error: Error) -> String {
         if let apiError = error as? APIClientError {
             switch apiError {
+            case .appError(let appError):
+                if appError.category == .requestRejected {
+                    return "We couldn't verify that API key. Check it and try again."
+                }
+                return message(for: appError)
             case .apiError(let message):
                 if isInvalidProviderAPIKeyMessage(message) {
                     return "That API key doesn't look valid for this provider."

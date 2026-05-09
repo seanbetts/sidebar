@@ -37,6 +37,7 @@ public enum APIClientError: Error {
     case missingToken
     case requestFailed(Int)
     case apiError(String)
+    case appError(AppError)
     case decodingFailed
     case unknown
 }

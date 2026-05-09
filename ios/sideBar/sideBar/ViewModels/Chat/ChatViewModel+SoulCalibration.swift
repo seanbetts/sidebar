@@ -407,6 +407,8 @@ extension ChatViewModel {
         }
 
         switch apiError {
+        case .appError(let appError):
+            return [.serverBusy, .timeout, .rateLimited].contains(appError.category)
         case .apiError(let message):
             let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             return trimmed == "database request timed out"
@@ -425,6 +427,7 @@ extension ChatViewModel {
         }
 
         switch apiError {
+        case .appError(let appError): return appError.diagnostics["statusCode"] == "409"
         case .apiError(let message):
             let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return (trimmed.hasPrefix("Expected prompt ")
@@ -458,9 +461,7 @@ extension ChatViewModel {
     }
 
     private func hasNonEmptySoulCalibrationText(_ value: String?) -> Bool {
-        guard let value else {
-            return false
-        }
+        guard let value else { return false }
         return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -488,9 +489,7 @@ extension ChatViewModel {
     }
 
     private func submitPendingSoulCalibrationSubmissionIfNeeded() async {
-        guard let pending = pendingSoulCalibrationSubmission else {
-            return
-        }
+        guard let pending = pendingSoulCalibrationSubmission else { return }
         pendingSoulCalibrationSubmission = nil
         await submitSoulCalibrationAnswer(
             prompt: pending.prompt,

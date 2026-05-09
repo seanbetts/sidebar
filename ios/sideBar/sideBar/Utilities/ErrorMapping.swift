@@ -111,7 +111,7 @@ public nonisolated enum ErrorMapping {
         if error is DecodingError {
             return "Received invalid data from server."
         }
-        return error.localizedDescription
+        return "Unexpected error."
     }
 
     public static func message(for error: Error, during operation: String) -> String {
@@ -120,6 +120,8 @@ public nonisolated enum ErrorMapping {
 
     static func mapAPIError(_ apiError: APIClientError) -> String {
         switch apiError {
+        case .appError(let appError):
+            return message(for: appError)
         case .apiError(let message):
             return messageForAPIErrorMessage(message)
         case .missingToken:
@@ -148,7 +150,7 @@ public nonisolated enum ErrorMapping {
         if isPromptTooLargeMessage(message) {
             return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
         }
-        return message
+        return "Unexpected error."
     }
 
     private static func messageForStatus(_ status: Int) -> String {

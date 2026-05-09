@@ -4,6 +4,12 @@ import sideBarShared
 
 @MainActor
 final class ErrorMappingTests: XCTestCase {
+    private struct RawLocalizedTestError: LocalizedError {
+        var errorDescription: String? {
+            "backend stack trace: secret detail"
+        }
+    }
+
     func testServerBusyMutationUsesToastPresentationDecision() {
         let appError = AppError.classify(
             operation: "tasks.rename",
@@ -184,9 +190,14 @@ final class ErrorMappingTests: XCTestCase {
         )
     }
 
-    func testMapsApiErrorMessage() {
-        let message = ErrorMapping.message(for: APIClientError.apiError("Bad request"))
-        XCTAssertEqual(message, "Bad request")
+    func testUnknownAPIErrorMessageDoesNotExposeRawBackendText() {
+        let message = ErrorMapping.message(for: APIClientError.apiError("backend stack trace: secret detail"))
+        XCTAssertEqual(message, "Unexpected error.")
+    }
+
+    func testUnknownLocalizedErrorFallsBackToGenericMessage() {
+        let message = ErrorMapping.message(for: RawLocalizedTestError())
+        XCTAssertEqual(message, "Unexpected error.")
     }
 
     func testMapsAuthErrorDescription() {

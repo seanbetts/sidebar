@@ -72,6 +72,8 @@ enum ShareExtensionMessageMapper {
 
     private static func message(for error: APIClientError) -> String {
         switch error {
+        case .appError(let appError):
+            return message(for: appError)
         case .requestFailed(let statusCode):
             return message(forStatusCode: statusCode)
         case .apiError(let message):

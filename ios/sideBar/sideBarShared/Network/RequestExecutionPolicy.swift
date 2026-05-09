@@ -70,6 +70,7 @@ public enum RequestKind: String, Equatable, Sendable {
     case sseStream
     case multipartUpload
     case backgroundUpload
+    case widgetRefresh
     case healthProbe
     case offlineReplay
 }

@@ -378,17 +378,7 @@ extension IngestionViewModel {
             return nil
         } catch {
             store.updateLocalUpload(fileId: tempId, status: "failed", stage: "failed", progress: nil)
-            if let apiError = error as? APIClientError {
-                switch apiError {
-                case .apiError(let message):
-                    return message
-                case .requestFailed:
-                    return "Failed to add YouTube video"
-                default:
-                    return "Failed to add YouTube video"
-                }
-            }
-            return "Failed to add YouTube video"
+            return youTubeIngestionFailureMessage(for: error)
         }
     }
 
@@ -481,6 +471,18 @@ extension IngestionViewModel {
         ).message
     }
 
+    private func youTubeIngestionFailureMessage(for error: Error) -> String {
+        guard let apiError = error as? APIClientError else { return "Failed to add YouTube video" }
+        switch apiError {
+        case .appError(let appError) where [.requestRejected, .payloadTooLarge].contains(appError.category):
+            return ErrorMapping.message(for: appError)
+        case .apiError(let message):
+            return ErrorMapping.message(for: APIClientError.apiError(message))
+        default:
+            return "Failed to add YouTube video"
+        }
+    }
+
     private func retryableYouTubeSource(for item: IngestionListItem) -> String? {
         guard item.file.id.hasPrefix("youtube-") else { return nil }
         guard let sourceUrl = item.file.sourceUrl?.trimmingCharacters(in: .whitespacesAndNewlines) else { return nil }
@@ -488,8 +490,6 @@ extension IngestionViewModel {
         return sourceUrl
     }
 
-    /// Refreshes widget data by fetching the latest files list
-    /// Called by background refresh task to keep widgets up-to-date
     func refreshWidgetData() async {
         do {
             try await store.loadList(force: true)

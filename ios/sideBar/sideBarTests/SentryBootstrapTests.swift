@@ -207,6 +207,39 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertNil(record.context["requestKind"])
     }
 
+    func testRecordRequestLifecycleFailureCapturesSanitizedContext() throws {
+        let recorder = RecordingAppSentryRecorder()
+        let signal = RequestLifecycleSignal(
+            operation: "files.upload",
+            requestKind: .multipartUpload,
+            stage: .failed,
+            errorCategory: .payloadTooLarge,
+            metadata: [
+                "backend_body": "{\"detail\":\"raw backend detail\"}",
+                "retryability": "notRetryable",
+                "statusCode": "413",
+                "url": "https://api.example.com/private/files"
+            ]
+        )
+
+        AppSentry.recordRequestLifecycleFailure(
+            signal,
+            recorder: recorder,
+            isEnabled: true
+        )
+
+        let record = try XCTUnwrap(recorder.messages.first)
+        XCTAssertEqual(record.message, "Request lifecycle failed")
+        XCTAssertEqual(record.level, "error")
+        XCTAssertEqual(record.context["operation"], "files.upload")
+        XCTAssertEqual(record.context["request_kind"], "multipartUpload")
+        XCTAssertEqual(record.context["category"], "payloadTooLarge")
+        XCTAssertEqual(record.context["retryability"], "notRetryable")
+        XCTAssertEqual(record.context["status_code"], "413")
+        XCTAssertNil(record.context["backend_body"])
+        XCTAssertNil(record.context["url"])
+    }
+
     func testStartIfConfiguredStartsOnlyOnce() {
         let client = RecordingSentryBootstrapClient()
         let bundle = TestSentryBundleInfo()

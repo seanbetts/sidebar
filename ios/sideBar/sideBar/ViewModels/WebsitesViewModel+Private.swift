@@ -241,6 +241,8 @@ extension WebsitesViewModel {
     func isDeleteConflict(_ error: Error) -> Bool {
         guard let apiError = error as? APIClientError else { return false }
         switch apiError {
+        case .appError(let appError):
+            return appError.diagnostics["statusCode"] == "409"
         case .apiError(let message):
             return message.localizedCaseInsensitiveContains("updated since last sync")
         case .requestFailed(409):

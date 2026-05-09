@@ -277,6 +277,27 @@ enum AppSentry {
         recorder.capture(message: message, level: level, context: sanitizedData(context))
     }
 
+    static func recordRequestLifecycleFailure(
+        _ signal: RequestLifecycleSignal,
+        recorder: AppSentryRecording = DefaultAppSentryRecorder.shared,
+        isEnabled: Bool = SentryBootstrap.isStarted
+    ) {
+        guard signal.stage == .failed else { return }
+        var context = signal.metadata
+        context["operation"] = signal.operation
+        context["requestKind"] = signal.requestKind.rawValue
+        if let errorCategory = signal.errorCategory {
+            context["category"] = errorCategory.rawValue
+        }
+        capture(
+            message: "Request lifecycle failed",
+            level: "error",
+            context: context,
+            recorder: recorder,
+            isEnabled: isEnabled
+        )
+    }
+
     private static func sanitizedData(_ data: [String: String]) -> [String: String] {
         DiagnosticsMetadataSanitizer.sanitize(data)
     }

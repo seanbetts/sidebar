@@ -34,7 +34,7 @@ final class APIClientTests: XCTestCase {
         let _: EmptyResponse = try await client.request("ping")
     }
 
-    func testDecodesApiErrorDetail() async {
+    func testRequestFailureThrowsTypedAppErrorInsteadOfRawBackendMessage() async {
         let client = makeClient(token: "token-123")
         router.setHandler { request in
             let response = HTTPURLResponse(
@@ -51,8 +51,14 @@ final class APIClientTests: XCTestCase {
             XCTFail("Expected error")
         } catch let error as APIClientError {
             switch error {
-            case .apiError(let message):
-                XCTAssertEqual(message, "Bad request")
+            case .appError(let appError):
+                XCTAssertEqual(appError.category, .requestRejected)
+                XCTAssertEqual(appError.operation, "get.ping")
+                XCTAssertEqual(appError.requestKind, .foregroundRead)
+                XCTAssertEqual(
+                    ErrorMapping.message(for: error),
+                    "Request was rejected by the server. If this includes attachments, remove one and try again."
+                )
             default:
                 XCTFail("Unexpected error: \(error)")
             }

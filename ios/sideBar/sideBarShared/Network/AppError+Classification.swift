@@ -7,11 +7,13 @@ public extension AppError {
         requestKind: RequestKind?
     ) -> AppError {
         if let appError = error as? AppError {
-            return appError
+            return reclassified(appError, operation: operation, requestKind: requestKind)
         }
 
         if let apiError = error as? APIClientError {
             switch apiError {
+            case .appError(let appError):
+                return reclassified(appError, operation: operation, requestKind: requestKind)
             case .requestFailed(let status):
                 return classify(
                     operation: operation,
@@ -98,6 +100,29 @@ public extension AppError {
             requestKind: requestKind,
             retryability: retryability,
             recommendedSurface: recommendedSurface,
+            diagnostics: diagnostics
+        )
+    }
+
+    private static func reclassified(
+        _ appError: AppError,
+        operation: String,
+        requestKind: RequestKind?
+    ) -> AppError {
+        var diagnostics = appError.diagnostics
+        diagnostics["operation"] = operation
+        if let requestKind {
+            diagnostics["requestKind"] = requestKind.rawValue
+        } else {
+            diagnostics.removeValue(forKey: "requestKind")
+        }
+
+        return AppError(
+            category: appError.category,
+            operation: operation,
+            requestKind: requestKind,
+            retryability: appError.retryability,
+            recommendedSurface: appError.recommendedSurface,
             diagnostics: diagnostics
         )
     }

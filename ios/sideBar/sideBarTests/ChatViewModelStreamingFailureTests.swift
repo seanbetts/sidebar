@@ -77,13 +77,46 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             viewModel.messages.first?.error,
             "The response stream ended unexpectedly. Please try again."
         )
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The response stream ended unexpectedly. Please try again."
-        )
+        XCTAssertNil(viewModel.errorMessage)
         XCTAssertFalse(viewModel.isStreaming)
         XCTAssertNil(viewModel.currentStreamMessageId)
         XCTAssertNil(viewModel.streamingConversationId)
+    }
+
+    func testStartStreamFailureKeepsGlobalErrorMessageClearWhenAssistantMessageCanCarryError() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "partial response",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        await viewModel.startStream(
+            request: ChatStreamRequest(
+                message: "Hello",
+                conversationId: "conv-1"
+            )
+        )
+
+        XCTAssertEqual(viewModel.messages.first?.status, .error)
+        XCTAssertNotNil(viewModel.messages.first?.error)
+        XCTAssertNil(viewModel.errorMessage)
     }
 
     func testTokenUpdatesDoNotPersistUntilFinalize() async {

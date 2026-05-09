@@ -134,7 +134,7 @@ struct SavedSitesProvider: AppIntentTimelineProvider {
                 let appError = AppError.classify(
                     error: error,
                     operation: "widget.websites.refresh",
-                    requestKind: .foregroundRead
+                    requestKind: .widgetRefresh
                 )
                 var metadata = appError.diagnostics
                 metadata["provider"] = "SavedSitesProvider"

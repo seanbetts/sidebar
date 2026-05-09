@@ -74,7 +74,9 @@ extension ChatViewModel {
                 finalizedStatus = .error
                 finalizedStreamError = presentation.userMessage
                 finalizedErrorDetails = presentation.details
-                errorMessage = presentation.userMessage
+                if shouldUseGlobalStreamErrorSurface(status: finalizedStatus) {
+                    errorMessage = presentation.userMessage
+                }
                 updateFinalizedMessage(
                     id: messageId,
                     status: finalizedStatus,
@@ -83,7 +85,9 @@ extension ChatViewModel {
                 )
             case .discard:
                 clearRetryState()
-                if status == .complete && !shouldSuppressCurrentStreamErrors {
+                if status == .complete,
+                   shouldUseGlobalStreamErrorSurface(status: .error),
+                   !shouldSuppressCurrentStreamErrors {
                     errorMessage = "Assistant returned an empty response. Please try again."
                 }
                 discardAssistantMessage(id: messageId)

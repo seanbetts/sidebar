@@ -116,7 +116,7 @@ struct PinnedFilesProvider: AppIntentTimelineProvider {
                 let appError = AppError.classify(
                     error: error,
                     operation: "widget.files.refresh",
-                    requestKind: .foregroundRead
+                    requestKind: .widgetRefresh
                 )
                 var metadata = appError.diagnostics
                 metadata["provider"] = "PinnedFilesProvider"

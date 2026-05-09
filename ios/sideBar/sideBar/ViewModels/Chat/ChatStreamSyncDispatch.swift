@@ -26,7 +26,7 @@ extension ChatViewModel {
                 )
                 self?.logTerminalStreamError(rawStreamError)
                 self?.didReceiveTerminalStreamEvent = true
-                if self?.shouldSurfaceCurrentStreamError(status: .error) == true,
+                if self?.shouldUseGlobalStreamErrorSurface(status: .error) == true,
                    self?.shouldSuppressCurrentStreamErrors != true {
                     self?.errorMessage = presentation.userMessage
                 }

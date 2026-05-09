@@ -137,6 +137,7 @@ final class ConnectivityMonitor: ObservableObject {
         guard signal.stage == .failed, let category = signal.errorCategory else {
             return
         }
+        AppSentry.recordRequestLifecycleFailure(signal)
 
         switch category {
         case .offline:

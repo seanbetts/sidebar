@@ -202,6 +202,34 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(serverMessage, ExtensionUserMessageCatalog.message(for: .uploadFailed))
     }
 
+    func testShareExtensionUploadUsesSharedAPIClientExecution() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let sourceURL = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/ShareExtension/ShareExtensionEnvironment.swift"
+        )
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("apiClient.executeUpload("))
+        XCTAssertFalse(source.contains("session.upload(for:"))
+    }
+
+    func testWidgetProvidersClassifyRefreshFailuresAsWidgetRefreshRequests() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let providerPaths = [
+            "ios/sideBar/sideBarWidgets/Providers/TodayTasksProvider.swift",
+            "ios/sideBar/sideBarWidgets/Providers/PinnedNotesProvider.swift",
+            "ios/sideBar/sideBarWidgets/Providers/PinnedFilesProvider.swift",
+            "ios/sideBar/sideBarWidgets/Providers/SavedSitesProvider.swift"
+        ]
+
+        for providerPath in providerPaths {
+            let sourceURL = repositoryRoot.appendingPathComponent(providerPath)
+            let source = try String(contentsOf: sourceURL, encoding: .utf8)
+            XCTAssertTrue(source.contains("requestKind: .widgetRefresh"), providerPath)
+            XCTAssertFalse(source.contains("requestKind: .foregroundRead"), providerPath)
+        }
+    }
+
     func testErrorMessageMapsUnauthorizedApiDetailToNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(
             for: APIClientError.apiError("JWT expired or unauthorized")

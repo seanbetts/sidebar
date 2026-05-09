@@ -45,7 +45,7 @@ extension ChatViewModel {
             assistantMessageId=\(self.currentStreamMessageId ?? "nil", privacy: .public)
             """
         )
-        if shouldSurfaceCurrentStreamError(status: .error),
+        if shouldUseGlobalStreamErrorSurface(status: .error),
            !shouldSuppressCurrentStreamErrors {
             errorMessage = fallbackMessage
         }
@@ -80,5 +80,12 @@ extension ChatViewModel {
             messageId: messageId,
             status: status
         )
+    }
+
+    func shouldUseGlobalStreamErrorSurface(status: MessageStatus) -> Bool {
+        guard activeStreamingMessageId == nil else {
+            return false
+        }
+        return shouldSurfaceCurrentStreamError(status: status)
     }
 }

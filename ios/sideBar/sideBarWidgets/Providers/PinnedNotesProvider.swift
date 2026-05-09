@@ -119,7 +119,7 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
                 let appError = AppError.classify(
                     error: error,
                     operation: "widget.notes.refresh",
-                    requestKind: .foregroundRead
+                    requestKind: .widgetRefresh
                 )
                 var metadata = appError.diagnostics
                 metadata["provider"] = "PinnedNotesProvider"
