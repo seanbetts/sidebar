@@ -503,11 +503,30 @@ final class ContentViewLifecycleTests: XCTestCase {
         let normalized = try contentViewLifecycleSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("guardenvironment.authState==.active,"))
-        XCTAssertTrue(normalized.contains("environment.isProtectedContentReadyelse{return}"))
-        XCTAssertTrue(normalized.contains("didSetInitialSelection=true"))
+        XCTAssertTrue(normalized.contains("letreadiness=initialSelectionReadinessPlan()"))
+        XCTAssertTrue(normalized.contains("didSetInitialSelection=readiness.didSetInitialSelection"))
         XCTAssertTrue(normalized.contains("ifawaitapplyInitialLaunchDestinationIfAvailable()"))
         XCTAssertTrue(normalized.contains("applyDefaultInitialSelection()"))
+    }
+
+    func testInitialSelectionReadinessDoesNotConsumeAttemptBeforeProtectedContentIsReady() {
+        var didSetInitialSelection = false
+        let blocked = InitialSelectionReadinessPlan.resolve(
+            authState: .active,
+            isProtectedContentReady: false,
+            didSetInitialSelection: didSetInitialSelection
+        )
+        XCTAssertFalse(blocked.shouldProceed)
+        XCTAssertFalse(blocked.didSetInitialSelection)
+
+        didSetInitialSelection = blocked.didSetInitialSelection
+        let ready = InitialSelectionReadinessPlan.resolve(
+            authState: .active,
+            isProtectedContentReady: true,
+            didSetInitialSelection: didSetInitialSelection
+        )
+        XCTAssertTrue(ready.shouldProceed)
+        XCTAssertTrue(ready.didSetInitialSelection)
     }
 
     func testDefaultInitialSelectionDoesNotEnsureInitialPhoneChatInterface() throws {

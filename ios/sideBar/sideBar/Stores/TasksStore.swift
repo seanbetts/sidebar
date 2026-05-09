@@ -113,6 +113,7 @@ import Combine
         await refresh(selection: selection, requestId: requestId)
         finishLoading(isSearch: selection.isSearch)
     }
+
     public func loadCounts(force: Bool = false) async {
         errorMessage = nil
         if applyCachedOrOffline(
@@ -403,4 +404,66 @@ import Combine
         currentScope = response.scope
     }
 
+}
+
+extension TasksStore {
+    @discardableResult
+    public func loadForLaunch(selection: TaskSelection) async -> Bool {
+        let requestId = beginLoadRequest()
+        if selection == .none {
+            self.selection = selection
+            errorMessage = nil
+            isLoading = false
+            searchPending = false
+            tasks = []
+            return false
+        }
+
+        self.selection = selection
+        errorMessage = nil
+        guard canRefreshFromRemote() else {
+            if tasks.isEmpty && !hasCachedList(selection: selection) {
+                currentScope = selection.scope
+                errorMessage = "This task list isn't available offline yet."
+            }
+            finishLoading(isSearch: selection.isSearch)
+            return false
+        }
+
+        if selection.isSearch {
+            if tasks.isEmpty {
+                searchPending = true
+            }
+        } else if tasks.isEmpty {
+            isLoading = true
+        }
+
+        do {
+            let response = try await fetchWithDedupe(selection: selection)
+            let shouldApplyVisibleState = shouldApplyVisibleState(
+                for: selection,
+                requestId: requestId
+            )
+            let pendingWrites = await pendingTaskWrites()
+            apply(
+                list: response,
+                selection: selection,
+                persist: true,
+                updateVisibleState: shouldApplyVisibleState,
+                pendingWrites: pendingWrites
+            )
+            finishLoading(isSearch: selection.isSearch)
+            return true
+        } catch {
+            if shouldApplyVisibleState(for: selection, requestId: requestId), tasks.isEmpty {
+                errorMessage = ErrorMapping.message(for: error)
+            }
+            finishLoading(isSearch: selection.isSearch)
+            return false
+        }
+    }
+
+    public func loadTodayForLaunch() async -> Bool {
+        await loadForLaunch(selection: .today)
+    }
 }

@@ -32,6 +32,25 @@ struct RestorationSaveSuppressionPolicy: Equatable {
     }
 }
 
+struct InitialSelectionReadinessPlan: Equatable {
+    let shouldProceed: Bool
+    let didSetInitialSelection: Bool
+
+    static func resolve(
+        authState: AuthState,
+        isProtectedContentReady: Bool,
+        didSetInitialSelection: Bool
+    ) -> Self {
+        guard authState == .active, isProtectedContentReady, !didSetInitialSelection else {
+            return Self(
+                shouldProceed: false,
+                didSetInitialSelection: didSetInitialSelection
+            )
+        }
+        return Self(shouldProceed: true, didSetInitialSelection: true)
+    }
+}
+
 extension WorkspaceRestorationPlanner {
     static func freshTodayTaskCountForLaunch(
         previousCounts: TaskCountsResponse?,
@@ -142,6 +161,14 @@ extension ContentView {
         )
     }
 
+    func initialSelectionReadinessPlan() -> InitialSelectionReadinessPlan {
+        InitialSelectionReadinessPlan.resolve(
+            authState: environment.authState,
+            isProtectedContentReady: environment.isProtectedContentReady,
+            didSetInitialSelection: didSetInitialSelection
+        )
+    }
+
     func applyWithWorkspaceRestorationSaveSuppression<T>(_ operation: () async -> T) async -> T {
         var policy = saveSuppressionPolicy
         policy.beginLaunchApplication()
@@ -214,9 +241,7 @@ extension ContentView {
     }
 
     func applyDueTodayTasksLaunchOverride(localDateKey: String) async -> Bool {
-        await environment.tasksViewModel.load(selection: .today, force: true)
-        guard environment.tasksViewModel.selection == .today,
-              environment.tasksViewModel.errorMessage == nil else {
+        guard await environment.tasksViewModel.loadTodayForLaunch() else {
             return false
         }
         environment.workspaceRestorationStore.recordDueTodayAutoOpen(

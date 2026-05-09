@@ -214,9 +214,9 @@ extension ContentView {
     }
 
     func applyInitialSelectionIfNeeded() {
-        guard environment.authState == .active, environment.isProtectedContentReady else { return }
-        guard !didSetInitialSelection else { return }
-        didSetInitialSelection = true
+        let readiness = initialSelectionReadinessPlan()
+        didSetInitialSelection = readiness.didSetInitialSelection
+        guard readiness.shouldProceed else { return }
         Task {
             if await applyInitialLaunchDestinationIfAvailable() {
                 ensureChatSidebarVisibleIfNeeded(for: sidebarSelection)

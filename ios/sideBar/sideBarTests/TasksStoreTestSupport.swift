@@ -20,6 +20,7 @@ final class TasksStoreStubTasksAPI: TasksProviding {
     var listCallCount: Int = 0
     var countsCallCount: Int = 0
     var listResponsesByScope: [String: TaskListResponse] = [:]
+    var listErrorsByScope: [String: Error] = [:]
     var listResponseDelaysByScope: [String: UInt64] = [:]
     var searchResponse = TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
     var countsResponseDelayNanoseconds: UInt64 = 0
@@ -49,6 +50,9 @@ final class TasksStoreStubTasksAPI: TasksProviding {
 
     func list(scope: String) async throws -> TaskListResponse {
         listCallCount += 1
+        if let error = listErrorsByScope[scope] {
+            throw error
+        }
         if let delay = listResponseDelaysByScope[scope], delay > 0 {
             try? await Task.sleep(nanoseconds: delay)
         }

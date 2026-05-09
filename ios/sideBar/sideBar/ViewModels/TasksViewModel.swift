@@ -211,6 +211,19 @@ public final class TasksViewModel: ObservableObject {
         await store.loadCounts(force: force)
     }
 
+    @discardableResult
+    public func loadTodayForLaunch() async -> Bool {
+        localErrorMessage = nil
+        let didLoadFreshToday = await store.loadTodayForLaunch()
+        if didLoadFreshToday {
+            lastNonSearchSelection = .today
+            updateWidgetData(for: .today)
+            ContentListReadRecovery.success()
+                .apply(errorMessage: &localErrorMessage, loadState: &listLoadState)
+        }
+        return didLoadFreshToday
+    }
+
     public func reset() {
         searchDebounce?.cancel()
         searchDebounce = nil

@@ -429,3 +429,48 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(api.countsCallCount, 1)
     }
 }
+
+@MainActor
+final class TasksStoreLaunchLoadTests: XCTestCase {
+    func testLoadForLaunchReturnsFalseWhenFreshTodayLoadFailsWithStaleTasksVisible() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = TasksStoreStubTasksAPI()
+        let networkStatus = TasksStoreTestNetworkStatus(
+            isNetworkAvailable: true,
+            isServerReachable: false
+        )
+        let store = TasksStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: networkStatus
+        )
+        let staleTask = TaskItem(id: "stale-today", title: "Cached today", status: "open")
+        let staleList = TaskListResponse(
+            scope: "today",
+            generatedAt: "stale",
+            tasks: [staleTask],
+            projects: nil,
+            groups: nil
+        )
+        cache.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: staleList,
+            ttlSeconds: 60
+        )
+
+        await store.load(selection: .today)
+        XCTAssertEqual(api.listCallCount, 0)
+        networkStatus.isServerReachable = true
+        api.listErrorsByScope["today"] = TasksStoreStubError.unused
+
+        let didLoadFreshToday = await store.loadForLaunch(selection: .today)
+
+        XCTAssertFalse(didLoadFreshToday)
+        XCTAssertEqual(api.listCallCount, 1)
+        XCTAssertEqual(store.selection, .today)
+        XCTAssertEqual(store.tasks, [staleTask])
+    }
+}
