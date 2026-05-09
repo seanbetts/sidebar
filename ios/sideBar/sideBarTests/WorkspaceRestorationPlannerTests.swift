@@ -53,6 +53,8 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
         XCTAssertEqual(plan.primaryDescriptor, .builtIn(.notes))
         XCTAssertEqual(plan.secondaryDescriptor, .builtIn(.chat))
         XCTAssertEqual(plan.focusedPane, .primary)
+        XCTAssertTrue(plan.isLeftPanelExpanded)
+        XCTAssertFalse(plan.isWorkspaceExpanded)
     }
 
     func testWorkspacePlanFallsBackToChatWhenBothPanesAreEmpty() {
@@ -71,6 +73,8 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
         XCTAssertEqual(plan.primaryDescriptor, .empty)
         XCTAssertEqual(plan.secondaryDescriptor, .builtIn(.chat))
         XCTAssertEqual(plan.focusedPane, .secondary)
+        XCTAssertEqual(plan.isLeftPanelExpanded, snapshot.isLeftPanelExpanded)
+        XCTAssertFalse(plan.isWorkspaceExpanded)
     }
 
     func testShouldSkipRestorationForExternalIntent() {
@@ -81,6 +85,61 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
             hasPendingNewNoteDeepLink: false,
             hasPendingScratchpadDeepLink: false,
             hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testShouldSkipRestorationForQueuedProtectedDeepLinks() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: true,
+            hasPendingNewTaskDeepLink: false,
+            hasPendingNewNoteDeepLink: false,
+            hasPendingScratchpadDeepLink: false,
+            hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testShouldSkipRestorationForPendingNewTaskDeepLink() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: false,
+            hasPendingNewTaskDeepLink: true,
+            hasPendingNewNoteDeepLink: false,
+            hasPendingScratchpadDeepLink: false,
+            hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testShouldSkipRestorationForPendingNewNoteDeepLink() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: false,
+            hasPendingNewTaskDeepLink: false,
+            hasPendingNewNoteDeepLink: true,
+            hasPendingScratchpadDeepLink: false,
+            hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testShouldSkipRestorationForPendingScratchpadDeepLink() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: false,
+            hasPendingNewTaskDeepLink: false,
+            hasPendingNewNoteDeepLink: false,
+            hasPendingScratchpadDeepLink: true,
+            hasPendingMorningDigestDeepLink: false
+        ))
+    }
+
+    func testShouldSkipRestorationForPendingMorningDigestDeepLink() {
+        XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
+            commandSelection: nil,
+            hasQueuedProtectedDeepLinks: false,
+            hasPendingNewTaskDeepLink: false,
+            hasPendingNewNoteDeepLink: false,
+            hasPendingScratchpadDeepLink: false,
+            hasPendingMorningDigestDeepLink: true
         ))
     }
 
