@@ -315,6 +315,7 @@ extension ChatViewModel {
             entityId: nil,
             status: .pending
         )
+        recordToolConfirmation(payload, messageId: messageId)
         upsertToolAction(action, messageId: messageId)
         markNeedsNewline()
     }

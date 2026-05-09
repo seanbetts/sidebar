@@ -411,7 +411,8 @@ struct ToolCallDetailView: View {
                 case .summary:
                     ToolCallSummaryCard(
                         summary: summaryPresentation,
-                        status: toolCall.status
+                        status: toolCall.status,
+                        isFramed: false
                     )
                 case .workspaceActions:
                     if !workspaceSurfaceTargets.isEmpty {

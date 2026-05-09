@@ -11,6 +11,30 @@ from api.services.ai.tool_event_mapper import tool_side_effect_events
 from api.services.ai.tool_result_normalizer import normalize_tool_result
 
 
+def attach_confirmation_metadata_to_tool_call(
+    *,
+    tool_calls_by_id: dict[str, dict[str, Any]],
+    confirmation_data: dict[str, Any],
+) -> None:
+    """Attach pending confirmation metadata to the persisted tool-call snapshot."""
+    tool_call_id = confirmation_data.get("tool_call_id")
+    if not isinstance(tool_call_id, str) or not tool_call_id.strip():
+        return
+    existing = tool_calls_by_id.get(tool_call_id)
+    if existing is None:
+        return
+    metadata_fields = {
+        "confirmationId": confirmation_data.get("confirmation_id"),
+        "confirmationSummary": confirmation_data.get("summary"),
+        "confirmationGuardReason": confirmation_data.get("guard_reason"),
+        "confirmationUndoSupported": confirmation_data.get("undo_supported"),
+        "confirmationExpiresAt": confirmation_data.get("expires_at"),
+    }
+    for key, value in metadata_fields.items():
+        if value is not None:
+            existing[key] = value
+
+
 async def resolve_tool_confirmation_action(
     confirmation_id: str,
     *,

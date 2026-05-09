@@ -125,6 +125,22 @@ extension ChatViewModel {
             in: payload,
             keys: ["icon_key", "iconKey"]
         )
+        let confirmationId = firstStringValue(
+            in: payload,
+            keys: ["confirmation_id", "confirmationId"]
+        )
+        let confirmationSummary = firstStringValue(
+            in: payload,
+            keys: ["confirmation_summary", "confirmationSummary"]
+        )
+        let confirmationGuardReason = firstStringValue(
+            in: payload,
+            keys: ["confirmation_guard_reason", "confirmationGuardReason"]
+        )
+        let confirmationExpiresAt = firstStringValue(
+            in: payload,
+            keys: ["confirmation_expires_at", "confirmationExpiresAt"]
+        )
         return ToolCall(
             id: id,
             name: name,
@@ -132,7 +148,13 @@ extension ChatViewModel {
             status: status,
             result: result,
             skillId: skillId,
-            iconKey: iconKey
+            iconKey: iconKey,
+            confirmationId: confirmationId,
+            confirmationSummary: confirmationSummary,
+            confirmationGuardReason: confirmationGuardReason,
+            confirmationUndoSupported: boolValue(from: event.data, key: "confirmationUndoSupported")
+                ?? boolValue(from: event.data, key: "confirmation_undo_supported"),
+            confirmationExpiresAt: confirmationExpiresAt
         )
     }
 

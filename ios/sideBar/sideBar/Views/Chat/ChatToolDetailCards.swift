@@ -215,6 +215,7 @@ struct ChatProminentInlineActionButtonStyle: ButtonStyle {
 struct ToolCallSummaryCard: View {
     let summary: ChatToolPresentation.Summary
     let status: ToolStatus
+    var isFramed = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -238,16 +239,26 @@ struct ToolCallSummaryCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(DesignTokens.Spacing.sm)
+        .padding(isFramed ? DesignTokens.Spacing.sm : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    @ViewBuilder
+    private var cardBackground: some View {
+        if isFramed {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .fill(DesignTokens.Colors.surface)
-        )
-        .overlay(
+        }
+    }
+
+    @ViewBuilder
+    private var cardBorder: some View {
+        if isFramed {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
+        }
     }
 
     private var statusForeground: Color {

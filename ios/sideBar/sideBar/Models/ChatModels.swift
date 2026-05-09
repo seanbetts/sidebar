@@ -54,6 +54,16 @@ public struct ToolCall: Codable, Identifiable {
     public let skillId: String?
     /// Optional icon key (currently aligned to skill ID).
     public let iconKey: String?
+    /// Pending destructive action confirmation identifier, when the tool is gated.
+    public let confirmationId: String?
+    /// User-facing confirmation summary for a pending destructive tool.
+    public let confirmationSummary: String?
+    /// Reason for the confirmation gate.
+    public let confirmationGuardReason: String?
+    /// Whether an accepted destructive action can expose undo afterward.
+    public let confirmationUndoSupported: Bool?
+    /// Expiry timestamp for the pending confirmation.
+    public let confirmationExpiresAt: String?
 
     public init(
         id: String,
@@ -62,7 +72,12 @@ public struct ToolCall: Codable, Identifiable {
         status: ToolStatus,
         result: AnyCodable? = nil,
         skillId: String? = nil,
-        iconKey: String? = nil
+        iconKey: String? = nil,
+        confirmationId: String? = nil,
+        confirmationSummary: String? = nil,
+        confirmationGuardReason: String? = nil,
+        confirmationUndoSupported: Bool? = nil,
+        confirmationExpiresAt: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -71,6 +86,11 @@ public struct ToolCall: Codable, Identifiable {
         self.result = result
         self.skillId = skillId
         self.iconKey = iconKey
+        self.confirmationId = confirmationId
+        self.confirmationSummary = confirmationSummary
+        self.confirmationGuardReason = confirmationGuardReason
+        self.confirmationUndoSupported = confirmationUndoSupported
+        self.confirmationExpiresAt = confirmationExpiresAt
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -81,8 +101,18 @@ public struct ToolCall: Codable, Identifiable {
         case result
         case skillId
         case iconKey
+        case confirmationId
+        case confirmationSummary
+        case confirmationGuardReason
+        case confirmationUndoSupported
+        case confirmationExpiresAt
         case legacySkillId = "skill_id"
         case legacyIconKey = "icon_key"
+        case legacyConfirmationId = "confirmation_id"
+        case legacyConfirmationSummary = "confirmation_summary"
+        case legacyConfirmationGuardReason = "confirmation_guard_reason"
+        case legacyConfirmationUndoSupported = "confirmation_undo_supported"
+        case legacyConfirmationExpiresAt = "confirmation_expires_at"
     }
 
     public init(from decoder: Decoder) throws {
@@ -96,6 +126,19 @@ public struct ToolCall: Codable, Identifiable {
             ?? container.decodeIfPresent(String.self, forKey: .legacySkillId)
         iconKey = try container.decodeIfPresent(String.self, forKey: .iconKey)
             ?? container.decodeIfPresent(String.self, forKey: .legacyIconKey)
+        confirmationId = try container.decodeIfPresent(String.self, forKey: .confirmationId)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyConfirmationId)
+        confirmationSummary = try container.decodeIfPresent(String.self, forKey: .confirmationSummary)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyConfirmationSummary)
+        confirmationGuardReason = try container.decodeIfPresent(
+            String.self,
+            forKey: .confirmationGuardReason
+        )
+            ?? container.decodeIfPresent(String.self, forKey: .legacyConfirmationGuardReason)
+        confirmationUndoSupported = try container.decodeIfPresent(Bool.self, forKey: .confirmationUndoSupported)
+            ?? container.decodeIfPresent(Bool.self, forKey: .legacyConfirmationUndoSupported)
+        confirmationExpiresAt = try container.decodeIfPresent(String.self, forKey: .confirmationExpiresAt)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyConfirmationExpiresAt)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -107,6 +150,11 @@ public struct ToolCall: Codable, Identifiable {
         try container.encodeIfPresent(result, forKey: .result)
         try container.encodeIfPresent(skillId, forKey: .skillId)
         try container.encodeIfPresent(iconKey, forKey: .iconKey)
+        try container.encodeIfPresent(confirmationId, forKey: .confirmationId)
+        try container.encodeIfPresent(confirmationSummary, forKey: .confirmationSummary)
+        try container.encodeIfPresent(confirmationGuardReason, forKey: .confirmationGuardReason)
+        try container.encodeIfPresent(confirmationUndoSupported, forKey: .confirmationUndoSupported)
+        try container.encodeIfPresent(confirmationExpiresAt, forKey: .confirmationExpiresAt)
     }
 }
 

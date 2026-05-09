@@ -49,6 +49,7 @@ from api.services.chat_router_support import (
     require_completed_soul_calibration,
 )
 from api.services.chat_tool_action_service import (
+    attach_confirmation_metadata_to_tool_call,
     resolve_tool_confirmation_action,
     undo_tool_action_token,
 )
@@ -587,12 +588,18 @@ async def stream_chat(
                 elif event_type in CUSTOM_CHAT_STREAM_EVENT_TYPES or (
                     event_type in ONBOARDING_STREAM_EVENT_TYPES
                 ):
-                    if event_type == "tool_status":
-                        event_data = event.get("data", {})
-                        if isinstance(event_data, dict):
-                            status = event_data.get("status")
-                            if isinstance(status, str) and status.lower() != "running":
-                                needs_newline_before_next_token = True
+                    event_data = event.get("data", {})
+                    if event_type == "tool_confirmation_requested" and isinstance(
+                        event_data, dict
+                    ):
+                        attach_confirmation_metadata_to_tool_call(
+                            tool_calls_by_id=tool_calls_by_id,
+                            confirmation_data=event_data,
+                        )
+                    if event_type == "tool_status" and isinstance(event_data, dict):
+                        status = event_data.get("status")
+                        if isinstance(status, str) and status.lower() != "running":
+                            needs_newline_before_next_token = True
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"
 

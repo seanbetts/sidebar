@@ -7,7 +7,12 @@ extension ChatViewModel {
     }
 
     func toolActions(for messageId: String) -> [ChatToolAction] {
-        toolActionsByMessageId[messageId] ?? []
+        let explicitActions = toolActionsByMessageId[messageId] ?? []
+        guard explicitActions.isEmpty,
+              let message = messages.first(where: { $0.id == messageId }) else {
+            return explicitActions
+        }
+        return synthesizedToolActions(from: message)
     }
 
     func upsertToolAction(_ action: ChatToolAction, messageId: String) {
@@ -29,6 +34,44 @@ extension ChatViewModel {
             updatedActions[index] = transform(actions[index])
             toolActionsByMessageId[messageId] = updatedActions
             return
+        }
+    }
+
+    func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
+        guard let toolCallId = payload.toolCallId else {
+            return
+        }
+        updateMessage(id: messageId, persist: false) { message in
+            let updatedToolCalls = message.toolCalls?.map { toolCall in
+                guard toolCall.id == toolCallId else {
+                    return toolCall
+                }
+                return ToolCall(
+                    id: toolCall.id,
+                    name: toolCall.name,
+                    parameters: toolCall.parameters,
+                    status: toolCall.status,
+                    result: toolCall.result,
+                    skillId: toolCall.skillId,
+                    iconKey: toolCall.iconKey,
+                    confirmationId: payload.confirmationId,
+                    confirmationSummary: payload.summary,
+                    confirmationGuardReason: payload.guardReason,
+                    confirmationUndoSupported: payload.undoSupported,
+                    confirmationExpiresAt: payload.expiresAt
+                )
+            }
+            return Message(
+                id: message.id,
+                role: message.role,
+                content: message.content,
+                status: message.status,
+                toolCalls: updatedToolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: message.error,
+                errorDetails: message.errorDetails
+            )
         }
     }
 
@@ -107,9 +150,39 @@ extension ChatViewModel {
     }
 
     private func messageId(forToolActionId id: String) -> String? {
-        toolActionsByMessageId.first { _, actions in
+        if let explicitMessageId = toolActionsByMessageId.first(where: { _, actions in
             actions.contains { $0.id == id }
-        }?.key
+        })?.key {
+            return explicitMessageId
+        }
+        return messages.first { message in
+            synthesizedToolActions(from: message).contains { $0.id == id }
+        }?.id
+    }
+
+    private func synthesizedToolActions(from message: Message) -> [ChatToolAction] {
+        guard let toolCalls = message.toolCalls else {
+            return []
+        }
+        return toolCalls.compactMap { toolCall in
+            guard toolCall.status == .pending,
+                  let confirmationId = toolCall.confirmationId?.trimmedOrNil,
+                  let summary = toolCall.confirmationSummary?.trimmedOrNil else {
+                return nil
+            }
+            return ChatToolAction(
+                id: confirmationId,
+                kind: .confirmation,
+                summary: summary,
+                toolName: toolCall.name,
+                guardReason: toolCall.confirmationGuardReason,
+                undoSupported: toolCall.confirmationUndoSupported ?? false,
+                expiresAt: toolCall.confirmationExpiresAt,
+                entityType: nil,
+                entityId: nil,
+                status: .pending
+            )
+        }
     }
 
     private func toolAction(_ action: ChatToolAction, status: ChatToolActionStatus) -> ChatToolAction {

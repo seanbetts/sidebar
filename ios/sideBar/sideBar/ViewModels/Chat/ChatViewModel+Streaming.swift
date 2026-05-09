@@ -336,7 +336,15 @@ extension ChatViewModel {
                 status: toolCall.status,
                 result: toolCall.result ?? existing?.result,
                 skillId: toolCall.skillId ?? existing?.skillId,
-                iconKey: toolCall.iconKey ?? existing?.iconKey
+                iconKey: toolCall.iconKey ?? existing?.iconKey,
+                confirmationId: toolCall.confirmationId ?? existing?.confirmationId,
+                confirmationSummary: toolCall.confirmationSummary ?? existing?.confirmationSummary,
+                confirmationGuardReason: toolCall.confirmationGuardReason
+                    ?? existing?.confirmationGuardReason,
+                confirmationUndoSupported: toolCall.confirmationUndoSupported
+                    ?? existing?.confirmationUndoSupported,
+                confirmationExpiresAt: toolCall.confirmationExpiresAt
+                    ?? existing?.confirmationExpiresAt
             )
             let updatedCalls = upsertToolCall(existing: message.toolCalls, newValue: merged)
             return Message(

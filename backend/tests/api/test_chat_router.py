@@ -1861,6 +1861,101 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
     assert updated.messages[2]["toolCalls"][0]["status"] == "success"
 
 
+def test_stream_chat_persists_confirmation_metadata_on_pending_tool_call(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db,
+        user_id,
+        "Pending Confirmation",
+    )
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {
+                "type": "tool_call",
+                "id": "tool-1",
+                "name": "Delete Note",
+                "parameters": {"note_id": "note-1"},
+                "status": "pending",
+                "skill_id": "notes",
+                "icon_key": "notes",
+            }
+            yield {
+                "type": "tool_confirmation_requested",
+                "data": {
+                    "confirmation_id": "confirm-1",
+                    "tool_call_id": "tool-1",
+                    "tool_name": "Delete Note",
+                    "parameters": {"note_id": "note-1"},
+                    "summary": "Delete note note-1?",
+                    "guard_reason": "destructive_action",
+                    "undo_supported": True,
+                    "expires_at": "2026-05-09T00:05:00+00:00",
+                    "skill_id": "notes",
+                    "icon_key": "notes",
+                },
+            }
+            yield {
+                "type": "tool_status",
+                "data": {
+                    "tool_call_id": "tool-1",
+                    "status": "awaiting_confirmation",
+                    "display_name": "Delete Note",
+                },
+            }
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={
+                "message": "Delete it",
+                "conversation_id": str(conversation.id),
+                "user_message_id": "user-msg-1",
+                "assistant_message_id": "assistant-msg-1",
+            },
+        )
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    test_db.expire_all()
+    updated = ConversationService.get_conversation(test_db, user_id, conversation.id)
+    tool_call = updated.messages[2]["toolCalls"][0]
+    assert tool_call["id"] == "tool-1"
+    assert tool_call["status"] == "pending"
+    assert tool_call["confirmationId"] == "confirm-1"
+    assert tool_call["confirmationSummary"] == "Delete note note-1?"
+    assert tool_call["confirmationGuardReason"] == "destructive_action"
+    assert tool_call["confirmationUndoSupported"] is True
+    assert tool_call["confirmationExpiresAt"] == "2026-05-09T00:05:00+00:00"
+
+
 def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
     def _raise_prompt_size_error(**_kwargs):
         raise ValueError("too large")
