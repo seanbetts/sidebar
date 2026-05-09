@@ -4729,6 +4729,118 @@ def test_parse_url_local_paywall_marks_anti_bot_block(monkeypatch):
     assert exc_info.value.antibot_detection.challenge_kind == "generic"
 
 
+def test_parse_url_local_ft_security_verification_raises_antibot_fallback(
+    monkeypatch,
+):
+    html = """
+    <html>
+      <head><title>Security Verification</title></head>
+      <body>
+        <main>
+          <p>For help please visit help.ft.com. We apologise for any inconvenience.</p>
+          <p>Enable JavaScript and cookies to continue</p>
+          <p>Reason Challenge</p>
+          <p>Request ID 9f9280ceea8d93d6</p>
+          <p>Status Code 403</p>
+        </main>
+      </body>
+    </html>
+    """
+
+    class FakeDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<main><p>Enable JavaScript and cookies to continue</p></main>"
+
+        def short_title(self) -> str:
+            return "Security Verification"
+
+        def title(self) -> str:
+            return "Security Verification"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.ft.com/content/a40cafcc-0fa4-4e70-9e24-90d826aea56d", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "html_to_markdown", lambda _html: "")
+
+    with pytest.raises(LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local(
+            "https://www.ft.com/content/a40cafcc-0fa4-4e70-9e24-90d826aea56d"
+        )
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.stage == "direct"
+    assert exc_info.value.antibot_detection is not None
+    assert exc_info.value.antibot_detection.challenge_kind == "generic"
+
+
+def test_parse_url_local_ft_barrier_returns_paywall_preview(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Subscribe to read</title>
+        <meta property="og:title" content="Anthropic weighs deal for near $1tn valuation as revenue surges" />
+        <meta property="og:description" content="Start-up behind Claude tool is fielding inbound investment offers that could lead to it surpassing rival OpenAI in value" />
+        <meta property="og:image" content="https://images.ft.com/v3/image/raw/https%3A%2F%2Fexample.com%2Fhero.jpg?source=next-barrier-page" />
+        <link rel="canonical" href="https://www.ft.com/content/a40cafcc-0fa4-4e70-9e24-90d826aea56d" />
+        <script type="application/ld+json">{
+          "@context":"http://schema.org",
+          "@type":"NewsArticle",
+          "headline":"Anthropic weighs deal for near $1tn valuation as revenue surges",
+          "datePublished":"2026-05-08T04:00:14.231Z",
+          "image":{"@type":"ImageObject","url":"https://example.com/hero.jpg"},
+          "author":[
+            {"@type":"Person","name":"Zijing Wu"},
+            {"@type":"Person","name":"George Hammond"},
+            {"@type":"Person","name":"Clara Murray"}
+          ],
+          "isAccessibleForFree":"False"
+        }</script>
+      </head>
+      <body>
+        <main>
+          <h1>Anthropic weighs deal for near $1tn valuation as revenue surges</h1>
+          <p>Subscribe to unlock this article</p>
+          <p>Try unlimited access</p>
+          <p>Complete digital access to quality FT journalism on any device.</p>
+          <p>Keep reading for £1</p>
+        </main>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.ft.com/content/a40cafcc-0fa4-4e70-9e24-90d826aea56d", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.ft.com/content/a40cafcc-0fa4-4e70-9e24-90d826aea56d"
+    )
+
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert (
+        parsed.title
+        == "Anthropic weighs deal for near $1tn valuation as revenue surges"
+    )
+    assert parsed.published_at == datetime(2026, 5, 8, 4, 0, 14, 231000, tzinfo=UTC)
+    assert data["paywalled"] is True
+    assert data["truncated"] is True
+    assert data["author"] == "Zijing Wu, George Hammond, Clara Murray"
+    assert (
+        "Start-up behind Claude tool is fielding inbound investment offers"
+        in parsed.content
+    )
+    assert "Complete digital access to quality FT journalism" not in parsed.content
+    assert "Keep reading for £1" not in parsed.content
+
+
 def test_parse_url_local_uses_substack_api(monkeypatch):
     html = """
     <html>

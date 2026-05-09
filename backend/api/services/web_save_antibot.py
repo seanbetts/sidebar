@@ -51,6 +51,12 @@ _CLOUDFLARE_BODY_MARKERS: tuple[Marker, ...] = (
 _GENERIC_MARKERS: tuple[Marker, ...] = (
     Marker(
         kind="generic",
+        description="page title indicates a security verification interstitial",
+        phrase="security verification",
+        is_title=True,
+    ),
+    Marker(
+        kind="generic",
         description="page includes a 'challenge-form' element",
         phrase="challenge-form",
     ),
@@ -58,6 +64,11 @@ _GENERIC_MARKERS: tuple[Marker, ...] = (
         kind="generic",
         description="page tells the user to enable cookies",
         phrase="enable cookies",
+    ),
+    Marker(
+        kind="generic",
+        description="page tells the user to enable JavaScript and cookies",
+        phrase="enable javascript and cookies to continue",
     ),
     Marker(
         kind="generic",

@@ -49,6 +49,7 @@ from api.services.web_save_parser_fallback import (
     raise_antibot_fallback_if_needed,
 )
 from api.services.web_save_parser_forbes import extract_forbes_article_markdown
+from api.services.web_save_parser_ft import extract_ft_barrier_payload
 from api.services.web_save_parser_github import cleanup_github_markdown
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 from api.services.web_save_parser_metadata import extract_metadata
@@ -451,6 +452,37 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     raw_html_original = html
     metadata = extract_metadata(html, final_url)
     favicon_url = resolve_favicon_url(metadata.get("favicon"), final_url)
+    if ft_barrier_payload := extract_ft_barrier_payload(raw_html_original, final_url):
+        title = ft_barrier_payload.get("title") or metadata.get("title") or final_url
+        published_at = parse_datetime(ft_barrier_payload.get("published"))
+        preview = (ft_barrier_payload.get("preview") or "").strip()
+        body = (
+            "Warning: This article appears truncated. Full content may be behind a "
+            "paywall."
+        )
+        if preview:
+            body = f"{body}\n\n{preview}"
+        content = build_frontmatter(
+            body,
+            meta={
+                "source": metadata.get("canonical") or final_url,
+                "title": title,
+                "author": ft_barrier_payload.get("author"),
+                "published_date": (published_at.isoformat() if published_at else None),
+                "domain": urlparse(final_url).netloc,
+                "paywalled": True,
+                "truncated": bool(preview),
+                "used_js_rendering": used_js_rendering,
+                "saved_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        return ParsedPage(
+            title=title,
+            content=content,
+            source=metadata.get("canonical") or final_url,
+            published_at=published_at,
+            favicon_url=favicon_url,
+        )
     if pre_rules:
         html = engine.apply_rules(html, pre_rules)
     discard_rule = next((rule for rule in pre_rules if rule.discard), None)
