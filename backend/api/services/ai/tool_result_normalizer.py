@@ -4,6 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+_INGESTION_COLLECTION_TOOL_NAMES = {
+    "Write File",
+    "Delete File",
+    "Rename File",
+    "Pin File",
+    "Download YouTube",
+    "Transcribe Audio",
+    "Transcribe YouTube",
+}
+
 _COLLECTION_INVALIDATION_TOOL_NAMES = {
     "Set UI Theme",
     "Update Assistant Identity",
@@ -17,8 +27,7 @@ _COLLECTION_INVALIDATION_TOOL_NAMES = {
     "Memory Tool",
     "Update Scratchpad",
     "Clear Scratchpad",
-    "Write File",
-    "Download YouTube",
+    *_INGESTION_COLLECTION_TOOL_NAMES,
 }
 
 _ENTITY_CHANGED_TOOL_NAMES = {
@@ -153,7 +162,7 @@ def _collection_targets_for_display_name(
         return ["memory"]
     if display_name in {"Update Scratchpad", "Clear Scratchpad"}:
         return ["scratchpad"]
-    if display_name in {"Write File", "Download YouTube"}:
+    if display_name in _INGESTION_COLLECTION_TOOL_NAMES:
         return ["ingestion"]
     if display_name in {
         "Create Note Folder",
@@ -226,7 +235,7 @@ def _summary_for_entities(
         return f"Updated memory ({command})"
     if display_name in {"Update Scratchpad", "Clear Scratchpad"}:
         return "Updated scratchpad"
-    if display_name in {"Write File", "Download YouTube"}:
+    if display_name in _INGESTION_COLLECTION_TOOL_NAMES:
         return "Updated ingestion"
     if display_name in {
         "Create Note Folder",

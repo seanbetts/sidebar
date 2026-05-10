@@ -1,4 +1,56 @@
 from api.services.ai.tool_event_mapper import tool_side_effect_events
+from api.services.tools.definitions_conversations import get_conversations_definitions
+from api.services.tools.definitions_fs import get_fs_definitions
+from api.services.tools.definitions_misc import get_misc_definitions
+from api.services.tools.definitions_notes import get_notes_definitions
+from api.services.tools.definitions_tasks import get_tasks_definitions
+from api.services.tools.definitions_transcription import get_transcription_definitions
+from api.services.tools.definitions_web import get_web_definitions
+
+MUTATING_TOOL_PREFIXES = (
+    "Add ",
+    "Archive ",
+    "Clear ",
+    "Complete ",
+    "Create ",
+    "Defer ",
+    "Delete ",
+    "Download ",
+    "Edit ",
+    "Move ",
+    "Pin ",
+    "Remove ",
+    "Rename ",
+    "Reset ",
+    "Save ",
+    "Set ",
+    "Transcribe ",
+    "Update ",
+    "Upload ",
+    "Write ",
+)
+
+MUTATING_TOOLS_WITHOUT_UI_INVALIDATION = {
+    "Download Note",
+    "Download Website",
+    "Submit Bug Report",
+    "Submit Feature Request",
+}
+
+
+def _all_tool_definitions() -> dict:
+    definitions = {}
+    for loader in [
+        get_conversations_definitions,
+        get_fs_definitions,
+        get_misc_definitions,
+        get_notes_definitions,
+        get_tasks_definitions,
+        get_transcription_definitions,
+        get_web_definitions,
+    ]:
+        definitions.update(loader())
+    return definitions
 
 
 def test_tool_side_effect_events_maps_create_note_with_workspace_opening() -> None:
@@ -67,6 +119,35 @@ def test_tool_side_effect_events_maps_get_note_with_workspace_opening() -> None:
             },
         }
     ]
+
+
+def test_mutating_workspace_tools_have_side_effect_event_mapping() -> None:
+    mutating_tool_names = [
+        name
+        for name in _all_tool_definitions()
+        if name.startswith(MUTATING_TOOL_PREFIXES)
+        and name not in MUTATING_TOOLS_WITHOUT_UI_INVALIDATION
+    ]
+
+    missing_events = []
+    for display_name in mutating_tool_names:
+        events = tool_side_effect_events(
+            display_name,
+            {
+                "success": True,
+                "data": {
+                    "id": "entity-1",
+                    "note_id": "note-1",
+                    "website_id": "website-1",
+                    "conversation_id": "conv-1",
+                    "command": "create",
+                },
+            },
+        )
+        if not events:
+            missing_events.append(display_name)
+
+    assert missing_events == []
 
 
 def test_tool_side_effect_events_emits_workspace_patch_event() -> None:
@@ -279,6 +360,65 @@ def test_tool_side_effect_events_invalidates_tasks_after_task_write() -> None:
             },
         }
     ]
+
+
+def test_tool_side_effect_events_invalidates_ingestion_after_file_write() -> None:
+    for display_name in [
+        "Write File",
+        "Delete File",
+        "Rename File",
+        "Pin File",
+        "Download YouTube",
+        "Transcribe Audio",
+        "Transcribe YouTube",
+    ]:
+        events = tool_side_effect_events(
+            display_name,
+            {
+                "success": True,
+                "data": {
+                    "path": "Transcripts/example.md",
+                    "message": "Updated file workspace",
+                },
+            },
+        )
+
+        assert events == [
+            {
+                "type": "collection_invalidated",
+                "data": {
+                    "targets": ["ingestion"],
+                },
+            }
+        ]
+
+
+def test_tool_side_effect_events_invalidates_notes_after_note_folder_write() -> None:
+    for display_name in [
+        "Create Note Folder",
+        "Rename Note Folder",
+        "Move Note Folder",
+        "Delete Note Folder",
+    ]:
+        events = tool_side_effect_events(
+            display_name,
+            {
+                "success": True,
+                "data": {
+                    "path": "Projects",
+                    "message": "Updated notes folder",
+                },
+            },
+        )
+
+        assert events == [
+            {
+                "type": "collection_invalidated",
+                "data": {
+                    "targets": ["notes"],
+                },
+            }
+        ]
 
 
 def test_tool_side_effect_events_maps_rename_conversation() -> None:

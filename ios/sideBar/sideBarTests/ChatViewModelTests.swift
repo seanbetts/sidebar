@@ -224,6 +224,28 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertNil(cachedMemories)
     }
 
+    func testCollectionInvalidationClearsNotesAndFilesCaches() {
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.notesTree, value: FileTree(children: []), ttlSeconds: 60)
+        cache.set(key: CacheKeys.ingestionList, value: [IngestionListItem](), ttlSeconds: 60)
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["notes", "ingestion"]
+            ])
+        ))
+
+        let cachedTree: FileTree? = cache.get(key: CacheKeys.notesTree)
+        let cachedFiles: [IngestionListItem]? = cache.get(key: CacheKeys.ingestionList)
+        XCTAssertNil(cachedTree)
+        XCTAssertNil(cachedFiles)
+    }
+
     func testTaskInvalidationRequestsTasksRefresh() {
         let cache = TestCacheClient()
         var refreshRequestCount = 0

@@ -33,6 +33,16 @@ TASK_WRITE_TOOL_NAMES = {
     "Move Task",
 }
 
+INGESTION_WRITE_TOOL_NAMES = {
+    "Write File",
+    "Delete File",
+    "Rename File",
+    "Pin File",
+    "Download YouTube",
+    "Transcribe Audio",
+    "Transcribe YouTube",
+}
+
 
 def workspace_patch_stream_events(result_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Map workspace patch payloads from tool results to realtime stream events."""
@@ -83,7 +93,7 @@ def assistant_settings_stream_event(
         return build_collection_invalidated(targets=["tasks"])
     if display_name in {"Update Scratchpad", "Clear Scratchpad"}:
         return build_collection_invalidated(targets=["scratchpad"])
-    if display_name in {"Write File", "Download YouTube"}:
+    if display_name in INGESTION_WRITE_TOOL_NAMES:
         return build_collection_invalidated(targets=["ingestion"])
     if display_name in {
         "Create Note Folder",
