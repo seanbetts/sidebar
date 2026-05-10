@@ -190,47 +190,6 @@ final class ConversationsAPITests: XCTestCase {
         XCTAssertEqual(response.id, "c1")
     }
 
-    func testUpdateMessageUsesPutAndMessagePath() async throws {
-        let api = ConversationsAPI(client: makeClient())
-        router.setHandler { request in
-            XCTAssertEqual(request.httpMethod, "PUT")
-            XCTAssertTrue(request.url?.absoluteString.contains("conversations/c1/messages/m1") == true)
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let payload = """
-            {
-              "id":"c1",
-              "title":"Chat",
-              "title_generated":false,
-              "created_at":"2024-01-01",
-              "updated_at":"2024-01-02",
-              "message_count":1,
-              "first_message":"Hello",
-              "is_archived":false
-            }
-            """
-            return (response, Data(payload.utf8))
-        }
-
-        let response = try await api.updateMessage(
-            conversationId: "c1",
-            messageId: "m1",
-            message: ConversationMessageCreate(
-                id: "m1",
-                role: "assistant",
-                content: "Restored this note.",
-                status: "complete",
-                timestamp: "2026-05-10T12:00:00Z"
-            )
-        )
-
-        XCTAssertEqual(response.id, "c1")
-    }
-
     private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
         guard let resolvedRouter = router ?? self.router else {
             fatalError("Expected scoped router to be configured before creating APIClient")

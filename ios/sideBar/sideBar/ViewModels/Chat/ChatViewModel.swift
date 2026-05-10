@@ -191,7 +191,6 @@ private final class ChatViewModelTeardownBag {
     @Published var toolActionsByMessageId: [String: [ChatToolAction]] = [:]
     var activeToolActionMessageId: String?
     var noteIdsClosedForUndoReopen = Set<String>()
-    var pendingLocalMessageUpdatesById: [String: Message] = [:]
     var assistantInitiatedStreamTask: Task<Void, Never>? {
         didSet {
             teardownBag.setAssistantInitiatedStreamTask(assistantInitiatedStreamTask)
@@ -266,9 +265,7 @@ private final class ChatViewModelTeardownBag {
                     return
                 }
                 let incoming = self.normalizeMessages(
-                    self.applyPendingLocalMessageUpdates(
-                        to: self.reconcileMessages(detail.messages, for: id)
-                    )
+                    self.reconcileMessages(detail.messages, for: id)
                 )
                 let isSameSnapshot = self.isSameMessageSnapshot(current: self.messages, incoming: incoming)
                 if !isSameSnapshot {

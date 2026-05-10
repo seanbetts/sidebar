@@ -42,6 +42,8 @@ class PendingConfirmation:
     expires_at: datetime
     skill_id: str | None = None
     icon_key: str | None = None
+    conversation_id: str | None = None
+    assistant_message_id: str | None = None
     resolved_decision: str | None = None
     resolved_at: datetime | None = None
 
@@ -57,6 +59,8 @@ class UndoToken:
     entity_id: str
     summary: str
     expires_at: datetime
+    conversation_id: str | None = None
+    assistant_message_id: str | None = None
     used_at: datetime | None = None
 
 
@@ -113,6 +117,8 @@ class SkillsGuardService:
         parameters: dict[str, Any],
         skill_id: str | None = None,
         icon_key: str | None = None,
+        conversation_id: str | None = None,
+        assistant_message_id: str | None = None,
     ) -> dict[str, Any]:
         """Create and store a pending confirmation request event."""
         spec = self._spec(display_name)
@@ -131,6 +137,8 @@ class SkillsGuardService:
             expires_at=expires_at,
             skill_id=skill_id,
             icon_key=icon_key,
+            conversation_id=conversation_id,
+            assistant_message_id=assistant_message_id,
         )
         self.pending_confirmations[confirmation_id] = pending
         payload: dict[str, Any] = {
@@ -200,6 +208,8 @@ class SkillsGuardService:
         display_name: str,
         parameters: dict[str, Any],
         result_data: dict[str, Any],
+        conversation_id: str | None = None,
+        assistant_message_id: str | None = None,
     ) -> dict[str, Any] | None:
         """Create an undo token event for a successful reversible deletion."""
         spec = self.guarded_tools.get(display_name)
@@ -219,6 +229,8 @@ class SkillsGuardService:
             entity_id=entity_id,
             summary=summary,
             expires_at=expires_at,
+            conversation_id=conversation_id,
+            assistant_message_id=assistant_message_id,
         )
         self.undo_tokens[token] = undo
         return build_undo_available(

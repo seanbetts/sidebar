@@ -1002,10 +1002,19 @@ def test_stream_chat_forwards_tool_status_events(test_client, monkeypatch):
     assert "event: complete" in body
 
 
-def test_resolve_tool_confirmation_decline_returns_resolved_event(test_client, monkeypatch):
+def test_resolve_tool_confirmation_decline_updates_assistant_message(
+    test_client,
+    test_db,
+    monkeypatch,
+):
     from api.services import chat_tool_action_service
     from api.services.agent.tools.skills_guard import SkillsGuardService
 
+    conversation = ConversationService.create_conversation(
+        test_db,
+        TEST_USER_ID,
+        "Delete confirmation",
+    )
     service = SkillsGuardService(
         now=lambda: datetime(2026, 5, 9, tzinfo=UTC),
         pending_confirmations={},
@@ -1017,8 +1026,46 @@ def test_resolve_tool_confirmation_decline_returns_resolved_event(test_client, m
         tool_name="delete_note",
         display_name="Delete Note",
         parameters={"note_id": "note-1"},
+        conversation_id=str(conversation.id),
+        assistant_message_id="msg-assistant-1",
     )
     confirmation_id = event["data"]["confirmation_id"]
+    ConversationService.add_messages(
+        test_db,
+        TEST_USER_ID,
+        conversation.id,
+        [
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Delete this note",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:01Z",
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Please confirm that you want to delete this note.",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:02Z",
+                "toolCalls": [
+                    {
+                        "id": "tool-1",
+                        "name": "Delete Note",
+                        "parameters": {"note_id": "note-1"},
+                        "status": "pending",
+                        "skillId": "notes",
+                        "iconKey": "notes",
+                        "confirmationId": confirmation_id,
+                        "confirmationSummary": "Delete note note-1?",
+                        "confirmationGuardReason": "destructive_action",
+                        "confirmationUndoSupported": True,
+                        "confirmationExpiresAt": "2026-05-09T00:05:00+00:00",
+                    }
+                ],
+            },
+        ],
+    )
     monkeypatch.setattr(chat_tool_action_service, "skills_guard_service", service)
 
     response = test_client.post(
@@ -1032,16 +1079,39 @@ def test_resolve_tool_confirmation_decline_returns_resolved_event(test_client, m
     assert body["decision"] == "decline"
     assert "tool_result" not in body
     assert body["events"][0]["type"] == "tool_confirmation_resolved"
-    assert body["events"][0]["data"]["assistant_message"] == "The action was not run."
+    assert body["events"][0]["data"]["assistant_message"] == (
+        "Okay, I won't delete this note."
+    )
+
+    test_db.refresh(conversation)
+    messages = conversation.messages
+    assert [message["id"] for message in messages] == [
+        "msg-user-1",
+        "msg-assistant-1",
+    ]
+    assert messages[1]["content"] == (
+        "Please confirm that you want to delete this note.\n\n"
+        "Okay, I won't delete this note."
+    )
+    tool_call = messages[1]["toolCalls"][0]
+    assert tool_call["status"] == "cancelled"
+    assert "confirmationId" not in tool_call
+    assert "confirmationSummary" not in tool_call
 
 
 def test_resolve_tool_confirmation_accept_executes_and_returns_undo_event(
     test_client,
+    test_db,
     monkeypatch,
 ):
     from api.services import chat_tool_action_service
     from api.services.agent.tools.skills_guard import SkillsGuardService
 
+    conversation = ConversationService.create_conversation(
+        test_db,
+        TEST_USER_ID,
+        "Delete confirmation",
+    )
     service = SkillsGuardService(
         now=lambda: datetime(2026, 5, 9, tzinfo=UTC),
         pending_confirmations={},
@@ -1053,8 +1123,46 @@ def test_resolve_tool_confirmation_accept_executes_and_returns_undo_event(
         tool_name="delete_note",
         display_name="Delete Note",
         parameters={"note_id": "note-1"},
+        conversation_id=str(conversation.id),
+        assistant_message_id="msg-assistant-1",
     )
     confirmation_id = event["data"]["confirmation_id"]
+    ConversationService.add_messages(
+        test_db,
+        TEST_USER_ID,
+        conversation.id,
+        [
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Delete this note",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:01Z",
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Deleting this note now.",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:02Z",
+                "toolCalls": [
+                    {
+                        "id": "tool-1",
+                        "name": "Delete Note",
+                        "parameters": {"note_id": "note-1"},
+                        "status": "pending",
+                        "skillId": "notes",
+                        "iconKey": "notes",
+                        "confirmationId": confirmation_id,
+                        "confirmationSummary": "Delete note note-1?",
+                        "confirmationGuardReason": "destructive_action",
+                        "confirmationUndoSupported": True,
+                        "confirmationExpiresAt": "2026-05-09T00:05:00+00:00",
+                    }
+                ],
+            },
+        ],
+    )
 
     class FakeToolMapper:
         async def execute_tool(self, tool_name, parameters, context):
@@ -1081,6 +1189,32 @@ def test_resolve_tool_confirmation_accept_executes_and_returns_undo_event(
     assert "tool_confirmation_resolved" in event_types
     assert "entity_deleted" in event_types
     assert "undo_available" in event_types
+    undo_event = next(event for event in body["events"] if event["type"] == "undo_available")
+
+    test_db.refresh(conversation)
+    messages = conversation.messages
+    assert [message["id"] for message in messages] == [
+        "msg-user-1",
+        "msg-assistant-1",
+    ]
+    assert messages[1]["content"] == "Deleting this note now."
+    tool_call = messages[1]["toolCalls"][0]
+    assert tool_call["status"] == "success"
+    assert tool_call["result"]["summary"] == "Deleted note"
+    assert "confirmationId" not in tool_call
+    assert "confirmationSummary" not in tool_call
+
+    monkeypatch.setattr(service, "_restore_undo", lambda db, user_id, undo: None)
+    undo_response = test_client.post(
+        f"/api/chat/undo/{undo_event['data']['undo_token']}",
+        headers=_auth_headers(),
+    )
+
+    assert undo_response.status_code == 200
+    test_db.refresh(conversation)
+    assert conversation.messages[1]["content"] == (
+        'Deleting this note now.\n\nRestored this note.'
+    )
 
 
 def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypatch):

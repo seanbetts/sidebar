@@ -634,6 +634,12 @@ class ProviderToolOrchestrator:
                         parameters=tool_call.arguments,
                         skill_id=skill_id,
                         icon_key=icon_key,
+                        conversation_id=(self._tool_context or {}).get(
+                            "conversation_id"
+                        ),
+                        assistant_message_id=(self._tool_context or {}).get(
+                            "assistant_message_id"
+                        ),
                     )
                     yield build_tool_status(
                         tool_call_id=tool_call.call_id,

@@ -72,7 +72,7 @@ def test_add_messages_appends_batch_in_order(db_session):
     assert updated.first_message == "Hello there"
 
 
-def test_update_message_preserves_transcript_order(db_session):
+def test_tool_action_message_update_preserves_transcript_order(db_session):
     conversation = ConversationService.create_conversation(db_session, "user-1", "Chat")
     updated = ConversationService.add_messages(
         db_session,
@@ -92,22 +92,28 @@ def test_update_message_preserves_transcript_order(db_session):
                 "content": "Please confirm that you want to delete this note.",
                 "status": "complete",
                 "timestamp": "2026-05-10T14:53:01Z",
-                "toolCalls": [],
+                "toolCalls": [
+                    {
+                        "id": "tool-1",
+                        "name": "Delete Note",
+                        "status": "pending",
+                        "confirmationId": "confirm-1",
+                        "confirmationSummary": "Delete note note-1?",
+                    }
+                ],
             },
         ],
     )
 
-    updated = ConversationService.update_message(
+    updated = ConversationService.update_tool_action_message(
         db_session,
         "user-1",
         updated.id,
         "msg-assistant-1",
-        {
-            "content": (
-                "Please confirm that you want to delete this note.\n\n"
-                "Okay, I won't delete this note."
-            )
-        },
+        tool_call_id="tool-1",
+        tool_status="cancelled",
+        result={"success": False, "summary": "Cancelled"},
+        append_content="Okay, I won't delete this note.",
     )
 
     assert [message["id"] for message in updated.messages] == [
@@ -115,6 +121,8 @@ def test_update_message_preserves_transcript_order(db_session):
         "msg-assistant-1",
     ]
     assert updated.messages[1]["content"].endswith("Okay, I won't delete this note.")
+    assert updated.messages[1]["toolCalls"][0]["status"] == "cancelled"
+    assert "confirmationId" not in updated.messages[1]["toolCalls"][0]
 
 
 def test_add_messages_excludes_hidden_bootstrap_from_visible_metadata(db_session):

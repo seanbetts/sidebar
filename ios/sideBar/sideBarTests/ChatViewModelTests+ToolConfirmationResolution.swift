@@ -24,7 +24,7 @@ extension ChatViewModelTests {
         XCTAssertTrue(actions.isEmpty)
     }
 
-    func testAcceptedConfirmationPersistenceClearsConfirmationMetadata() async throws {
+    func testAcceptedConfirmationResolutionDoesNotPersistMessageFromFrontend() async throws {
         let api = ToolConfirmationUpdateMessageAPISpy()
         let viewModel = makeViewModel(
             api: api,
@@ -43,14 +43,13 @@ extension ChatViewModelTests {
         ))
         await api.waitForUpdateMessageCall()
 
-        let toolCall = try XCTUnwrap(api.updateMessageCalls.last?.message.toolCalls?.first?.value as? [String: Any])
-        XCTAssertEqual(toolCall["id"] as? String, "tool-1")
-        XCTAssertEqual(toolCall["status"] as? String, ToolStatus.pending.rawValue)
-        XCTAssertNil(toolCall["confirmationId"])
-        XCTAssertNil(toolCall["confirmationSummary"])
+        XCTAssertTrue(
+            api.updateMessageCalls.isEmpty,
+            "Confirmation resolution must not write assistant transcript state from the frontend."
+        )
     }
 
-    func testDeclinedConfirmationPersistenceKeepsCancelledToolCallAndAppendsAcknowledgement() async throws {
+    func testDeclinedConfirmationResolutionDoesNotPersistMessageFromFrontend() async throws {
         let api = ToolConfirmationUpdateMessageAPISpy()
         let viewModel = makeViewModel(
             api: api,
@@ -69,21 +68,9 @@ extension ChatViewModelTests {
         ))
         await api.waitForUpdateMessageCall()
 
-        let acknowledgementCall = try XCTUnwrap(api.updateMessageCalls.last {
-            $0.message.content.contains("Okay, I won't delete this note.")
-        })
-        let toolCall = try XCTUnwrap(acknowledgementCall.message.toolCalls?.first?.value as? [String: Any])
-        XCTAssertEqual(toolCall["id"] as? String, "tool-1")
-        XCTAssertEqual(toolCall["status"] as? String, ToolStatus.cancelled.rawValue)
-        XCTAssertNil(toolCall["confirmationId"])
-        XCTAssertNil(toolCall["confirmationSummary"])
-        XCTAssertEqual(
-            acknowledgementCall.message.content,
-            """
-            Please confirm that you want to delete this note.
-
-            Okay, I won't delete this note.
-            """
+        XCTAssertTrue(
+            api.updateMessageCalls.isEmpty,
+            "Decline acknowledgement must be persisted by the backend conversation action."
         )
     }
 }

@@ -314,8 +314,6 @@ extension ChatViewModel {
         guard let messageId = targetMessageIdForToolActionEvent else {
             return
         }
-        let shouldPersistMessage = activeStreamingMessageId == nil
-        var updatedMessage: Message?
         updateMessage(id: messageId, persist: false) { message in
             let existing = message.toolCalls?.first(where: { $0.id == toolCall.id })
             let merged = ToolCall(
@@ -347,12 +345,7 @@ extension ChatViewModel {
                 error: message.error,
                 errorDetails: message.errorDetails
             )
-            updatedMessage = updated
             return updated
-        }
-        if shouldPersistMessage,
-           let updatedMessage {
-            persistUpdatedMessage(updatedMessage)
         }
     }
 }

@@ -3,7 +3,7 @@ import sideBarShared
 @testable import sideBar
 
 extension ChatViewModelTests {
-    func testUndoAcknowledgementSurvivesStaleConversationRefresh() {
+    func testStaleConversationRefreshDoesNotApplyFrontendTranscriptOverlay() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
             cache: TestCacheClient()
@@ -57,14 +57,7 @@ extension ChatViewModelTests {
             persist: true
         )
 
-        XCTAssertEqual(
-            viewModel.messages.first?.content,
-            """
-            Deleted this note.
-
-            Restored this note.
-            """
-        )
+        XCTAssertEqual(viewModel.messages.first?.content, "Deleted this note.")
         XCTAssertEqual(viewModel.messages.first?.toolCalls?.first?.status, .success)
     }
 

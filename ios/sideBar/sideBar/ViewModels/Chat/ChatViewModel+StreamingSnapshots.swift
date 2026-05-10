@@ -74,24 +74,6 @@ extension ChatViewModel {
             || messagesDifferOnlyBySyntheticToolNewline(incomingLast, currentLast)
     }
 
-    func applyPendingLocalMessageUpdates(to incoming: [Message]) -> [Message] {
-        guard !pendingLocalMessageUpdatesById.isEmpty else {
-            return incoming
-        }
-        var updated = incoming
-        for (messageId, pendingMessage) in pendingLocalMessageUpdatesById {
-            guard let index = updated.firstIndex(where: { $0.id == messageId }) else {
-                continue
-            }
-            if messagePersistenceSignature(updated[index]) == messagePersistenceSignature(pendingMessage) {
-                pendingLocalMessageUpdatesById[messageId] = nil
-                continue
-            }
-            updated[index] = pendingMessage
-        }
-        return updated
-    }
-
     private func messagesDifferOnlyBySyntheticToolNewline(_ local: Message, _ server: Message) -> Bool {
         guard local.role == .assistant,
               server.role == .assistant,

@@ -42,7 +42,6 @@ extension ChatViewModel {
         confirmationId: String,
         decision: ChatToolActionDecision
     ) {
-        var updatedMessage: Message?
         updateMessage(id: messageId, persist: false) { message in
             guard let toolCalls = message.toolCalls else {
                 return message
@@ -80,13 +79,8 @@ extension ChatViewModel {
                 error: message.error,
                 errorDetails: message.errorDetails
             )
-            updatedMessage = updated
             return updated
         }
-        guard let updatedMessage else {
-            return
-        }
-        persistUpdatedMessage(updatedMessage)
     }
 
     func resolveDeclinedToolConfirmation(
@@ -95,7 +89,6 @@ extension ChatViewModel {
         action: ChatToolAction
     ) {
         let acknowledgement = "Okay, I won't delete this \(action.confirmationObjectName)."
-        var updatedMessage: Message?
         updateMessage(id: messageId, persist: false) { message in
             let resolvedToolCalls = message.toolCalls?.map { toolCall -> ToolCall in
                 toolCall.confirmationId == confirmationId ? cancelledToolCall(from: toolCall) : toolCall
@@ -116,13 +109,8 @@ extension ChatViewModel {
                 error: message.error,
                 errorDetails: message.errorDetails
             )
-            updatedMessage = updated
             return updated
         }
-        guard let updatedMessage else {
-            return
-        }
-        persistUpdatedMessage(updatedMessage)
     }
 
     func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
@@ -210,6 +198,7 @@ extension ChatViewModel {
                     decision: decision
                 )
                 applyToolActionResponse(response)
+                await refreshSelectedConversationFromServer()
                 updateToolActionHeaderStatus(action, status: .success)
                 activeToolActionMessageId = nil
             } catch {
@@ -233,6 +222,7 @@ extension ChatViewModel {
             do {
                 _ = try await chatAPI.undoToolAction(undoToken: action.id)
                 handleSuccessfulUndo(action, messageId: messageId)
+                await refreshSelectedConversationFromServer()
                 updateToolActionHeaderStatus(action, status: .success)
             } catch {
                 updateToolAction(id: action.id) { existing in
@@ -247,10 +237,6 @@ extension ChatViewModel {
     func handleSuccessfulUndo(_ action: ChatToolAction, messageId: String? = nil) {
         updateToolAction(id: action.id) { existing in
             toolAction(existing, status: .undone)
-        }
-        if action.entityType == ChatStreamEntityType.note.rawValue,
-           let messageId {
-            appendMessageContent("Restored this note.", messageId: messageId)
         }
         refreshContextAfterUndo(action)
         reopenNoteAfterUndoIfNeeded(action)
@@ -396,65 +382,6 @@ extension ChatViewModel {
         return "\(currentContent)\n\n\(prompt)"
     }
 
-    private func appendMessageContent(_ content: String, messageId: String) {
-        var updatedMessage: Message?
-        updateMessage(id: messageId, persist: false) { message in
-            guard !message.content.contains(content) else {
-                return message
-            }
-            let updatedContent = message.content.trimmedOrNil == nil
-                ? content
-                : "\(message.content)\n\n\(content)"
-            let updated = Message(
-                id: message.id,
-                role: message.role,
-                content: updatedContent,
-                status: message.status,
-                toolCalls: message.toolCalls,
-                needsNewline: message.needsNewline,
-                timestamp: message.timestamp,
-                error: message.error,
-                errorDetails: message.errorDetails
-            )
-            updatedMessage = updated
-            return updated
-        }
-        guard let updatedMessage else {
-            return
-        }
-        persistUpdatedMessage(updatedMessage)
-    }
-
-    func persistUpdatedMessage(_ message: Message) {
-        guard let conversationId = streamingConversationId ?? selectedConversationId else {
-            return
-        }
-        pendingLocalMessageUpdatesById[message.id] = message
-        Task { @MainActor in
-            do {
-                _ = try await conversationsAPI.updateMessage(
-                    conversationId: conversationId,
-                    messageId: message.id,
-                    message: ConversationMessageCreate(
-                        id: message.id,
-                        role: message.role.rawValue,
-                        content: message.content,
-                        status: message.status.rawValue,
-                        timestamp: message.timestamp,
-                        toolCalls: toolCallPayloads(from: message.toolCalls),
-                        error: message.error,
-                        errorDetails: message.errorDetails
-                    )
-                )
-            } catch {
-                if pendingLocalMessageUpdatesById[message.id]?.content == message.content {
-                    pendingLocalMessageUpdatesById[message.id] = nil
-                }
-                errorMessage = ErrorMapping.message(for: error)
-            }
-        }
-    }
-
     private func refreshContextAfterUndo(_ action: ChatToolAction) {
         guard let entityType = action.entityType else {
             return
@@ -470,6 +397,17 @@ extension ChatViewModel {
             refreshContext(for: .ingestion(fileId: action.entityId))
         default:
             break
+        }
+    }
+
+    private func refreshSelectedConversationFromServer() async {
+        guard let conversationId = selectedConversationId ?? streamingConversationId else {
+            return
+        }
+        do {
+            try await chatStore.loadConversation(id: conversationId, force: true)
+        } catch {
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 }

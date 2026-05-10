@@ -178,27 +178,40 @@ class ConversationService:
         return conversation
 
     @staticmethod
-    def update_message(
+    def update_tool_action_message(
         db: Session,
         user_id: str,
         conversation_id: UUID,
         message_id: str,
-        message: dict,
+        *,
+        tool_call_id: str,
+        tool_status: str,
+        result: dict[str, Any] | None = None,
+        append_content: str | None = None,
     ) -> Conversation:
-        """Update one message within a conversation transcript."""
+        """Apply a server-owned tool action result to a transcript message."""
         conversation = ConversationService.get_conversation(
             db, user_id, conversation_id
         )
         messages = list(conversation.messages or [])
-        for index, existing_message in enumerate(messages):
+        for message_index, existing_message in enumerate(messages):
             if str(existing_message.get("id") or "") != message_id:
                 continue
 
-            messages[index] = {
-                **existing_message,
-                **message,
-                "id": message_id,
-            }
+            updated_message = dict(existing_message)
+            updated_message["toolCalls"] = ConversationService._resolved_tool_calls(
+                existing_message.get("toolCalls"),
+                tool_call_id=tool_call_id,
+                tool_status=tool_status,
+                result=result,
+            )
+            if append_content:
+                updated_message["content"] = ConversationService._append_message_text(
+                    str(existing_message.get("content") or ""),
+                    append_content,
+                )
+
+            messages[message_index] = updated_message
             conversation.messages = messages
             flag_modified(conversation, "messages")
             ConversationService._apply_visible_message_metadata(conversation)
@@ -209,6 +222,76 @@ class ConversationService:
             return conversation
 
         raise MessageNotFoundError(message_id)
+
+    @staticmethod
+    def append_message_content(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        message_id: str,
+        content: str,
+    ) -> Conversation:
+        """Append canonical server-generated content to a transcript message."""
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
+        messages = list(conversation.messages or [])
+        for message_index, existing_message in enumerate(messages):
+            if str(existing_message.get("id") or "") != message_id:
+                continue
+
+            updated_message = dict(existing_message)
+            updated_message["content"] = ConversationService._append_message_text(
+                str(existing_message.get("content") or ""),
+                content,
+            )
+            messages[message_index] = updated_message
+            conversation.messages = messages
+            flag_modified(conversation, "messages")
+            ConversationService._apply_visible_message_metadata(conversation)
+            conversation.updated_at = datetime.now(UTC)
+
+            db.commit()
+            db.refresh(conversation)
+            return conversation
+
+        raise MessageNotFoundError(message_id)
+
+    @staticmethod
+    def _resolved_tool_calls(
+        tool_calls: Any,
+        *,
+        tool_call_id: str,
+        tool_status: str,
+        result: dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
+        updated_calls: list[dict[str, Any]] = []
+        for tool_call in tool_calls if isinstance(tool_calls, list) else []:
+            if not isinstance(tool_call, dict):
+                continue
+            updated_call = dict(tool_call)
+            if str(updated_call.get("id") or "") == tool_call_id:
+                updated_call["status"] = tool_status
+                if result is not None:
+                    updated_call["result"] = result
+                for key in (
+                    "confirmationId",
+                    "confirmationSummary",
+                    "confirmationGuardReason",
+                    "confirmationUndoSupported",
+                    "confirmationExpiresAt",
+                ):
+                    updated_call.pop(key, None)
+            updated_calls.append(updated_call)
+        return updated_calls
+
+    @staticmethod
+    def _append_message_text(existing: str, addition: str) -> str:
+        if addition in existing:
+            return existing
+        if not existing.strip():
+            return addition
+        return f"{existing}\n\n{addition}"
 
     @staticmethod
     def add_messages(

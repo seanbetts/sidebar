@@ -185,7 +185,7 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.status, .pending)
     }
 
-    func testSuccessfulNoteUndoAppendsAssistantAcknowledgement() {
+    func testSuccessfulNoteUndoDoesNotMutateAssistantTranscriptContent() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
             cache: TestCacheClient()
@@ -224,16 +224,12 @@ extension ChatViewModelTests {
 
         XCTAssertEqual(
             viewModel.messages.first?.content,
-            """
-            Deleted this note.
-
-            Restored this note.
-            """
+            "Deleted this note."
         )
         XCTAssertEqual(viewModel.toolActions(for: "assistant-1").first?.status, .undone)
     }
 
-    func testSuccessfulNoteUndoPersistsAssistantAcknowledgementToBackend() async {
+    func testSuccessfulNoteUndoDoesNotPersistAssistantAcknowledgementFromFrontend() async {
         let api = UpdateMessageAPISpy()
         let viewModel = makeViewModel(
             api: api,
@@ -273,20 +269,13 @@ extension ChatViewModelTests {
         )
         await api.waitForUpdateMessageCall()
 
-        XCTAssertEqual(api.updateMessageCalls.count, 1)
-        XCTAssertEqual(api.updateMessageCalls.first?.conversationId, "conversation-1")
-        XCTAssertEqual(api.updateMessageCalls.first?.messageId, "assistant-1")
-        XCTAssertEqual(
-            api.updateMessageCalls.first?.message.content,
-            """
-            Deleted this note.
-
-            Restored this note.
-            """
+        XCTAssertTrue(
+            api.updateMessageCalls.isEmpty,
+            "Undo acknowledgement must be persisted by the backend undo action."
         )
     }
 
-    func testSuccessfulNoteUndoPersistenceDoesNotReorderDisplayedMessages() async {
+    func testSuccessfulNoteUndoDoesNotLocallyReorderDisplayedMessages() async {
         let api = UpdateMessageAPISpy()
         let viewModel = makeViewModel(
             api: api,
@@ -351,14 +340,8 @@ extension ChatViewModelTests {
         await Task.yield()
 
         XCTAssertEqual(viewModel.messages.map(\.id), ["user-1", "assistant-1"])
-        XCTAssertEqual(
-            viewModel.messages.last?.content,
-            """
-            Deleted this note.
-
-            Restored this note.
-            """
-        )
+        XCTAssertEqual(viewModel.messages.last?.content, "Deleted this note.")
+        XCTAssertTrue(api.updateMessageCalls.isEmpty)
     }
 
     func testToolActionsReconstructPendingConfirmationFromPersistedToolCall() {
