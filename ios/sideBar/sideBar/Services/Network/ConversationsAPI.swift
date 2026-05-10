@@ -17,6 +17,7 @@ public protocol ConversationsAPIProviding {
     func delete(conversationId: String) async throws -> Conversation
     func create(title: String) async throws -> Conversation
     func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation
+    func updateMessage(conversationId: String, messageId: String, message: ConversationMessageCreate) async throws -> Conversation
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation
 }
 
@@ -42,6 +43,18 @@ public struct ConversationsAPI {
 
     public func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
         try await client.request("conversations/\(conversationId)/messages", method: "POST", body: message)
+    }
+
+    public func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        try await client.request(
+            "conversations/\(conversationId)/messages/\(messageId)",
+            method: "PUT",
+            body: message
+        )
     }
 
     public func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {

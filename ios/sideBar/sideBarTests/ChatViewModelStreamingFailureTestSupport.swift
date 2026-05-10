@@ -397,6 +397,17 @@ final class StubConversationsAPI: ConversationsAPIProviding, ConversationsProvid
         return Self.defaultConversation
     }
 
+    func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        _ = conversationId
+        _ = messageId
+        _ = message
+        return Self.defaultConversation
+    }
+
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
         _ = conversationId
         _ = updates

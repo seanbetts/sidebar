@@ -111,6 +111,17 @@ private final class SequencedConversationsAPI: ConversationsAPIProviding, Conver
         throw APIClientError.unknown
     }
 
+    func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        _ = conversationId
+        _ = messageId
+        _ = message
+        throw APIClientError.unknown
+    }
+
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
         _ = conversationId
         _ = updates

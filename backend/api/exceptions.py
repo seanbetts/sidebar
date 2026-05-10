@@ -110,6 +110,14 @@ class ConversationNotFoundError(NotFoundError):
         super().__init__("Conversation", conversation_id)
 
 
+class MessageNotFoundError(NotFoundError):
+    """Conversation message not found."""
+
+    def __init__(self, message_id: str) -> None:
+        """Initialize a not found error for a conversation message."""
+        super().__init__("Message", message_id)
+
+
 class TaskNotFoundError(NotFoundError):
     """Task not found."""
 

@@ -10,7 +10,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
-from api.exceptions import ConversationNotFoundError
+from api.exceptions import ConversationNotFoundError, MessageNotFoundError
 from api.models.conversation import Conversation
 from api.utils.search import build_text_search_filter
 
@@ -176,6 +176,39 @@ class ConversationService:
         db.commit()
         db.refresh(conversation)
         return conversation
+
+    @staticmethod
+    def update_message(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        message_id: str,
+        message: dict,
+    ) -> Conversation:
+        """Update one message within a conversation transcript."""
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
+        messages = list(conversation.messages or [])
+        for index, existing_message in enumerate(messages):
+            if str(existing_message.get("id") or "") != message_id:
+                continue
+
+            messages[index] = {
+                **existing_message,
+                **message,
+                "id": message_id,
+            }
+            conversation.messages = messages
+            flag_modified(conversation, "messages")
+            ConversationService._apply_visible_message_metadata(conversation)
+            conversation.updated_at = datetime.now(UTC)
+
+            db.commit()
+            db.refresh(conversation)
+            return conversation
+
+        raise MessageNotFoundError(message_id)
 
     @staticmethod
     def add_messages(

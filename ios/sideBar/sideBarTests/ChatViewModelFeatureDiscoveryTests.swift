@@ -41,6 +41,17 @@ extension ChatViewModelTests {
             return createdConversation
         }
 
+        func updateMessage(
+            conversationId: String,
+            messageId: String,
+            message: ConversationMessageCreate
+        ) async throws -> Conversation {
+            _ = conversationId
+            _ = messageId
+            _ = message
+            return createdConversation
+        }
+
         func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
             _ = conversationId
             _ = updates

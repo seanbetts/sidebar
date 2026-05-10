@@ -56,6 +56,17 @@ enum ChatViewModelTestsSupport {
             throw MockError.forced
         }
 
+        func updateMessage(
+            conversationId: String,
+            messageId: String,
+            message: ConversationMessageCreate
+        ) async throws -> Conversation {
+            _ = conversationId
+            _ = messageId
+            _ = message
+            throw MockError.forced
+        }
+
         func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
             _ = conversationId
             _ = updates
@@ -82,6 +93,7 @@ enum ChatViewModelTestsSupport {
         let deleteResult: Result<Conversation, Error>
         let createResult: Result<Conversation, Error>
         let addMessageResult: Result<Conversation, Error>
+        let updateMessageResult: Result<Conversation, Error>
         let updateResult: Result<Conversation, Error>
 
         init(
@@ -100,6 +112,16 @@ enum ChatViewModelTestsSupport {
             )),
             createResult: Result<Conversation, Error> = .failure(MockError.forced),
             addMessageResult: Result<Conversation, Error> = .failure(MockError.forced),
+            updateMessageResult: Result<Conversation, Error> = .success(Conversation(
+                id: "updated",
+                title: "Updated",
+                titleGenerated: false,
+                createdAt: "",
+                updatedAt: "",
+                messageCount: 0,
+                firstMessage: nil,
+                isArchived: false
+            )),
             updateResult: Result<Conversation, Error> = .failure(MockError.forced)
         ) {
             self.listResult = listResult
@@ -108,6 +130,7 @@ enum ChatViewModelTestsSupport {
             self.deleteResult = deleteResult
             self.createResult = createResult
             self.addMessageResult = addMessageResult
+            self.updateMessageResult = updateMessageResult
             self.updateResult = updateResult
         }
 
@@ -140,6 +163,17 @@ enum ChatViewModelTestsSupport {
             _ = conversationId
             _ = message
             return try addMessageResult.get()
+        }
+
+        func updateMessage(
+            conversationId: String,
+            messageId: String,
+            message: ConversationMessageCreate
+        ) async throws -> Conversation {
+            _ = conversationId
+            _ = messageId
+            _ = message
+            return try updateMessageResult.get()
         }
 
         func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {

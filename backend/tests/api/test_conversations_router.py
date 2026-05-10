@@ -244,6 +244,59 @@ def test_conversation_messages_and_delete(test_client, test_db):
     assert all(item["id"] != str(conversation_id) for item in list_response.json())
 
 
+def test_update_conversation_message_replaces_existing_message(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Project Plan",
+        messages=[
+            {
+                "id": "assistant-1",
+                "role": "assistant",
+                "content": "Please confirm that you want to delete this note.",
+                "status": "complete",
+                "timestamp": "2026-05-10T12:00:00Z",
+            }
+        ],
+        message_count=1,
+        first_message="Please confirm that you want to delete this note.",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    response = test_client.put(
+        f"/api/conversations/{conversation_id}/messages/assistant-1",
+        json={
+            "id": "assistant-1",
+            "role": "assistant",
+            "content": (
+                "Please confirm that you want to delete this note.\n\n"
+                "Restored this note."
+            ),
+            "status": "complete",
+            "timestamp": "2026-05-10T12:00:00Z",
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    test_db.refresh(conversation)
+    assert conversation.messages[0]["content"].endswith("Restored this note.")
+    assert conversation.message_count == 1
+
+    detail_response = test_client.get(
+        f"/api/conversations/{conversation_id}",
+        headers=_auth_headers(),
+    )
+    assert detail_response.status_code == 200
+    assert detail_response.json()["messages"][0]["content"].endswith(
+        "Restored this note."
+    )
+
+
 def test_get_conversation_hides_hidden_bootstrap_messages(test_client, test_db):
     conversation_id = uuid.uuid4()
     conversation = Conversation(

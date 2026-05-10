@@ -233,6 +233,59 @@ extension ChatViewModelTests {
         XCTAssertEqual(viewModel.toolActions(for: "assistant-1").first?.status, .undone)
     }
 
+    func testSuccessfulNoteUndoPersistsAssistantAcknowledgementToBackend() async {
+        let api = UpdateMessageAPISpy()
+        let viewModel = makeViewModel(
+            api: api,
+            cache: TestCacheClient()
+        )
+        viewModel.selectedConversationId = "conversation-1"
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "Deleted this note.",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-05-10T12:00:00Z",
+                error: nil
+            )
+        ]
+        viewModel.toolActionsByMessageId["assistant-1"] = [
+            ChatToolAction(
+                id: "undo-1",
+                kind: .undo,
+                summary: "Undo note deletion?",
+                toolName: nil,
+                guardReason: nil,
+                undoSupported: false,
+                expiresAt: nil,
+                entityType: "note",
+                entityId: "note-1",
+                status: .pending
+            )
+        ]
+
+        viewModel.handleSuccessfulUndo(
+            viewModel.toolActions(for: "assistant-1")[0],
+            messageId: "assistant-1"
+        )
+        await api.waitForUpdateMessageCall()
+
+        XCTAssertEqual(api.updateMessageCalls.count, 1)
+        XCTAssertEqual(api.updateMessageCalls.first?.conversationId, "conversation-1")
+        XCTAssertEqual(api.updateMessageCalls.first?.messageId, "assistant-1")
+        XCTAssertEqual(
+            api.updateMessageCalls.first?.message.content,
+            """
+            Deleted this note.
+
+            Restored this note.
+            """
+        )
+    }
+
     func testToolActionsReconstructPendingConfirmationFromPersistedToolCall() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
@@ -272,5 +325,94 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.guardReason, "destructive_action")
         XCTAssertEqual(actions.first?.undoSupported, true)
         XCTAssertEqual(actions.first?.status, .pending)
+    }
+}
+
+@MainActor
+private final class UpdateMessageAPISpy: ConversationsAPIProviding, ConversationsProviding {
+    struct UpdateMessageCall {
+        let conversationId: String
+        let messageId: String
+        let message: ConversationMessageCreate
+    }
+
+    private(set) var updateMessageCalls: [UpdateMessageCall] = []
+
+    func list() async throws -> [Conversation] {
+        []
+    }
+
+    func get(id: String) async throws -> ConversationWithMessages {
+        ConversationWithMessages(
+            id: id,
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-05-10T12:00:00Z",
+            updatedAt: "2026-05-10T12:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false,
+            messages: []
+        )
+    }
+
+    func search(query: String, limit: Int) async throws -> [Conversation] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func delete(conversationId: String) async throws -> Conversation {
+        defaultConversation(id: conversationId)
+    }
+
+    func create(title: String) async throws -> Conversation {
+        defaultConversation(id: "created", title: title)
+    }
+
+    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
+        _ = message
+        return defaultConversation(id: conversationId)
+    }
+
+    func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        updateMessageCalls.append(UpdateMessageCall(
+            conversationId: conversationId,
+            messageId: messageId,
+            message: message
+        ))
+        return defaultConversation(id: conversationId)
+    }
+
+    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
+        _ = updates
+        return defaultConversation(id: conversationId)
+    }
+
+    func waitForUpdateMessageCall() async {
+        for _ in 0..<20 {
+            if !updateMessageCalls.isEmpty {
+                return
+            }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+    }
+
+    private func defaultConversation(id: String, title: String = "Chat") -> Conversation {
+        Conversation(
+            id: id,
+            title: title,
+            titleGenerated: false,
+            createdAt: "2026-05-10T12:00:00Z",
+            updatedAt: "2026-05-10T12:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false
+        )
     }
 }

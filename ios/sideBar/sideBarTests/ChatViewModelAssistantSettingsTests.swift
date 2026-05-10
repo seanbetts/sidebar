@@ -118,6 +118,13 @@ private struct AssistantSettingsConversationsAPI: ConversationsAPIProviding, Con
     func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
         throw AssistantSettingsTestError.forced
     }
+    func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        throw AssistantSettingsTestError.forced
+    }
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
         throw AssistantSettingsTestError.forced
     }

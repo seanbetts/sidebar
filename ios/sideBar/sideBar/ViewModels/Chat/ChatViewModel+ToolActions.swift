@@ -299,6 +299,7 @@ extension ChatViewModel {
     }
 
     private func appendMessageContent(_ content: String, messageId: String) {
+        var updatedMessage: Message?
         updateMessage(id: messageId, persist: false) { message in
             guard !message.content.contains(content) else {
                 return message
@@ -306,7 +307,7 @@ extension ChatViewModel {
             let updatedContent = message.content.trimmedOrNil == nil
                 ? content
                 : "\(message.content)\n\n\(content)"
-            return Message(
+            let updated = Message(
                 id: message.id,
                 role: message.role,
                 content: updatedContent,
@@ -317,6 +318,39 @@ extension ChatViewModel {
                 error: message.error,
                 errorDetails: message.errorDetails
             )
+            updatedMessage = updated
+            return updated
+        }
+        guard let updatedMessage else {
+            return
+        }
+        persistUpdatedMessage(updatedMessage)
+    }
+
+    private func persistUpdatedMessage(_ message: Message) {
+        guard let conversationId = streamingConversationId ?? selectedConversationId else {
+            return
+        }
+        Task { @MainActor in
+            do {
+                let updated = try await conversationsAPI.updateMessage(
+                    conversationId: conversationId,
+                    messageId: message.id,
+                    message: ConversationMessageCreate(
+                        id: message.id,
+                        role: message.role.rawValue,
+                        content: message.content,
+                        status: message.status.rawValue,
+                        timestamp: message.timestamp,
+                        toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                        error: message.error,
+                        errorDetails: message.errorDetails
+                    )
+                )
+                chatStore.upsertConversation(updated)
+            } catch {
+                errorMessage = ErrorMapping.message(for: error)
+            }
         }
     }
 

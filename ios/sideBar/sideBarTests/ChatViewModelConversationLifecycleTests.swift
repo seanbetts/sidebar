@@ -273,6 +273,17 @@ private final class ControlledCreateConversationsAPI: ConversationsAPIProviding,
         throw ChatViewModelTestsSupport.MockError.forced
     }
 
+    func updateMessage(
+        conversationId: String,
+        messageId: String,
+        message: ConversationMessageCreate
+    ) async throws -> Conversation {
+        _ = conversationId
+        _ = messageId
+        _ = message
+        throw ChatViewModelTestsSupport.MockError.forced
+    }
+
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
         _ = conversationId
         _ = updates
