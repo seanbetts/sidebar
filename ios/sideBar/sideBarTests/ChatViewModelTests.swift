@@ -339,27 +339,27 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertTrue(dispatchedActions.isEmpty)
     }
 
-    func testLoadConversationSortsMessagesByTimestamp() async {
+    func testLoadConversationPreservesBackendMessageOrder() async {
         let cache = TestCacheClient()
         let messages = [
             Message(
-                id: "msg-2",
-                role: .assistant,
-                content: "Second",
+                id: "user-1",
+                role: .user,
+                content: "Let's delete this notge",
                 status: .complete,
                 toolCalls: nil,
                 needsNewline: nil,
-                timestamp: "2026-01-02T10:00:00Z",
+                timestamp: "2026-05-10T14:53:02Z",
                 error: nil
             ),
             Message(
-                id: "msg-1",
-                role: .user,
-                content: "First",
+                id: "assistant-1",
+                role: .assistant,
+                content: "Okay, I won't delete this note.",
                 status: .complete,
                 toolCalls: nil,
                 needsNewline: nil,
-                timestamp: "2026-01-02T09:00:00Z",
+                timestamp: "2026-05-10T14:53:01Z",
                 error: nil
             )
         ]
@@ -377,8 +377,7 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
         let viewModel = makeViewModel(api: api, cache: cache)
         await viewModel.selectConversation(id: "conv-1")
-        XCTAssertEqual(viewModel.messages.first?.id, "msg-1")
-        XCTAssertEqual(viewModel.messages.last?.id, "msg-2")
+        XCTAssertEqual(viewModel.messages.map(\.id), ["user-1", "assistant-1"])
     }
 
 }

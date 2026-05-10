@@ -72,6 +72,51 @@ def test_add_messages_appends_batch_in_order(db_session):
     assert updated.first_message == "Hello there"
 
 
+def test_update_message_preserves_transcript_order(db_session):
+    conversation = ConversationService.create_conversation(db_session, "user-1", "Chat")
+    updated = ConversationService.add_messages(
+        db_session,
+        "user-1",
+        conversation.id,
+        [
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Let's delete this note",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:02Z",
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Please confirm that you want to delete this note.",
+                "status": "complete",
+                "timestamp": "2026-05-10T14:53:01Z",
+                "toolCalls": [],
+            },
+        ],
+    )
+
+    updated = ConversationService.update_message(
+        db_session,
+        "user-1",
+        updated.id,
+        "msg-assistant-1",
+        {
+            "content": (
+                "Please confirm that you want to delete this note.\n\n"
+                "Okay, I won't delete this note."
+            )
+        },
+    )
+
+    assert [message["id"] for message in updated.messages] == [
+        "msg-user-1",
+        "msg-assistant-1",
+    ]
+    assert updated.messages[1]["content"].endswith("Okay, I won't delete this note.")
+
+
 def test_add_messages_excludes_hidden_bootstrap_from_visible_metadata(db_session):
     conversation = ConversationService.create_conversation(db_session, "user-1", "Chat")
     timestamp = datetime.now(UTC).isoformat()

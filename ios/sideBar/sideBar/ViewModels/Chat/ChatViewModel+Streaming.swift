@@ -219,25 +219,9 @@ extension ChatViewModel {
     }
 
     func normalizeMessages(_ incoming: [Message]) -> [Message] {
-        let indexed = incoming.enumerated().map { (offset: $0.offset, message: $0.element) }
-        let sorted = indexed.sorted { left, right in
-            let leftDate = DateParsing.parseISO8601(left.message.timestamp)
-            let rightDate = DateParsing.parseISO8601(right.message.timestamp)
-            switch (leftDate, rightDate) {
-            case let (lhs?, rhs?):
-                if lhs == rhs {
-                    return left.offset < right.offset
-                }
-                return lhs < rhs
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            case (nil, nil):
-                return left.offset < right.offset
-            }
-        }
-        return sorted.map { $0.message }
+        // The backend message array is the transcript order. Timestamps are display metadata
+        // and can be shared, skewed, or preserved when assistant content is amended later.
+        incoming
     }
 
     func appendToken(from event: ChatStreamEvent) {
