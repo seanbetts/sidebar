@@ -155,6 +155,29 @@ def add_message(
     return _conversation_response(conversation)
 
 
+@router.put(
+    "/{conversation_id}/messages/{message_id}",
+    response_model=ConversationResponse,
+)
+def update_message(
+    conversation_id: UUID,
+    message_id: str,
+    message: MessageCreate,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Update an existing conversation message."""
+    conversation = ConversationService.update_message(
+        db,
+        user_id,
+        conversation_id,
+        message_id,
+        message.model_dump(exclude_none=True),
+    )
+
+    return _conversation_response(conversation)
+
+
 @router.post("/{conversation_id}/compact", response_model=ConversationResponse)
 def compact_conversation(
     conversation_id: UUID,

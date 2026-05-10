@@ -1885,9 +1885,9 @@ def test_stream_chat_persists_conversation_provider_model(
         async def stream_chat_with_tools(self, **_kwargs):
             yield {"type": "token", "content": "Hello"}
 
-    monkeypatch.setattr(chat_titles_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
     monkeypatch.setattr(
-        chat_titles_router.UserSettingsService,
+        chat_router.UserSettingsService,
         "get_settings",
         staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
@@ -1950,9 +1950,9 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
                 "status": "success",
             }
 
-    monkeypatch.setattr(chat_titles_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
     monkeypatch.setattr(
-        chat_titles_router.UserSettingsService,
+        chat_router.UserSettingsService,
         "get_settings",
         staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )

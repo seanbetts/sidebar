@@ -8,7 +8,10 @@ def test_chat_stream_sync_protocol_matches_expected_event_set() -> None:
         "entity_changed",
         "entity_deleted",
         "prompt_preview",
+        "tool_confirmation_requested",
+        "tool_confirmation_resolved",
         "tool_status",
+        "undo_available",
         "workspace_patch",
     }
     assert CUSTOM_CHAT_STREAM_EVENT_TYPES == expected_event_types
