@@ -42,6 +42,64 @@ final class ChatViewModelConversationLifecycleTests: ChatViewModelTestCase {
         XCTAssertEqual(api.getCallCount, 0)
     }
 
+    func testRefreshActiveConversationAppliesServerSnapshotWithoutReplayingCachedMessages() async {
+        let cache = TestCacheClient()
+        let cachedMessage = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Cached local action state",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-05-10T12:00:00Z",
+            error: nil
+        )
+        let serverMessage = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Canonical server state",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-05-10T12:00:00Z",
+            error: nil
+        )
+        let cachedDetail = ConversationWithMessages(
+            id: "conv-1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-05-10T12:00:00Z",
+            updatedAt: "2026-05-10T12:00:00Z",
+            messageCount: 1,
+            firstMessage: nil,
+            isArchived: false,
+            messages: [cachedMessage]
+        )
+        let serverDetail = ConversationWithMessages(
+            id: "conv-1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-05-10T12:00:00Z",
+            updatedAt: "2026-05-10T12:00:01Z",
+            messageCount: 1,
+            firstMessage: nil,
+            isArchived: false,
+            messages: [serverMessage]
+        )
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
+            listResult: .success([]),
+            getResult: .success(serverDetail)
+        )
+        let viewModel = makeViewModel(api: api, cache: cache)
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.chatStore.upsertConversationDetail(cachedDetail, persist: true)
+        viewModel.messages = [cachedMessage]
+
+        await viewModel.refreshActiveConversation(silent: true)
+
+        XCTAssertEqual(viewModel.messages.map(\.content), ["Canonical server state"])
+    }
+
     func testStartNewConversationCreatesAndSelectsConversation() async {
         let cache = TestCacheClient()
         let created = Conversation(

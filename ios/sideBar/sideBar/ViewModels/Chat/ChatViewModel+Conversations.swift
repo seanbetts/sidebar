@@ -74,7 +74,7 @@ extension ChatViewModel {
         guard let id = selectedConversationId else {
             return
         }
-        await loadConversation(id: id, silent: silent)
+        await loadConversation(id: id, force: true, silent: silent)
     }
 
     public func startAutoRefresh(intervalSeconds: TimeInterval = 30) {
@@ -458,7 +458,7 @@ extension ChatViewModel {
         }
     }
 
-    public func loadConversation(id: String, silent: Bool = false) async {
+    public func loadConversation(id: String, force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
         if !silent {
             isLoadingMessages = true
@@ -472,7 +472,7 @@ extension ChatViewModel {
             return
         }
         do {
-            try await chatStore.loadConversation(id: id)
+            try await chatStore.loadConversation(id: id, force: force)
         } catch {
             if chatStore.conversationDetails[id] == nil {
                 errorMessage = ErrorMapping.message(for: error)

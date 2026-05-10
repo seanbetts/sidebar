@@ -329,7 +329,6 @@ extension ChatViewModel {
             entityId: nil,
             status: .pending
         )
-        recordToolConfirmation(payload, messageId: messageId)
         upsertToolAction(action, messageId: messageId)
         markNeedsNewline()
     }
@@ -338,25 +337,6 @@ extension ChatViewModel {
         let payload = ChatStreamSyncPayloadParser.parseToolConfirmationResolved(event.data)
         guard let payload else {
             return
-        }
-        let targetMessageId = messageId(forToolActionId: payload.confirmationId)
-        let originalAction = targetMessageId.flatMap { messageId in
-            toolActions(for: messageId).first { $0.id == payload.confirmationId }
-        }
-        if payload.decision == .decline,
-           let targetMessageId,
-           let originalAction {
-            resolveDeclinedToolConfirmation(
-                messageId: targetMessageId,
-                confirmationId: payload.confirmationId,
-                action: originalAction
-            )
-        } else if let targetMessageId {
-            resolveToolConfirmationMetadata(
-                messageId: targetMessageId,
-                confirmationId: payload.confirmationId,
-                decision: payload.decision
-            )
         }
         updateToolAction(id: payload.confirmationId) { action in
             ChatToolAction(

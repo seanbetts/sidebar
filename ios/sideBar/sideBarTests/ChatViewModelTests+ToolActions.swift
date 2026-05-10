@@ -42,10 +42,7 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.summary, "Delete note note-1?")
         XCTAssertEqual(actions.first?.status, .pending)
         XCTAssertEqual(actions.first?.undoSupported, true)
-        XCTAssertEqual(
-            viewModel.messages.first?.content,
-            "Please confirm that you want to delete this note."
-        )
+        XCTAssertEqual(viewModel.messages.first?.content, "")
     }
 
     func testToolConfirmationRequestedParsesLiveDestructiveToolPayload() {
@@ -99,15 +96,12 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.summary, "Delete note note-1?")
         XCTAssertEqual(actions.first?.toolName, "Delete Note")
         XCTAssertEqual(actions.first?.guardReason, "destructive_action")
-        XCTAssertEqual(toolCall?.confirmationId, "confirm-1")
-        XCTAssertEqual(toolCall?.confirmationSummary, "Delete note note-1?")
-        XCTAssertEqual(
-            viewModel.messages.first?.content,
-            "Please confirm that you want to delete this note."
-        )
+        XCTAssertNil(toolCall?.confirmationId)
+        XCTAssertNil(toolCall?.confirmationSummary)
+        XCTAssertEqual(viewModel.messages.first?.content, "")
     }
 
-    func testToolConfirmationDeclineAppendsAssistantAcknowledgement() {
+    func testToolConfirmationDeclineDoesNotMutateAssistantTranscriptContent() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
             cache: TestCacheClient()
@@ -116,7 +110,7 @@ extension ChatViewModelTests {
             Message(
                 id: "assistant-1",
                 role: .assistant,
-                content: "",
+                content: "Deleting this note now.",
                 status: .complete,
                 toolCalls: nil,
                 needsNewline: nil,
@@ -149,11 +143,7 @@ extension ChatViewModelTests {
 
         XCTAssertEqual(
             viewModel.messages.first?.content,
-            """
-            Please confirm that you want to delete this note.
-
-            Okay, I won't delete this note.
-            """
+            "Deleting this note now."
         )
         XCTAssertEqual(viewModel.toolActions(for: "assistant-1").first?.status, .declined)
     }

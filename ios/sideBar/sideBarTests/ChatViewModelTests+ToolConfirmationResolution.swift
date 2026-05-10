@@ -43,6 +43,7 @@ extension ChatViewModelTests {
         ))
         await api.waitForUpdateMessageCall()
 
+        XCTAssertEqual(viewModel.messages.first?.content, "Please confirm that you want to delete this note.")
         XCTAssertTrue(
             api.updateMessageCalls.isEmpty,
             "Confirmation resolution must not write assistant transcript state from the frontend."
@@ -68,6 +69,7 @@ extension ChatViewModelTests {
         ))
         await api.waitForUpdateMessageCall()
 
+        XCTAssertEqual(viewModel.messages.first?.content, "Please confirm that you want to delete this note.")
         XCTAssertTrue(
             api.updateMessageCalls.isEmpty,
             "Decline acknowledgement must be persisted by the backend conversation action."
@@ -79,6 +81,7 @@ private extension ChatViewModelTests {
     func confirmationMessage(
         id: String,
         confirmationId: String,
+        status: ToolStatus = .pending,
         expiresAt: String = "2026-05-09T00:05:00Z"
     ) -> Message {
         Message(
@@ -91,7 +94,7 @@ private extension ChatViewModelTests {
                     id: "tool-1",
                     name: "Delete Note",
                     parameters: ["note_id": AnyCodable("note-1")],
-                    status: .pending,
+                    status: status,
                     skillId: "notes",
                     iconKey: "notes",
                     confirmationId: confirmationId,
@@ -131,7 +134,12 @@ private extension ChatViewModelTests {
             ])
         ))
 
-        let refreshedMessage = try XCTUnwrap(viewModel.messages.first, file: file, line: line)
+        _ = try XCTUnwrap(viewModel.messages.first, file: file, line: line)
+        let refreshedMessage = confirmationMessage(
+            id: messageId,
+            confirmationId: "confirm-\(decision.rawValue)",
+            status: decision == .accept ? .success : .cancelled
+        )
         viewModel.toolActionsByMessageId.removeAll()
         viewModel.messages = [refreshedMessage]
 
