@@ -111,14 +111,14 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("Text(\"ExploresideBar\")"))
-        XCTAssertTrue(normalized.contains(".appFont(.title3Semibold)"))
+        XCTAssertTrue(normalized.contains(".appFont(.titleMd)"))
         XCTAssertTrue(normalized.contains("Image(systemName:\"sparkles.rectangle.stack\")"))
-        XCTAssertTrue(normalized.contains(".appFont(.bodySemibold)"))
+        XCTAssertTrue(normalized.contains(".appFont(.body)"))
         XCTAssertTrue(normalized.contains(".offset(y:isTitleInExpandedPosition?DesignTokens.Spacing.xxxs:0)"))
         XCTAssertTrue(normalized.contains("Text(previewSummary)"))
         XCTAssertFalse(normalized.contains("Text(\"Startanywhere.Therestoftheappisalreadylive.\")"))
         XCTAssertTrue(normalized.contains("Text(feature.title)"))
-        XCTAssertTrue(normalized.contains(".appFont(.bodySemibold)"))
+        XCTAssertTrue(normalized.contains(".appFont(.body)"))
         XCTAssertTrue(normalized.contains("Text(feature.summary)"))
         XCTAssertTrue(normalized.contains(".appFont(.body)"))
     }

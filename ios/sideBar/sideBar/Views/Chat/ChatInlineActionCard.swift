@@ -19,7 +19,7 @@ struct ChatInlineActionCard<Content: View>: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                 Text(title)
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
 
                 if let subtitle {
                     Text(subtitle)

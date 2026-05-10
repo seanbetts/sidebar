@@ -224,7 +224,7 @@ private struct SettingsMoreMemoryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(displayName(item.path), systemImage: "bookmark")
-                .appFont(.subheadlineSemibold)
+                .appFont(.body)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
 
             Text(item.content)

@@ -64,17 +64,17 @@ private struct TikTokFallbackCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "play.circle.fill")
-                        .appFont(.title2)
+                        .appFont(.titleLg)
                         .foregroundStyle(.white)
                     Text("Loading TikTok…")
-                        .appFont(.footnoteSemibold)
+                        .appFont(.footnote)
                         .foregroundStyle(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
                     if let authorName = embed.authorName, !authorName.isEmpty {
                         Text(authorName)
-                            .appFont(.captionSemibold)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.92))
                     }
                     Text(embed.title)
@@ -85,7 +85,7 @@ private struct TikTokFallbackCard: View {
 
                 Button(action: openAction) {
                     Text("Open on TikTok")
-                        .appFont(.footnoteSemibold)
+                        .appFont(.footnote)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }

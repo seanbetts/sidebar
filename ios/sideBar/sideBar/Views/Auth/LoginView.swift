@@ -125,11 +125,11 @@ public struct LoginView: View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: 64, variant: .hero)
             Text("sideBar")
-                .appFont(.title2Semibold)
+                .appFont(.titleLg)
             VStack(spacing: 4) {
                 Text(MarketingCopy.tagline)
             }
-            .appFont(.subheadline)
+            .appFont(.subheading)
             .foregroundStyle(.primary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -220,7 +220,7 @@ public struct LoginView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text("Too many failed attempts")
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .appFont(.callout)
+                        .appFont(.body)
                     Text("Try again in \(formatLockoutTime(seconds)).")
                         .foregroundStyle(.secondary)
                         .appFont(.caption)
@@ -240,7 +240,7 @@ public struct LoginView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text(errorMessage)
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .appFont(.callout)
+                        .appFont(.body)
                     Text("Double-check your credentials and connection, then try again.")
                         .foregroundStyle(.secondary)
                         .appFont(.caption)

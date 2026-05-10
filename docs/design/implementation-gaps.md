@@ -52,7 +52,6 @@ Single working list of every known divergence between the design system and the 
 | Liquid Glass adoption plan remains partially complete - key chrome surfaces now use `GlassChrome`/glass-style abstractions, but adoption is not complete across all listed surfaces and should be checked against the iOS/macOS 26 target APIs | Multiple files | [materials-and-appearance](./foundations/materials-and-appearance) |
 | Unified form field adoption remains incomplete - `FormField` exists and many Settings/Auth fields use it, but legacy wrappers (`ProfileIOSFieldRow`, `SettingsMacFieldRow`) and standalone auth fields still need to converge on one platform-adaptive form field system | `ProfileIOSFieldRow.swift`, `SettingsMacStyles.swift`, `SecureFieldWithToggle.swift`, onboarding views | [components](./components/overview) |
 | Confirmation dialogs are still inconsistent outside destructive deletes - `DeleteConfirmationAlert` and shared patterns exist, but non-destructive confirmations still use ad hoc `.alert()`/`.confirmationDialog()` copy and structure | Settings, sidebar panels, Skills Store, Auth views | [error-presentation](./patterns/error-presentation) |
-| Onboarding views use inline `.font(.system(size:weight:))` instead of `AppFontStyle` tokens - 7 onboarding files with 25 occurrences of hardcoded system font calls; most concentrated token violation in the codebase | `WelcomeStepView.swift`, `ChooseProviderStepView.swift`, `CreateAccountStepView.swift`, `ProfileStepView.swift`, `VerifyEmailStepView.swift`, `AddApiKeyStepView.swift`, `LocationPermissionStepView.swift`, `NotificationsPermissionStepView.swift`, `FinalStepView.swift` | [typography](./foundations/typography) |
 | Shared pill adoption remains incomplete - `StatusPill` and `MetadataPill` exist and toast/status surfaces use them, but tracked task/chat/tool rows still build custom `Capsule()` pill surfaces | `SiteHeaderBar.swift`, `ToastCenter.swift`, `TasksViewComponents.swift`, `ChatMessageRow.swift`, `ChatToolComponents.swift` | [pills-and-docks](./components/pills-and-docks) |
 
 ### Widget gaps
@@ -67,7 +66,6 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| `AppFontStyle` scale rationalisation: reduce 25 styles to 13 by removing all semibold weight variants (structural styles become bold, content styles become regular), removing redundant size-named styles, and renaming remaining styles semantically. Highest-impact rename: `.labelMd` -> `.label` has 32 call sites across the codebase. Full plan in [typography](./foundations/typography#scale-rationalisation). | `AppFontStyle.swift` + callers | [typography](./foundations/typography) |
 
 ---
 

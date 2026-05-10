@@ -74,9 +74,9 @@ struct PasswordResetCompletionView: View {
                 VStack(spacing: 12) {
                     LoadingIndicatorView(size: 64, variant: .hero)
                     Text("Enter a new password")
-                        .appFont(.title2Semibold)
+                        .appFont(.titleLg)
                     Text("Finish resetting your password, then sign in again with the updated credentials.")
-                        .appFont(.subheadline)
+                        .appFont(.subheading)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -156,7 +156,7 @@ struct PasswordResetCompletionView: View {
                             Task { await environment.cancelPasswordRecovery() }
                         }
                         .buttonStyle(.plain)
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.actionPrimary)
                         .frame(maxWidth: .infinity)
                     }

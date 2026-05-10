@@ -15,14 +15,14 @@ public struct SidebarSparseStateRow: View {
         SelectableRow(isSelected: false) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: iconName)
-                    .appFont(.callout)
+                    .appFont(.body)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                 Text(title)
-                    .appFont(.headline)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .appFont(.subheadline)
+                        .appFont(.subheading)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

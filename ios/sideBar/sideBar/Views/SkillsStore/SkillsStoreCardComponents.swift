@@ -49,7 +49,7 @@ struct SkillsStoreFilterChip: View {
         Button(action: onTap) {
             HStack(spacing: 4) {
                 Image(systemName: iconName)
-                    .appFont(.caption2)
+                    .appFont(.caption)
                 Text(title)
                     .appFont(.caption)
             }
@@ -93,10 +93,10 @@ struct SkillsStoreCard: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(typeTitle.uppercased())
-                                .appFont(.caption2)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                             Text(displayName)
-                                .appFont(.subheadlineSemibold)
+                                .appFont(.subheading)
                                 .lineLimit(1)
                             Text(displayDescription)
                                 .appFont(.caption)
@@ -171,7 +171,7 @@ private struct SkillsStoreInstallPill: View {
                     .tint(Color.primary)
             } else {
                 Image(systemName: systemName)
-                    .appFont(.size24Semibold)
+                    .appFont(.displayMd)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)
             }

@@ -52,7 +52,7 @@ struct SettingsPasswordChangeView: View {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                             Text("New password")
-                                .appFont(.captionSemibold)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
 
                             passwordFieldRow(
@@ -85,7 +85,7 @@ struct SettingsPasswordChangeView: View {
 
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                             Text("Confirm new password")
-                                .appFont(.captionSemibold)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
 
                             passwordFieldRow(

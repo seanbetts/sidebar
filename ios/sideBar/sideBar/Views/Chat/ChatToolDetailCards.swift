@@ -53,7 +53,7 @@ struct WorkspaceSurfaceActionGroup: View {
             )
         } label: {
             Label(target.label, systemImage: target.iconName)
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.bordered)
@@ -111,7 +111,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                 )
             } label: {
                 Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
@@ -126,7 +126,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                 )
             } label: {
                 Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
             }
             .buttonStyle(.bordered)
@@ -175,7 +175,7 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
                 )
             } label: {
                 Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
@@ -189,7 +189,7 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
                 )
             } label: {
                 Label(target.label, systemImage: target.iconName)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
             }
             .buttonStyle(.bordered)
@@ -221,14 +221,14 @@ struct ToolCallSummaryCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text(summary.primaryText)
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                     .foregroundStyle(statusForeground)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 0)
 
                 Text(status.rawValue.capitalized)
-                    .appFont(.caption2Semibold)
+                    .appFont(.caption)
                     .foregroundStyle(statusForeground)
             }
 

@@ -126,7 +126,7 @@ struct PDFControlPopoverContent: View {
             )
 
             Text(configuration.pageLabel)
-                .appFont(.labelMd)
+                .appFont(.label)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .frame(minWidth: 48)
@@ -149,7 +149,7 @@ struct PDFControlPopoverContent: View {
             )
 
             Text(configuration.zoomLabel)
-                .appFont(.labelMd)
+                .appFont(.label)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .frame(minWidth: 56)
@@ -194,7 +194,7 @@ struct PDFControlPopoverContent: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .appFont(.labelMd)
+                .appFont(.label)
             .foregroundStyle(.primary)
             .frame(
                 width: HeaderActionControlMetrics.iconFrameWidth,
@@ -216,7 +216,7 @@ struct PDFControlPopoverContent: View {
             configuration.onSetFitMode(mode)
         } label: {
             Image(systemName: systemName)
-                .appFont(.labelMd)
+                .appFont(.label)
                 .foregroundStyle(configuration.fitMode == mode ? .primary : .secondary)
                 .frame(
                     width: HeaderActionControlMetrics.iconFrameWidth,

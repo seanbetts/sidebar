@@ -26,18 +26,18 @@ struct ChooseProviderStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "brain")
-                    .font(.system(size: 48))
+                    .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Pick Your AI Brain")
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("Choose which AI powers me. You can switch anytime in Settings.")
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.bottom, layoutMode.subtitleBottomSpacing)
@@ -75,10 +75,10 @@ struct ChooseProviderStepView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(provider.displayName)
-                        .font(.body.weight(.semibold))
+                        .appFont(.body)
                         .foregroundStyle(.primary)
                     Text(description)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -95,7 +95,7 @@ struct ChooseProviderStepView: View {
                             .frame(width: 24, height: 24)
                             .overlay {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .appFont(.badge)
                                     .foregroundStyle(DesignTokens.Colors.background)
                             }
                     }

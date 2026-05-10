@@ -44,7 +44,7 @@ struct StaticFeatureCarousel: View {
             Button(action: toggleExpanded) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: "sparkles.rectangle.stack")
-                        .appFont(.bodySemibold)
+                        .appFont(.body)
                         .foregroundStyle(.secondary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                         .offset(y: isTitleInExpandedPosition ? DesignTokens.Spacing.xxxs : 0)
@@ -52,7 +52,7 @@ struct StaticFeatureCarousel: View {
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                         Text("Explore sideBar")
-                            .appFont(.title3Semibold)
+                            .appFont(.titleMd)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .lineLimit(1)
                             .offset(y: isTitleInExpandedPosition ? DesignTokens.Spacing.xxxs : 0)
@@ -75,7 +75,7 @@ struct StaticFeatureCarousel: View {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Button(action: toggleExpanded) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 }
                 .buttonStyle(.plain)
@@ -84,7 +84,7 @@ struct StaticFeatureCarousel: View {
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 }
                 .buttonStyle(.plain)

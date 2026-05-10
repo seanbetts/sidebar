@@ -11,11 +11,11 @@ struct PendingAttachmentsView: View {
             ForEach(attachments) { attachment in
                 HStack(spacing: 10) {
                     Image(systemName: "paperclip")
-                        .appFont(.labelMd)
+                        .appFont(.label)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(attachment.name)
-                            .appFont(.subheadline)
+                            .appFont(.subheading)
                             .lineLimit(1)
                         Text(statusText(for: attachment))
                             .appFont(.caption)
@@ -28,7 +28,7 @@ struct PendingAttachmentsView: View {
                                 onRetry(attachment.id)
                             } label: {
                                 Image(systemName: "arrow.clockwise")
-                                    .appFont(.labelMd)
+                                    .appFont(.label)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Retry attachment")
@@ -36,7 +36,7 @@ struct PendingAttachmentsView: View {
                                 onDelete(attachment.id)
                             } label: {
                                 Image(systemName: "trash")
-                                    .appFont(.labelMd)
+                                    .appFont(.label)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Delete attachment")
@@ -48,7 +48,7 @@ struct PendingAttachmentsView: View {
                                 onCancel(attachment.id)
                             } label: {
                                 Image(systemName: "xmark.circle")
-                                    .appFont(.labelMd)
+                                    .appFont(.label)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Cancel attachment")
@@ -96,15 +96,15 @@ struct ReadyAttachmentsView: View {
                 ForEach(attachments) { attachment in
                     HStack(spacing: 6) {
                         Image(systemName: "paperclip")
-                            .appFont(.captionSemibold)
+                            .appFont(.caption)
                         Text(attachment.name)
-                            .appFont(.captionSemibold)
+                            .appFont(.caption)
                             .lineLimit(1)
                         Button {
                             onRemove(attachment.id)
                         } label: {
                             Image(systemName: "xmark")
-                                .appFont(.size10Bold)
+                                .appFont(.badge)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Remove \(attachment.name)")

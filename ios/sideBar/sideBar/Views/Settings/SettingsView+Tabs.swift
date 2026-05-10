@@ -72,7 +72,7 @@ struct SettingsTabsView: View {
     @ViewBuilder
     private func settingsTabContent<Content: View>(_ content: Content) -> some View {
         content
-            .appFont(.subheadline)
+            .appFont(.body)
     }
 }
 

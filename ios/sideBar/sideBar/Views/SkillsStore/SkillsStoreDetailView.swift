@@ -145,7 +145,7 @@ public struct SkillsStoreView: View {
         ContentHeaderRow(
             iconName: "command.circle",
             title: "Skills Store",
-            titleStyle: .subheadline,
+            titleStyle: .subheading,
             titleWeight: .semibold,
             titleLineLimit: 1,
             trailing: {

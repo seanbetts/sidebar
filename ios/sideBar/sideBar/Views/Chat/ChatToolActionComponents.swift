@@ -23,15 +23,14 @@ struct ChatToolActionCard: View {
     @ViewBuilder
     var body: some View {
         switch action.status {
-        case .accepted where action.kind == .confirmation,
-             .declined where action.kind == .confirmation:
-            EmptyView()
-        case .undone where action.kind == .undo:
-            EmptyView()
         case .failed:
             retryControls
         default:
             switch action.kind {
+            case .confirmation where isResolvedConfirmation:
+                EmptyView()
+            case .undo where isResolvedUndo:
+                EmptyView()
             case .confirmation:
                 confirmationControls
             case .undo:
@@ -100,7 +99,7 @@ struct ChatToolActionCard: View {
         let canTap = isEnabled ?? isPending
         return Button(action: handler) {
             Label(title, systemImage: systemImage)
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
                 .lineLimit(1)
                 .foregroundStyle(foreground)
                 .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -118,6 +117,14 @@ struct ChatToolActionCard: View {
 
     private var isPending: Bool {
         action.status == .pending
+    }
+
+    private var isResolvedConfirmation: Bool {
+        action.status == .accepted || action.status == .declined
+    }
+
+    private var isResolvedUndo: Bool {
+        action.status == .undone
     }
 
     private var primaryButtonBackground: Color {

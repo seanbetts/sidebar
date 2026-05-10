@@ -15,13 +15,13 @@ struct OnboardingAddKeyBanner: View {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     HStack(spacing: DesignTokens.Spacing.xs) {
                         Image(systemName: "key.horizontal.fill")
-                            .appFont(.captionSemibold)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 18, alignment: .leading)
                             .accessibilityHidden(true)
 
                         Text("Chat needs an API key")
-                            .appFont(.labelMd)
+                            .appFont(.label)
                             .lineLimit(1)
                     }
                 }
@@ -30,7 +30,7 @@ struct OnboardingAddKeyBanner: View {
 
                 Button(action: onOpenSettings) {
                     Image(systemName: "gearshape")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)

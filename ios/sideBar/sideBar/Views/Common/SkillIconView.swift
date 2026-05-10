@@ -10,7 +10,7 @@ struct SkillSymbolIcon: View {
 
     init(
         systemName: String,
-        appFontStyle: AppFontStyle = .subheadline,
+        appFontStyle: AppFontStyle = .subheading,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
         self.systemName = systemName
@@ -45,7 +45,7 @@ struct SkillSymbolIcon: View {
         } else {
             Image(systemName: systemName)
                 .appScaledFont(
-                    size: pointSize ?? AppFontStyle.subheadline.pointSize(for: .system),
+                    size: pointSize ?? AppFontStyle.subheading.pointSize(for: .system),
                     weight: weight,
                     design: design
                 )

@@ -59,7 +59,7 @@ struct SearchField: View {
     }
 
     private var iconPointSize: CGFloat {
-        AppFontStyle.subheadline.pointSize(for: resolvedTextSizeOption)
+        AppFontStyle.subheading.pointSize(for: resolvedTextSizeOption)
     }
 
     private var resolvedTextSizeOption: AppTextSizeOption {

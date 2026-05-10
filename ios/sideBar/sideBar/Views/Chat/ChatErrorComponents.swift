@@ -53,10 +53,10 @@ struct ChatErrorPillView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .appFont(.caption2)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
                 Text(presentation.pillText)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: maxPillTextWidth, alignment: .leading)
@@ -135,7 +135,7 @@ struct ChatErrorPopoverContent: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text(presentation.title)
-                        .appFont(.subheadlineSemibold)
+                        .appFont(.subheading)
                 }
 
                 Text(presentation.userMessage)
@@ -154,7 +154,7 @@ struct ChatErrorPopoverContent: View {
     private func detailSection(title: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             Text(text)
                 .appFont(.caption)

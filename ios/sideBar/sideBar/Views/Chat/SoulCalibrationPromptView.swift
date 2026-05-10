@@ -98,12 +98,12 @@ struct SoulCalibrationPromptView: View {
     private var setupLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: "brain.fill")
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
 
             Text("SIDEBAR SETUP")
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.bottom, DesignTokens.Spacing.xxxs)
@@ -111,7 +111,7 @@ struct SoulCalibrationPromptView: View {
 
     private var headline: some View {
         Text(headlineText)
-            .appFont(.title3Semibold)
+            .appFont(.titleMd)
             .foregroundStyle(.primary)
     }
 
@@ -242,7 +242,7 @@ struct SoulCalibrationPromptView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
 
                         Text("vs")
-                            .appFont(.captionSemibold)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 24)
 

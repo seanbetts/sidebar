@@ -311,7 +311,7 @@ private struct ScratchpadHeaderRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(ScratchpadConstants.title)
-                    .appFont(.headline)
+                    .appFont(.subheading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(1)
                 if isSaving {
@@ -338,7 +338,7 @@ private struct ScratchpadErrorBannerView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.error)
                 .padding(.top, 1)
             Text(errorMessage)

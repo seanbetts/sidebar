@@ -78,10 +78,10 @@ private struct QueuedChangeRow: View {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
                 Text(titleText)
-                    .appFont(.labelMd)
+                    .appFont(.label)
                 Spacer()
                 Text(statusText)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .foregroundStyle(statusColor)
             }
             if let error = queuedChange.lastError {

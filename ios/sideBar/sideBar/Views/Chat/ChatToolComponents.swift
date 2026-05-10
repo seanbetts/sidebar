@@ -87,11 +87,11 @@ struct ToolCallListView: View {
         HStack(spacing: 6) {
             SkillSymbolIcon(
                 systemName: summaryIconName,
-                appFontStyle: .caption2,
+                appFontStyle: .caption,
                 foreground: toolPillForeground
             )
             Text(text)
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: maxToolPillTextWidth, alignment: .leading)
@@ -110,7 +110,7 @@ struct ToolCallListView: View {
     private var toolIconOnlyPill: some View {
         SkillSymbolIcon(
             systemName: summaryIconName,
-            appFontStyle: .caption2,
+            appFontStyle: .caption,
             foreground: toolPillForeground
         )
         .padding(.horizontal, DesignTokens.Spacing.xs)
@@ -164,7 +164,7 @@ struct ToolCallRow: View {
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
             Text(ChatToolPresentation.displayName(for: toolCall))
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
             Spacer(minLength: 8)
             Text(toolCall.status.rawValue.capitalized)
                 .appFont(.caption)
@@ -216,7 +216,7 @@ struct ToolCallPopoverContent: View {
             VStack(alignment: .leading, spacing: 10) {
                 if ChatToolPresentation.usesListOnlyPopoverLayout(for: toolCalls) {
                     Text("Skills Used")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 6) {

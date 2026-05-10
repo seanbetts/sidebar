@@ -16,7 +16,7 @@ public struct AudioPlayerView: View {
                     action: { viewModel.togglePlay() },
                     label: {
                         Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                            .appFont(.size16Semibold)
+                            .appFont(.body)
                             .frame(width: 36, height: 36)
                     }
                 )

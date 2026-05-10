@@ -8,7 +8,7 @@ struct ChatActiveToolBanner: View {
             statusIndicator
             VStack(alignment: .leading, spacing: 2) {
                 Text(activeTool.name)
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                 Text(activeTool.status.rawValue.capitalized)
                     .appFont(.caption)
                     .foregroundStyle(.secondary)

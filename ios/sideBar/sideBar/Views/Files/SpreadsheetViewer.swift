@@ -58,7 +58,7 @@ public struct SpreadsheetViewer: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Text("Sheets")
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                 Spacer()
                 Text("\(currentSheet.rows.count) rows")
                     .appFont(.caption)
@@ -72,7 +72,7 @@ public struct SpreadsheetViewer: View {
                                 selectedSheetIndex = index
                             } label: {
                                 Text(payload.sheets[index].name.isEmpty ? "Sheet \(index + 1)" : payload.sheets[index].name)
-                                    .appFont(.captionSemibold)
+                                    .appFont(.caption)
                                     .foregroundStyle(index == selectedSheetIndex ? .primary : .secondary)
                                     .padding(.horizontal, DesignTokens.Spacing.xsPlus)
                                     .padding(.vertical, DesignTokens.Spacing.xxsPlus)
@@ -96,7 +96,7 @@ public struct SpreadsheetViewer: View {
             TextField("Filter rows", text: $filterText)
                 .textFieldStyle(.plain)
         }
-        .appFont(.subheadline)
+        .appFont(.subheading)
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xs)
         .background(
@@ -132,7 +132,7 @@ public struct SpreadsheetViewer: View {
                     Section(header: headerRowView) {
                         if visibleRows.isEmpty {
                             Text("No data")
-                                .appFont(.subheadline)
+                                .appFont(.subheading)
                                 .foregroundStyle(.secondary)
                                 .padding(.vertical, DesignTokens.Spacing.sm)
                         } else {
@@ -158,7 +158,7 @@ public struct SpreadsheetViewer: View {
         HStack(spacing: 12) {
             ForEach(0..<columnCount, id: \.self) { columnIndex in
                 Text(columnIndex < row.count ? row[columnIndex] : "")
-                    .appFont(.subheadline)
+                    .appFont(.subheading)
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 140, alignment: alignmentForColumn(columnIndex))
                     .lineLimit(1)
@@ -259,12 +259,12 @@ public struct SpreadsheetViewer: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text(columnLabels[safe: columnIndex] ?? "")
-                            .appFont(.subheadlineSemibold)
+                            .appFont(.subheading)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         if sortColumn == columnIndex {
                             Image(systemName: sortDirection == .ascending ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                                .appFont(.caption2Semibold)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }

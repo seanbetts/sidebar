@@ -36,19 +36,19 @@ struct LocationPermissionStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "location.fill")
-                    .font(.system(size: 44, weight: .semibold))
+                    .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text(title)
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .accessibilityIdentifier("onboarding.locationPermission.title")
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(subtitle)
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)

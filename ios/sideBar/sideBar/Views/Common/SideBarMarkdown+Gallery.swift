@@ -151,7 +151,7 @@ private struct MarkdownGalleryImageView: View {
                         .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
                 case .failure:
                     Image(systemName: "photo")
-                        .appFont(.size32Regular)
+                        .appFont(.displayLg)
                         .foregroundStyle(.secondary)
                 case .empty:
                     LoadingIndicatorView(size: LoadingIndicatorSize.control)

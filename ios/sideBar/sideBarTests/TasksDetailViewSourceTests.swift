@@ -33,7 +33,7 @@ final class TasksDetailViewSourceTests: XCTestCase {
             )
         )
         let compactPlusIcon =
-            "Image(systemName:\"plus\").appFont(.subheadline)." +
+            "Image(systemName:\"plus\").appFont(.subheading)." +
             "foregroundStyle(DesignTokens.Colors.textSecondary).frame(width:28,height:28)"
         XCTAssertFalse(
             normalized.contains(compactPlusIcon)

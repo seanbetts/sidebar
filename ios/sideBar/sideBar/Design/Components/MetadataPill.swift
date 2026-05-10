@@ -27,7 +27,7 @@ struct MetadataPill<LeadingAccessory: View>: View {
             }
 
             Text(title)
-                .appFont(.caption2)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .lineLimit(1)
         }

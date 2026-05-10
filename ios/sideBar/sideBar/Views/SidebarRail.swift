@@ -140,7 +140,7 @@ public struct SidebarRail: View {
             }
         } label: {
             Image(systemName: iconName(for: section))
-                .appFont(.size18Semibold)
+                .appFont(.titleSm)
                 .scaleEffect(iconScale(for: section))
                 .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)

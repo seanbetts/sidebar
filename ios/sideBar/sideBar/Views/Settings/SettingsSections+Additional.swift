@@ -186,7 +186,7 @@ struct SkillsSettingsView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             SkillSymbolIcon(
                 systemName: SkillIconResolver.settingsIconName(for: skill),
-                appFontStyle: .subheadline,
+                appFontStyle: .subheading,
                 foreground: DesignTokens.Colors.textSecondary
             )
                 .frame(width: 18, height: 18)
@@ -194,7 +194,7 @@ struct SkillsSettingsView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.displayName(for: skill))
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
 
                 Text(viewModel.displayDescription(for: skill))
                     .appFont(.caption)

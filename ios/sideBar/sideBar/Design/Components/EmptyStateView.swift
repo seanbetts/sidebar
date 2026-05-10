@@ -25,11 +25,11 @@ struct EmptyStateView: View {
                     .accessibilityHidden(true)
             }
             Text(title)
-                .appFont(.headline)
+                .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
             if let subtitle {
                 Text(subtitle)
-                    .appFont(.subheadline)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }

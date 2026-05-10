@@ -93,7 +93,7 @@ struct LoginFieldRow<Content: View, Trailing: View>: View {
                 trailing
             }
         }
-        .appFont(.subheadline)
+        .appFont(.subheading)
         .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
         .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
         .glassChrome(LoginChrome.fieldKind)
@@ -106,7 +106,7 @@ struct LoginPrimaryActionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .appFont(.subheadlineSemibold)
+            .appFont(.subheading)
             .foregroundStyle(foregroundColor)
             .padding(.horizontal, DesignTokens.Spacing.md)
             .frame(minHeight: DesignTokens.Size.touchTarget)

@@ -5,17 +5,17 @@ private struct LargerTextQAMatrixView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
                 Text("Larger Text QA Matrix")
-                    .appFont(.headline)
+                    .appFont(.subheading)
 
                 Group {
                     Text("Settings Pane")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     GeneralSettingsView()
                 }
 
                 Group {
                     Text("Sidebar: Chats")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     ConversationRow(
                         conversation: sampleConversation,
                         isSelected: false
@@ -25,7 +25,7 @@ private struct LargerTextQAMatrixView: View {
 
                 Group {
                     Text("Sidebar: Tasks")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     TaskPanelRow(
                         title: "Review long-term roadmap and resolve pending platform migrations",
                         iconName: "checklist",
@@ -36,7 +36,7 @@ private struct LargerTextQAMatrixView: View {
 
                 Group {
                     Text("Sidebar: Websites")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     WebsiteRow(
                         item: sampleWebsite,
                         isSelected: false
@@ -45,7 +45,7 @@ private struct LargerTextQAMatrixView: View {
 
                 Group {
                     Text("Sidebar: Files")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     FilesIngestionRow(
                         item: sampleIngestionItem,
                         isSelected: false
@@ -54,12 +54,12 @@ private struct LargerTextQAMatrixView: View {
 
                 Group {
                     Text("Task Header")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                     ContentHeaderRow(
                         iconName: "checklist",
                         title: "Review long task header title for wrapping behavior at accessibility sizes",
                         subtitle: "12 open tasks",
-                        titleStyle: .headline,
+                        titleStyle: .subheading,
                         titleLineLimit: 2,
                         subtitleLineLimit: 2,
                         titleSubtitleAxis: .vertical

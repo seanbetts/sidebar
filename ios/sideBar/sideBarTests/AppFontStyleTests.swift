@@ -4,41 +4,41 @@ import XCTest
 final class AppFontStyleTests: XCTestCase {
     func testFixedStyleUsesSelectedOptionMultiplier() {
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .system),
+            AppFontStyle.label.pointSize(for: .system),
             14.0,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .small),
+            AppFontStyle.label.pointSize(for: .small),
             11.2,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .medium),
+            AppFontStyle.label.pointSize(for: .medium),
             12.6,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .large),
+            AppFontStyle.label.pointSize(for: .large),
             14.7,
             accuracy: 0.0001
         )
     }
 
     func testPreferredStyleScalesRelativeToSystemSize() {
-        let systemSize = AppFontStyle.subheadline.pointSize(for: .system)
+        let systemSize = AppFontStyle.subheading.pointSize(for: .system)
         XCTAssertEqual(
-            AppFontStyle.subheadline.pointSize(for: .small),
+            AppFontStyle.subheading.pointSize(for: .small),
             systemSize * AppTextSizeOption.small.scaleMultiplier,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.subheadline.pointSize(for: .medium),
+            AppFontStyle.subheading.pointSize(for: .medium),
             systemSize * AppTextSizeOption.medium.scaleMultiplier,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.subheadline.pointSize(for: .large),
+            AppFontStyle.subheading.pointSize(for: .large),
             systemSize * AppTextSizeOption.large.scaleMultiplier,
             accuracy: 0.0001
         )
@@ -46,17 +46,17 @@ final class AppFontStyleTests: XCTestCase {
 
     func testPointSizeUsesPassedOptionForEachCallWithoutSharedState() {
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .small),
+            AppFontStyle.label.pointSize(for: .small),
             11.2,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .large),
+            AppFontStyle.label.pointSize(for: .large),
             14.7,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.labelMd.pointSize(for: .small),
+            AppFontStyle.label.pointSize(for: .small),
             11.2,
             accuracy: 0.0001
         )
@@ -64,13 +64,13 @@ final class AppFontStyleTests: XCTestCase {
 
     func testAdditionalStylesScaleWithConfiguredOption() {
         XCTAssertEqual(
-            AppFontStyle.size10Bold.pointSize(for: .medium),
+            AppFontStyle.badge.pointSize(for: .medium),
             9.0,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.size16Semibold.pointSize(for: .large),
-            16.8,
+            AppFontStyle.titleSm.pointSize(for: .large),
+            18.9,
             accuracy: 0.0001
         )
 
@@ -87,13 +87,13 @@ final class AppFontStyleTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            AppFontStyle.footnote.pointSize(for: .medium),
-            AppFontStyle.footnoteSemibold.pointSize(for: .medium),
+            AppFontStyle.displayMd.pointSize(for: .system),
+            24.0,
             accuracy: 0.0001
         )
         XCTAssertEqual(
-            AppFontStyle.title2.pointSize(for: .large),
-            AppFontStyle.title2Semibold.pointSize(for: .large),
+            AppFontStyle.displayLg.pointSize(for: .system),
+            32.0,
             accuracy: 0.0001
         )
 
@@ -103,6 +103,35 @@ final class AppFontStyleTests: XCTestCase {
             monoLabelSystem * AppTextSizeOption.small.scaleMultiplier,
             accuracy: 0.0001
         )
+    }
+
+    func testRationalizedScaleRemovesDeprecatedStyleCasesAndSemiboldWeights() throws {
+        let source = try appFontStyleSource()
+        let deprecatedNames = [
+            "title2Semibold",
+            "title3Semibold",
+            "size16Semibold",
+            "labelMd",
+            "bodySemibold",
+            "headline",
+            "subheadline",
+            "subheadlineSemibold",
+            "callout",
+            "footnoteSemibold",
+            "captionSemibold",
+            "caption2",
+            "caption2Semibold",
+            "size10Bold",
+            "size18Semibold",
+            "size24Semibold",
+            "size32Regular",
+            "size32Semibold"
+        ]
+
+        for deprecatedName in deprecatedNames {
+            XCTAssertFalse(source.contains(deprecatedName), "\(deprecatedName) should not remain in AppFontStyle")
+        }
+        XCTAssertFalse(source.contains(".semibold"), "AppFontStyle should use regular and bold weights only")
     }
 
     func testScaledPointSizeHelperUsesOptionMultiplier() {
@@ -135,5 +164,16 @@ final class AppFontStyleTests: XCTestCase {
             AppFontStyle.body.pointSize(for: .large) / AppFontStyle.body.pointSize(for: .small),
             accuracy: 0.0001
         )
+    }
+
+    private func appFontStyleSource() throws -> String {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let url = root
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Design")
+            .appendingPathComponent("AppFontStyle.swift")
+        return try String(contentsOf: url, encoding: .utf8)
     }
 }

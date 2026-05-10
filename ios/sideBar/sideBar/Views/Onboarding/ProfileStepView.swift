@@ -14,25 +14,25 @@ struct ProfileStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "person.crop.circle.badge.plus")
-                    .font(.system(size: 48))
+                    .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("What Should I Call You?")
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("I'll use your name to make our conversations feel more natural.")
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text("NAME")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.label)
                         .foregroundStyle(.secondary)
                         .tracking(0.5)
                     TextField("Your name", text: $viewModel.displayName)
@@ -49,7 +49,7 @@ struct ProfileStepView: View {
                 .frame(maxWidth: 310)
 
                 Text("You can add pronouns, location, communication preferences, and more in Settings anytime.")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)

@@ -134,7 +134,7 @@ extension SoulCalibrationPromptView {
                 goBack()
             }
             .buttonStyle(.plain)
-            .appFont(.bodySemibold)
+            .appFont(.body)
             .foregroundStyle(.secondary)
             .accessibilityLabel("Back")
         }

@@ -87,7 +87,7 @@ private struct CompactPhoneMoreDestinationHeader: View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .appFont(.headline)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .frame(width: 44, height: 44)
                     .background(
@@ -105,7 +105,7 @@ private struct CompactPhoneMoreDestinationHeader: View {
         }
         .overlay {
             Text(title)
-                .appFont(.headline)
+                .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .lineLimit(1)
         }

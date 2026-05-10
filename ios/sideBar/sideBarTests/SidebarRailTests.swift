@@ -35,9 +35,9 @@ final class SidebarRailTests: XCTestCase {
         let normalized = try sidebarRailSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains(".appFont(.size18Semibold)"))
+        XCTAssertTrue(normalized.contains(".appFont(.titleSm)"))
         XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.xl,height:DesignTokens.Icon.xl)"))
-        XCTAssertFalse(normalized.contains(".appFont(.labelMd)"))
+        XCTAssertFalse(normalized.contains(".appFont(.label)"))
         XCTAssertFalse(normalized.contains(".font(.system(size:18,weight:.semibold))"))
     }
 }

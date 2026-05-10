@@ -161,7 +161,7 @@ struct NotesTreeRow: View {
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     Spacer()
                     Image(systemName: (isExpanded ?? false) ? "chevron.down" : "chevron.right")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .foregroundStyle(secondaryTextColor)
                 }
             }

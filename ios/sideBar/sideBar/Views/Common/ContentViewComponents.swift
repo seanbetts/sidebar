@@ -22,7 +22,7 @@ public struct ConfigErrorView: View {
     public var body: some View {
         VStack(spacing: 16) {
             Text("Configuration Error")
-                .appFont(.title2)
+                .appFont(.titleLg)
             Text(error.localizedDescription)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -46,10 +46,10 @@ struct ReauthenticationRequiredView: View {
                     .frame(width: DesignTokens.Icon.hero, height: DesignTokens.Icon.hero)
                     .accessibilityHidden(true)
                 Text("sideBar")
-                    .appFont(.title2Semibold)
+                    .appFont(.titleLg)
             }
             Text("Sign in again")
-                .appFont(.title2)
+                .appFont(.titleLg)
             Text("Your session expired. Sign in again to continue.")
                 .appFont(.body)
                 .multilineTextAlignment(.center)
@@ -135,9 +135,9 @@ public struct WelcomeEmptyView: View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: 96, variant: .hero)
             Text("Welcome to sideBar")
-                .appFont(.title3Semibold)
+                .appFont(.titleMd)
             Text("Select a note, website, or file to get started.")
-                .appFont(.subheadline)
+                .appFont(.subheading)
                 .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
@@ -170,14 +170,14 @@ public struct PlaceholderView: View {
         VStack(spacing: 12) {
             if let iconName {
                 Image(systemName: iconName)
-                    .appFont(.size32Semibold)
+                    .appFont(.displayLg)
                     .foregroundStyle(.secondary)
             }
             Text(title)
-                .appFont(.title2)
+                .appFont(.titleLg)
             if let subtitle {
                 Text(subtitle)
-                    .appFont(.subheadline)
+                    .appFont(.subheading)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }

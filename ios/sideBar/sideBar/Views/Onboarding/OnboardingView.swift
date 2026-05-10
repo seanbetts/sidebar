@@ -247,9 +247,9 @@ struct OnboardingView: View {
         Button(action: { viewModel.goBack() }, label: {
             HStack(spacing: DesignTokens.Spacing.xxs) {
                 Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
+                    .appFont(.body)
                 Text("Back")
-                    .font(.body)
+                    .appFont(.body)
             }
             .foregroundStyle(.primary)
         })

@@ -212,7 +212,7 @@ struct MemoriesSettingsDetailView: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
-            .appFont(.subheadline)
+            .appFont(.subheading)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(DesignTokens.Colors.input)
@@ -324,11 +324,11 @@ struct MemoriesSettingsDetailView: View {
     private func detailHeader(memory: MemoryItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "bookmark")
-                .appFont(.titleLg)
+                .appFont(.titleSm)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(memory.path))
-                    .appFont(.headline)
+                    .appFont(.subheading)
             }
             Spacer()
         }
@@ -371,7 +371,7 @@ private struct MemoryRow: View {
         SelectableRow(isSelected: isSelected) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(item.path))
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                     .lineLimit(2)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }

@@ -72,7 +72,7 @@ struct MoveTaskSheet: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text("Move task")
-                        .appFont(.title3Semibold)
+                        .appFont(.titleMd)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                     Text("Choose where \(task.title) should live.")
                         .appFont(.caption)
@@ -92,7 +92,7 @@ struct MoveTaskSheet: View {
                         ForEach(filteredSections) { section in
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                                 Text(section.title)
-                                    .appFont(.captionSemibold)
+                                    .appFont(.caption)
                                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 VStack(spacing: DesignTokens.Spacing.xxs) {
                                     ForEach(section.destinations) { destination in
@@ -194,7 +194,7 @@ struct MoveTaskSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if selectedId == destination.id {
                     Image(systemName: "checkmark")
-                        .appFont(.captionSemibold)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
             }

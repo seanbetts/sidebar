@@ -58,7 +58,7 @@ struct AgentWorkspaceSurfaceView: View {
             iconName: iconName(for: surface.surfaceType),
             title: resolvedTitle,
             subtitle: surfaceLabel,
-            titleStyle: .subheadline,
+            titleStyle: .subheading,
             titleWeight: .semibold,
             titleLineLimit: 1,
             subtitleLineLimit: 1,
@@ -174,11 +174,11 @@ struct AgentWorkspaceSurfaceView: View {
                         ForEach(surface.payload.keys.sorted(), id: \.self) { key in
                             HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                                 Text(key)
-                                    .appFont(.captionSemibold)
+                                    .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                     .frame(width: 120, alignment: .leading)
                                 Text(surface.payload[key] ?? "")
-                                    .appFont(.subheadline)
+                                    .appFont(.subheading)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }

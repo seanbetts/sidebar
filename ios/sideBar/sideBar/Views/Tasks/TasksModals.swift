@@ -150,7 +150,7 @@ struct NewTaskSheet: View {
                     ZStack(alignment: .topLeading) {
                         if notes.isEmpty {
                             Text("Notes (optional)")
-                                .appFont(.callout)
+                                .appFont(.body)
                                 .foregroundStyle(.secondary)
                                 .padding(.top, 8)
                         }

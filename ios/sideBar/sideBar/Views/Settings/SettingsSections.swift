@@ -264,7 +264,7 @@ struct ProfileSettingsView: View {
                 profileAvatar
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Profile photo")
-                        .appFont(.headline)
+                        .appFont(.subheading)
                     Text(photoSubtitle)
                         .appFont(.caption)
                         .foregroundStyle(.secondary)

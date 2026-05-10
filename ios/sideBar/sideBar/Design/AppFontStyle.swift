@@ -6,32 +6,19 @@ import AppKit
 #endif
 
 enum AppFontStyle {
-    case title2
-    case title2Semibold
-    case title3Semibold
+    case displayLg
+    case displayMd
     case titleLg
-    case size16Semibold
-    case labelMd
-    case body
-    case bodySemibold
-    case headline
+    case titleMd
+    case titleSm
     case subheading
-    case subheadline
-    case subheadlineSemibold
-    case callout
+    case body
+    case label
     case footnote
-    case footnoteSemibold
     case caption
-    case captionSemibold
-    case caption2
-    case caption2Semibold
-    case size10Bold
-    case size18Semibold
-    case size24Semibold
-    case size32Regular
-    case size32Semibold
-    case monoLabel
+    case badge
     case monoBody
+    case monoLabel
 
     func pointSize(for option: AppTextSizeOption) -> CGFloat {
         let definition = definition
@@ -91,83 +78,39 @@ extension View {
 private extension AppFontStyle {
     var definition: AppFontDefinition {
         switch self {
-        case .title2:
+        case .displayLg:
+            return AppFontDefinition(fallbackSize: 32, weight: .regular)
+        case .displayMd:
+            return AppFontDefinition(fallbackSize: 24, weight: .bold)
+        case .titleLg:
             return AppFontDefinition(
                 fallbackSize: 22,
                 textStyle: .title2,
                 weight: .regular
             )
-        case .title2Semibold:
-            return AppFontDefinition(
-                fallbackSize: 22,
-                textStyle: .title2,
-                weight: .semibold
-            )
-        case .title3Semibold:
+        case .titleMd:
             return AppFontDefinition(
                 fallbackSize: 20,
                 textStyle: .title3,
-                weight: .semibold
+                weight: .bold
             )
-        case .titleLg:
-            return AppFontDefinition(fallbackSize: 18, weight: .semibold)
-        case .size16Semibold:
-            return AppFontDefinition(fallbackSize: 16, weight: .semibold)
-        case .labelMd:
-            return AppFontDefinition(fallbackSize: 14, weight: .semibold)
+        case .titleSm:
+            return AppFontDefinition(fallbackSize: 18, weight: .bold)
+        case .subheading:
+            return AppFontDefinition(fallbackSize: 17, weight: .bold)
         case .body:
             return AppFontDefinition(
                 fallbackSize: 16,
                 textStyle: .body,
                 weight: .regular
             )
-        case .bodySemibold:
-            return AppFontDefinition(
-                fallbackSize: 16,
-                textStyle: .body,
-                weight: .semibold
-            )
-        case .headline:
-            return AppFontDefinition(
-                fallbackSize: 17,
-                textStyle: .headline,
-                weight: .regular
-            )
-        case .subheading:
-            return AppFontDefinition(
-                fallbackSize: 15,
-                textStyle: .subheadline,
-                weight: .semibold
-            )
-        case .subheadline:
-            return AppFontDefinition(
-                fallbackSize: 15,
-                textStyle: .subheadline,
-                weight: .regular
-            )
-        case .subheadlineSemibold:
-            return AppFontDefinition(
-                fallbackSize: 15,
-                textStyle: .subheadline,
-                weight: .semibold
-            )
-        case .callout:
-            return AppFontDefinition(
-                fallbackSize: 16,
-                textStyle: .callout,
-                weight: .regular
-            )
+        case .label:
+            return AppFontDefinition(fallbackSize: 14, weight: .bold)
         case .footnote:
             return AppFontDefinition(
                 fallbackSize: 13,
                 textStyle: .footnote,
                 weight: .regular
-            )
-        case .footnoteSemibold:
-            return AppFontDefinition(
-                fallbackSize: 13,
-                textStyle: .footnote,
-                weight: .semibold
             )
         case .caption:
             return AppFontDefinition(
@@ -175,45 +118,19 @@ private extension AppFontStyle {
                 textStyle: .caption,
                 weight: .regular
             )
-        case .captionSemibold:
-            return AppFontDefinition(
-                fallbackSize: 12,
-                textStyle: .caption,
-                weight: .semibold
-            )
-        case .caption2:
-            return AppFontDefinition(
-                fallbackSize: 11,
-                textStyle: .caption2,
-                weight: .regular
-            )
-        case .caption2Semibold:
-            return AppFontDefinition(
-                fallbackSize: 11,
-                textStyle: .caption2,
-                weight: .semibold
-            )
-        case .size10Bold:
+        case .badge:
             return AppFontDefinition(fallbackSize: 10, weight: .bold)
-        case .size18Semibold:
-            return AppFontDefinition(fallbackSize: 18, weight: .semibold)
-        case .size24Semibold:
-            return AppFontDefinition(fallbackSize: 24, weight: .semibold)
-        case .size32Regular:
-            return AppFontDefinition(fallbackSize: 32, weight: .regular)
-        case .size32Semibold:
-            return AppFontDefinition(fallbackSize: 32, weight: .semibold)
-        case .monoLabel:
-            return AppFontDefinition(
-                fallbackSize: 14,
-                weight: .semibold,
-                design: .monospaced
-            )
         case .monoBody:
             return AppFontDefinition(
                 fallbackSize: 16,
                 textStyle: .body,
                 weight: .regular,
+                design: .monospaced
+            )
+        case .monoLabel:
+            return AppFontDefinition(
+                fallbackSize: 14,
+                weight: .bold,
                 design: .monospaced
             )
         }
@@ -245,12 +162,8 @@ private enum AppFontMetrics {
         let sizes: [Font.TextStyle: CGFloat] = [
             .title2: UIFont.preferredFont(forTextStyle: .title2).pointSize,
             .title3: UIFont.preferredFont(forTextStyle: .title3).pointSize,
-            .headline: UIFont.preferredFont(forTextStyle: .headline).pointSize,
-            .subheadline: UIFont.preferredFont(forTextStyle: .subheadline).pointSize,
-            .callout: UIFont.preferredFont(forTextStyle: .callout).pointSize,
             .body: UIFont.preferredFont(forTextStyle: .body).pointSize,
             .caption: UIFont.preferredFont(forTextStyle: .caption1).pointSize,
-            .caption2: UIFont.preferredFont(forTextStyle: .caption2).pointSize,
             .footnote: UIFont.preferredFont(forTextStyle: .footnote).pointSize
         ]
         return sizes[textStyle] ?? fallback
@@ -258,12 +171,8 @@ private enum AppFontMetrics {
         let sizes: [Font.TextStyle: CGFloat] = [
             .title2: NSFont.preferredFont(forTextStyle: .title2).pointSize,
             .title3: NSFont.preferredFont(forTextStyle: .title3).pointSize,
-            .headline: NSFont.preferredFont(forTextStyle: .headline).pointSize,
-            .subheadline: NSFont.preferredFont(forTextStyle: .subheadline).pointSize,
-            .callout: NSFont.preferredFont(forTextStyle: .callout).pointSize,
             .body: NSFont.preferredFont(forTextStyle: .body).pointSize,
             .caption: NSFont.preferredFont(forTextStyle: .caption1).pointSize,
-            .caption2: NSFont.preferredFont(forTextStyle: .caption2).pointSize,
             .footnote: NSFont.preferredFont(forTextStyle: .footnote).pointSize
         ]
         return sizes[textStyle] ?? fallback

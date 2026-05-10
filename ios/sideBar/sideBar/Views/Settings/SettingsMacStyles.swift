@@ -28,7 +28,7 @@ struct SettingsMacSectionIntro: View {
     var body: some View {
         VStack(alignment: .leading, spacing: settingsMacSectionIntroSpacing()) {
             Text(title)
-                .appFont(.headline)
+                .appFont(.subheading)
             Text(message)
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
@@ -80,7 +80,7 @@ struct SettingsMacHeroButtonRow<Leading: View>: View {
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxsPlus) {
                     Text(title)
-                        .appFont(.subheadlineSemibold)
+                        .appFont(.subheading)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                     Text(subtitle)
                         .appFont(.caption)
@@ -91,7 +91,7 @@ struct SettingsMacHeroButtonRow<Leading: View>: View {
                 Spacer(minLength: DesignTokens.Spacing.md)
 
                 Image(systemName: "chevron.right")
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .foregroundStyle(.tertiary)
             }
             .padding(DesignTokens.Spacing.md)
@@ -227,14 +227,14 @@ struct SettingsMacSkillRow<Trailing: View>: View {
     private var rowContent: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Image(systemName: systemImage)
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .frame(width: 20, height: 20)
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxsPlus) {
                 Text(title)
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 Text(subtitle)
                     .appFont(.caption)

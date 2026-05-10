@@ -19,20 +19,20 @@ struct WelcomeStepView: View {
                     .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
                 Text("sideBar")
-                    .font(.system(size: 34, weight: .bold))
+                    .appFont(.displayLg)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 VStack(spacing: 16) {
                     Text(MarketingCopy.tagline)
-                        .font(.title)
+                        .appFont(.titleLg)
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 360)
 
                     Text(MarketingCopy.subtitle)
-                        .font(.subheadline)
+                        .appFont(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)

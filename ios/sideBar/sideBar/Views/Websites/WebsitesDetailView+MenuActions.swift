@@ -123,7 +123,7 @@ struct WebsiteContentQuickActionsPill: View {
     ) -> some View {
         Button(role: role, action: action) {
             Image(systemName: systemName)
-                .appFont(.labelMd)
+                .appFont(.label)
                 .frame(width: Self.controlIconSize, height: Self.controlIconSize)
                 .frame(width: Self.controlTouchTarget, height: Self.controlTouchTarget)
                 .foregroundStyle(

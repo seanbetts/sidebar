@@ -33,7 +33,7 @@ struct PhoneFloatingActionButton: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .appFont(.labelMd)
+                .appFont(.label)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }

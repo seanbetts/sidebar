@@ -10,7 +10,7 @@ struct OfflineBanner: View {
                 handleStatusTap()
             } label: {
                 statusIcon
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundStyle(.white)
                 .padding(.horizontal, DesignTokens.Spacing.sm)
                 .padding(.vertical, DesignTokens.Spacing.xs)

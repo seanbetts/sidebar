@@ -26,7 +26,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         title: String,
         titleAccessory: AnyView? = nil,
         subtitle: String? = nil,
-        titleStyle: AppFontStyle = .headline,
+        titleStyle: AppFontStyle = .subheading,
         titleWeight: Font.Weight = .regular,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
@@ -44,7 +44,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     ) {
         self.icon = AnyView(
             Image(systemName: iconName)
-                .appFont(.titleLg)
+                .appFont(.titleSm)
                 .foregroundStyle(.primary)
         )
         self.title = title
@@ -72,7 +72,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         title: String,
         titleAccessory: AnyView? = nil,
         subtitle: String? = nil,
-        titleStyle: AppFontStyle = .headline,
+        titleStyle: AppFontStyle = .subheading,
         titleWeight: Font.Weight = .regular,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,

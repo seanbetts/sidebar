@@ -74,7 +74,7 @@ struct ChatMessageRow: View {
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
                 Text(message.role == .assistant ? assistantDisplayName : "You")
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
@@ -146,7 +146,7 @@ struct ChatMessageRow: View {
             HStack {
                 Spacer()
                 Text(formattedTimestamp)
-                    .appFont(.caption2)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
         }

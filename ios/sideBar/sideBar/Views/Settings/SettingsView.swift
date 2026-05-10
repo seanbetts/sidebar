@@ -74,7 +74,7 @@ public struct SettingsView: View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Settings")
-                    .appFont(.headline)
+                    .appFont(.subheading)
                 Text("Tune sideBar for your workspace and assistant.")
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
@@ -166,7 +166,7 @@ private struct SettingsSplitView: View {
 
                 List(SettingsSection.allCases, selection: selectionBinding) { section in
                     Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
-                        .appFont(.subheadline)
+                        .appFont(.subheading)
                         .padding(.vertical, DesignTokens.Spacing.xxsPlus)
                         .tag(section)
                 }
@@ -179,7 +179,7 @@ private struct SettingsSplitView: View {
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selectedSection)
-                .appFont(.subheadline)
+                .appFont(.subheading)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
                 .background(DesignTokens.Colors.settingsBackground)
@@ -206,7 +206,7 @@ private struct SettingsSplitView: View {
     private var settingsSidebarHeader: some View {
         VStack(alignment: .leading, spacing: settingsMacSectionIntroSpacing()) {
             Text("Settings")
-                .appFont(.headline)
+                .appFont(.subheading)
             Text("Choose a section to configure your workspace, profile, and assistant.")
                 .appFont(.caption)
                 .foregroundStyle(.secondary)

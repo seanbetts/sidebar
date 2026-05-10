@@ -6,7 +6,7 @@ final class SettingsQuickGapSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains(".appFont(.body)"))
-        XCTAssertFalse(normalized.contains(".appFont(.subheadline)"))
+        XCTAssertFalse(normalized.contains(".appFont(.subheading)"))
     }
 
     func testStoreSkillCredentialActionFramesUseIconToken() throws {

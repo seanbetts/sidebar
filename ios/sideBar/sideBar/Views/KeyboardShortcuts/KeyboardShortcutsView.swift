@@ -34,7 +34,7 @@ private struct KeyboardShortcutRow: View {
                 .frame(minWidth: 72, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(shortcut.title)
-                    .appFont(.subheadlineSemibold)
+                    .appFont(.subheading)
                 Text(shortcut.description)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)

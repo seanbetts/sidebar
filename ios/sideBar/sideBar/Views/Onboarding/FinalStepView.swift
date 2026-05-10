@@ -17,20 +17,20 @@ struct FinalStepView: View {
                         .fill(DesignTokens.Colors.surface)
                         .frame(width: 72, height: 72)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 32, weight: .semibold))
+                        .appFont(.displayLg)
                         .foregroundStyle(.primary)
                 }
                 .padding(.bottom, layoutMode.linkSpacing)
 
                 Text(viewModel.transitionTitle)
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .accessibilityIdentifier("onboarding.finalStep.title")
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.transitionSubtitle)
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
@@ -39,10 +39,10 @@ struct FinalStepView: View {
                         ForEach(viewModel.transitionHighlights, id: \.self) { highlight in
                             HStack(alignment: .top, spacing: DesignTokens.Spacing.xs) {
                                 Image(systemName: "circle.fill")
-                                    .font(.system(size: 6))
+                                    .appFont(.badge)
                                     .padding(.top, 6)
                                 Text(highlight)
-                                    .font(.subheadline)
+                                    .appFont(.body)
                                     .foregroundStyle(.secondary)
                             }
                         }

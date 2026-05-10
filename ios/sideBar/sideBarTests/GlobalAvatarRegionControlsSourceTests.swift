@@ -25,7 +25,7 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         )
         XCTAssertFalse(
             normalized.contains(
-                "Image(systemName:\"square.and.pencil\").appFont(.labelMd)"
+                "Image(systemName:\"square.and.pencil\").appFont(.label)"
             )
         )
     }

@@ -23,13 +23,13 @@ struct FeatureIntroCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: feature.systemImage)
-                        .appFont(.bodySemibold)
+                        .appFont(.body)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                         .accessibilityHidden(true)
 
                     Text(feature.title)
-                        .appFont(.bodySemibold)
+                        .appFont(.body)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                 }
 

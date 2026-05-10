@@ -16,23 +16,23 @@ struct VerifyEmailStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "envelope.badge")
-                    .font(.system(size: 48))
+                    .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Check Your Inbox")
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("I sent a verification code to")
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.email)
-                    .font(.subheadline.weight(.semibold))
+                    .appFont(.label)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
@@ -44,7 +44,7 @@ struct VerifyEmailStepView: View {
 #endif
                             .textContentType(.oneTimeCode)
                             .multilineTextAlignment(.center)
-                            .font(.system(size: 24, weight: .semibold))
+                            .appFont(.displayMd)
                             .frame(width: 44, height: 52)
                             .background(DesignTokens.Colors.surface)
                             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
@@ -63,7 +63,7 @@ struct VerifyEmailStepView: View {
 
                 if let error = viewModel.errorMessage {
                     Text(error)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .padding(.bottom, layoutMode.sectionSpacing)
                 }
@@ -72,7 +72,7 @@ struct VerifyEmailStepView: View {
                     resendCode()
                 }
                 .buttonStyle(.plain)
-                .font(.subheadline)
+                .appFont(.body)
                 .foregroundStyle(.secondary)
                 .disabled(resendCooldown > 0)
 

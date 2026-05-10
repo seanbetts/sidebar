@@ -778,7 +778,7 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("Spacer(minLength:DesignTokens.Spacing.xs)"))
-        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheadline)"))
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheading)"))
         XCTAssertTrue(normalized.contains(".multilineTextAlignment(.trailing)"))
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.trailing)"))
     }

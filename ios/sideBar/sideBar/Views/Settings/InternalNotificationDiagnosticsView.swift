@@ -96,7 +96,7 @@ struct InternalNotificationDiagnosticsView: View {
                     ForEach(Array(schedulerRuns.enumerated()), id: \.offset) { _, row in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(row.status) • due \(row.taskRemindersDue) • sent \(row.taskRemindersDispatched)")
-                                .appFont(.subheadlineSemibold)
+                                .appFont(.subheading)
                             Text(row.startedAt)
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)
@@ -118,7 +118,7 @@ struct InternalNotificationDiagnosticsView: View {
                     ForEach(installations, id: \.installationId) { installation in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(installation.installationId)
-                                .appFont(.subheadlineSemibold)
+                                .appFont(.subheading)
                             Text(
                                 "\(installation.platform) • token \(installation.tokenSuffix ?? "unknown") • " +
                                 "\(installation.isForeground == true ? "foreground" : "background")"
@@ -138,7 +138,7 @@ struct InternalNotificationDiagnosticsView: View {
                     ForEach(Array(recentDelivery.enumerated()), id: \.offset) { _, row in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(row.notificationKind) • \(row.deliveryResult)")
-                                .appFont(.subheadlineSemibold)
+                                .appFont(.subheading)
                             Text(row.createdAt)
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)
@@ -160,7 +160,7 @@ struct InternalNotificationDiagnosticsView: View {
                     ForEach(Array(recentSchedulerDecisions.enumerated()), id: \.offset) { _, row in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(row.decisionStage) • \(row.decisionReason)")
-                                .appFont(.subheadlineSemibold)
+                                .appFont(.subheading)
                             Text(row.createdAt)
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)

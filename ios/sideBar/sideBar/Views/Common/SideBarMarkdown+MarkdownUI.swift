@@ -22,7 +22,7 @@ struct CappedImageProvider: ImageProvider {
                 HStack {
                     Spacer(minLength: 0)
                     Image(systemName: "photo")
-                        .appFont(.size32Regular)
+                        .appFont(.displayLg)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                 }

@@ -82,7 +82,7 @@ struct HeaderStatusPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(model.title)
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
 
             if let message = effectiveMessage {
                 Text(message)
@@ -173,7 +173,7 @@ private struct HeaderStatusRowView: View {
     private var rowCopy: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(row.title)
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
                 .lineLimit(2)
                 .truncationMode(.tail)
 

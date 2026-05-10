@@ -109,10 +109,10 @@ struct FilesProcessingView: View {
                 ProgressView(value: progress)
             }
             Text(statusTitle)
-                .appFont(.headline)
+                .appFont(.subheading)
             if let detail = statusDetail {
                 Text(detail)
-                    .appFont(.subheadline)
+                    .appFont(.subheading)
                     .foregroundStyle(.secondary)
             }
         }

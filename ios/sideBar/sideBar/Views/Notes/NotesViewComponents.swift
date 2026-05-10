@@ -50,7 +50,7 @@ struct NoteFolderPickerSheet: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text(title)
-                        .appFont(.title3Semibold)
+                        .appFont(.titleMd)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                     Text("Choose the folder that should contain this note.")
                         .appFont(.caption)
@@ -74,7 +74,7 @@ struct NoteFolderPickerSheet: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     if selection == option.value {
                                         Image(systemName: "checkmark")
-                                            .appFont(.captionSemibold)
+                                            .appFont(.caption)
                                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                                     }
                                 }

@@ -24,7 +24,7 @@ struct PendingWebsiteRow: View, Equatable {
             HStack(spacing: 8) {
                 if let leadingIconName {
                     Image(systemName: leadingIconName)
-                        .appFont(.labelMd)
+                        .appFont(.label)
                         .foregroundStyle(secondaryTextColor)
                 } else {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
@@ -46,7 +46,7 @@ struct PendingWebsiteRow: View, Equatable {
                             onRetry()
                         } label: {
                             Image(systemName: "arrow.counterclockwise.circle")
-                                .appFont(.labelMd)
+                                .appFont(.label)
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(secondaryTextColor)
@@ -57,7 +57,7 @@ struct PendingWebsiteRow: View, Equatable {
                             onRemove()
                         } label: {
                             Image(systemName: "xmark.circle")
-                                .appFont(.labelMd)
+                                .appFont(.label)
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(secondaryTextColor)

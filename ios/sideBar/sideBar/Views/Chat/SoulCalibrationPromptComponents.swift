@@ -21,7 +21,7 @@ struct ContinueButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .appFont(.bodySemibold)
+                .appFont(.body)
                 .foregroundColor(titleColor)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.vertical, DesignTokens.Spacing.xs)
@@ -138,7 +138,7 @@ struct SoulCalibrationChoiceChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .appFont(.bodySemibold)
+                .appFont(.body)
                 .foregroundColor(foregroundColor)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.vertical, DesignTokens.Spacing.xs)
@@ -221,7 +221,7 @@ struct SoulCalibrationNameBadge<CenterContent: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             Text("HELLO, I'M")
-                .appFont(.captionSemibold)
+                .appFont(.caption)
                 .foregroundColor(.white)
                 .tracking(1.2)
                 .frame(maxWidth: .infinity)

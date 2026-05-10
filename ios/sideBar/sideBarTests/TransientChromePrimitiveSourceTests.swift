@@ -29,7 +29,7 @@ final class TransientChromePrimitiveSourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("structMetadataPill<LeadingAccessory:View>:View{"))
         XCTAssertTrue(normalized.contains(".glassChrome(.metadataPill)"))
-        XCTAssertTrue(normalized.contains(".appFont(.caption2)"))
+        XCTAssertTrue(normalized.contains(".appFont(.caption)"))
         XCTAssertTrue(normalized.contains(".foregroundStyle(DesignTokens.Colors.textSecondary)"))
     }
 

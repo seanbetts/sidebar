@@ -299,7 +299,7 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
             at: ["sideBar", "Design", "Components", "FormField.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheadline)"))
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheading)"))
         XCTAssertFalse(normalized.contains("Text(title).appFont(.body)"))
     }
 

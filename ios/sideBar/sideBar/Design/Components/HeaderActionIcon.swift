@@ -11,7 +11,7 @@ enum HeaderActionControlMetrics {
     private static let baseChromePadding: CGFloat = DesignTokens.Spacing.xxsPlus
 
     static func symbolPointSize(for option: AppTextSizeOption) -> CGFloat {
-        AppFontStyle.labelMd.pointSize(for: option)
+        AppFontStyle.label.pointSize(for: option)
     }
 
     static func iconFrameWidth(for option: AppTextSizeOption) -> CGFloat {
@@ -67,7 +67,7 @@ struct HeaderActionIcon: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .appFont(.labelMd)
+            .appFont(.label)
             .frame(
                 width: HeaderActionControlMetrics.iconFrameWidth,
                 height: HeaderActionControlMetrics.iconFrameHeight

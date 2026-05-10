@@ -26,7 +26,7 @@ final class SidebarTypographyTests: XCTestCase {
         for option in AppTextSizeOption.allCases {
             XCTAssertEqual(
                 SidebarTypography.tertiary.pointSize(for: option),
-                AppFontStyle.caption2.pointSize(for: option),
+                AppFontStyle.caption.pointSize(for: option),
                 accuracy: 0.0001
             )
         }

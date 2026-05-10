@@ -35,7 +35,7 @@ struct MorningDigestView: View {
     private var digestHeader: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("A calm start for today.")
-                .appFont(.title3Semibold)
+                .appFont(.titleMd)
             Text("Morning digest keeps the notification short, then gives you a dedicated place to review the day’s task snapshot.")
                 .appFont(.body)
                 .foregroundStyle(.secondary)
@@ -46,7 +46,7 @@ struct MorningDigestView: View {
         let counts = environment.tasksViewModel.counts?.counts
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             Text("Task snapshot")
-                .appFont(.headline)
+                .appFont(.subheading)
 
             HStack(spacing: DesignTokens.Spacing.md) {
                 digestMetric(label: "Today", value: counts?.today ?? 0)
@@ -64,7 +64,7 @@ struct MorningDigestView: View {
     private var digestActions: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("Quick actions")
-                .appFont(.headline)
+                .appFont(.subheading)
 
             Button {
                 dismiss()
@@ -82,7 +82,7 @@ struct MorningDigestView: View {
     private func digestMetric(label: String, value: Int) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text("\(value)")
-                .appFont(.titleLg)
+                .appFont(.titleSm)
             Text(label)
                 .appFont(.caption)
                 .foregroundStyle(.secondary)

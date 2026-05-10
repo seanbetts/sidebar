@@ -20,7 +20,7 @@ The native typography system has two layers:
 
 The `.appFont()` view modifier combines both layers: it reads the current `AppTextSizeOption` from `@AppStorage` and applies the correct scaled font. **This is the only interface views should use.**
 
-For styles that have a `Font.TextStyle` anchor (e.g. `.body`, `.headline`), the base size is read from the system's Dynamic Type metrics — so it responds to both the system Large Text accessibility setting and the in-app preference. For styles without a `Font.TextStyle` anchor, only the in-app preference applies.
+For styles that have a `Font.TextStyle` anchor, for example `.body` and `.titleLg`, the base size is read from the system's Dynamic Type metrics, so it responds to both the system Large Text accessibility setting and the in-app preference. For styles without a `Font.TextStyle` anchor, only the in-app preference applies.
 
 ---
 
@@ -41,86 +41,25 @@ sideBar exposes its own text size control in Settings, independent of the system
 
 ## Type scale
 
-### Specimen
-
-<div style={{fontFamily:"-apple-system,BlinkMacSystemFont,sans-serif",border:"1px solid #e0e0e0",borderRadius:"10px",overflow:"hidden",marginBottom:"24px"}}>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"22px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>title2 · 22pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"22px",fontWeight:"600"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>title2Semibold · 22pt semibold</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"20px",fontWeight:"600"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>title3Semibold · 20pt semibold</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"17px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>headline · 17pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"16px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>body · 16pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"16px",fontWeight:"600"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>bodySemibold · 16pt semibold</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"15px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>subheadline · 15pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"14px",fontWeight:"600"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>labelMd · 14pt semibold</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"13px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>footnote · 13pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"12px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>caption · 12pt regular</span>
-  </div>
-  <div style={{padding:"16px 20px",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-    <span style={{fontSize:"11px",fontWeight:"400"}}>The quick brown fox</span>
-    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>caption2 · 11pt regular</span>
-  </div>
-</div>
-
-### Full scale reference
+### Scale reference
 
 | Style | Base size | Weight | Dynamic Type anchor | Notes |
 |---|---|---|---|---|
-| `title2` | 22pt | Regular | `.title2` | |
-| `title2Semibold` | 22pt | Semibold | `.title2` | |
-| `title3Semibold` | 20pt | Semibold | `.title3` | |
-| `titleLg` | 18pt | Semibold | None | No Dynamic Type anchor |
-| `size18Semibold` | 18pt | Semibold | None | Prefer `titleLg` — same values, better name |
-| `size16Semibold` | 16pt | Semibold | None | |
-| `labelMd` | 14pt | Semibold | None | Standard label weight for list rows, section headers |
-| `body` | 16pt | Regular | `.body` | Default prose text |
-| `bodySemibold` | 16pt | Semibold | `.body` | |
-| `headline` | 17pt | Regular | `.headline` | |
-| `subheadline` | 15pt | Regular | `.subheadline` | |
-| `subheadlineSemibold` | 15pt | Semibold | `.subheadline` | |
-| `callout` | 16pt | Regular | `.callout` | |
+| `displayLg` | 32pt | Regular | None | Large display and hero treatment |
+| `displayMd` | 24pt | Bold | None | Prominent headings and large symbols |
+| `titleLg` | 22pt | Regular | `.title2` | Page and view title |
+| `titleMd` | 20pt | Bold | `.title3` | Section heading |
+| `titleSm` | 18pt | Bold | None | Sub-section heading |
+| `subheading` | 17pt | Bold | None | Content block subheading |
+| `body` | 16pt | Regular | `.body` | Default prose and content |
+| `label` | 14pt | Bold | None | UI labels, list section headers |
 | `footnote` | 13pt | Regular | `.footnote` | |
-| `footnoteSemibold` | 13pt | Semibold | `.footnote` | |
 | `caption` | 12pt | Regular | `.caption` | |
-| `captionSemibold` | 12pt | Semibold | `.caption` | |
-| `caption2` | 11pt | Regular | `.caption2` | |
-| `caption2Semibold` | 11pt | Semibold | `.caption2` | |
-| `size10Bold` | 10pt | Bold | None | Badge labels, very small UI only |
-| `size24Semibold` | 24pt | Semibold | None | Large display use |
-| `size32Regular` | 32pt | Regular | None | Large display use |
-| `size32Semibold` | 32pt | Semibold | None | Large display use |
-| `monoLabel` | 14pt | Semibold | None | Monospaced. Code labels, tokens |
+| `badge` | 10pt | Bold | None | Badge and pip labels only |
 | `monoBody` | 16pt | Regular | `.body` | Monospaced. Code blocks, inline code |
+| `monoLabel` | 14pt | Bold | None | Monospaced. Code labels, tokens |
 
-**Note on size-named styles**: `titleLg`, `size10Bold`, `size16Semibold`, `size18Semibold`, `size24Semibold`, `size32Regular`, and `size32Semibold` use size-based names rather than semantic names. This is a naming gap — these styles describe implementation rather than intent. They should be renamed as the type scale matures. For now, use the closest semantically named style where one exists; fall back to size-named styles only when there is no semantic match.
+The scale intentionally uses regular weight for content and bold weight for structure. Avoid adding size-named or weight-suffixed cases.
 
 ---
 
@@ -132,7 +71,7 @@ sideBar exposes its own text size control in Settings, independent of the system
 |---|---|---|
 | `SidebarTypography.primary` | `.body` | Primary row label |
 | `SidebarTypography.secondary` | `.caption` | Secondary detail text |
-| `SidebarTypography.tertiary` | `.caption2` | Tertiary / de-emphasised text |
+| `SidebarTypography.tertiary` | `.caption` | Tertiary / de-emphasised text |
 | `SidebarTypography.sectionHeader` | `.label` | Section group headers |
 
 This pattern is correct and should be extended to other repeated contexts. Candidates:
@@ -222,7 +161,7 @@ Prose and markdown content uses `@tailwindcss/typography`. Rich text editing use
 ## Rules summary
 
 1. **Always use `.appFont()`**. Never use `.font(.system(size:weight:))` directly in views.
-2. **Prefer semantically named styles** (`body`, `footnote`, `labelMd`) over size-named ones (`size16Semibold`). If no semantic style fits, use the escape hatch or add a new named case.
+2. **Prefer semantically named styles** (`body`, `footnote`, `label`) and do not add size-named or weight-suffixed cases. If no semantic style fits, use the escape hatch or add a new named case.
 3. **Use `SidebarTypography` aliases** in sidebar list row contexts. Do not reference `AppFontStyle` directly in list row views.
 4. **Do not use `DesignTokens.Typography`**. It is a dead parallel system — it will be removed. Use `AppFontStyle` via `.appFont()`.
 5. **`AppTextSizeOption` scaling is automatic** via the `.appFont()` modifier. Do not read or apply the scale manually.
@@ -230,9 +169,9 @@ Prose and markdown content uses `@tailwindcss/typography`. Rich text editing use
 
 ---
 
-## Scale rationalisation
+## Completed scale rationalisation
 
-The current `AppFontStyle` scale has 25 cases. The rationalisation has three goals: remove redundant size-named styles, remove semibold entirely (structural styles use bold; content styles use regular), and remove the redundant caption size. The result is a two-weight system — regular for content, bold for structure.
+The previous `AppFontStyle` scale had 25 cases. The 2026-05 rationalisation removed redundant size-named styles, removed semibold variants, and removed the redundant caption size. The current result is a 13-case two-weight system: regular for content, bold for structure.
 
 ### Remove
 

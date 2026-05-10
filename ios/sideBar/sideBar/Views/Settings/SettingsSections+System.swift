@@ -21,7 +21,7 @@ struct UserSettingsView: View {
             if shouldShowQueuedChangesRecovery {
                 Section("Sync Errors") {
                     Text(queuedChangeStatusText)
-                        .appFont(.labelMd)
+                        .appFont(.label)
                     Button("Review failed changes") {
                         isQueuedChangesPresented = true
                     }

@@ -223,7 +223,7 @@ extension TasksDetailView {
             Image(systemName: state.titleIcon)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             Text(state.selectionLabel)
-                .appFont(.title3Semibold)
+                .appFont(.titleMd)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .lineLimit(2)
             Spacer()
@@ -347,7 +347,7 @@ extension TasksDetailView {
                         sectionHeaderView(section: section, state: state)
                         if section.tasks.isEmpty, case .upcoming = state.selection {
                             Label("No tasks due", systemImage: "checkmark.circle")
-                                .appFont(.subheadline)
+                                .appFont(.subheading)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
                                 .padding(.leading, DesignTokens.Spacing.md + 14)
                                 .padding(.trailing, DesignTokens.Spacing.md)
@@ -473,11 +473,11 @@ extension TasksDetailView {
         HStack(spacing: 6) {
             if let iconName {
                 Image(systemName: iconName)
-                    .appFont(.subheadline)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
             Text(title)
-                .appFont(.subheadline)
+                .appFont(.subheading)
                 .fontWeight(.semibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }

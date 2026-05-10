@@ -43,7 +43,7 @@ public struct FileViewerView: View {
                         openURL(YouTubeURLPolicy.preferredExternalURL(from: embedURL))
                     } label: {
                         Label("Open in YouTube", systemImage: "arrow.up.right.square")
-                            .appFont(.footnoteSemibold)
+                            .appFont(.footnote)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                     }

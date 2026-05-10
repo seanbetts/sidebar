@@ -114,10 +114,10 @@ public struct SiteHeaderBar: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
-                    .appFont(.headline)
+                    .appFont(.subheading)
                     .fontWeight(.bold)
                 Text("WORKSPACE")
-                    .appFont(.caption2Semibold)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
             headerStatusCluster
@@ -386,7 +386,7 @@ private struct HeaderInfoItem: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
             Text(text)
-                .appFont(.subheadline)
+                .appFont(.subheading)
         }
     }
 }

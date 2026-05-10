@@ -384,7 +384,7 @@ private struct SideBarYouTubeEmbedBlock: View {
                             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         }
                         Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
-                            .appFont(.footnoteSemibold)
+                            .appFont(.footnote)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -410,12 +410,12 @@ private struct SideBarSuppressedSVGBlock: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "photo")
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-                .appFont(.bodySemibold)
+                .appFont(.body)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("SVG diagram omitted")
-                    .appFont(.footnoteSemibold)
+                    .appFont(.footnote)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 Text("Open this page in the web app to view the full diagram.")
                     .appFont(.caption)

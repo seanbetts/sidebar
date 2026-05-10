@@ -11,7 +11,7 @@ struct SettingsPermissionRecoveryRow: View {
                 label
                 Spacer(minLength: DesignTokens.Spacing.sm)
                 Text(item.actionTitle)
-                    .appFont(.captionSemibold)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.actionPrimary)
             }
         }
@@ -32,7 +32,7 @@ struct SettingsPermissionRecoveryRow: View {
     private var label: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: item.systemImage)
-                .appFont(.bodySemibold)
+                .appFont(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 24, height: 24)
                 .accessibilityHidden(true)

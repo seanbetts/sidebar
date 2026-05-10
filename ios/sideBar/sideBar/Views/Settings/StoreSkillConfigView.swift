@@ -211,7 +211,7 @@ struct StoreSkillConfigView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.displayName(for: skill))
-                        .appFont(.subheadlineSemibold)
+                        .appFont(.subheading)
                         .lineLimit(2)
                     Text(viewModel.displayDescription(for: skill))
                         .appFont(.caption)
@@ -426,7 +426,7 @@ private struct StoreSkillInstallIcon: View {
                     .tint(Color.primary)
             } else {
                 Image(systemName: systemName)
-                    .appFont(.size24Semibold)
+                    .appFont(.displayMd)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)
             }

@@ -159,7 +159,7 @@ struct OnboardingBottomAreaView: View {
 
     private var hiddenSecondaryLabel: some View {
         Text(" ")
-            .font(.subheadline)
+            .appFont(.body)
             .hidden()
             .accessibilityHidden(true)
     }
@@ -174,7 +174,7 @@ struct OnboardingBottomAreaView: View {
     private func secondaryTextLink(_ title: String, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
             .buttonStyle(.plain)
-            .font(.subheadline)
+            .appFont(.body)
             .foregroundStyle(.secondary)
             .contentShape(Rectangle())
     }
@@ -189,7 +189,7 @@ struct OnboardingBottomAreaView: View {
                     .tint(DesignTokens.Colors.background)
             } else {
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .appFont(.body)
             }
         }
         .frame(maxWidth: 310)

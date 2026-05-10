@@ -267,7 +267,7 @@ final class SpreadsheetGridCell: UICollectionViewCell {
         case .small, .medium, .large:
             label.adjustsFontForContentSizeCategory = false
             label.font = UIFont.systemFont(
-                ofSize: AppFontStyle.subheadline.pointSize(for: option),
+                ofSize: AppFontStyle.subheading.pointSize(for: option),
                 weight: isHeader ? .semibold : .regular
             )
         }

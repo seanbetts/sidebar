@@ -103,7 +103,7 @@ struct FormField<Content: View, Trailing: View>: View {
                 trailing
             }
         }
-        .appFont(.subheadline)
+        .appFont(.subheading)
         .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
         .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
         .sidebarTextEntrySurface()
@@ -228,7 +228,7 @@ struct SidebarSelectionTriggerLabel: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Spacer(minLength: DesignTokens.Spacing.xs)
             Text(title)
-                .appFont(.subheadline)
+                .appFont(.subheading)
                 .foregroundStyle(
                     isPlaceholder
                         ? DesignTokens.Colors.textSecondary
@@ -238,7 +238,7 @@ struct SidebarSelectionTriggerLabel: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .lineLimit(1)
             Image(systemName: "chevron.up.chevron.down")
-                .appFont(.caption2)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)

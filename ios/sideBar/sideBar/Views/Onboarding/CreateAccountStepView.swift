@@ -19,18 +19,18 @@ struct CreateAccountStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: 48))
+                    .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Let's Set You Up")
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("Enter your email and choose a password to create your account.")
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.bottom, layoutMode.subtitleBottomSpacing)
@@ -38,7 +38,7 @@ struct CreateAccountStepView: View {
                 VStack(spacing: layoutMode.sectionSpacing) {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                         Text("EMAIL")
-                            .font(.caption.weight(.semibold))
+                            .appFont(.label)
                             .foregroundStyle(.secondary)
                             .tracking(0.5)
                         TextField("Enter your email", text: $viewModel.email)
@@ -65,7 +65,7 @@ struct CreateAccountStepView: View {
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                         Text("PASSWORD")
-                            .font(.caption.weight(.semibold))
+                            .appFont(.label)
                             .foregroundStyle(.secondary)
                             .tracking(0.5)
                         SecureField("Choose a password", text: $viewModel.password)
@@ -95,7 +95,7 @@ struct CreateAccountStepView: View {
                         .padding(.top, DesignTokens.Spacing.xxs)
 
                         Text(PasswordStrengthRules.guidanceMessage)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
@@ -106,7 +106,7 @@ struct CreateAccountStepView: View {
 
                 if let error = viewModel.errorMessage {
                     Text(error)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .padding(.top, layoutMode.sectionSpacing)
                 }

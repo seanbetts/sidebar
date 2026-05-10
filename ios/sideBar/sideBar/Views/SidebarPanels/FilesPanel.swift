@@ -337,7 +337,7 @@ extension FilesPanelView {
                                             Text(categoryLabels[category] ?? "Files")
                                             Spacer()
                                             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                                                .appFont(.captionSemibold)
+                                                .appFont(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
                                         .appFont(SidebarTypography.primary)

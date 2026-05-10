@@ -183,7 +183,7 @@ extension NotesDetailView {
                 title: displayTitle,
                 titleAccessory: noteStatusTitleAccessory,
                 subtitle: createdDateSubtitle,
-                titleStyle: .subheadline,
+                titleStyle: .subheading,
                 titleWeight: .semibold,
                 titleSubtitleAxis: .vertical
             , trailing: {
@@ -352,7 +352,7 @@ extension NotesDetailView {
 
     private func noteStatusText(_ status: NoteStatus) -> some View {
         Image(systemName: status.iconName)
-            .appFont(.size16Semibold)
+            .appFont(.body)
             .frame(width: 32, height: 22)
             .imageScale(.medium)
             .foregroundStyle(status.color)

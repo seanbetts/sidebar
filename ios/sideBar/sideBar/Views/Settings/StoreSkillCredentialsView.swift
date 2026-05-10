@@ -133,7 +133,7 @@ struct StoreSkillCredentialsView: View {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
                         Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
-                            .appFont(.size18Semibold)
+                            .appFont(.titleSm)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
                     .disabled(isProviderActionBusy(normalizedProvider))
@@ -144,7 +144,7 @@ struct StoreSkillCredentialsView: View {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
                             Image(systemName: "trash.circle.fill")
-                                .appFont(.size18Semibold)
+                                .appFont(.titleSm)
                         }
                         .accessibilityLabel("Turn Off Skill")
                         .disabled(isProviderActionBusy(normalizedProvider))
@@ -176,7 +176,7 @@ struct StoreSkillCredentialsView: View {
 
                 HStack(spacing: 0) {
                     Text(providerStatusLabel(for: normalizedProvider))
-                        .appFont(.caption2)
+                        .appFont(.caption)
                         .foregroundStyle(providerStatusColor(for: normalizedProvider))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -185,7 +185,7 @@ struct StoreSkillCredentialsView: View {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
                         Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
-                            .appFont(.size18Semibold)
+                            .appFont(.titleSm)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
                     .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
@@ -197,7 +197,7 @@ struct StoreSkillCredentialsView: View {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
                             Image(systemName: "trash.circle.fill")
-                                .appFont(.size18Semibold)
+                                .appFont(.titleSm)
                         }
                         .accessibilityLabel("Turn Off Skill")
                         .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
@@ -209,7 +209,7 @@ struct StoreSkillCredentialsView: View {
 
             if let providerError = providerKeyErrors[normalizedProvider], !providerError.isEmpty {
                 Text(providerError)
-                    .appFont(.caption2)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
         }

@@ -22,19 +22,19 @@ struct AddApiKeyStepView: View {
                         .padding(.bottom, layoutMode.iconBottomSpacing)
                 } else {
                     Image(systemName: "key.horizontal")
-                        .font(.system(size: 48))
+                        .appFont(.displayLg)
                         .foregroundStyle(.primary)
                         .padding(.bottom, layoutMode.iconBottomSpacing)
                 }
 
                 Text("Connect Me")
-                    .font(.system(size: 28, weight: .bold))
+                    .appFont(.displayMd)
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.addApiKeySubtitle)
-                    .font(.subheadline)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.bottom, layoutMode.linkSpacing)
@@ -44,9 +44,9 @@ struct AddApiKeyStepView: View {
                         HStack(spacing: 4) {
                             Text("Where do I find this?")
                             Image(systemName: "arrow.up.right")
-                                .font(.caption)
+                                .appFont(.caption)
                         }
-                        .font(.subheadline)
+                        .appFont(.body)
                         .foregroundStyle(.secondary)
                         .underline()
                     })
@@ -55,7 +55,7 @@ struct AddApiKeyStepView: View {
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text("API KEY")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.label)
                         .foregroundStyle(.secondary)
                         .tracking(0.5)
                     SecureField(viewModel.apiKeyPlaceholder, text: $viewModel.apiKey)
@@ -78,7 +78,7 @@ struct AddApiKeyStepView: View {
 
                 if let error = viewModel.errorMessage {
                     Text(error)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .padding(.top, layoutMode.sectionSpacing)
                 }
@@ -88,7 +88,7 @@ struct AddApiKeyStepView: View {
                     "I use your own API key to talk to \(providerName). " +
                     "Your key is encrypted and never shared."
                 )
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)

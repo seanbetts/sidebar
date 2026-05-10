@@ -54,7 +54,7 @@ struct PanelHeader<Trailing: View>: View {
         let content = HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .appFont(.headline)
+                    .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 if let subtitle {
                     Text(subtitle)

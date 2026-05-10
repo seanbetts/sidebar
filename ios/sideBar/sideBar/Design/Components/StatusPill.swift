@@ -58,7 +58,7 @@ enum StatusPillStyle {
     var fontStyle: AppFontStyle {
         switch self {
         case .compact:
-            return .captionSemibold
+            return .caption
         case .banner:
             return .subheading
         }
@@ -67,9 +67,9 @@ enum StatusPillStyle {
     var symbolFontStyle: AppFontStyle {
         switch self {
         case .compact:
-            return .captionSemibold
+            return .caption
         case .banner:
-            return .labelMd
+            return .label
         }
     }
 

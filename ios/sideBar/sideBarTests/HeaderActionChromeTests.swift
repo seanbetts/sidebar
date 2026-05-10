@@ -6,7 +6,7 @@ final class HeaderActionChromeTests: XCTestCase {
     func testSharedHeaderActionControlMetricsMatchStandaloneGlassChrome() {
         XCTAssertEqual(
             HeaderActionControlMetrics.symbolPointSize(for: .system),
-            AppFontStyle.labelMd.pointSize(for: .system),
+            AppFontStyle.label.pointSize(for: .system),
             accuracy: 0.0001
         )
         XCTAssertEqual(HeaderActionControlMetrics.iconFrameWidth(for: .system), 28, accuracy: 0.0001)

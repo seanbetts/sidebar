@@ -12,7 +12,7 @@ struct LoginPasswordResetNoticeView: View {
                     .foregroundStyle(DesignTokens.Colors.actionPrimary)
                 Text(message)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
-                    .appFont(.callout)
+                    .appFont(.body)
                 if let detail {
                     Text(detail)
                         .foregroundStyle(.secondary)
@@ -37,7 +37,7 @@ struct LoginOfflineNoticeView: View {
                     .foregroundStyle(DesignTokens.Colors.error)
                 Text("You're offline.")
                     .foregroundStyle(DesignTokens.Colors.error)
-                    .appFont(.callout)
+                    .appFont(.body)
                 Text("Sign in requires a connection.")
                     .foregroundStyle(.secondary)
                     .appFont(.caption)
@@ -60,7 +60,7 @@ struct LoginOfflineUnlockView: View {
     var body: some View {
         VStack(spacing: 10) {
             Text("You're offline.")
-                .appFont(.callout)
+                .appFont(.body)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
             Text("Continue using your cached session.")
                 .appFont(.caption)
@@ -134,7 +134,7 @@ struct LoginManualSignUpPrompt: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .appFont(.captionSemibold)
+            .appFont(.caption)
             .foregroundStyle(DesignTokens.Colors.actionPrimary)
         }
         .frame(maxWidth: .infinity)

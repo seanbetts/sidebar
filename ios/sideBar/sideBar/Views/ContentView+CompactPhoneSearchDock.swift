@@ -93,7 +93,7 @@ private struct CompactPhoneSearchDockView: View {
                 isSearchExplicitlyExpanded.wrappedValue = true
             } label: {
                 Image(systemName: "magnifyingglass")
-                    .appFont(.labelMd)
+                    .appFont(.label)
                     .frame(
                         width: PhoneFloatingActionMetrics.buttonSize,
                         height: PhoneFloatingActionMetrics.buttonSize
@@ -381,7 +381,7 @@ extension ContentView {
 
     private var compactPhoneSearchDockMenuLabel: some View {
         Image(systemName: "plus")
-            .appFont(.labelMd)
+            .appFont(.label)
             .frame(
                 width: PhoneFloatingActionMetrics.buttonSize,
                 height: PhoneFloatingActionMetrics.buttonSize
