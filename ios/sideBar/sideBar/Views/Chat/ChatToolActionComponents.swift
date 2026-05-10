@@ -22,15 +22,21 @@ struct ChatToolActionCard: View {
 
     @ViewBuilder
     var body: some View {
-        switch action.kind {
-        case .confirmation where isResolvedConfirmation:
+        switch action.status {
+        case .accepted where action.kind == .confirmation,
+             .declined where action.kind == .confirmation:
             EmptyView()
-        case .confirmation:
-            confirmationControls
-        case .undo where isResolvedUndo:
+        case .undone where action.kind == .undo:
             EmptyView()
-        case .undo:
-            undoControls
+        case .failed:
+            retryControls
+        default:
+            switch action.kind {
+            case .confirmation:
+                confirmationControls
+            case .undo:
+                undoControls
+            }
         }
     }
 
@@ -53,8 +59,6 @@ struct ChatToolActionCard: View {
             ) {
                 onAction(action, .accept)
             }
-
-            statusLabel
         }
     }
 
@@ -68,8 +72,20 @@ struct ChatToolActionCard: View {
             ) {
                 onAction(action, nil)
             }
+        }
+    }
 
-            statusLabel
+    private var retryControls: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            actionButton(
+                title: "Retry",
+                systemImage: "arrow.clockwise",
+                foreground: secondaryButtonForeground,
+                background: secondaryButtonBackground,
+                isEnabled: true
+            ) {
+                onAction(action, nil)
+            }
         }
     }
 
@@ -78,9 +94,11 @@ struct ChatToolActionCard: View {
         systemImage: String,
         foreground: Color,
         background: Color,
+        isEnabled: Bool? = nil,
         action handler: @escaping () -> Void
     ) -> some View {
-        Button(action: handler) {
+        let canTap = isEnabled ?? isPending
+        return Button(action: handler) {
             Label(title, systemImage: systemImage)
                 .appFont(.subheadlineSemibold)
                 .lineLimit(1)
@@ -94,50 +112,12 @@ struct ChatToolActionCard: View {
                 )
         }
         .buttonStyle(.plain)
-        .disabled(!isPending)
-        .opacity(isPending ? 1 : 0.62)
-    }
-
-    @ViewBuilder
-    private var statusLabel: some View {
-        if action.status != .pending {
-            Text(statusText)
-                .appFont(.captionSemibold)
-                .foregroundStyle(statusForeground)
-        }
+        .disabled(!canTap)
+        .opacity(canTap ? 1 : 0.62)
     }
 
     private var isPending: Bool {
         action.status == .pending
-    }
-
-    private var isResolvedConfirmation: Bool {
-        action.status == .accepted || action.status == .declined
-    }
-
-    private var isResolvedUndo: Bool {
-        action.status == .undone
-    }
-
-    private var statusText: String {
-        switch action.status {
-        case .pending:
-            return ""
-        case .running:
-            return "Working"
-        case .accepted:
-            return "Confirmed"
-        case .declined:
-            return "Declined"
-        case .undone:
-            return "Undone"
-        case .failed:
-            return "Failed"
-        }
-    }
-
-    private var statusForeground: Color {
-        action.status == .failed ? DesignTokens.Colors.error : DesignTokens.Colors.textSecondary
     }
 
     private var primaryButtonBackground: Color {

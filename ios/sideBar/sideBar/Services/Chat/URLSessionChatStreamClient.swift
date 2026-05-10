@@ -104,38 +104,10 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     private func emitEvents(from data: Data) async {
         let events = parser.ingest(data)
         guard !events.isEmpty else { return }
-        traceEvents(events)
         await MainActor.run { [handler = self.handler] in
             for event in events {
                 handler?.handle(event: event)
             }
-        }
-    }
-
-    private func traceEvents(_ events: [ChatStreamEvent]) {
-        let tracedEvents = events.filter { event in
-            switch event.type {
-            case .toolCall,
-                 .toolConfirmationRequested,
-                 .toolConfirmationResolved,
-                 .toolStatus,
-                 .toolResult,
-                 .complete,
-                 .error:
-                return true
-            default:
-                return false
-            }
-        }
-        guard !tracedEvents.isEmpty else { return }
-        for event in tracedEvents {
-            ChatStreamDebugTrace.log(
-                "client.event",
-                details: [
-                    "type=\(event.type.rawValue)",
-                    "keys=\(ChatStreamDebugTrace.payloadKeys(event.data))"
-                ]
-            )
         }
     }
 

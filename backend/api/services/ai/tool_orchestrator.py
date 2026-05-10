@@ -13,7 +13,6 @@ from typing import Any
 from google.genai import types
 
 from api.constants import ChatConstants
-from api.services.ai.chat_stream_debug_trace import is_chat_stream_debug_enabled
 from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
@@ -626,18 +625,6 @@ class ProviderToolOrchestrator:
                 requires_confirmation = skills_guard_service.requires_confirmation(
                     display_name
                 )
-                if is_chat_stream_debug_enabled():
-                    logger.info(
-                        (
-                            "ChatStreamDebug provider.tool_call "
-                            "tool_call_id=%s display_name=%s "
-                            "user_id_present=%s requires_confirmation=%s"
-                        ),
-                        tool_call.call_id,
-                        display_name,
-                        bool(user_id),
-                        requires_confirmation,
-                    )
                 if requires_confirmation:
                     yield skills_guard_service.create_confirmation_requested_event(
                         user_id=user_id,
@@ -655,16 +642,6 @@ class ProviderToolOrchestrator:
                     )
                     yield {"_tool_confirmation_pending": True}
                     return
-            elif is_chat_stream_debug_enabled():
-                logger.info(
-                    (
-                        "ChatStreamDebug provider.tool_call "
-                        "tool_call_id=%s display_name=%s "
-                        "user_id_present=False requires_confirmation=False"
-                    ),
-                    tool_call.call_id,
-                    display_name,
-                )
             yield build_tool_status(
                 tool_call_id=tool_call.call_id,
                 status="running",

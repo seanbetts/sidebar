@@ -102,6 +102,33 @@ struct ChatToolAction: Equatable, Identifiable {
     let entityType: String?
     let entityId: String?
     let status: ChatToolActionStatus
+    let decision: ChatToolActionDecision?
+
+    init(
+        id: String,
+        kind: ChatToolActionKind,
+        summary: String,
+        toolName: String?,
+        guardReason: String?,
+        undoSupported: Bool,
+        expiresAt: String?,
+        entityType: String?,
+        entityId: String?,
+        status: ChatToolActionStatus,
+        decision: ChatToolActionDecision? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.summary = summary
+        self.toolName = toolName
+        self.guardReason = guardReason
+        self.undoSupported = undoSupported
+        self.expiresAt = expiresAt
+        self.entityType = entityType
+        self.entityId = entityId
+        self.status = status
+        self.decision = decision
+    }
 }
 
 extension ChatToolAction {

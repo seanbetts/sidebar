@@ -86,10 +86,14 @@ public struct SiteHeaderBar: View {
         ) { _ in
             refreshIngestionHeaderStatus()
         }
+        .onReceive(environment.chatViewModel.$activeTool) { _ in
+            refreshToolHeaderStatus()
+        }
         .onAppear {
             refreshSessionHeaderStatus()
             refreshSyncHeaderStatus()
             refreshIngestionHeaderStatus()
+            refreshToolHeaderStatus()
         }
     }
 
@@ -295,6 +299,10 @@ public struct SiteHeaderBar: View {
         headerStatusController.applyIngestion(snapshot: environment.ingestionViewModel.headerStatusSnapshot)
     }
 
+    private func refreshToolHeaderStatus() {
+        headerStatusController.applyTool(snapshot: toolHeaderStatusSnapshot)
+    }
+
     private var sessionHeaderStatusSnapshot: HeaderSessionStatusSnapshot? {
         switch environment.authState {
         case .staleRecoverable:
@@ -302,6 +310,13 @@ public struct SiteHeaderBar: View {
         case .active, .reauthenticationRequired, .signedOut:
             return nil
         }
+    }
+
+    private var toolHeaderStatusSnapshot: HeaderToolStatusSnapshot? {
+        guard let activeTool = environment.chatViewModel.activeTool else {
+            return nil
+        }
+        return .active(name: activeTool.name, status: activeTool.status)
     }
 
     private func performHeaderAction(
@@ -316,6 +331,8 @@ public struct SiteHeaderBar: View {
             return await performSyncHeaderAction(row: row, action: action)
         case .ingestion:
             return await performIngestionHeaderAction(row: row, action: action)
+        case .tool:
+            return .failed("This status updates automatically.")
         }
     }
 

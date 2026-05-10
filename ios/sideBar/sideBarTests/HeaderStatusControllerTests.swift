@@ -103,6 +103,27 @@ final class HeaderStatusControllerTests: XCTestCase {
         )
     }
 
+    func testToolSnapshotMapsActionProgressAndFailureToHeaderPill() {
+        let sleeper = HeaderStatusTestSleeper()
+        let controller = HeaderStatusController(sleepFor: sleeper.sleep(for:))
+
+        controller.applyTool(snapshot: .active(name: "Delete Note", status: .running))
+
+        XCTAssertEqual(controller.visiblePills.map(\.kind), [.tool])
+        XCTAssertEqual(controller.visiblePills.first?.label, "Working")
+        XCTAssertEqual(controller.visiblePills.first?.tone, .progress)
+        XCTAssertEqual(controller.visiblePills.first?.expiresAfter, nil)
+        XCTAssertEqual(controller.visiblePills.first?.popover.message, "Delete Note is running.")
+
+        controller.applyTool(snapshot: .active(name: "Delete Note", status: .error))
+
+        XCTAssertEqual(controller.visiblePills.first?.label, "Failed")
+        XCTAssertEqual(controller.visiblePills.first?.tone, .error)
+        XCTAssertEqual(controller.visiblePills.first?.expiresAfter, .seconds(5))
+        XCTAssertEqual(controller.visiblePills.first?.popover.title, "Action failed")
+        XCTAssertEqual(controller.visiblePills.first?.popover.message, "Delete Note failed. Try again from the message.")
+    }
+
     private func makeSyncErrorRow() -> HeaderStatusRowModel {
         HeaderStatusRowModel(
             id: "sync-1",

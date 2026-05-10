@@ -9,6 +9,7 @@ final class HeaderStatusController: ObservableObject {
     private var sessionSnapshot: HeaderSessionStatusSnapshot?
     private var syncSnapshot: HeaderSyncStatusSnapshot?
     private var ingestionSnapshot: HeaderIngestionStatusSnapshot?
+    private var toolSnapshot: HeaderToolStatusSnapshot?
     private var expiryTasks: [HeaderStatusKind: Task<Void, Never>] = [:]
     private var suppressedInformationalPillIDs: [HeaderStatusKind: String] = [:]
 
@@ -41,6 +42,11 @@ final class HeaderStatusController: ObservableObject {
     func applyIngestion(snapshot: HeaderIngestionStatusSnapshot?) {
         ingestionSnapshot = snapshot
         updateVisibleState(for: .ingestion)
+    }
+
+    func applyTool(snapshot: HeaderToolStatusSnapshot?) {
+        toolSnapshot = snapshot
+        updateVisibleState(for: .tool)
     }
 
     private func updateVisibleState(for kind: HeaderStatusKind) {
@@ -77,6 +83,8 @@ final class HeaderStatusController: ObservableObject {
             syncSnapshot = nil
         case .ingestion:
             ingestionSnapshot = nil
+        case .tool:
+            toolSnapshot = nil
         }
 
         expiryTasks[kind]?.cancel()
@@ -104,6 +112,8 @@ final class HeaderStatusController: ObservableObject {
             return syncSnapshot.map(makeSyncPill)
         case .ingestion:
             return ingestionSnapshot.map(makeIngestionPill)
+        case .tool:
+            return toolSnapshot.map(makeToolPill)
         }
     }
 
@@ -249,8 +259,93 @@ final class HeaderStatusController: ObservableObject {
             )
         }
     }
+
+    private func makeToolPill(snapshot: HeaderToolStatusSnapshot) -> HeaderStatusPillModel {
+        switch snapshot {
+        case let .active(name, status):
+            return HeaderStatusPillModel(
+                id: "tool-\(status.rawValue)-\(name)",
+                kind: .tool,
+                tone: toolTone(for: status),
+                label: toolLabel(for: status),
+                accessibilityLabel: toolAccessibilityLabel(name: name, status: status),
+                isActionable: false,
+                expiresAfter: toolExpiresAfter(for: status),
+                popover: HeaderStatusPopoverModel(
+                    tone: toolTone(for: status),
+                    title: toolTitle(for: status),
+                    message: toolMessage(name: name, status: status),
+                    rows: []
+                )
+            )
+        }
+    }
+
+    private func toolTone(for status: ToolActivityStatus) -> HeaderStatusTone {
+        switch status {
+        case .running:
+            return .progress
+        case .success:
+            return .success
+        case .error:
+            return .error
+        }
+    }
+
+    private func toolLabel(for status: ToolActivityStatus) -> String {
+        switch status {
+        case .running:
+            return "Working"
+        case .success:
+            return "Done"
+        case .error:
+            return "Failed"
+        }
+    }
+
+    private func toolTitle(for status: ToolActivityStatus) -> String {
+        switch status {
+        case .running:
+            return "Working"
+        case .success:
+            return "Action complete"
+        case .error:
+            return "Action failed"
+        }
+    }
+
+    private func toolMessage(name: String, status: ToolActivityStatus) -> String {
+        switch status {
+        case .running:
+            return "\(name) is running."
+        case .success:
+            return "\(name) completed."
+        case .error:
+            return "\(name) failed. Try again from the message."
+        }
+    }
+
+    private func toolAccessibilityLabel(name: String, status: ToolActivityStatus) -> String {
+        switch status {
+        case .running:
+            return "Working on \(name)"
+        case .success:
+            return "\(name) complete"
+        case .error:
+            return "\(name) failed"
+        }
+    }
+
+    private func toolExpiresAfter(for status: ToolActivityStatus) -> Duration? {
+        switch status {
+        case .running:
+            return nil
+        case .success, .error:
+            return .seconds(5)
+        }
+    }
 }
 
 private extension HeaderStatusKind {
-    static let allCases: [HeaderStatusKind] = [.session, .sync, .ingestion]
+    static let allCases: [HeaderStatusKind] = [.session, .sync, .ingestion, .tool]
 }

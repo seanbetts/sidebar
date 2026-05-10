@@ -14,10 +14,6 @@ from api.services.agent.orchestrator.event_emitter import (
     iter_initial_onboarding_events,
 )
 from api.services.agent.tools.skills_guard import skills_guard_service
-from api.services.ai.chat_stream_debug_trace import (
-    is_chat_stream_debug_enabled,
-    visible_whitespace_preview,
-)
 from api.services.ai.chat_stream_error_contract import build_chat_stream_error_event
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
@@ -233,17 +229,6 @@ async def stream_with_tools(
                                         web_search_pending_end = False
                                         web_search_pending_status = None
                                     current_text += event.delta.text
-                                    if is_chat_stream_debug_enabled():
-                                        logger.info(
-                                            (
-                                                "Chat stream model token "
-                                                'chars=%s content="%s"'
-                                            ),
-                                            len(event.delta.text),
-                                            visible_whitespace_preview(
-                                                event.delta.text
-                                            ),
-                                        )
                                     yield {"type": "token", "content": event.delta.text}
                                 elif event.delta.type == "input_json_delta":
                                     if tool_uses:
@@ -257,15 +242,6 @@ async def stream_with_tools(
 
                         elif event.type == "content_block_stop":
                             if current_text:
-                                if is_chat_stream_debug_enabled():
-                                    logger.info(
-                                        (
-                                            "Chat stream model block "
-                                            'chars=%s content="%s"'
-                                        ),
-                                        len(current_text),
-                                        visible_whitespace_preview(current_text),
-                                    )
                                 content_blocks.append(
                                     {
                                         "type": "text",
@@ -375,19 +351,6 @@ async def stream_with_tools(
                                     if user_id
                                     else False
                                 )
-                                if is_chat_stream_debug_enabled():
-                                    logger.info(
-                                        (
-                                            "ChatStreamDebug claude.tool_call "
-                                            "tool_call_id=%s display_name=%s "
-                                            "user_id_present=%s "
-                                            "requires_confirmation=%s"
-                                        ),
-                                        tool_use["id"],
-                                        display_name,
-                                        bool(user_id),
-                                        requires_confirmation,
-                                    )
                                 if user_id and requires_confirmation:
                                     create_confirmation = (
                                         skills_guard_service

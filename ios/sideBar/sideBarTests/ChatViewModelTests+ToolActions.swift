@@ -286,6 +286,81 @@ extension ChatViewModelTests {
         )
     }
 
+    func testSuccessfulNoteUndoPersistenceDoesNotReorderDisplayedMessages() async {
+        let api = UpdateMessageAPISpy()
+        let viewModel = makeViewModel(
+            api: api,
+            cache: TestCacheClient()
+        )
+        viewModel.selectedConversationId = "conversation-1"
+        let userMessage = Message(
+            id: "user-1",
+            role: .user,
+            content: "Delete this note",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-05-10T12:00:01Z",
+            error: nil
+        )
+        let assistantMessage = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Deleted this note.",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-05-10T12:00:00Z",
+            error: nil
+        )
+        viewModel.chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: "conversation-1",
+                title: "Chat",
+                titleGenerated: false,
+                createdAt: "2026-05-10T12:00:00Z",
+                updatedAt: "2026-05-10T12:00:01Z",
+                messageCount: 2,
+                firstMessage: "Delete this note",
+                isArchived: false,
+                messages: [userMessage, assistantMessage]
+            ),
+            persist: true
+        )
+        viewModel.messages = [userMessage, assistantMessage]
+        viewModel.toolActionsByMessageId["assistant-1"] = [
+            ChatToolAction(
+                id: "undo-1",
+                kind: .undo,
+                summary: "Undo note deletion?",
+                toolName: nil,
+                guardReason: nil,
+                undoSupported: false,
+                expiresAt: nil,
+                entityType: "note",
+                entityId: "note-1",
+                status: .pending
+            )
+        ]
+
+        viewModel.handleSuccessfulUndo(
+            viewModel.toolActions(for: "assistant-1")[0],
+            messageId: "assistant-1"
+        )
+        await api.waitForUpdateMessageCall()
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.messages.map(\.id), ["user-1", "assistant-1"])
+        XCTAssertEqual(
+            viewModel.messages.last?.content,
+            """
+            Deleted this note.
+
+            Restored this note.
+            """
+        )
+    }
+
     func testToolActionsReconstructPendingConfirmationFromPersistedToolCall() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
@@ -326,6 +401,7 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.undoSupported, true)
         XCTAssertEqual(actions.first?.status, .pending)
     }
+
 }
 
 @MainActor

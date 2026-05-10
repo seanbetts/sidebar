@@ -40,6 +40,33 @@ final class ChatToolActionComponentsSourceTests: XCTestCase {
         )
     }
 
+    func testToolActionRowsDoNotRenderInlineStatusMessages() throws {
+        let normalized = try chatToolActionComponentsSource().normalizedForSourceAssertions()
+
+        XCTAssertFalse(
+            normalized.contains("statusLabel"),
+            "Running and failed state should move to the app header status pill."
+        )
+        XCTAssertFalse(normalized.contains("Working"))
+        XCTAssertFalse(normalized.contains("Failed"))
+        XCTAssertFalse(normalized.contains("Confirmed"))
+        XCTAssertFalse(normalized.contains("Declined"))
+        XCTAssertFalse(normalized.contains("Undone"))
+    }
+
+    func testFailedToolActionsRenderRetryControl() throws {
+        let normalized = try chatToolActionComponentsSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains("case.failed:retryControls"),
+            "Failed confirmation and undo actions should offer a retry control."
+        )
+        XCTAssertTrue(
+            normalized.contains("title:\"Retry\""),
+            "Retry should be the only visible failure action."
+        )
+    }
+
     private func chatToolActionComponentsSource(
         file: StaticString = #filePath,
         line: UInt = #line

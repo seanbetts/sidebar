@@ -27,15 +27,6 @@ extension ChatViewModel {
 
         if let serverMessage = incomingById[currentStreamMessageId],
            serverMessage.status != .streaming {
-            ChatStreamDebugTrace.log(
-                "snapshot.clears_stream",
-                details: [
-                    "conversationId=\(conversationId)",
-                    "messageId=\(currentStreamMessageId)",
-                    "serverStatus=\(serverMessage.status.rawValue)",
-                    "toolCalls=\(serverMessage.toolCalls?.count ?? 0)"
-                ]
-            )
             clearTypingRevealState(flushDisplayedContent: false)
             self.currentStreamMessageId = nil
             self.streamingConversationId = nil

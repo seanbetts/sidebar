@@ -207,6 +207,7 @@ class ChatViewModelTestCase: XCTestCase {
     func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,
+        chatAPI: (any ChatAPIProviding)? = nil,
         networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
         persistence: PersistenceController? = nil,
         offlineStore: OfflineStore? = nil,
@@ -224,7 +225,7 @@ class ChatViewModelTestCase: XCTestCase {
         attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
         soulCalibrationRetryBackoffNanoseconds: UInt64 = 1_000_000_000
     ) -> ChatViewModel {
-        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let chatAPI = chatAPI ?? ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")

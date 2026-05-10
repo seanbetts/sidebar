@@ -4,6 +4,7 @@ enum HeaderStatusKind: Equatable {
     case session
     case sync
     case ingestion
+    case tool
 }
 
 enum HeaderStatusTone: Equatable {
@@ -87,6 +88,10 @@ enum HeaderIngestionStatusSnapshot: Equatable {
     case active(rows: [HeaderStatusRowModel])
     case success(messageID: String, title: String, message: String?)
     case failureWithoutAction(messageID: String, title: String, message: String?)
+}
+
+enum HeaderToolStatusSnapshot: Equatable {
+    case active(name: String, status: ToolActivityStatus)
 }
 
 enum HeaderSessionStatusSnapshot: Equatable {

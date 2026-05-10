@@ -95,6 +95,16 @@ public struct ChatToolActionResponse: Decodable {
     public let toolResult: ChatToolActionResponseEvent?
     public let events: [ChatToolActionResponseEvent]
 
+    public init(
+        success: Bool,
+        toolResult: ChatToolActionResponseEvent? = nil,
+        events: [ChatToolActionResponseEvent] = []
+    ) {
+        self.success = success
+        self.toolResult = toolResult
+        self.events = events
+    }
+
     private enum CodingKeys: String, CodingKey {
         case success
         case toolResult
@@ -176,4 +186,9 @@ public struct ChatToolActionResponseEvent: Decodable {
 public struct ChatToolUndoResponse: Decodable {
     public let success: Bool
     public let data: AnyCodable?
+
+    public init(success: Bool, data: AnyCodable?) {
+        self.success = success
+        self.data = data
+    }
 }

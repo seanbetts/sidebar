@@ -80,6 +80,14 @@ final class SiteHeaderBarTests: XCTestCase {
         XCTAssertFalse(normalized.contains("environment.writeQueue.pendingCount>0||environment.writeQueue.failedCount>0"))
         XCTAssertFalse(normalized.contains("IngestionCenterView(viewModel:environment.ingestionViewModel)"))
     }
+
+    func testSiteHeaderBarSourceFeedsChatToolStatusIntoSharedHeaderStatusController() throws {
+        let normalized = try siteHeaderBarSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("environment.chatViewModel.$activeTool"))
+        XCTAssertTrue(normalized.contains("refreshToolHeaderStatus()"))
+        XCTAssertTrue(normalized.contains("headerStatusController.applyTool(snapshot:toolHeaderStatusSnapshot)"))
+    }
 }
 
 private extension String {

@@ -10,22 +10,9 @@ extension ChatViewModel {
         let explicitActions = toolActionsByMessageId[messageId] ?? []
         guard explicitActions.isEmpty,
               let message = messages.first(where: { $0.id == messageId }) else {
-            traceResolvedToolActions(
-                messageId: messageId,
-                explicitCount: explicitActions.count,
-                synthesizedCount: 0,
-                toolCallCount: messages.first(where: { $0.id == messageId })?.toolCalls?.count ?? 0
-            )
             return explicitActions
         }
-        let synthesizedActions = synthesizedToolActions(from: message)
-        traceResolvedToolActions(
-            messageId: messageId,
-            explicitCount: explicitActions.count,
-            synthesizedCount: synthesizedActions.count,
-            toolCallCount: message.toolCalls?.count ?? 0
-        )
-        return synthesizedActions
+        return synthesizedToolActions(from: message)
     }
 
     func upsertToolAction(_ action: ChatToolAction, messageId: String) {
@@ -59,20 +46,8 @@ extension ChatViewModel {
 
     func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
         guard let toolCallId = payload.toolCallId else {
-            ChatStreamDebugTrace.log(
-                "confirmation.record_skipped",
-                details: [
-                    "messageId=\(messageId)",
-                    "confirmationId=\(payload.confirmationId)",
-                    "reason=missing_tool_call_id"
-                ]
-            )
             return
         }
-        let hadMatchingToolCall = messages
-            .first(where: { $0.id == messageId })?
-            .toolCalls?
-            .contains { $0.id == toolCallId } == true
         updateMessage(id: messageId, persist: false) { message in
             let updatedToolCalls = message.toolCalls?.map { toolCall in
                 guard toolCall.id == toolCallId else {
@@ -105,15 +80,6 @@ extension ChatViewModel {
                 errorDetails: message.errorDetails
             )
         }
-        ChatStreamDebugTrace.log(
-            "confirmation.recorded",
-            details: [
-                "messageId=\(messageId)",
-                "confirmationId=\(payload.confirmationId)",
-                "toolCallId=\(toolCallId)",
-                "matchedToolCall=\(hadMatchingToolCall)"
-            ]
-        )
     }
 
     func confirmationPrompt(for payload: ChatToolConfirmationRequestedPayload) -> String {
@@ -123,7 +89,7 @@ extension ChatViewModel {
     func handleToolAction(_ action: ChatToolAction, decision: ChatToolActionDecision? = nil) {
         switch action.kind {
         case .confirmation:
-            guard let decision else {
+            guard let decision = decision ?? action.decision else {
                 return
             }
             resolveToolConfirmation(action, decision: decision)
@@ -136,8 +102,9 @@ extension ChatViewModel {
         guard let messageId = messageId(forToolActionId: action.id) else {
             return
         }
+        updateToolActionHeaderStatus(action, status: .running)
         updateToolAction(id: action.id) { existing in
-            toolAction(existing, status: .running)
+            toolAction(existing, status: .running, decision: decision)
         }
         Task {
             do {
@@ -147,12 +114,14 @@ extension ChatViewModel {
                     decision: decision
                 )
                 applyToolActionResponse(response)
+                updateToolActionHeaderStatus(action, status: .success)
                 activeToolActionMessageId = nil
             } catch {
                 activeToolActionMessageId = nil
                 updateToolAction(id: action.id) { existing in
                     toolAction(existing, status: .failed)
                 }
+                updateToolActionHeaderStatus(action, status: .error)
                 errorMessage = ErrorMapping.message(for: error)
             }
         }
@@ -160,6 +129,7 @@ extension ChatViewModel {
 
     private func undoToolAction(_ action: ChatToolAction) {
         let messageId = messageId(forToolActionId: action.id)
+        updateToolActionHeaderStatus(action, status: .running)
         updateToolAction(id: action.id) { existing in
             toolAction(existing, status: .running)
         }
@@ -167,10 +137,12 @@ extension ChatViewModel {
             do {
                 _ = try await chatAPI.undoToolAction(undoToken: action.id)
                 handleSuccessfulUndo(action, messageId: messageId)
+                updateToolActionHeaderStatus(action, status: .success)
             } catch {
                 updateToolAction(id: action.id) { existing in
                     toolAction(existing, status: .failed)
                 }
+                updateToolActionHeaderStatus(action, status: .error)
                 errorMessage = ErrorMapping.message(for: error)
             }
         }
@@ -249,27 +221,11 @@ extension ChatViewModel {
         }
     }
 
-    private func traceResolvedToolActions(
-        messageId: String,
-        explicitCount: Int,
-        synthesizedCount: Int,
-        toolCallCount: Int
-    ) {
-        guard explicitCount > 0 || synthesizedCount > 0 || toolCallCount > 0 else {
-            return
-        }
-        ChatStreamDebugTrace.log(
-            "actions.resolved",
-            details: [
-                "messageId=\(messageId)",
-                "explicit=\(explicitCount)",
-                "synthesized=\(synthesizedCount)",
-                "toolCalls=\(toolCallCount)"
-            ]
-        )
-    }
-
-    private func toolAction(_ action: ChatToolAction, status: ChatToolActionStatus) -> ChatToolAction {
+    private func toolAction(
+        _ action: ChatToolAction,
+        status: ChatToolActionStatus,
+        decision: ChatToolActionDecision? = nil
+    ) -> ChatToolAction {
         ChatToolAction(
             id: action.id,
             kind: action.kind,
@@ -280,8 +236,46 @@ extension ChatViewModel {
             expiresAt: action.expiresAt,
             entityType: action.entityType,
             entityId: action.entityId,
-            status: status
+            status: status,
+            decision: decision ?? action.decision
         )
+    }
+
+    private func updateToolActionHeaderStatus(_ action: ChatToolAction, status: ToolActivityStatus) {
+        clearActiveToolTask?.cancel()
+        let actionName = headerStatusName(for: action)
+        activeTool = ChatActiveTool(
+            name: actionName,
+            status: status,
+            startedAt: status == .running ? clock() : activeTool?.startedAt ?? clock()
+        )
+        guard status != .running else {
+            return
+        }
+        clearActiveToolTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 4_500_000_000)
+            } catch {
+                return
+            }
+            if self?.activeTool?.name == actionName {
+                self?.activeTool = nil
+            }
+        }
+    }
+
+    private func headerStatusName(for action: ChatToolAction) -> String {
+        let rawName: String?
+        switch action.kind {
+        case .confirmation:
+            rawName = action.toolName?.trimmedOrNil ?? action.summary.trimmedOrNil
+        case .undo:
+            rawName = action.summary.trimmedOrNil ?? "Undo"
+        }
+        let punctuation = CharacterSet(charactersIn: "?.!")
+        return (rawName ?? "Tool action")
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(punctuation))
+            .trimmedOrNil ?? "Tool action"
     }
 
     private func messageContent(
@@ -333,7 +327,7 @@ extension ChatViewModel {
         }
         Task { @MainActor in
             do {
-                let updated = try await conversationsAPI.updateMessage(
+                _ = try await conversationsAPI.updateMessage(
                     conversationId: conversationId,
                     messageId: message.id,
                     message: ConversationMessageCreate(
@@ -347,7 +341,6 @@ extension ChatViewModel {
                         errorDetails: message.errorDetails
                     )
                 )
-                chatStore.upsertConversation(updated)
             } catch {
                 errorMessage = ErrorMapping.message(for: error)
             }
