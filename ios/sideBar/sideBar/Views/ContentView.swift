@@ -14,7 +14,7 @@ public struct ContentView: View {
     #endif
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.scenePhase) var scenePhase
-    @State var sidebarSelection: AppSection?
+    @State var sidebarSelection: AppSection? = .chat
     @AppStorage(AppStorageKeys.leftPanelExpanded) var isLeftPanelExpanded: Bool = true
     @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) var biometricUnlockEnabled: Bool = false

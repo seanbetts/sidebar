@@ -509,6 +509,13 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertTrue(normalized.contains("applyDefaultInitialSelection()"))
     }
 
+    func testSplitSidebarStartsWithProvisionalSelectionBeforeAsyncRestoration() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("@StatevarsidebarSelection:AppSection?=.chat"))
+    }
+
     func testInitialSelectionReadinessDoesNotConsumeAttemptBeforeProtectedContentIsReady() {
         var didSetInitialSelection = false
         let blocked = InitialSelectionReadinessPlan.resolve(
