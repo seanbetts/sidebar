@@ -159,16 +159,14 @@ extension ChatViewModel {
     }
 
     private func undoToolAction(_ action: ChatToolAction) {
+        let messageId = messageId(forToolActionId: action.id)
         updateToolAction(id: action.id) { existing in
             toolAction(existing, status: .running)
         }
         Task {
             do {
                 _ = try await chatAPI.undoToolAction(undoToken: action.id)
-                updateToolAction(id: action.id) { existing in
-                    toolAction(existing, status: .undone)
-                }
-                refreshContextAfterUndo(action)
+                handleSuccessfulUndo(action, messageId: messageId)
             } catch {
                 updateToolAction(id: action.id) { existing in
                     toolAction(existing, status: .failed)
@@ -176,6 +174,27 @@ extension ChatViewModel {
                 errorMessage = ErrorMapping.message(for: error)
             }
         }
+    }
+
+    func handleSuccessfulUndo(_ action: ChatToolAction, messageId: String? = nil) {
+        updateToolAction(id: action.id) { existing in
+            toolAction(existing, status: .undone)
+        }
+        if action.entityType == ChatStreamEntityType.note.rawValue,
+           let messageId {
+            appendMessageContent("Restored this note.", messageId: messageId)
+        }
+        refreshContextAfterUndo(action)
+        reopenNoteAfterUndoIfNeeded(action)
+    }
+
+    private func reopenNoteAfterUndoIfNeeded(_ action: ChatToolAction) {
+        guard action.entityType == ChatStreamEntityType.note.rawValue,
+              let entityId = action.entityId,
+              noteIdsClosedForUndoReopen.remove(entityId) != nil else {
+            return
+        }
+        onOpenNoteRequested?(entityId)
     }
 
     private func applyToolActionResponse(_ response: ChatToolActionResponse) {

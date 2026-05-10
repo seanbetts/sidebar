@@ -224,6 +224,9 @@ extension ChatViewModel {
         case ChatStreamEntityType.website.rawValue:
             refreshContext(for: .websites(id: payload.entityId))
         case ChatStreamEntityType.note.rawValue:
+            if onCloseNoteRequested?(payload.entityId) == true {
+                noteIdsClosedForUndoReopen.insert(payload.entityId)
+            }
             refreshContext(for: .notes(noteId: payload.entityId))
         default:
             break

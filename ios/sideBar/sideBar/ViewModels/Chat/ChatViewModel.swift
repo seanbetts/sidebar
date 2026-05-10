@@ -175,6 +175,7 @@ private final class ChatViewModelTeardownBag {
     var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     var onOnboardingStateRefreshRequested: (() -> Void)? { ui.onOnboardingStateRefreshRequested }
     var onOpenNoteRequested: ((String) -> Void)? { ui.onOpenNoteRequested }
+    var onCloseNoteRequested: ((String) -> Bool)? { ui.onCloseNoteRequested }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
     var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?
     var soulCalibrationRetryBackoffNanoseconds: UInt64 { ui.soulCalibrationRetryBackoffNanoseconds }
@@ -188,6 +189,7 @@ private final class ChatViewModelTeardownBag {
     var pendingAssistantInitiatedStreams: [AssistantInitiatedStreamOptions] = []
     @Published var toolActionsByMessageId: [String: [ChatToolAction]] = [:]
     var activeToolActionMessageId: String?
+    var noteIdsClosedForUndoReopen = Set<String>()
     var assistantInitiatedStreamTask: Task<Void, Never>? {
         didSet {
             teardownBag.setAssistantInitiatedStreamTask(assistantInitiatedStreamTask)

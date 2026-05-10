@@ -362,6 +362,15 @@ extension AppEnvironment {
                             await notesViewModel.loadNote(id: notePath)
                         }
                     },
+                    onCloseNoteRequested: { noteID in
+                        guard notesViewModel.selectedNoteId == noteID
+                            || notesViewModel.activeNote?.id == noteID
+                            || notesViewModel.activeNote?.path == noteID else {
+                            return false
+                        }
+                        notesViewModel.clearSelection()
+                        return true
+                    },
                     requestContextProvider: {
                         makeChatRequestContext(
                             notesRuntime: notesRuntime,

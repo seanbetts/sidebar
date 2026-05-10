@@ -179,6 +179,7 @@ struct ChatUICoordinator {
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
     let onOnboardingStateRefreshRequested: (() -> Void)?
     let onOpenNoteRequested: ((String) -> Void)?
+    let onCloseNoteRequested: ((String) -> Bool)?
     let requestContextProvider: (() -> ChatRequestContext?)?
     let attachmentPollingInitialDelayNanoseconds: UInt64
     let attachmentPollingIntervalNanoseconds: UInt64
@@ -196,6 +197,7 @@ struct ChatUICoordinator {
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
         onOnboardingStateRefreshRequested: (() -> Void)? = nil,
         onOpenNoteRequested: ((String) -> Void)? = nil,
+        onCloseNoteRequested: ((String) -> Bool)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
         attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
@@ -212,6 +214,7 @@ struct ChatUICoordinator {
         self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
         self.onOnboardingStateRefreshRequested = onOnboardingStateRefreshRequested
         self.onOpenNoteRequested = onOpenNoteRequested
+        self.onCloseNoteRequested = onCloseNoteRequested
         self.requestContextProvider = requestContextProvider
         self.attachmentPollingInitialDelayNanoseconds = attachmentPollingInitialDelayNanoseconds
         self.attachmentPollingIntervalNanoseconds = attachmentPollingIntervalNanoseconds

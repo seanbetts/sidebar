@@ -23,6 +23,23 @@ final class ChatToolActionComponentsSourceTests: XCTestCase {
         )
     }
 
+    func testUndoActionsRenderAsButtonRowOnlyAndDisappearWhenResolved() throws {
+        let normalized = try chatToolActionComponentsSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains("case.undowhereisResolvedUndo:EmptyView()"),
+            "Resolved undo actions should disappear instead of showing disabled buttons or an Undone label."
+        )
+        XCTAssertTrue(
+            normalized.contains("case.undo:undoControls"),
+            "Pending undo actions should render the same direct control row as confirmations."
+        )
+        XCTAssertFalse(
+            normalized.contains("case.undo:undoCard"),
+            "Undo actions should not use a separate framed success card."
+        )
+    }
+
     private func chatToolActionComponentsSource(
         file: StaticString = #filePath,
         line: UInt = #line

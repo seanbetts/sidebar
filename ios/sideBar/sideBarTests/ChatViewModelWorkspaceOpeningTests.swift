@@ -60,6 +60,101 @@ final class ChatViewModelWorkspaceOpeningTests: ChatViewModelTestCase {
         XCTAssertEqual(requestedNoteID, "note-1")
     }
 
+    func testNoteDeletedEventRequestsClosingOpenNoteInWorkspace() async {
+        let cache = TestCacheClient()
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        var requestedClosedNoteID: String?
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            onCloseNoteRequested: { noteID in
+                requestedClosedNoteID = noteID
+                return true
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .entityDeleted,
+            data: AnyCodable([
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "invalidate": ["notes", "note:note-1"]
+            ])
+        ))
+
+        XCTAssertEqual(requestedClosedNoteID, "note-1")
+    }
+
+    func testSuccessfulUndoReopensNoteClosedByDeletion() async {
+        let cache = TestCacheClient()
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        var requestedOpenNoteID: String?
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            onOpenNoteRequested: { requestedOpenNoteID = $0 },
+            onCloseNoteRequested: { _ in true }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .entityDeleted,
+            data: AnyCodable([
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "invalidate": ["notes", "note:note-1"]
+            ])
+        ))
+        viewModel.handleSuccessfulUndo(ChatToolAction(
+            id: "undo-1",
+            kind: .undo,
+            summary: "Undo note deletion?",
+            toolName: nil,
+            guardReason: nil,
+            undoSupported: false,
+            expiresAt: nil,
+            entityType: "note",
+            entityId: "note-1",
+            status: .pending
+        ))
+
+        XCTAssertEqual(requestedOpenNoteID, "note-1")
+    }
+
+    func testSuccessfulUndoDoesNotReopenNoteWhenDeletionDidNotCloseIt() async {
+        let cache = TestCacheClient()
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        var requestedOpenNoteID: String?
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            onOpenNoteRequested: { requestedOpenNoteID = $0 },
+            onCloseNoteRequested: { _ in false }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .entityDeleted,
+            data: AnyCodable([
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "invalidate": ["notes", "note:note-1"]
+            ])
+        ))
+        viewModel.handleSuccessfulUndo(ChatToolAction(
+            id: "undo-1",
+            kind: .undo,
+            summary: "Undo note deletion?",
+            toolName: nil,
+            guardReason: nil,
+            undoSupported: false,
+            expiresAt: nil,
+            entityType: "note",
+            entityId: "note-1",
+            status: .pending
+        ))
+
+        XCTAssertNil(requestedOpenNoteID)
+    }
+
     func testWorkspacePatchOpenEntityDispatchesGenericWorkspaceOpenRequest() async {
         let cache = TestCacheClient()
         let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))

@@ -185,6 +185,54 @@ extension ChatViewModelTests {
         XCTAssertEqual(actions.first?.status, .pending)
     }
 
+    func testSuccessfulNoteUndoAppendsAssistantAcknowledgement() {
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient()
+        )
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "Deleted this note.",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "",
+                error: nil
+            )
+        ]
+        viewModel.toolActionsByMessageId["assistant-1"] = [
+            ChatToolAction(
+                id: "undo-1",
+                kind: .undo,
+                summary: "Undo note deletion?",
+                toolName: nil,
+                guardReason: nil,
+                undoSupported: false,
+                expiresAt: nil,
+                entityType: "note",
+                entityId: "note-1",
+                status: .pending
+            )
+        ]
+
+        viewModel.handleSuccessfulUndo(
+            viewModel.toolActions(for: "assistant-1")[0],
+            messageId: "assistant-1"
+        )
+
+        XCTAssertEqual(
+            viewModel.messages.first?.content,
+            """
+            Deleted this note.
+
+            Restored this note.
+            """
+        )
+        XCTAssertEqual(viewModel.toolActions(for: "assistant-1").first?.status, .undone)
+    }
+
     func testToolActionsReconstructPendingConfirmationFromPersistedToolCall() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),

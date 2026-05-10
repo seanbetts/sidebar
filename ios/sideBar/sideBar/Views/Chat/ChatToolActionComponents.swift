@@ -27,47 +27,11 @@ struct ChatToolActionCard: View {
             EmptyView()
         case .confirmation:
             confirmationControls
+        case .undo where isResolvedUndo:
+            EmptyView()
         case .undo:
-            undoCard
-        }
-    }
-
-    private var undoCard: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xsPlus) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.xs) {
-                SkillSymbolIcon(
-                    systemName: iconName,
-                    appFontStyle: .subheadline,
-                    foreground: iconForeground
-                )
-                .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(displaySummary)
-                        .appFont(.subheadlineSemibold)
-                        .foregroundStyle(DesignTokens.Colors.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let supportingText {
-                        Text(supportingText)
-                            .appFont(.caption)
-                            .foregroundStyle(DesignTokens.Colors.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer(minLength: DesignTokens.Spacing.xs)
-            }
             undoControls
         }
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .fill(cardBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(cardBorder, lineWidth: 1)
-        )
     }
 
     private var confirmationControls: some View {
@@ -143,71 +107,16 @@ struct ChatToolActionCard: View {
         }
     }
 
-    private var supportingText: String? {
-        if action.status == .running {
-            return "Working..."
-        }
-        if action.status == .failed {
-            return "Action failed. Try again."
-        }
-        if let guardReason = normalizedGuardReason {
-            return guardReason
-        }
-        if action.kind == .confirmation, action.undoSupported {
-            return "You can undo this briefly after it runs."
-        }
-        return nil
-    }
-
-    private var normalizedGuardReason: String? {
-        guard let guardReason = action.guardReason?.trimmedOrNil else {
-            return nil
-        }
-        if guardReason == "destructive_action" {
-            return action.undoSupported
-                ? "This deletes content. You can undo this briefly after it runs."
-                : "This deletes content."
-        }
-        return guardReason.replacingOccurrences(of: "_", with: " ")
-    }
-
-    private var displaySummary: String {
-        guard action.kind == .confirmation,
-              let toolName = action.toolName?.trimmedOrNil,
-              toolName.lowercased().hasPrefix("delete ") else {
-            return action.summary
-        }
-        let deletedObject = toolName
-            .dropFirst("Delete ".count)
-            .lowercased()
-        guard !deletedObject.isEmpty else {
-            return action.summary
-        }
-        return "Delete this \(deletedObject)?"
-    }
-
-    private var iconName: String {
-        switch action.kind {
-        case .confirmation:
-            return "exclamationmark.triangle"
-        case .undo:
-            return "arrow.uturn.backward.circle"
-        }
-    }
-
-    private var iconForeground: Color {
-        if action.status == .failed {
-            return DesignTokens.Colors.error
-        }
-        return action.kind == .confirmation ? DesignTokens.Colors.warning : DesignTokens.Colors.textSecondary
-    }
-
     private var isPending: Bool {
         action.status == .pending
     }
 
     private var isResolvedConfirmation: Bool {
         action.status == .accepted || action.status == .declined
+    }
+
+    private var isResolvedUndo: Bool {
+        action.status == .undone
     }
 
     private var statusText: String {
@@ -229,28 +138,6 @@ struct ChatToolActionCard: View {
 
     private var statusForeground: Color {
         action.status == .failed ? DesignTokens.Colors.error : DesignTokens.Colors.textSecondary
-    }
-
-    private var cardBackground: Color {
-        switch action.kind {
-        case .confirmation:
-            return action.status == .failed
-                ? DesignTokens.Colors.errorBackground
-                : DesignTokens.Colors.warningBackground
-        case .undo:
-            return DesignTokens.Colors.successBackground
-        }
-    }
-
-    private var cardBorder: Color {
-        switch action.kind {
-        case .confirmation:
-            return action.status == .failed
-                ? DesignTokens.Colors.errorBorder
-                : DesignTokens.Colors.warningBorder
-        case .undo:
-            return DesignTokens.Colors.successBorder
-        }
     }
 
     private var primaryButtonBackground: Color {
