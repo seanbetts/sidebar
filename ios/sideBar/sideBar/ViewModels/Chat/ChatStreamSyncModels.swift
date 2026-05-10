@@ -109,6 +109,18 @@ extension ChatToolAction {
         Self.confirmationPrompt(for: toolName)
     }
 
+    var confirmationObjectName: String {
+        guard let toolName = toolName?.trimmedOrNil,
+              toolName.lowercased().hasPrefix("delete ") else {
+            return "item"
+        }
+        let objectName = toolName
+            .dropFirst("Delete ".count)
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return objectName.isEmpty ? "item" : objectName
+    }
+
     static func confirmationPrompt(for toolName: String?) -> String {
         guard let toolName = toolName?.trimmedOrNil,
               toolName.lowercased().hasPrefix("delete ") else {

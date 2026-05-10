@@ -368,6 +368,10 @@ extension ChatViewModel {
         guard let payload else {
             return
         }
+        let targetMessageId = messageId(forToolActionId: payload.confirmationId)
+        let originalAction = targetMessageId.flatMap { messageId in
+            toolActions(for: messageId).first { $0.id == payload.confirmationId }
+        }
         updateToolAction(id: payload.confirmationId) { action in
             ChatToolAction(
                 id: action.id,
@@ -381,6 +385,11 @@ extension ChatViewModel {
                 entityId: action.entityId,
                 status: payload.decision == .accept ? .accepted : .declined
             )
+        }
+        if payload.decision == .decline,
+           let messageId = targetMessageId,
+           let originalAction {
+            appendDeclinedConfirmationAcknowledgement(messageId: messageId, action: originalAction)
         }
     }
 

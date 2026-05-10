@@ -107,6 +107,57 @@ extension ChatViewModelTests {
         )
     }
 
+    func testToolConfirmationDeclineAppendsAssistantAcknowledgement() {
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient()
+        )
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "",
+                error: nil
+            )
+        ]
+        viewModel.currentStreamMessageId = "assistant-1"
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .toolConfirmationRequested,
+            data: AnyCodable([
+                "confirmation_id": "confirm-1",
+                "tool_call_id": "tool-1",
+                "tool_name": "Delete Note",
+                "summary": "Delete note note-1?",
+                "guard_reason": "destructive_action",
+                "undo_supported": true,
+                "expires_at": "2026-05-09T00:05:00Z"
+            ])
+        ))
+        viewModel.handle(event: ChatStreamEvent(
+            type: .toolConfirmationResolved,
+            data: AnyCodable([
+                "confirmation_id": "confirm-1",
+                "decision": "decline",
+                "resolved_at": "2026-05-09T00:06:00Z"
+            ])
+        ))
+
+        XCTAssertEqual(
+            viewModel.messages.first?.content,
+            """
+            Please confirm that you want to delete this note.
+
+            Okay, I won't delete this note.
+            """
+        )
+        XCTAssertEqual(viewModel.toolActions(for: "assistant-1").first?.status, .declined)
+    }
+
     func testUndoAvailableAddsInlineActionToResolvedToolActionMessage() {
         let viewModel = makeViewModel(
             api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),

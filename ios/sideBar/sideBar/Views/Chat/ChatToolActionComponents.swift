@@ -23,6 +23,8 @@ struct ChatToolActionCard: View {
     @ViewBuilder
     var body: some View {
         switch action.kind {
+        case .confirmation where isResolvedConfirmation:
+            EmptyView()
         case .confirmation:
             confirmationControls
         case .undo:
@@ -202,6 +204,10 @@ struct ChatToolActionCard: View {
 
     private var isPending: Bool {
         action.status == .pending
+    }
+
+    private var isResolvedConfirmation: Bool {
+        action.status == .accepted || action.status == .declined
     }
 
     private var statusText: String {

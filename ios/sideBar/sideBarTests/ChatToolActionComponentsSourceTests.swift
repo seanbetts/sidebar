@@ -14,6 +14,15 @@ final class ChatToolActionComponentsSourceTests: XCTestCase {
         )
     }
 
+    func testResolvedConfirmationActionsRenderNothing() throws {
+        let normalized = try chatToolActionComponentsSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains("case.confirmationwhereisResolvedConfirmation:EmptyView()"),
+            "Resolved confirmations should disappear instead of showing disabled buttons or a status label."
+        )
+    }
+
     private func chatToolActionComponentsSource(
         file: StaticString = #filePath,
         line: UInt = #line

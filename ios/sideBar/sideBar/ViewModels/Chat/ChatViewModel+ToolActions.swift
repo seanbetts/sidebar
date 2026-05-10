@@ -50,6 +50,13 @@ extension ChatViewModel {
         }
     }
 
+    func appendDeclinedConfirmationAcknowledgement(messageId: String, action: ChatToolAction) {
+        appendMessageContent(
+            "Okay, I won't delete this \(action.confirmationObjectName).",
+            messageId: messageId
+        )
+    }
+
     func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
         guard let toolCallId = payload.toolCallId else {
             ChatStreamDebugTrace.log(
@@ -187,7 +194,7 @@ extension ChatViewModel {
         handle(event: ChatStreamEvent(type: type, data: event.data))
     }
 
-    private func messageId(forToolActionId id: String) -> String? {
+    func messageId(forToolActionId id: String) -> String? {
         if let explicitMessageId = toolActionsByMessageId.first(where: { _, actions in
             actions.contains { $0.id == id }
         })?.key {
@@ -270,6 +277,28 @@ extension ChatViewModel {
             return currentContent
         }
         return "\(currentContent)\n\n\(prompt)"
+    }
+
+    private func appendMessageContent(_ content: String, messageId: String) {
+        updateMessage(id: messageId, persist: false) { message in
+            guard !message.content.contains(content) else {
+                return message
+            }
+            let updatedContent = message.content.trimmedOrNil == nil
+                ? content
+                : "\(message.content)\n\n\(content)"
+            return Message(
+                id: message.id,
+                role: message.role,
+                content: updatedContent,
+                status: message.status,
+                toolCalls: message.toolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: message.error,
+                errorDetails: message.errorDetails
+            )
+        }
     }
 
     private func refreshContextAfterUndo(_ action: ChatToolAction) {
