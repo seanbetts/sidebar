@@ -37,11 +37,92 @@ extension ChatViewModel {
         }
     }
 
-    func appendDeclinedConfirmationAcknowledgement(messageId: String, action: ChatToolAction) {
-        appendMessageContent(
-            "Okay, I won't delete this \(action.confirmationObjectName).",
-            messageId: messageId
-        )
+    func resolveToolConfirmationMetadata(
+        messageId: String,
+        confirmationId: String,
+        decision: ChatToolActionDecision
+    ) {
+        var updatedMessage: Message?
+        updateMessage(id: messageId, persist: false) { message in
+            guard let toolCalls = message.toolCalls else {
+                return message
+            }
+            var didResolveConfirmation = false
+            let resolvedToolCalls = toolCalls.compactMap { toolCall -> ToolCall? in
+                guard toolCall.confirmationId == confirmationId else {
+                    return toolCall
+                }
+                didResolveConfirmation = true
+                guard decision != .decline else {
+                    return nil
+                }
+                return ToolCall(
+                    id: toolCall.id,
+                    name: toolCall.name,
+                    parameters: toolCall.parameters,
+                    status: toolCall.status,
+                    result: toolCall.result,
+                    skillId: toolCall.skillId,
+                    iconKey: toolCall.iconKey
+                )
+            }
+            guard didResolveConfirmation else {
+                return message
+            }
+            let updated = Message(
+                id: message.id,
+                role: message.role,
+                content: message.content,
+                status: message.status,
+                toolCalls: resolvedToolCalls.isEmpty ? nil : resolvedToolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: message.error,
+                errorDetails: message.errorDetails
+            )
+            updatedMessage = updated
+            return updated
+        }
+        guard let updatedMessage else {
+            return
+        }
+        persistUpdatedMessage(updatedMessage)
+    }
+
+    func resolveDeclinedToolConfirmation(
+        messageId: String,
+        confirmationId: String,
+        action: ChatToolAction
+    ) {
+        let acknowledgement = "Okay, I won't delete this \(action.confirmationObjectName)."
+        var updatedMessage: Message?
+        updateMessage(id: messageId, persist: false) { message in
+            let resolvedToolCalls = message.toolCalls?.compactMap { toolCall -> ToolCall? in
+                toolCall.confirmationId == confirmationId ? nil : toolCall
+            }
+            let updatedContent = message.content.contains(acknowledgement)
+                ? message.content
+                : message.content.trimmedOrNil == nil
+                    ? acknowledgement
+                    : "\(message.content)\n\n\(acknowledgement)"
+            let updated = Message(
+                id: message.id,
+                role: message.role,
+                content: updatedContent,
+                status: message.status,
+                toolCalls: resolvedToolCalls?.isEmpty == true ? nil : resolvedToolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: message.error,
+                errorDetails: message.errorDetails
+            )
+            updatedMessage = updated
+            return updated
+        }
+        guard let updatedMessage else {
+            return
+        }
+        persistUpdatedMessage(updatedMessage)
     }
 
     func recordToolConfirmation(_ payload: ChatToolConfirmationRequestedPayload, messageId: String) {
@@ -203,7 +284,8 @@ extension ChatViewModel {
         return toolCalls.compactMap { toolCall in
             guard toolCall.status == .pending,
                   let confirmationId = toolCall.confirmationId?.trimmedOrNil,
-                  let summary = toolCall.confirmationSummary?.trimmedOrNil else {
+                  let summary = toolCall.confirmationSummary?.trimmedOrNil,
+                  !isExpiredToolConfirmation(toolCall) else {
                 return nil
             }
             return ChatToolAction(
@@ -219,6 +301,13 @@ extension ChatViewModel {
                 status: .pending
             )
         }
+    }
+
+    private func isExpiredToolConfirmation(_ toolCall: ToolCall) -> Bool {
+        guard let expiresAt = DateParsing.parseISO8601(toolCall.confirmationExpiresAt) else {
+            return false
+        }
+        return expiresAt <= clock()
     }
 
     private func toolAction(
@@ -336,7 +425,7 @@ extension ChatViewModel {
                         content: message.content,
                         status: message.status.rawValue,
                         timestamp: message.timestamp,
-                        toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                        toolCalls: toolCallPayloads(from: message.toolCalls),
                         error: message.error,
                         errorDetails: message.errorDetails
                     )

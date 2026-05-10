@@ -201,6 +201,44 @@ extension ChatViewModel {
         return nil
     }
 
+    func toolCallPayloads(from toolCalls: [ToolCall]?) -> [AnyCodable]? {
+        toolCalls?.map { AnyCodable(toolCallPayload(from: $0)) }
+    }
+
+    private func toolCallPayload(from toolCall: ToolCall) -> [String: Any] {
+        var payload: [String: Any] = [
+            "id": toolCall.id,
+            "name": toolCall.name,
+            "parameters": toolCall.parameters.mapValues(\.value),
+            "status": toolCall.status.rawValue
+        ]
+        if let result = toolCall.result {
+            payload["result"] = result.value
+        }
+        if let skillId = toolCall.skillId {
+            payload["skillId"] = skillId
+        }
+        if let iconKey = toolCall.iconKey {
+            payload["iconKey"] = iconKey
+        }
+        if let confirmationId = toolCall.confirmationId {
+            payload["confirmationId"] = confirmationId
+        }
+        if let confirmationSummary = toolCall.confirmationSummary {
+            payload["confirmationSummary"] = confirmationSummary
+        }
+        if let confirmationGuardReason = toolCall.confirmationGuardReason {
+            payload["confirmationGuardReason"] = confirmationGuardReason
+        }
+        if let confirmationUndoSupported = toolCall.confirmationUndoSupported {
+            payload["confirmationUndoSupported"] = confirmationUndoSupported
+        }
+        if let confirmationExpiresAt = toolCall.confirmationExpiresAt {
+            payload["confirmationExpiresAt"] = confirmationExpiresAt
+        }
+        return payload
+    }
+
     func persistMessage(conversationId: String, message: Message) async {
         do {
             let updated = try await conversationsAPI.addMessage(
@@ -209,13 +247,13 @@ extension ChatViewModel {
                     id: message.id,
                     role: message.role.rawValue,
                     content: message.content,
-                status: message.status.rawValue,
-                timestamp: message.timestamp,
-                toolCalls: message.toolCalls?.map { AnyCodable($0) },
-                error: message.error,
-                errorDetails: message.errorDetails
+                    status: message.status.rawValue,
+                    timestamp: message.timestamp,
+                    toolCalls: toolCallPayloads(from: message.toolCalls),
+                    error: message.error,
+                    errorDetails: message.errorDetails
+                )
             )
-        )
             chatStore.upsertConversation(updated)
         } catch {
             errorMessage = ErrorMapping.message(for: error)

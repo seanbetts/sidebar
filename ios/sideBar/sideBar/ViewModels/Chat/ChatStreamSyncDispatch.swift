@@ -339,6 +339,21 @@ extension ChatViewModel {
         let originalAction = targetMessageId.flatMap { messageId in
             toolActions(for: messageId).first { $0.id == payload.confirmationId }
         }
+        if payload.decision == .decline,
+           let targetMessageId,
+           let originalAction {
+            resolveDeclinedToolConfirmation(
+                messageId: targetMessageId,
+                confirmationId: payload.confirmationId,
+                action: originalAction
+            )
+        } else if let targetMessageId {
+            resolveToolConfirmationMetadata(
+                messageId: targetMessageId,
+                confirmationId: payload.confirmationId,
+                decision: payload.decision
+            )
+        }
         updateToolAction(id: payload.confirmationId) { action in
             ChatToolAction(
                 id: action.id,
@@ -353,11 +368,6 @@ extension ChatViewModel {
                 status: payload.decision == .accept ? .accepted : .declined,
                 decision: action.decision
             )
-        }
-        if payload.decision == .decline,
-           let messageId = targetMessageId,
-           let originalAction {
-            appendDeclinedConfirmationAcknowledgement(messageId: messageId, action: originalAction)
         }
     }
 

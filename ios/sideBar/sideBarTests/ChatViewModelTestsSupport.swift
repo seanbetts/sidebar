@@ -197,6 +197,7 @@ class ChatViewModelTestCase: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTestsTheme")
         return ThemeManager(userDefaults: defaults)
     }()
+    private static var retainedPersistenceControllers: [PersistenceController] = []
     private static var retainedViewModels: [ChatViewModel] = []
 
     override func tearDown() {
@@ -231,6 +232,7 @@ class ChatViewModelTestCase: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let toastCenter = ToastCenter()
         let persistence = persistence ?? PersistenceController(inMemory: true)
+        Self.retainedPersistenceControllers.append(persistence)
         let resolvedDraftStorage = draftStorage ?? DraftStorage(container: persistence.container)
         let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
         let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
