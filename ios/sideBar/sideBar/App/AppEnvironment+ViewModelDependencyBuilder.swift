@@ -357,6 +357,7 @@ extension AppEnvironment {
                             await settingsViewModel.loadOnboarding(force: true)
                         }
                     },
+                    onTasksUpdated: { Task { @MainActor in await tasksViewModel.refreshAfterExternalTaskChange() } },
                     onOpenNoteRequested: { notePath in
                         Task { @MainActor in
                             await notesViewModel.loadNote(id: notePath)

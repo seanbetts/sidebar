@@ -60,6 +60,7 @@ public enum ChatStreamEntityType: String, CaseIterable {
     case preferences
     case profile
     case scratchpad
+    case tasks
     case website
     case workspace
 }
@@ -126,6 +127,7 @@ public let chatStreamEntityTypeNames: [String] = [
     "preferences",
     "profile",
     "scratchpad",
+    "tasks",
     "website",
     "workspace"
 ]
@@ -154,6 +156,7 @@ public let chatStreamEntitySyncPolicies: [ChatStreamEntityType: ChatStreamEntity
     .preferences: .invalidateFirst,
     .profile: .invalidateFirst,
     .scratchpad: .invalidateFirst,
+    .tasks: .invalidateFirst,
     .website: .patchThenInvalidate,
     .workspace: .specialCase
 ]

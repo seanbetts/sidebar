@@ -174,6 +174,7 @@ private final class ChatViewModelTeardownBag {
     var typingRevealMaximumStep: Int { ui.typingRevealMaximumStep }
     var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     var onOnboardingStateRefreshRequested: (() -> Void)? { ui.onOnboardingStateRefreshRequested }
+    var onTasksUpdated: (() -> Void)? { ui.onTasksUpdated }
     var onOpenNoteRequested: ((String) -> Void)? { ui.onOpenNoteRequested }
     var onCloseNoteRequested: ((String) -> Bool)? { ui.onCloseNoteRequested }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }

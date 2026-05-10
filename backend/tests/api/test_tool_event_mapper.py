@@ -259,6 +259,28 @@ def test_tool_side_effect_events_maps_rename_website() -> None:
     ]
 
 
+def test_tool_side_effect_events_invalidates_tasks_after_task_write() -> None:
+    events = tool_side_effect_events(
+        "Complete Task",
+        {
+            "success": True,
+            "data": {
+                "taskId": "task-1",
+                "message": "Task completed",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "collection_invalidated",
+            "data": {
+                "targets": ["tasks"],
+            },
+        }
+    ]
+
+
 def test_tool_side_effect_events_maps_rename_conversation() -> None:
     events = tool_side_effect_events(
         "Rename Conversation",

@@ -264,6 +264,8 @@ extension ChatViewModel {
             refreshMemories()
         case ChatStreamEntityType.onboardingState.rawValue:
             requestOnboardingStateRefresh()
+        case ChatStreamEntityType.tasks.rawValue:
+            onTasksUpdated?()
         case ChatStreamEntityType.ingestion.rawValue:
             refreshContext(for: .ingestion(fileId: nil))
         case ChatStreamEntityType.website.rawValue:

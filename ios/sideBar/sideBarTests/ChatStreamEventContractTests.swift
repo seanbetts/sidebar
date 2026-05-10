@@ -44,6 +44,7 @@ final class ChatStreamEventContractTests: ChatViewModelTestCase {
                 "preferences",
                 "profile",
                 "scratchpad",
+                "tasks",
                 "website",
                 "workspace"
             ]

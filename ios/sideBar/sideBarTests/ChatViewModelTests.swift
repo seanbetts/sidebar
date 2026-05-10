@@ -224,6 +224,27 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertNil(cachedMemories)
     }
 
+    func testTaskInvalidationRequestsTasksRefresh() {
+        let cache = TestCacheClient()
+        var refreshRequestCount = 0
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onTasksUpdated: {
+                refreshRequestCount += 1
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["tasks"]
+            ])
+        ))
+
+        XCTAssertEqual(refreshRequestCount, 1)
+    }
+
     func testStreamEventHandlersBuildOnceAcrossMultipleEvents() {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(

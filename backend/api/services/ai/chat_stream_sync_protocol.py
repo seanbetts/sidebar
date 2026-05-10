@@ -29,6 +29,7 @@ CHAT_STREAM_ENTITY_TYPES = frozenset(
         "preferences",
         "profile",
         "scratchpad",
+        "tasks",
         "website",
         "workspace",
     }

@@ -178,6 +178,7 @@ struct ChatUICoordinator {
     let clock: () -> Date
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
     let onOnboardingStateRefreshRequested: (() -> Void)?
+    let onTasksUpdated: (() -> Void)?
     let onOpenNoteRequested: ((String) -> Void)?
     let onCloseNoteRequested: ((String) -> Bool)?
     let requestContextProvider: (() -> ChatRequestContext?)?
@@ -196,6 +197,7 @@ struct ChatUICoordinator {
         clock: @escaping () -> Date = Date.init,
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
         onOnboardingStateRefreshRequested: (() -> Void)? = nil,
+        onTasksUpdated: (() -> Void)? = nil,
         onOpenNoteRequested: ((String) -> Void)? = nil,
         onCloseNoteRequested: ((String) -> Bool)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
@@ -213,6 +215,7 @@ struct ChatUICoordinator {
         self.clock = clock
         self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
         self.onOnboardingStateRefreshRequested = onOnboardingStateRefreshRequested
+        self.onTasksUpdated = onTasksUpdated
         self.onOpenNoteRequested = onOpenNoteRequested
         self.onCloseNoteRequested = onCloseNoteRequested
         self.requestContextProvider = requestContextProvider

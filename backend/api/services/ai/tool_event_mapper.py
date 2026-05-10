@@ -14,6 +14,25 @@ from api.services.ai.chat_stream_sync_events import (
 )
 from api.services.ai.tool_result_normalizer import normalize_tool_result
 
+TASK_WRITE_TOOL_NAMES = {
+    "Create Task",
+    "Complete Task",
+    "Rename Task",
+    "Update Task Notes",
+    "Defer Task",
+    "Set Task Due Date",
+    "Clear Task Due Date",
+    "Set Task Repeat",
+    "Create Project",
+    "Rename Project",
+    "Create Group",
+    "Rename Group",
+    "Delete Task",
+    "Delete Project",
+    "Delete Group",
+    "Move Task",
+}
+
 
 def workspace_patch_stream_events(result_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Map workspace patch payloads from tool results to realtime stream events."""
@@ -60,6 +79,8 @@ def assistant_settings_stream_event(
         if command in {"create", "delete", "str_replace", "insert", "rename"}:
             return build_collection_invalidated(targets=["memory"])
         return None
+    if display_name in TASK_WRITE_TOOL_NAMES:
+        return build_collection_invalidated(targets=["tasks"])
     if display_name in {"Update Scratchpad", "Clear Scratchpad"}:
         return build_collection_invalidated(targets=["scratchpad"])
     if display_name in {"Write File", "Download YouTube"}:

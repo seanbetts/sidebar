@@ -41,4 +41,13 @@ extension TasksViewModel {
             await self.refreshWidgetData()
         }
     }
+
+    public func refreshAfterExternalTaskChange(force: Bool = true) async {
+        let currentSelection = selection
+        if currentSelection != .none {
+            await load(selection: currentSelection, force: force)
+        }
+        await loadCounts(force: force)
+        await refreshWidgetData()
+    }
 }
