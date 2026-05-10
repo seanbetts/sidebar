@@ -163,6 +163,7 @@ public enum ToolStatus: String, Codable {
     case pending
     case success
     case error
+    case cancelled
 }
 
 /// Represents a message struct.

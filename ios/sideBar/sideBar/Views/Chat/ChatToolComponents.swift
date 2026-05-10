@@ -194,6 +194,8 @@ struct ToolCallRow: View {
             return DesignTokens.Colors.textPrimary
         case .error:
             return DesignTokens.Colors.error
+        case .cancelled:
+            return DesignTokens.Colors.textSecondary
         }
     }
 

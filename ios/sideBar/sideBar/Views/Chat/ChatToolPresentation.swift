@@ -60,7 +60,7 @@ enum ChatToolPresentation {
                 case .success:
                     hiddenIndices.formUnion(recoverableErrors)
                     recoverableErrors.removeAll(keepingCapacity: true)
-                case .pending:
+                case .pending, .cancelled:
                     continue
                 }
             }

@@ -74,6 +74,24 @@ extension ChatViewModel {
             || messagesDifferOnlyBySyntheticToolNewline(incomingLast, currentLast)
     }
 
+    func applyPendingLocalMessageUpdates(to incoming: [Message]) -> [Message] {
+        guard !pendingLocalMessageUpdatesById.isEmpty else {
+            return incoming
+        }
+        var updated = incoming
+        for (messageId, pendingMessage) in pendingLocalMessageUpdatesById {
+            guard let index = updated.firstIndex(where: { $0.id == messageId }) else {
+                continue
+            }
+            if messagePersistenceSignature(updated[index]) == messagePersistenceSignature(pendingMessage) {
+                pendingLocalMessageUpdatesById[messageId] = nil
+                continue
+            }
+            updated[index] = pendingMessage
+        }
+        return updated
+    }
+
     private func messagesDifferOnlyBySyntheticToolNewline(_ local: Message, _ server: Message) -> Bool {
         guard local.role == .assistant,
               server.role == .assistant,
@@ -108,5 +126,36 @@ extension ChatViewModel {
         (toolCalls ?? []).map {
             "\($0.id):\($0.name):\($0.status.rawValue):\($0.skillId ?? ""):\($0.iconKey ?? "")"
         }.joined(separator: "|")
+    }
+
+    private func messagePersistenceSignature(_ message: Message) -> String {
+        [
+            message.id,
+            message.role.rawValue,
+            message.status.rawValue,
+            message.timestamp,
+            message.content,
+            message.error ?? "",
+            message.errorDetails ?? "",
+            message.needsNewline.map(String.init) ?? "",
+            toolCallPersistenceSignature(message.toolCalls)
+        ].joined(separator: "\u{241F}")
+    }
+
+    private func toolCallPersistenceSignature(_ toolCalls: [ToolCall]?) -> String {
+        (toolCalls ?? []).map { toolCall in
+            [
+                toolCall.id,
+                toolCall.name,
+                toolCall.status.rawValue,
+                toolCall.skillId ?? "",
+                toolCall.iconKey ?? "",
+                toolCall.confirmationId ?? "",
+                toolCall.confirmationSummary ?? "",
+                toolCall.confirmationGuardReason ?? "",
+                toolCall.confirmationUndoSupported.map(String.init) ?? "",
+                toolCall.confirmationExpiresAt ?? ""
+            ].joined(separator: "\u{241D}")
+        }.joined(separator: "\u{241E}")
     }
 }

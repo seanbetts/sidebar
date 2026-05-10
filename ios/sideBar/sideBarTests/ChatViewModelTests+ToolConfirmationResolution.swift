@@ -50,7 +50,7 @@ extension ChatViewModelTests {
         XCTAssertNil(toolCall["confirmationSummary"])
     }
 
-    func testDeclinedConfirmationPersistenceRemovesPendingToolCallAndAppendsAcknowledgement() async throws {
+    func testDeclinedConfirmationPersistenceKeepsCancelledToolCallAndAppendsAcknowledgement() async throws {
         let api = ToolConfirmationUpdateMessageAPISpy()
         let viewModel = makeViewModel(
             api: api,
@@ -72,7 +72,11 @@ extension ChatViewModelTests {
         let acknowledgementCall = try XCTUnwrap(api.updateMessageCalls.last {
             $0.message.content.contains("Okay, I won't delete this note.")
         })
-        XCTAssertNil(acknowledgementCall.message.toolCalls)
+        let toolCall = try XCTUnwrap(acknowledgementCall.message.toolCalls?.first?.value as? [String: Any])
+        XCTAssertEqual(toolCall["id"] as? String, "tool-1")
+        XCTAssertEqual(toolCall["status"] as? String, ToolStatus.cancelled.rawValue)
+        XCTAssertNil(toolCall["confirmationId"])
+        XCTAssertNil(toolCall["confirmationSummary"])
         XCTAssertEqual(
             acknowledgementCall.message.content,
             """

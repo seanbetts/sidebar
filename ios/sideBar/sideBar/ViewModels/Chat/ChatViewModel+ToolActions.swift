@@ -48,13 +48,13 @@ extension ChatViewModel {
                 return message
             }
             var didResolveConfirmation = false
-            let resolvedToolCalls = toolCalls.compactMap { toolCall -> ToolCall? in
+            let resolvedToolCalls = toolCalls.map { toolCall -> ToolCall in
                 guard toolCall.confirmationId == confirmationId else {
                     return toolCall
                 }
                 didResolveConfirmation = true
                 guard decision != .decline else {
-                    return nil
+                    return cancelledToolCall(from: toolCall)
                 }
                 return ToolCall(
                     id: toolCall.id,
@@ -74,7 +74,7 @@ extension ChatViewModel {
                 role: message.role,
                 content: message.content,
                 status: message.status,
-                toolCalls: resolvedToolCalls.isEmpty ? nil : resolvedToolCalls,
+                toolCalls: resolvedToolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
                 error: message.error,
@@ -97,8 +97,8 @@ extension ChatViewModel {
         let acknowledgement = "Okay, I won't delete this \(action.confirmationObjectName)."
         var updatedMessage: Message?
         updateMessage(id: messageId, persist: false) { message in
-            let resolvedToolCalls = message.toolCalls?.compactMap { toolCall -> ToolCall? in
-                toolCall.confirmationId == confirmationId ? nil : toolCall
+            let resolvedToolCalls = message.toolCalls?.map { toolCall -> ToolCall in
+                toolCall.confirmationId == confirmationId ? cancelledToolCall(from: toolCall) : toolCall
             }
             let updatedContent = message.content.contains(acknowledgement)
                 ? message.content
@@ -110,7 +110,7 @@ extension ChatViewModel {
                 role: message.role,
                 content: updatedContent,
                 status: message.status,
-                toolCalls: resolvedToolCalls?.isEmpty == true ? nil : resolvedToolCalls,
+                toolCalls: resolvedToolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
                 error: message.error,
@@ -165,6 +165,21 @@ extension ChatViewModel {
 
     func confirmationPrompt(for payload: ChatToolConfirmationRequestedPayload) -> String {
         ChatToolAction.confirmationPrompt(for: payload.toolName)
+    }
+
+    private func cancelledToolCall(from toolCall: ToolCall) -> ToolCall {
+        ToolCall(
+            id: toolCall.id,
+            name: toolCall.name,
+            parameters: toolCall.parameters,
+            status: .cancelled,
+            result: AnyCodable([
+                "success": false,
+                "summary": "Cancelled"
+            ]),
+            skillId: toolCall.skillId,
+            iconKey: toolCall.iconKey
+        )
     }
 
     func handleToolAction(_ action: ChatToolAction, decision: ChatToolActionDecision? = nil) {
@@ -410,10 +425,11 @@ extension ChatViewModel {
         persistUpdatedMessage(updatedMessage)
     }
 
-    private func persistUpdatedMessage(_ message: Message) {
+    func persistUpdatedMessage(_ message: Message) {
         guard let conversationId = streamingConversationId ?? selectedConversationId else {
             return
         }
+        pendingLocalMessageUpdatesById[message.id] = message
         Task { @MainActor in
             do {
                 _ = try await conversationsAPI.updateMessage(
@@ -431,6 +447,9 @@ extension ChatViewModel {
                     )
                 )
             } catch {
+                if pendingLocalMessageUpdatesById[message.id]?.content == message.content {
+                    pendingLocalMessageUpdatesById[message.id] = nil
+                }
                 errorMessage = ErrorMapping.message(for: error)
             }
         }
