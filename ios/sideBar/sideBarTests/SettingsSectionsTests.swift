@@ -695,13 +695,21 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("if!environment.settingsViewModel.permissionRecoveryItems.isEmpty"))
         XCTAssertTrue(normalized.contains("Section(\"Permissions\")"))
         XCTAssertTrue(normalized.contains("ForEach(environment.settingsViewModel.permissionRecoveryItems)"))
-        XCTAssertTrue(normalized.contains("SettingsPermissionRecoveryRow(item:item"))
+        XCTAssertTrue(normalized.contains("OnboardingPermissionCard(item:item"))
         XCTAssertTrue(normalized.contains("awaitenvironment.settingsViewModel.requestPermissionRecovery(for:item.kind)"))
         XCTAssertTrue(normalized.contains("awaitenvironment.settingsViewModel.refreshPermissionRecoveryStates()"))
-        XCTAssertFalse(normalized.contains("OnboardingPermissionCard(item:item)"))
+        XCTAssertFalse(normalized.contains("SettingsPermissionRecoveryRow(item:item"))
         XCTAssertFalse(normalized.contains("Toggle(isOn:enableBinding)"))
         XCTAssertFalse(normalized.contains(".listRowBackground(Color.clear)"))
         XCTAssertFalse(normalized.contains(".listRowInsets(EdgeInsets())"))
+    }
+
+    func testOnboardingPermissionCardUsesTokenizedIconSizing() throws {
+        let normalized = try onboardingPermissionCardSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.lg,height:DesignTokens.Icon.lg)"))
+        XCTAssertFalse(normalized.contains(".frame(width:24,height:24)"))
     }
 
     func testSkillsSettingsMacSourceUsesInspectorIntroAndCardRows() throws {
@@ -1211,6 +1219,28 @@ private func generalSettingsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsSections+General.swift", file: file, line: line)
+}
+
+private func onboardingPermissionCardSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = settingsSourceRoot(file: file)
+        .deletingLastPathComponent()
+        .appendingPathComponent("Onboarding")
+        .appendingPathComponent("OnboardingPermissionCard.swift")
+
+    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+        XCTFail("OnboardingPermissionCard.swift should exist", file: file, line: line)
+        return ""
+    }
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read OnboardingPermissionCard.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }
 
 private func skillsSettingsSource(

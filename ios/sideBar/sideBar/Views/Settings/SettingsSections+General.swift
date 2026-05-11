@@ -134,7 +134,7 @@ struct GeneralSettingsView: View {
             if !environment.settingsViewModel.permissionRecoveryItems.isEmpty {
                 Section("Permissions") {
                     ForEach(environment.settingsViewModel.permissionRecoveryItems) { item in
-                        SettingsPermissionRecoveryRow(
+                        OnboardingPermissionCard(
                             item: item,
                             onEnable: {
                                 Task {

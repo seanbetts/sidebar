@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SettingsPermissionRecoveryRow: View {
+struct OnboardingPermissionCard: View {
     let item: OnboardingPermissionRecoveryItem
     let onEnable: () -> Void
     let onOpenSettings: () -> Void
@@ -34,7 +34,7 @@ struct SettingsPermissionRecoveryRow: View {
             Image(systemName: item.systemImage)
                 .appFont(.body)
                 .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
+                .frame(width: DesignTokens.Icon.lg, height: DesignTokens.Icon.lg)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
