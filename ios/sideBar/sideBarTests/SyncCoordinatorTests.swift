@@ -135,6 +135,46 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(refreshHandler.refreshCount, 0)
         XCTAssertEqual(queue.pendingCount, 1)
     }
+
+    func testRefreshAllSchedulesBackgroundFlushWhenForegroundReplayLeavesPendingWrites() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: nil,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "Hi")
+        )
+
+        let refreshHandler = TestReconnectRefreshHandler()
+        let backgroundFlushScheduler = TestBackgroundFlushScheduler()
+        let coordinator = SyncCoordinator(
+            connectivityMonitor: connectivityMonitor,
+            writeQueue: queue,
+            onReconnectRefresh: { await refreshHandler.run() },
+            scheduleBackgroundWriteQueueFlush: { backgroundFlushScheduler.schedule() }
+        )
+
+        await coordinator.refreshAll()
+
+        XCTAssertEqual(refreshHandler.refreshCount, 1)
+        XCTAssertEqual(backgroundFlushScheduler.scheduleCount, 1)
+        XCTAssertEqual(queue.pendingCount, 1)
+    }
 }
 
 @MainActor
@@ -151,6 +191,15 @@ private final class CountingWriteExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         executedCount += 1
+    }
+}
+
+@MainActor
+private final class TestBackgroundFlushScheduler {
+    private(set) var scheduleCount = 0
+
+    func schedule() {
+        scheduleCount += 1
     }
 }
 

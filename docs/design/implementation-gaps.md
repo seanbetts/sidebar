@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 24 gaps.
+**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction, write-queue background scheduling, archive-cache policy, and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 22 gaps.
 
 ---
 
@@ -23,7 +23,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| Shared local-first offline engine remains incomplete across chats, notes, tasks, websites, and files - `OfflineStore`, `WriteQueue`, and local-first helpers exist, but cache, optimistic writes, queueing, ID remapping, and availability rules are still not one shared contract across all surfaces | `Stores/`, `ViewModels/`, `Services/Offline/` | [offline-and-sync](./patterns/offline-and-sync), [wait-ux](./patterns/wait-ux) |
+| Shared local-first offline status and mutation-channel contract remains incomplete across chats, notes, tasks, websites, and files - `OfflineCapabilityPolicy`, `SyncCoordinator`, `WriteQueue`, `LocalFirstRepository`, and archive-cache policy helpers now define shared read/write/cache rules, but `WriteQueue`, `PendingShareStore`, and background upload paths still expose separate status, retry, and recovery surfaces | `Services/Offline/`, `AppEnvironment+PendingShares.swift`, `IngestionUploadManager.swift`, stores/view models | [offline-and-sync](./patterns/offline-and-sync), [wait-ux](./patterns/wait-ux) |
 | Phase 1.5 onboarding permission cards are only partially implemented - location and notification onboarding steps/requesters exist, but the shared `OnboardingPermissionCard` component and complete onboarding-phase recovery surface are still missing | `Views/Onboarding/`, `ChatView.swift` | [onboarding](./patterns/onboarding) |
 | Phase 2 AI-guided feature tour is partially implemented - `FeatureIntroCard`, `StaticFeatureCarousel`, onboarding-aware backend context, SSE events, and `onboarding-coach` exist, but a complete `FeatureTourManager`-owned tour flow is still missing | `Views/Onboarding/`, `backend/api/services/agent/` | [onboarding](./patterns/onboarding) |
 
@@ -32,9 +32,7 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | Website save background completion remains incomplete - pending jobs can continue briefly during background continuation, but website saves still are not backed by a durable background transfer/task model that completes independently of foreground sessions | `WebsitesViewModel+JobPolling.swift`, `AppEnvironment+PendingShares.swift`, `Info.plist` | [ios-conventions](./platform-strategy/ios-conventions), [handoffs](./patterns/handoffs) |
-| `WriteQueue` background flush remains incomplete - background inspection/recovery paths exist, but queue flushing is still not driven by a durable `BGProcessingTask` on network availability | `WriteQueue.swift`, `Info.plist` | [ios-conventions](./platform-strategy/ios-conventions) |
-| Offline-capable create flows remain split between `WriteQueue` and `PendingShareStore` - shared queue infrastructure exists, but websites and files still use parallel pending-share/local-upload paths instead of one mutation system | `AppEnvironment+PendingShares.swift`, `WebsitesViewModel.swift`, `IngestionViewModel.swift`, `WriteQueue.swift` | [offline-and-sync](./patterns/offline-and-sync) |
-| Archived notes and archived websites are only partially browsable offline from cached data - archive paths have improved, but cached archive access is still not consistently available across notes and websites | `NotesStore.swift`, `WebsitesStore.swift` | [offline-and-sync](./patterns/offline-and-sync) |
+| Offline-capable create-flow status remains split across `WriteQueue`, `PendingShareStore`, and background uploads - product design intentionally uses separate mechanisms for optimistic writes, extension website handoffs, and file background uploads, but retry/error/status reconciliation is still handled per channel | `AppEnvironment+PendingShares.swift`, `WebsitesViewModel.swift`, `IngestionViewModel.swift`, `WriteQueue.swift`, `IngestionUploadManager.swift` | [offline-and-sync](./patterns/offline-and-sync) |
 | Files cache metadata more reliably than viewable content - a file can appear in the local list while its derivative content is still unavailable offline on that device | `IngestionStore.swift`, `IngestionViewModel+Private.swift` | [offline-and-sync](./patterns/offline-and-sync) |
 | Sentry context capture and diagnostics policy remain inconsistent - app-side context handling has improved, but extension/widget diagnostics still need a single privacy-filtered policy for values such as raw URLs | `SentryBootstrap.swift`, `ExtensionDiagnosticsReporter.swift`, `SafariWebExtensionHandler.swift`, `WidgetDataManager.swift` | [error-handling](./patterns/error-handling) |
 | `IngestionCenterView` still acts as an active per-file tracking panel - Live Activity infrastructure exists, but the center has not been reduced to a lightweight ingestion history summary | `IngestionCenterView.swift` | [wait-ux](./patterns/wait-ux) |

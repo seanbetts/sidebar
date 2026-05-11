@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension AppEnvironment {
     func currentRefreshContext() -> RefreshContext {
@@ -106,6 +107,13 @@ extension AppEnvironment {
         return candidates
             .compactMap { $0 }
             .first(where: AppSection.primaryNavigationSections.contains)
+    }
+
+    static func scheduleBackgroundWriteQueueFlush() {
+        guard !EnvironmentConfig.isRunningTestsOrPreviews() else { return }
+        #if os(iOS)
+        AppLaunchDelegate.scheduleWriteQueueFlush()
+        #endif
     }
 
     private var canAttemptProtectedServerRead: Bool {

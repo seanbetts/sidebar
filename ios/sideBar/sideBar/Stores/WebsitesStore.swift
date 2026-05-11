@@ -28,9 +28,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     var isRefreshingList = false
     var isRefreshingArchived = false
     let reconciliationState: WebsitesStoreReconciliationState
-    let archivedDetailRetentionDays = 7
-    let archivedDetailPrefetchLimit = 50
-    let archivedListLimit = 500
+    let archivedDetailRetentionDays = ArchivedOfflineCachePolicy.detailRetentionDays
+    let archivedDetailPrefetchLimit = ArchivedOfflineCachePolicy.detailPrefetchLimit
+    let archivedListLimit = ArchivedOfflineCachePolicy.listLimit
     let localListReconciliationWindow: TimeInterval
     var archivedListSyncedAt: String?
     var archivedSyncLoaded = false

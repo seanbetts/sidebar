@@ -266,7 +266,8 @@ public final class AppEnvironment: ObservableObject {
             },
             isSyncAllowed: {
                 authSession.authState == .active
-            }
+            },
+            scheduleBackgroundWriteQueueFlush: Self.scheduleBackgroundWriteQueueFlush
         )
         self.chatViewModel.workspaceActionDispatcher = { [weak self] action in
             self?.dispatchChatWorkspaceAction(action)

@@ -31,9 +31,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     var isRefreshingArchivedTree = false
     var refreshingNotes = Set<String>()
     var activeNoteRequestID: String?
-    let archivedNoteRetentionDays = 7
-    let archivedNotePrefetchLimit = 50
-    let archivedTreeLimit = 500
+    let archivedNoteRetentionDays = ArchivedOfflineCachePolicy.detailRetentionDays
+    let archivedNotePrefetchLimit = ArchivedOfflineCachePolicy.detailPrefetchLimit
+    let archivedTreeLimit = ArchivedOfflineCachePolicy.listLimit
     let archivedRefreshWaitTimeoutNanoseconds: UInt64
     let archivedRefreshPollIntervalNanoseconds: UInt64
     var archivedSummary: ArchivedSummary?

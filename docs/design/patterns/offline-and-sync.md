@@ -129,6 +129,7 @@ Rules:
 - archive lists may render from the local archived subset already on-device
 - the app does not proactively mirror the entire archive to every device
 - archived items never cached on the current device show `unavailableOffline` when selected offline
+- the native archive cache uses the shared `ArchivedOfflineCachePolicy`: retain cached archived details for 7 days, prefetch up to 50 retained details, and request up to 500 archived rows per archive list refresh
 
 This keeps archive behavior consistent with the local-first contract without forcing a large full-archive mirror into the local database.
 
