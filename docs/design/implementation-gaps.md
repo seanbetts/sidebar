@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction, write-queue background scheduling, archive-cache policy, and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 22 gaps.
+**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction, write-queue background scheduling, archive-cache policy, file derivative offline availability, and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 21 gaps.
 
 ---
 
@@ -33,7 +33,6 @@ Single working list of every known divergence between the design system and the 
 |---|---|---|
 | Direct in-app website save background completion remains incomplete - extension queued website saves now persist accepted backend job IDs through `PendingShareStore` and can resume `jobStatus` after relaunch/background continuation, but direct foreground saves still keep accepted job state only in `WebsitesViewModel.pendingWebsites` | `WebsitesViewModel+JobPolling.swift`, `WebsitesViewModel+PendingWebsites.swift`, `AppEnvironment+PendingShares.swift`, `PendingShareStore.swift`, `Info.plist` | [ios-conventions](./platform-strategy/ios-conventions), [handoffs](./patterns/handoffs) |
 | Offline-capable create-flow status remains split across `WriteQueue`, `PendingShareStore`, and background uploads - product design intentionally uses separate mechanisms for optimistic writes, extension website handoffs, and file background uploads, but retry/error/status reconciliation is still handled per channel | `AppEnvironment+PendingShares.swift`, `WebsitesViewModel.swift`, `IngestionViewModel.swift`, `WriteQueue.swift`, `IngestionUploadManager.swift` | [offline-and-sync](./patterns/offline-and-sync) |
-| Files cache metadata more reliably than viewable content - a file can appear in the local list while its derivative content is still unavailable offline on that device | `IngestionStore.swift`, `IngestionViewModel+Private.swift` | [offline-and-sync](./patterns/offline-and-sync) |
 | Sentry context capture and diagnostics policy remain inconsistent - app-side context handling has improved, but extension/widget diagnostics still need a single privacy-filtered policy for values such as raw URLs | `SentryBootstrap.swift`, `ExtensionDiagnosticsReporter.swift`, `SafariWebExtensionHandler.swift`, `WidgetDataManager.swift` | [error-handling](./patterns/error-handling) |
 | `IngestionCenterView` still acts as an active per-file tracking panel - Live Activity infrastructure exists, but the center has not been reduced to a lightweight ingestion history summary | `IngestionCenterView.swift` | [wait-ux](./patterns/wait-ux) |
 | iOS color tokens use UIKit semantic colors - migrate to custom hex values matching unified palette | `Color+Platform.swift` | [colour](./foundations/colour) |
