@@ -189,7 +189,7 @@ struct SkillsSettingsView: View {
                 appFontStyle: .subheading,
                 foreground: DesignTokens.Colors.textSecondary
             )
-                .frame(width: 18, height: 18)
+                .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {

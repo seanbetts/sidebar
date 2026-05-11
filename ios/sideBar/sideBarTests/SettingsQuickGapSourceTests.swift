@@ -16,6 +16,22 @@ final class SettingsQuickGapSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.xl,height:DesignTokens.Icon.xl)"))
         XCTAssertFalse(normalized.contains(".frame(width:30,height:30)"))
     }
+
+    func testAdditionalSettingsSkillLabelsUseIconToken() throws {
+        let normalized = try settingsSource("SettingsSections+Additional.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.md,height:DesignTokens.Icon.md)"))
+        XCTAssertFalse(normalized.contains(".frame(width:18,height:18)"))
+    }
+
+    func testSettingsDebugLogoFramesUseIconToken() throws {
+        let normalized = try settingsSource("SettingsSections+Utilities.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.xl,height:DesignTokens.Icon.xl)"))
+        XCTAssertFalse(normalized.contains(".frame(width:32,height:32)"))
+    }
 }
 
 private func settingsSource(

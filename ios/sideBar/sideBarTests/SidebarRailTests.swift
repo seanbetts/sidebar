@@ -40,6 +40,19 @@ final class SidebarRailTests: XCTestCase {
         XCTAssertFalse(normalized.contains(".appFont(.label)"))
         XCTAssertFalse(normalized.contains(".font(.system(size:18,weight:.semibold))"))
     }
+
+    func testSidebarRailUsesTokensForButtonFramesAndNamedLogoException() throws {
+        let normalized = try sidebarRailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("staticletlogoSize:CGFloat=26"))
+        XCTAssertTrue(normalized.contains(".frame(width:Self.logoSize,height:Self.logoSize)"))
+        XCTAssertTrue(normalized.contains(".frame(width:DesignTokens.Icon.xl,height:DesignTokens.Icon.xl)"))
+        XCTAssertTrue(normalized.contains("ProfileAvatarView(size:DesignTokens.Icon.xl)"))
+        XCTAssertFalse(normalized.contains(".frame(width:26,height:26)"))
+        XCTAssertFalse(normalized.contains(".frame(width:32,height:32)"))
+        XCTAssertFalse(normalized.contains("ProfileAvatarView(size:32)"))
+    }
 }
 
 private func sidebarRailSource(

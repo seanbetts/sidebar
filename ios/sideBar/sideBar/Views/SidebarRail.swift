@@ -2,6 +2,8 @@ import SwiftUI
 import sideBarShared
 
 public struct SidebarRail: View {
+    private static let logoSize: CGFloat = 26
+
     @EnvironmentObject private var environment: AppEnvironment
     @Binding private var selection: AppSection?
     @State private var hoveredSection: AppSection?
@@ -35,8 +37,8 @@ public struct SidebarRail: View {
                     Image("AppLogo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 26, height: 26)
-                        .frame(width: 32, height: 32)
+                        .frame(width: Self.logoSize, height: Self.logoSize)
+                        .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                         .background {
                             SidebarRailButtonBackground(
                                 chrome: Self.buttonChrome(isActive: false, isHovered: isLogoHovered),
@@ -62,7 +64,7 @@ public struct SidebarRail: View {
             Button(
                 action: { onShowSettings?() },
                 label: {
-                    ProfileAvatarView(size: 32)
+                    ProfileAvatarView(size: DesignTokens.Icon.xl)
                         .background {
                             SidebarRailButtonBackground(
                                 chrome: Self.buttonChrome(isActive: false, isHovered: isSettingsHovered),
@@ -213,7 +215,7 @@ private struct SidebarRailButtonBackground: View {
         if chrome != nil {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
                 .fill(backgroundColor)
-                .frame(width: 32, height: 32)
+                .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 .opacity(opacity)
         }
     }
