@@ -69,21 +69,21 @@ The web does not have character-paced reveal — this is intentional given markd
 
 ### File ingestion and processing
 
-**Native** (`IngestionCenterView` — `Views/Files/`):
+**Native** (`HeaderStatusController`, `HeaderStatusPillButton`, and ingestion Live Activities):
 
-A dedicated in-app panel tracking per-file status through three phases:
+A lightweight header status pill presents foreground ingestion state, while Live Activities carry long-running progress outside the app:
 
 | Phase | Visual |
 |---|---|
-| Uploading | `LoadingIndicatorView` + `ProgressView(value:)` + percentage text |
-| Processing | `LoadingIndicatorView` only (indeterminate) |
-| Failed | Error icon + Retry + Dismiss buttons |
+| Uploading / processing | `StatusPill` labelled "Processing" with a compact popover of cancellable active rows |
+| Ready | Short-lived "Ready" success pill |
+| Failed | Short-lived failure pill for non-actionable failures |
 
 **Web** (`IngestionQueue.svelte`, `IngestionStatusCenter.svelte`):
 
 Two separate components. `IngestionQueue` renders a list inside the files panel with per-file progress bars, pause/resume/cancel controls, and nine processing stages mapped to a 0–100% progress value. `IngestionStatusCenter` is a header component showing "In Progress" and "Failed" groups.
 
-Both implementations are functional but surface-heavy for what is typically a background task. The target is to simplify the in-app surface and move active progress tracking to Live Activities on iOS.
+The deprecated native `IngestionCenterView` panel was removed after the header-status and Live Activity paths became the active product surface. The web remains more surface-heavy and is tracked separately by web parity work.
 
 ### Save status
 

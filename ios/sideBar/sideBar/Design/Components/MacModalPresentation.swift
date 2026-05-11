@@ -70,10 +70,6 @@ func storeSkillDetailPanelType() -> MacPanelType {
     .largeInspectorSheet
 }
 
-func ingestionCenterPanelType() -> MacPanelType {
-    .compactPopover
-}
-
 func scratchpadPopoverPanelType() -> MacPanelType {
     .editorSheet
 }
