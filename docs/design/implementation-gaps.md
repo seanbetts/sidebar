@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-09. Resolved gaps were removed; partially addressed gaps were narrowed to the remaining divergence. Remaining count: 37 gaps.
+**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved stale Task 15 gaps were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 25 gaps.
 
 ---
 
@@ -25,7 +25,6 @@ Single working list of every known divergence between the design system and the 
 |---|---|---|
 | Auth adapter still leaks as concrete Supabase implementation in app construction - product-facing protocol extensions exist, but the app still directly instantiates and depends on `SupabaseAuthAdapter`; finish isolating product code behind product-shaped auth interfaces | `SupabaseAuthAdapter.swift`, app composition | [authentication](./patterns/authentication) |
 | Shared local-first offline engine remains incomplete across chats, notes, tasks, websites, and files - `OfflineStore`, `WriteQueue`, and local-first helpers exist, but cache, optimistic writes, queueing, ID remapping, and availability rules are still not one shared contract across all surfaces | `Stores/`, `ViewModels/`, `Services/Offline/` | [offline-and-sync](./patterns/offline-and-sync), [wait-ux](./patterns/wait-ux) |
-| Offline-unavailable detail states remain inconsistent - some detail panes now use explicit unavailable-offline states, but not all selected missing-local-content paths have converged on that pattern | `WebsitesDetailView.swift`, `FilesViewComponents.swift`, related detail surfaces | [offline-and-sync](./patterns/offline-and-sync), [error-presentation](./patterns/error-presentation) |
 | Phase 1.5 onboarding permission cards are only partially implemented - location and notification onboarding steps/requesters exist, but the shared `OnboardingPermissionCard` component and complete onboarding-phase recovery surface are still missing | `Views/Onboarding/`, `ChatView.swift` | [onboarding](./patterns/onboarding) |
 | Phase 2 AI-guided feature tour is partially implemented - `FeatureIntroCard`, `StaticFeatureCarousel`, onboarding-aware backend context, SSE events, and `onboarding-coach` exist, but a complete `FeatureTourManager`-owned tour flow is still missing | `Views/Onboarding/`, `backend/api/services/agent/` | [onboarding](./patterns/onboarding) |
 
@@ -39,11 +38,7 @@ Single working list of every known divergence between the design system and the 
 | Archived notes and archived websites are only partially browsable offline from cached data - archive paths have improved, but cached archive access is still not consistently available across notes and websites | `NotesStore.swift`, `WebsitesStore.swift` | [offline-and-sync](./patterns/offline-and-sync) |
 | Files cache metadata more reliably than viewable content - a file can appear in the local list while its derivative content is still unavailable offline on that device | `IngestionStore.swift`, `IngestionViewModel+Private.swift` | [offline-and-sync](./patterns/offline-and-sync) |
 | Sentry context capture and diagnostics policy remain inconsistent - app-side context handling has improved, but extension/widget diagnostics still need a single privacy-filtered policy for values such as raw URLs | `SentryBootstrap.swift`, `ExtensionDiagnosticsReporter.swift`, `SafariWebExtensionHandler.swift`, `WidgetDataManager.swift` | [error-handling](./patterns/error-handling) |
-| Website save progress still lacks complete stage presentation - pending save rows now distinguish queued/reading/retrying states, but the detail view still does not surface the full server job stage progression for long polling | `WebsitesDetailView+PendingSave.swift`, `WebsitesViewModel+JobPolling.swift` | [wait-ux](./patterns/wait-ux) |
 | `IngestionCenterView` still acts as an active per-file tracking panel - Live Activity infrastructure exists, but the center has not been reduced to a lightweight ingestion history summary | `IngestionCenterView.swift` | [wait-ux](./patterns/wait-ux) |
-| Note content edits bypass `WriteQueue` when online - `NotesEditorViewModel` calls the API directly; should apply locally first and sync in background | `NotesEditorViewModel.swift` | [wait-ux](./patterns/wait-ux) |
-| Website mutations (pin, rename, archive, delete) bypass `WriteQueue` when online - only queued when offline; should be consistently optimistic | `WebsitesViewModel.swift`, `WebsitesWriteQueueExecutor.swift` | [wait-ux](./patterns/wait-ux) |
-| Web note and website mutations still have uneven in-session retry/error surfacing - note edit paths use foreground retry helpers, but website mutations and several note/sidebar mutations still perform one-shot calls before surfacing errors | `frontend/src/lib/` | [wait-ux](./patterns/wait-ux) |
 | iOS color tokens use UIKit semantic colors - migrate to custom hex values matching unified palette | `Color+Platform.swift` | [colour](./foundations/colour) |
 | macOS `MacOSPalette` branching in `Color+Platform.swift` - remove and replace with shared implementation | `Color+Platform.swift` | [colour](./foundations/colour) |
 | Native icon usage is not centralized through `AppIcon` - 287 direct SF Symbol literal occurrences remain across the Apple app, widgets, and share extension; rationalize low-use symbols, hard-migrate app-owned symbols to the shared `AppIcon` namespace, and add strict source checks | `ios/sideBar/**/*.swift` | [iconography](./foundations/iconography), [apple-icon-inventory](./audits/apple-icon-inventory-2026-05-04) |
@@ -58,9 +53,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| `ExtensionEventStore.recordWebsiteSaved(website:)` and the `applySavedWebsiteEvent` branch in `consumeExtensionEvents()` are dead code - the extension never calls the full-metadata path; only the URL-queue path via `PendingShareStore` is used | `ExtensionEventStore.swift`, `AppEnvironment+Auth.swift` | [handoffs](./patterns/handoffs) |
 | Widget action intents are only partially routed through deep links - widget add/open intents now use `sidebar://` URLs, but app-side execution still relies on bespoke deferred flags such as `pendingNewTaskDeepLink` and `pendingNewNoteDeepLink` | `AppEnvironment+Widgets.swift`, `TasksViewModel.swift`, `NotesViewModel.swift` | [handoffs](./patterns/handoffs) |
-| Chat conversations can be exported but not fully shared - transcript export exists, but the share action still falls back to an unavailable toast instead of presenting a share sheet | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
 
 ### Low priority
 
@@ -81,7 +74,6 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| Native chat missing inline tool execution states - web shows "Using {name}" / "Used {name}" / "Failed to use {name}" per message; native has no equivalent | `ChatToolBanners.swift` / chat message components | [wait-ux](./patterns/wait-ux) |
 
 ### Low priority
 
