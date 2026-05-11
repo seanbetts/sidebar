@@ -87,11 +87,6 @@
             value = "1"
             isEnabled = "NO">
          </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "SIDEBAR_DEBUG_SHOW_PERMISSION_RECOVERY_CARDS"
-            value = "1"
-            isEnabled = "NO">
-         </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction

@@ -51,34 +51,7 @@ public struct OnboardingPermissionRecoveryItem: Identifiable, Equatable {
 
 @MainActor
 extension SettingsViewModel {
-    static let debugPermissionRecoveryEnvironmentKey = "SIDEBAR_DEBUG_SHOW_PERMISSION_RECOVERY_CARDS"
-
     public var permissionRecoveryItems: [OnboardingPermissionRecoveryItem] {
-        Self.permissionRecoveryItemsForPresentation(
-            for: onboardingState,
-            showsDebugPermissionRecoveryCards: Self.shouldShowDebugPermissionRecoveryCards()
-        )
-    }
-
-    static func shouldShowDebugPermissionRecoveryCards(
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) -> Bool {
-#if DEBUG && !os(macOS)
-        environment[debugPermissionRecoveryEnvironmentKey] == "1"
-#else
-        _ = environment
-        return false
-#endif
-    }
-
-    static func permissionRecoveryItemsForPresentation(
-        for onboardingState: OnboardingState?,
-        showsDebugPermissionRecoveryCards: Bool
-    ) -> [OnboardingPermissionRecoveryItem] {
-        if showsDebugPermissionRecoveryCards {
-            return debugPermissionRecoveryItems
-        }
-
         guard let onboardingState else {
             return []
         }
@@ -130,19 +103,6 @@ extension SettingsViewModel {
             location: locationState,
             notifications: notificationsState
         )
-    }
-
-    private static var debugPermissionRecoveryItems: [OnboardingPermissionRecoveryItem] {
-        [
-            OnboardingPermissionRecoveryItem(
-                kind: .location,
-                permissionState: .notAsked
-            ),
-            OnboardingPermissionRecoveryItem(
-                kind: .notifications,
-                permissionState: .denied
-            )
-        ]
     }
 
     private static func permissionRecoveryItem(
