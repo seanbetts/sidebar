@@ -51,21 +51,48 @@ public struct OnboardingPermissionRecoveryItem: Identifiable, Equatable {
 
 @MainActor
 extension SettingsViewModel {
+    static let debugPermissionRecoveryEnvironmentKey = "SIDEBAR_DEBUG_SHOW_PERMISSION_RECOVERY_CARDS"
+
     public var permissionRecoveryItems: [OnboardingPermissionRecoveryItem] {
-        guard onboardingState != nil else {
+        Self.permissionRecoveryItemsForPresentation(
+            for: onboardingState,
+            showsDebugPermissionRecoveryCards: Self.shouldShowDebugPermissionRecoveryCards()
+        )
+    }
+
+    static func shouldShowDebugPermissionRecoveryCards(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+#if DEBUG && !os(macOS)
+        environment[debugPermissionRecoveryEnvironmentKey] == "1"
+#else
+        _ = environment
+        return false
+#endif
+    }
+
+    static func permissionRecoveryItemsForPresentation(
+        for onboardingState: OnboardingState?,
+        showsDebugPermissionRecoveryCards: Bool
+    ) -> [OnboardingPermissionRecoveryItem] {
+        if showsDebugPermissionRecoveryCards {
+            return debugPermissionRecoveryItems
+        }
+
+        guard let onboardingState else {
             return []
         }
 
         var items: [OnboardingPermissionRecoveryItem] = []
-        if let locationItem = permissionRecoveryItem(
+        if let locationItem = Self.permissionRecoveryItem(
             kind: .location,
-            state: onboardingState?.permissions.location
+            state: onboardingState.permissions.location
         ) {
             items.append(locationItem)
         }
-        if let notificationsItem = permissionRecoveryItem(
+        if let notificationsItem = Self.permissionRecoveryItem(
             kind: .notifications,
-            state: onboardingState?.permissions.notifications
+            state: onboardingState.permissions.notifications
         ) {
             items.append(notificationsItem)
         }
@@ -105,7 +132,20 @@ extension SettingsViewModel {
         )
     }
 
-    private func permissionRecoveryItem(
+    private static var debugPermissionRecoveryItems: [OnboardingPermissionRecoveryItem] {
+        [
+            OnboardingPermissionRecoveryItem(
+                kind: .location,
+                permissionState: .notAsked
+            ),
+            OnboardingPermissionRecoveryItem(
+                kind: .notifications,
+                permissionState: .denied
+            )
+        ]
+    }
+
+    private static func permissionRecoveryItem(
         kind: OnboardingPermissionRecoveryKind,
         state: OnboardingPermissionState?
     ) -> OnboardingPermissionRecoveryItem? {

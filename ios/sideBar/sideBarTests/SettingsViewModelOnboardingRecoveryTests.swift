@@ -3,6 +3,24 @@ import sideBarShared
 @testable import sideBar
 
 extension SettingsViewModelOnboardingTests {
+    func testDebugPermissionRecoveryItemsExposeSimulatorPreviewCardsWithoutBackendState() {
+        let items = SettingsViewModel.permissionRecoveryItemsForPresentation(
+            for: nil,
+            showsDebugPermissionRecoveryCards: true
+        )
+
+        XCTAssertEqual(items.map(\.kind), [.location, .notifications])
+        XCTAssertEqual(items.map(\.permissionState), [.notAsked, .denied])
+        XCTAssertEqual(items.map(\.actionTitle), ["Enable", "Open Settings"])
+    }
+
+    func testDebugPermissionRecoveryFlagIsExposedInSideBarScheme() throws {
+        let source = try sideBarSchemeSource()
+
+        XCTAssertTrue(source.contains(SettingsViewModel.debugPermissionRecoveryEnvironmentKey))
+        XCTAssertTrue(source.contains("value = \"1\""))
+    }
+
     func testPermissionRecoveryItemsIncludeMissingLocationAndNotifications() async {
         let onboardingState = OnboardingState(
             status: .dismissed,
@@ -338,5 +356,25 @@ extension SettingsViewModelOnboardingTests {
         XCTAssertNotNil(viewModel.onboardingState?.milestones.secondaryTourSeen)
 
         await task.value
+    }
+}
+
+private func sideBarSchemeSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar.xcodeproj")
+        .appendingPathComponent("xcshareddata")
+        .appendingPathComponent("xcschemes")
+        .appendingPathComponent("sideBar.xcscheme")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read sideBar.xcscheme: \(error)", file: file, line: line)
+        throw error
     }
 }
