@@ -505,6 +505,74 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.items.first?.id, "saved-1")
     }
 
+    func testBackgroundWebsiteContinuationResumesAcceptedQueuedJobAfterRelaunch() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let acceptedAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-accepted", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: acceptedAPI)
+        let firstEnvironment = requireEnvironment()
+        firstEnvironment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+
+        await firstEnvironment.consumePendingShares()
+
+        let persistedJob = storage.pendingShareStore.loadAll().first
+        XCTAssertEqual(persistedJob?.id, queuedItem?.id)
+        XCTAssertEqual(persistedJob?.websiteJobId, "job-accepted")
+        XCTAssertEqual(firstEnvironment.websitesViewModel.pendingWebsites.first?.jobId, "job-accepted")
+        firstEnvironment.websitesViewModel.jobPollingTasks["job-accepted"]?.cancel()
+        firstEnvironment.websitesViewModel.jobPollingTasks.removeValue(forKey: "job-accepted")
+
+        let completedDetail = WebsiteDetail(
+            id: "saved-after-relaunch",
+            title: "Saved after relaunch",
+            url: url,
+            urlFull: url,
+            domain: "example.com",
+            content: "Saved content",
+            source: "web",
+            savedAt: "2026-03-20T23:41:37Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-20T23:41:37Z",
+            lastOpenedAt: nil
+        )
+        let resumedAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentPendingWebsiteQueueTests", code: 4)),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-accepted",
+                    status: "completed",
+                    website: completedDetail,
+                    error: nil
+                )
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: resumedAPI)
+        let resumedEnvironment = requireEnvironment()
+        resumedEnvironment.authState = .active
+
+        let completed = await resumedEnvironment.performBackgroundWebsiteContinuation(maxDuration: 2)
+
+        XCTAssertTrue(completed)
+        XCTAssertEqual(resumedAPI.saveCallCount, 0)
+        XCTAssertEqual(resumedAPI.jobStatusCallIds, ["job-accepted"])
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(resumedEnvironment.websitesViewModel.pendingWebsites.isEmpty)
+        XCTAssertEqual(resumedEnvironment.websitesViewModel.items.first?.id, "saved-after-relaunch")
+    }
+
     func testRefreshAuthStateDelegatesRunnableWebsiteReplayToCoordinator() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let authSession = PlaceholderAuthSession(authState: .active)

@@ -340,7 +340,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertFalse(environment.websitesViewModel.items.contains(where: { $0.url == firstURL }))
-        XCTAssertEqual(storage.pendingShareStore.loadAll().compactMap(\.url), [secondURL])
+        let persisted = storage.pendingShareStore.loadAll()
+        XCTAssertEqual(persisted.compactMap(\.url), [firstURL, secondURL])
+        XCTAssertEqual(persisted.first?.websiteJobId, "test-job-id")
+        XCTAssertNil(persisted.last?.websiteJobId)
         XCTAssertTrue(environment.websitesViewModel.pendingWebsites.contains { $0.url == firstURL })
         XCTAssertTrue(websiteEventIsSurfaced(secondURL, in: environment))
     }

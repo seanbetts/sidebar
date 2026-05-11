@@ -118,6 +118,7 @@ extension WebsitesViewModel {
         source: PendingWebsiteSource,
         id: String? = nil,
         queueItemId: UUID? = nil,
+        jobId: String? = nil,
         status: PendingWebsiteStatus? = nil,
         selectionFallbackId: String? = nil
     ) -> PendingWebsiteItem {
@@ -133,7 +134,7 @@ extension WebsitesViewModel {
                 canonicalURL: existing.canonicalURL,
                 source: source,
                 queueItemId: queueItemId ?? existing.queueItemId,
-                jobId: existing.jobId,
+                jobId: jobId ?? existing.jobId,
                 status: resolvedStatus,
                 selectionFallbackId: selectionFallbackId ?? existing.selectionFallbackId
             )
@@ -147,6 +148,7 @@ extension WebsitesViewModel {
             source: source,
             id: id,
             queueItemId: queueItemId,
+            jobId: jobId,
             status: resolvedStatus,
             selectionFallbackId: selectionFallbackId
         )
@@ -336,6 +338,7 @@ extension WebsitesViewModel {
                     source: .queuedShare,
                     id: pendingWebsites[index].id,
                     queueItemId: entry.item.id,
+                    jobId: entry.item.websiteJobId ?? pendingWebsites[index].jobId,
                     status: status
                 )
                 continue
@@ -348,6 +351,7 @@ extension WebsitesViewModel {
                 from: entry.url,
                 source: .queuedShare,
                 queueItemId: entry.item.id,
+                jobId: entry.item.websiteJobId,
                 status: status
             )
         }
@@ -358,6 +362,7 @@ extension WebsitesViewModel {
         source: PendingWebsiteSource,
         id: String? = nil,
         queueItemId: UUID? = nil,
+        jobId: String? = nil,
         status: PendingWebsiteStatus? = nil,
         selectionFallbackId: String? = nil
     ) -> PendingWebsiteItem {
@@ -374,6 +379,7 @@ extension WebsitesViewModel {
             canonicalURL: canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString,
             source: source,
             queueItemId: queueItemId,
+            jobId: jobId,
             status: status ?? defaultPendingWebsiteStatus(for: source),
             selectionFallbackId: selectionFallbackId
         )
@@ -401,6 +407,9 @@ extension WebsitesViewModel {
         readingQueueItemId: UUID?
     ) -> PendingWebsiteStatus {
         if readingQueueItemId == item.id {
+            return .reading
+        }
+        if item.websiteJobId != nil {
             return .reading
         }
         if isPendingWebsiteFailed(item) {

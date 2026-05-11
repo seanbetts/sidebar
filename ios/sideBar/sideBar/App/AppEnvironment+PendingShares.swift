@@ -24,9 +24,11 @@ extension AppEnvironment {
         }
 
         await consumePendingShares()
-        return await websitesViewModel.continuePendingWebsiteJobsInBackground(
+        let completed = await websitesViewModel.continuePendingWebsiteJobsInBackground(
             maxDuration: maxDuration
         )
+        pruneCompletedPersistedWebsiteJobs()
+        return completed
     }
 
     func performBackgroundWriteQueueFlush() async -> Bool {
@@ -296,6 +298,9 @@ extension AppEnvironment {
         guard let url = item.url else {
             return nil
         }
+        if let jobId = item.websiteJobId {
+            return await continuePersistedWebsiteJob(item, jobId: jobId, url: url)
+        }
         websitesViewModel.saveErrorMessage = nil
         replayStartSignal?.markStarted()
         let saved = await websitesViewModel.saveWebsite(
@@ -303,7 +308,7 @@ extension AppEnvironment {
             selectAfterSave: selectAfterSave
         )
         guard !saved else {
-            return nil
+            return acceptedWebsiteJobItem(from: item, url: url)
         }
         let retryItem = nextPendingWebsiteRetryItem(
             from: item,
@@ -316,6 +321,66 @@ extension AppEnvironment {
             errorMessage: websitesViewModel.saveErrorMessage,
             maxRetryCount: pendingWebsiteQueueMaxRetryCount
         )
+    }
+
+    private func continuePersistedWebsiteJob(
+        _ item: PendingShareItem,
+        jobId: String,
+        url: String
+    ) async -> PendingShareItem? {
+        guard let pendingURL = URL(string: url) else {
+            return nil
+        }
+        _ = websitesViewModel.upsertPendingWebsite(
+            from: pendingURL,
+            source: .queuedShare,
+            queueItemId: item.id,
+            jobId: jobId,
+            status: .reading
+        )
+        let isTerminal = await websitesViewModel.refreshWebsiteJobStatus(
+            jobId: jobId,
+            pendingURL: pendingURL,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        return isTerminal ? nil : item
+    }
+
+    private func acceptedWebsiteJobItem(from item: PendingShareItem, url: String) -> PendingShareItem? {
+        let canonical = websitesViewModel.canonicalWebsiteURLForPendingMatch(url) ?? url
+        guard let pending = websitesViewModel.pendingWebsites.first(where: {
+            $0.canonicalURL == canonical && $0.jobId != nil
+        }) else {
+            return nil
+        }
+        return PendingShareItem(
+            id: item.id,
+            kind: item.kind,
+            createdAt: item.createdAt,
+            url: item.url,
+            filePath: item.filePath,
+            filename: item.filename,
+            mimeType: item.mimeType,
+            retryCount: item.retryCount,
+            nextRetryAt: item.nextRetryAt,
+            lastError: item.lastError,
+            websiteJobId: pending.jobId
+        )
+    }
+
+    private func pruneCompletedPersistedWebsiteJobs() {
+        let activeJobIds = Set(websitesViewModel.pendingWebsites.compactMap(\.jobId))
+        let currentItems = storage.pendingShareStore.loadAll()
+        let prunedItems = currentItems.filter { item in
+            guard item.kind == .website, let websiteJobId = item.websiteJobId else {
+                return true
+            }
+            return activeJobIds.contains(websiteJobId)
+        }
+        guard prunedItems.count != currentItems.count else { return }
+        storage.pendingShareStore.replaceAll(prunedItems)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
     }
 
     private func shouldKeepPendingShare(_ item: PendingShareItem) async -> Bool {

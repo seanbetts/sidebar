@@ -123,14 +123,16 @@ extension AppEnvironmentDeepLinkTests {
         await replayGate.open()
         _ = await activationTask.value
         await waitForWebsiteEventSurface(url, in: environment)
-        for _ in 0..<20 where !storage.pendingShareStore.loadAll().isEmpty {
+        for _ in 0..<20 where storage.pendingShareStore.loadAll().first?.websiteJobId == nil {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))
-        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        let persistedJob = storage.pendingShareStore.loadAll().first
+        XCTAssertEqual(persistedJob?.url, url)
+        XCTAssertEqual(persistedJob?.websiteJobId, "test-job-id")
     }
 
     func testHandleSignedInActivationLoadsWebsiteListWhileQueuedReplayIsInFlight() async {

@@ -12,6 +12,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     let onSave: ((String) async -> Void)?
     private(set) var lastSavedURL: String?
     private(set) var saveCallCount = 0
+    private(set) var jobStatusCallIds: [String] = []
     private(set) var listCallCount = 0
     private(set) var canceledJobIds: [String] = []
 
@@ -57,7 +58,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     }
 
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
-        _ = id
+        jobStatusCallIds.append(id)
         return try jobStatusResult.get()
     }
 

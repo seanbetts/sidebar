@@ -31,6 +31,8 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
     public let nextRetryAt: Date?
     /// Last failure message captured while processing this item.
     public let lastError: String?
+    /// Backend website-save job identifier for accepted website shares awaiting completion.
+    public let websiteJobId: String?
 
     /// Creates a queued share payload model.
     public init(
@@ -43,7 +45,8 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         mimeType: String? = nil,
         retryCount: Int? = nil,
         nextRetryAt: Date? = nil,
-        lastError: String? = nil
+        lastError: String? = nil,
+        websiteJobId: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -55,6 +58,7 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         self.retryCount = retryCount
         self.nextRetryAt = nextRetryAt
         self.lastError = lastError
+        self.websiteJobId = websiteJobId
     }
 }
 

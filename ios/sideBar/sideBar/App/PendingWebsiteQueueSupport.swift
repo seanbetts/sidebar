@@ -115,7 +115,8 @@ func nextPendingWebsiteRetryItem(
         mimeType: item.mimeType,
         retryCount: nextAttempt,
         nextRetryAt: nextRetryAt,
-        lastError: errorMessage
+        lastError: errorMessage,
+        websiteJobId: item.websiteJobId
     )
 }
 
@@ -134,7 +135,8 @@ func failedPendingWebsiteItem(
         mimeType: item.mimeType,
         retryCount: max(max(0, item.retryCount ?? 0), maxRetryCount),
         nextRetryAt: nil,
-        lastError: errorMessage
+        lastError: errorMessage,
+        websiteJobId: item.websiteJobId
     )
 }
 
