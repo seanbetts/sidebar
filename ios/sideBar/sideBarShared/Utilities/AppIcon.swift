@@ -9,7 +9,7 @@ public struct AppIcon: RawRepresentable, Hashable, Sendable {
 }
 
 public extension AppIcon {
-    public enum Action {
+    enum Action {
         public static let add = AppIcon(rawValue: "plus")
         public static let close = AppIcon(rawValue: "xmark")
         public static let clearFilled = AppIcon(rawValue: "xmark.circle.fill")
@@ -36,7 +36,7 @@ public extension AppIcon {
         public static let signOut = AppIcon(rawValue: "rectangle.portrait.and.arrow.right")
     }
 
-    public enum Domain {
+    enum Domain {
         public static let chat = AppIcon(rawValue: "bubble")
         public static let notes = AppIcon(rawValue: "text.document")
         public static let tasks = AppIcon(rawValue: "checkmark.square")
@@ -47,7 +47,7 @@ public extension AppIcon {
         public static let memories = AppIcon(rawValue: "bookmark")
     }
 
-    public enum Navigation {
+    enum Navigation {
         public static let back = AppIcon(rawValue: "chevron.left")
         public static let forward = AppIcon(rawValue: "chevron.right")
         public static let chevronRight = AppIcon(rawValue: "chevron.right")
@@ -55,7 +55,7 @@ public extension AppIcon {
         public static let pickerDisclosure = AppIcon(rawValue: "chevron.up.chevron.down")
     }
 
-    public enum State {
+    enum State {
         public static let success = AppIcon(rawValue: "checkmark")
         public static let successCircle = AppIcon(rawValue: "checkmark.circle")
         public static let successFilled = AppIcon(rawValue: "checkmark.circle.fill")
@@ -71,7 +71,7 @@ public extension AppIcon {
         public static let retry = AppIcon(rawValue: "arrow.clockwise")
     }
 
-    public enum Content {
+    enum Content {
         public static let note = AppIcon(rawValue: "note.text")
         public static let textDocument = AppIcon(rawValue: "doc.text")
         public static let document = AppIcon(rawValue: "doc")
@@ -80,14 +80,14 @@ public extension AppIcon {
         public static let websiteFallback = AppIcon(rawValue: "globe")
     }
 
-    public enum Media {
+    enum Media {
         public static let video = AppIcon(rawValue: "play.rectangle")
         public static let playFilled = AppIcon(rawValue: "play.circle.fill")
         public static let waveform = AppIcon(rawValue: "waveform")
         public static let captions = AppIcon(rawValue: "captions.bubble")
     }
 
-    public enum PDF {
+    enum PDF {
         public static let fitPage = AppIcon(rawValue: "doc.viewfinder")
         public static let zoomIn = AppIcon(rawValue: "plus.magnifyingglass")
         public static let zoomOut = AppIcon(rawValue: "minus.magnifyingglass")
@@ -95,7 +95,7 @@ public extension AppIcon {
         public static let fitHeight = AppIcon(rawValue: "distribute.vertical")
     }
 
-    public enum Settings {
+    enum Settings {
         public static let profile = AppIcon(rawValue: "person.crop.circle")
         public static let profileFilled = AppIcon(rawValue: "person.crop.circle.fill")
         public static let profileAdd = AppIcon(rawValue: "person.crop.circle.badge.plus")
@@ -106,7 +106,7 @@ public extension AppIcon {
         public static let theme = AppIcon(rawValue: "paintpalette")
     }
 
-    public enum Skills {
+    enum Skills {
         public static let fallback = AppIcon(rawValue: "puzzlepiece.extension")
         public static let categoryFallback = AppIcon(rawValue: "tag.fill")
         public static let tools = AppIcon(rawValue: "hammer")

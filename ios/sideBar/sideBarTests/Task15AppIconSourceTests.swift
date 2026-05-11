@@ -7,13 +7,15 @@ final class Task15AppIconSourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("publicstructAppIcon:RawRepresentable,Hashable,Sendable"))
         XCTAssertTrue(normalized.contains("publicletrawValue:String"))
-        XCTAssertTrue(normalized.contains("publicenumAction"))
+        XCTAssertTrue(normalized.contains("publicextensionAppIcon{enumAction"))
         XCTAssertTrue(normalized.contains("publicstaticletadd=AppIcon(rawValue:\"plus\")"))
         XCTAssertTrue(normalized.contains("publicstaticletmore=AppIcon(rawValue:\"ellipsis\")"))
         XCTAssertTrue(normalized.contains("publicstaticletdelete=AppIcon(rawValue:\"trash\")"))
-        XCTAssertTrue(normalized.contains("publicenumDomain"))
+        XCTAssertTrue(normalized.contains("enumDomain"))
         XCTAssertTrue(normalized.contains("publicstaticletchat=AppIcon(rawValue:\"bubble\")"))
         XCTAssertTrue(normalized.contains("publicstaticlettasks=AppIcon(rawValue:\"checkmark.square\")"))
+        XCTAssertFalse(normalized.contains("publicenumAction"))
+        XCTAssertFalse(normalized.contains("publicenumDomain"))
     }
 
     func testAppSectionRoutesIconsThroughAppIcon() throws {
