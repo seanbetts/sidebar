@@ -1,11 +1,30 @@
 import SwiftUI
+import sideBarShared
 
 struct SidebarMenuItem: Identifiable {
     let id = UUID()
     let title: String
-    let systemImage: String?
+    let icon: AppIcon?
     let role: ButtonRole?
     let handler: () -> Void
+
+    var systemImage: String? { icon?.rawValue }
+
+    init(title: String, icon: AppIcon?, role: ButtonRole?, handler: @escaping () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.role = role
+        self.handler = handler
+    }
+
+    init(title: String, systemImage: String?, role: ButtonRole?, handler: @escaping () -> Void) {
+        self.init(
+            title: title,
+            icon: systemImage.map(AppIcon.init(rawValue:)),
+            role: role,
+            handler: handler
+        )
+    }
 }
 
 enum SidebarMenuItemTintPolicy: Equatable {
@@ -20,7 +39,7 @@ extension SidebarMenuItem {
     static func pin(isPinned: Bool, handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(
             title: isPinned ? "Unpin" : "Pin",
-            systemImage: isPinned ? "pin.slash" : "pin",
+            icon: isPinned ? AppIcon.Action.unpin : AppIcon.Action.pin,
             role: nil,
             handler: handler
         )
@@ -29,71 +48,71 @@ extension SidebarMenuItem {
     static func archive(isArchived: Bool, handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(
             title: isArchived ? "Unarchive" : "Archive",
-            systemImage: isArchived ? "archivebox.fill" : "archivebox",
+            icon: isArchived ? AppIcon.Action.unarchive : AppIcon.Action.archive,
             role: nil,
             handler: handler
         )
     }
 
     static func rename(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil, handler: handler)
+        SidebarMenuItem(title: "Rename", icon: AppIcon.Action.rename, role: nil, handler: handler)
     }
 
     static func move(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil, handler: handler)
+        SidebarMenuItem(title: "Move", icon: AppIcon.Action.move, role: nil, handler: handler)
     }
 
     static func reorder(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Reorder", systemImage: "line.3.horizontal", role: nil, handler: handler)
+        SidebarMenuItem(title: "Reorder", icon: AppIcon.Action.reorder, role: nil, handler: handler)
     }
 
     static func copy(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }
 
     static func copyTranscript(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy Transcript", systemImage: "doc.on.doc", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy Transcript", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }
 
     static func copyText(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy Text", systemImage: "doc.on.doc", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy Text", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }
 
     static func copyMarkdown(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy Markdown", systemImage: "doc.on.doc", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy Markdown", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }
 
     static func copyTitle(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy Title", icon: AppIcon.Action.copyTitle, role: nil, handler: handler)
     }
 
     static func copyURL(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil, handler: handler)
+        SidebarMenuItem(title: "Copy URL", icon: AppIcon.Action.copyURL, role: nil, handler: handler)
     }
 
     static func download(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil, handler: handler)
+        SidebarMenuItem(title: "Download", icon: AppIcon.Action.download, role: nil, handler: handler)
     }
 
     static func share(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Share URL", systemImage: "square.and.arrow.up.on.square", role: nil, handler: handler)
+        SidebarMenuItem(title: "Share URL", icon: AppIcon.Action.shareOnSquare, role: nil, handler: handler)
     }
 
     static func shareFile(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Share", systemImage: "square.and.arrow.up", role: nil, handler: handler)
+        SidebarMenuItem(title: "Share", icon: AppIcon.Action.share, role: nil, handler: handler)
     }
 
     static func shareText(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(
             title: "Share Text",
-            systemImage: "square.and.arrow.up.on.square",
+            icon: AppIcon.Action.shareOnSquare,
             role: nil,
             handler: handler
         )
     }
 
     static func delete(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive, handler: handler)
+        SidebarMenuItem(title: "Delete", icon: AppIcon.Action.delete, role: .destructive, handler: handler)
     }
 }
 

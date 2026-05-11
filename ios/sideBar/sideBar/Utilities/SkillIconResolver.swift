@@ -1,29 +1,30 @@
 import Foundation
+import sideBarShared
 
 /// Centralized skill icon resolver shared by Store, Settings, and Chat surfaces.
 enum SkillIconResolver {
-    private static let fallbackSystemName = "puzzlepiece.extension"
+    private static let fallbackIcon = AppIcon.Skills.fallback
 
-    private static let skillSymbols: [String: String] = [
-        "assistant-identity": "person.crop.circle.badge.checkmark",
-        "assistant-soul": "sparkles",
-        "audio-transcribe": "waveform",
-        "conversations": "bubble.left.and.bubble.right",
-        "files": "doc.on.doc",
-        "memory": "brain",
-        "notes": "note.text",
-        "product-feedback": "exclamationmark.bubble",
-        "prompt-preview": "eye",
-        "settings-other-preferences": "gearshape",
-        "settings-profile-user": "person.crop.circle",
-        "subdomain-discover": "globe",
-        "tasks": "checkmark.square",
-        "ui-theme": "paintpalette",
-        "web-crawler-policy": "shield",
-        "web-save": "square.and.arrow.down",
-        "web-search": "magnifyingglass",
-        "youtube-download": "play.rectangle",
-        "youtube-transcribe": "captions.bubble"
+    private static let skillIcons: [String: AppIcon] = [
+        "assistant-identity": AppIcon.Skills.assistantIdentity,
+        "assistant-soul": AppIcon.Skills.assistantSoul,
+        "audio-transcribe": AppIcon.Media.waveform,
+        "conversations": AppIcon.Skills.conversations,
+        "files": AppIcon.Skills.files,
+        "memory": AppIcon.Skills.memory,
+        "notes": AppIcon.Content.note,
+        "product-feedback": AppIcon.Skills.productFeedback,
+        "prompt-preview": AppIcon.Skills.promptPreview,
+        "settings-other-preferences": AppIcon.Skills.settingsOtherPreferences,
+        "settings-profile-user": AppIcon.Settings.profile,
+        "subdomain-discover": AppIcon.Content.websiteFallback,
+        "tasks": AppIcon.Domain.tasks,
+        "ui-theme": AppIcon.Settings.theme,
+        "web-crawler-policy": AppIcon.Skills.webCrawlerPolicy,
+        "web-save": AppIcon.Skills.webSave,
+        "web-search": AppIcon.Action.search,
+        "youtube-download": AppIcon.Skills.youtubeDownload,
+        "youtube-transcribe": AppIcon.Skills.youtubeTranscribe
     ]
 
     /// Backward-compatible fallback for older chat history where `skill_id` was not persisted.
@@ -127,13 +128,17 @@ enum SkillIconResolver {
     }
 
     static func iconName(skillId: String?, iconKey: String?) -> String {
-        if let iconKey, let icon = skillSymbols[normalized(iconKey)] {
+        return appIcon(skillId: skillId, iconKey: iconKey).rawValue
+    }
+
+    static func appIcon(skillId: String?, iconKey: String?) -> AppIcon {
+        if let iconKey, let icon = skillIcons[normalized(iconKey)] {
             return icon
         }
-        if let skillId, let icon = skillSymbols[normalized(skillId)] {
+        if let skillId, let icon = skillIcons[normalized(skillId)] {
             return icon
         }
-        return fallbackSystemName
+        return fallbackIcon
     }
 
     static func skillId(forToolDisplayName name: String) -> String? {

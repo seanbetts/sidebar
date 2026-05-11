@@ -1,9 +1,16 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+
+extension Image {
+    init(appIcon: AppIcon) {
+        self.init(systemName: appIcon.rawValue)
+    }
+}
 
 enum HeaderActionControlMetrics {
     private static let baseIconFrameWidth: CGFloat = 28
@@ -63,10 +70,18 @@ enum HeaderActionControlChromeStyle: Equatable {
 }
 
 struct HeaderActionIcon: View {
-    let systemName: String
+    let icon: AppIcon
+
+    init(icon: AppIcon) {
+        self.icon = icon
+    }
+
+    init(systemName: String) {
+        self.init(icon: AppIcon(rawValue: systemName))
+    }
 
     var body: some View {
-        Image(systemName: systemName)
+        Image(appIcon: icon)
             .appFont(.label)
             .frame(
                 width: HeaderActionControlMetrics.iconFrameWidth,
@@ -77,16 +92,46 @@ struct HeaderActionIcon: View {
 }
 
 struct HeaderActionButton: View {
-    let systemName: String
+    let icon: AppIcon
     let accessibilityLabel: String
     let action: () -> Void
     var isDisabled: Bool = false
     var chromeStyle: HeaderActionControlChromeStyle = .plain
     @State private var isHovered = false
 
+    init(
+        icon: AppIcon,
+        accessibilityLabel: String,
+        action: @escaping () -> Void,
+        isDisabled: Bool = false,
+        chromeStyle: HeaderActionControlChromeStyle = .plain
+    ) {
+        self.icon = icon
+        self.accessibilityLabel = accessibilityLabel
+        self.action = action
+        self.isDisabled = isDisabled
+        self.chromeStyle = chromeStyle
+    }
+
+    init(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void,
+        isDisabled: Bool = false,
+        chromeStyle: HeaderActionControlChromeStyle = .plain
+    ) {
+        self.init(
+            icon: AppIcon(rawValue: systemName),
+            accessibilityLabel: accessibilityLabel,
+            action: action,
+            isDisabled: isDisabled,
+            chromeStyle: chromeStyle
+        )
+    }
+
     var body: some View {
         Button(action: action) {
-            HeaderActionIcon(systemName: systemName)
+            HeaderActionIcon(icon: icon)
         }
         .buttonStyle(.plain)
         .headerActionControlChrome(chromeStyle, isHovered: isHovered)
@@ -97,11 +142,23 @@ struct HeaderActionButton: View {
 }
 
 struct HeaderActionMenuControl<MenuContent: View>: View {
-    let systemName: String
+    let icon: AppIcon
     let accessibilityLabel: String
     var chromeStyle: HeaderActionControlChromeStyle = .plain
     let menuContent: MenuContent
     @State private var isHovered = false
+
+    init(
+        icon: AppIcon,
+        accessibilityLabel: String,
+        chromeStyle: HeaderActionControlChromeStyle = .plain,
+        @ViewBuilder menuContent: () -> MenuContent
+    ) {
+        self.icon = icon
+        self.accessibilityLabel = accessibilityLabel
+        self.chromeStyle = chromeStyle
+        self.menuContent = menuContent()
+    }
 
     init(
         systemName: String,
@@ -109,17 +166,19 @@ struct HeaderActionMenuControl<MenuContent: View>: View {
         chromeStyle: HeaderActionControlChromeStyle = .plain,
         @ViewBuilder menuContent: () -> MenuContent
     ) {
-        self.systemName = systemName
-        self.accessibilityLabel = accessibilityLabel
-        self.chromeStyle = chromeStyle
-        self.menuContent = menuContent()
+        self.init(
+            icon: AppIcon(rawValue: systemName),
+            accessibilityLabel: accessibilityLabel,
+            chromeStyle: chromeStyle,
+            menuContent: menuContent
+        )
     }
 
     var body: some View {
         Menu {
             menuContent
         } label: {
-            HeaderActionIcon(systemName: systemName)
+            HeaderActionIcon(icon: icon)
                 .headerActionControlChrome(chromeStyle, isHovered: isHovered)
         }
         .buttonStyle(.plain)
@@ -202,18 +261,50 @@ enum HeaderActionControlChromeBridge {
 
 #if os(iOS)
 struct HeaderActionMenuButton: View {
-    let systemImage: String
+    let icon: AppIcon
     let accessibilityLabel: String
     let items: [SidebarMenuItem]
     let isCompact: Bool
     var chromeStyle: HeaderActionControlChromeStyle = .plain
+
+    var systemImage: String { icon.rawValue }
+
+    init(
+        icon: AppIcon,
+        accessibilityLabel: String,
+        items: [SidebarMenuItem],
+        isCompact: Bool,
+        chromeStyle: HeaderActionControlChromeStyle = .plain
+    ) {
+        self.icon = icon
+        self.accessibilityLabel = accessibilityLabel
+        self.items = items
+        self.isCompact = isCompact
+        self.chromeStyle = chromeStyle
+    }
+
+    init(
+        systemImage: String,
+        accessibilityLabel: String,
+        items: [SidebarMenuItem],
+        isCompact: Bool,
+        chromeStyle: HeaderActionControlChromeStyle = .plain
+    ) {
+        self.init(
+            icon: AppIcon(rawValue: systemImage),
+            accessibilityLabel: accessibilityLabel,
+            items: items,
+            isCompact: isCompact,
+            chromeStyle: chromeStyle
+        )
+    }
 
     var body: some View {
         let menuSignature = items
             .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
             .joined(separator: ";")
         HeaderActionMenuControl(
-            systemName: systemImage,
+            icon: icon,
             accessibilityLabel: accessibilityLabel,
             chromeStyle: chromeStyle
         ) {

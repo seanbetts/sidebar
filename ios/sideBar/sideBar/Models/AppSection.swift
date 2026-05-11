@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case chat
@@ -19,24 +20,26 @@ public enum AppSection: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    public var iconName: String {
+    public var appIcon: AppIcon {
         switch self {
         case .chat:
-            return "bubble"
+            return AppIcon.Domain.chat
         case .notes:
-            return "text.document"
+            return AppIcon.Domain.notes
         case .files:
-            return "folder"
+            return AppIcon.Domain.files
         case .websites:
-            return "globe"
+            return AppIcon.Domain.websites
         case .skillsStore:
-            return "command.circle"
+            return AppIcon.Domain.skillsStore
         case .settings:
-            return "square.grid.2x2"
+            return AppIcon.Domain.settings
         case .tasks:
-            return "checkmark.square"
+            return AppIcon.Domain.tasks
         }
     }
+
+    public var iconName: String { appIcon.rawValue }
 
     public static let primaryNavigationSections: [AppSection] = [
         .chat,
