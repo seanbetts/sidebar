@@ -107,15 +107,9 @@ struct SideBarApp: App {
         if let seededSession = UITestAuthBootstrap.makeSeededSession(from: processEnvironment) {
             authSession = seededSession
         } else {
-            let stateStore: AuthStateStore = useInMemoryAuthStore
-                ? InMemoryAuthStateStore()
-                : KeychainAuthStateStore(
-                    service: AppGroupConfiguration.keychainService,
-                    accessGroup: AppGroupConfiguration.keychainAccessGroup
-                )
-            authSession = SupabaseAuthAdapter(
+            authSession = DefaultAuthSessionFactory().makeAuthSession(
                 config: config,
-                stateStore: stateStore,
+                useInMemoryStateStore: useInMemoryAuthStore,
                 startAuthStateTask: !isTestMode
             )
         }

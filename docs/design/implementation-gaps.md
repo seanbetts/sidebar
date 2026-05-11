@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved stale Task 15 gaps were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 25 gaps.
+**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 24 gaps.
 
 ---
 
@@ -23,7 +23,6 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| Auth adapter still leaks as concrete Supabase implementation in app construction - product-facing protocol extensions exist, but the app still directly instantiates and depends on `SupabaseAuthAdapter`; finish isolating product code behind product-shaped auth interfaces | `SupabaseAuthAdapter.swift`, app composition | [authentication](./patterns/authentication) |
 | Shared local-first offline engine remains incomplete across chats, notes, tasks, websites, and files - `OfflineStore`, `WriteQueue`, and local-first helpers exist, but cache, optimistic writes, queueing, ID remapping, and availability rules are still not one shared contract across all surfaces | `Stores/`, `ViewModels/`, `Services/Offline/` | [offline-and-sync](./patterns/offline-and-sync), [wait-ux](./patterns/wait-ux) |
 | Phase 1.5 onboarding permission cards are only partially implemented - location and notification onboarding steps/requesters exist, but the shared `OnboardingPermissionCard` component and complete onboarding-phase recovery surface are still missing | `Views/Onboarding/`, `ChatView.swift` | [onboarding](./patterns/onboarding) |
 | Phase 2 AI-guided feature tour is partially implemented - `FeatureIntroCard`, `StaticFeatureCarousel`, onboarding-aware backend context, SSE events, and `onboarding-coach` exist, but a complete `FeatureTourManager`-owned tour flow is still missing | `Views/Onboarding/`, `backend/api/services/agent/` | [onboarding](./patterns/onboarding) |
