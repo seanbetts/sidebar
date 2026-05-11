@@ -10,7 +10,6 @@
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
 	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import EditorToolbar from '$lib/components/editor/EditorToolbar.svelte';
-	import { MARKETING_COPY } from '$lib/constants/marketingCopy';
 	import { createMarkdownEditor } from '$lib/components/editor/useMarkdownEditor';
 	import { useEditorActions } from '$lib/hooks/useEditorActions';
 	import { useLeaveGuard } from '$lib/hooks/useLeaveGuard';
@@ -374,8 +373,6 @@
 				/>
 			</div>
 			<h2>Welcome to sideBar</h2>
-			<p>{MARKETING_COPY.tagline}</p>
-			<p>{MARKETING_COPY.subtitle}</p>
 		</div>
 	{/if}
 </div>
@@ -423,10 +420,6 @@
 		margin-bottom: 0.5rem;
 		font-size: 1.25rem;
 		font-weight: 600;
-	}
-
-	.empty-state p {
-		font-size: 0.95rem;
 	}
 
 	/* ========================================================================

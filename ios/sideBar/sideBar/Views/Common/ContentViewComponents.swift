@@ -136,9 +136,6 @@ public struct WelcomeEmptyView: View {
             LoadingIndicatorView(size: 96, variant: .hero)
             Text("Welcome to sideBar")
                 .appFont(.titleMd)
-            Text("Select a note, website, or file to get started.")
-                .appFont(.subheading)
-                .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
