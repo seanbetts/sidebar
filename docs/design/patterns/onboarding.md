@@ -182,14 +182,11 @@ Tapping a tile starts a focused feature kickoff in a fresh chat. The goal is to 
 
 | Feature | Card content |
 |---|---|
-| Chat | Home base for asking questions, taking actions, web search, and skills |
-| Notes + Scratchpad | Capture and organise; Scratchpad always one tap away |
+| Notes | Capture ideas, keep scratch work close, and organise them later |
 | Tasks | Projects, due dates, recurring tasks; AI creates tasks from conversation |
 | Websites | Save articles and links; AI can summarize and answer questions |
 | Files | Upload PDFs, documents, images; AI can search and reference after processing |
 | Skills Store | Extend capabilities; skills included with your subscription, more available as you upgrade |
-| Memory | AI learns the user over time; user always in control |
-| Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
 
 Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and completes onboarding for that user. `first_outcome_completed` remains available as a separate milestone for measuring or responding to a real outcome during or after the tour, but it does not dismiss the discovery surface on its own.
 
@@ -205,7 +202,7 @@ Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and 
 
 If the AI fails during feature discovery (bad key, rate limit, network failure):
 
-- Show a `StaticFeatureCarousel`: a horizontally-scrollable set of `FeatureIntroCard` views covering the same 8 features
+- Show a `StaticFeatureCarousel`: a horizontally-scrollable set of `FeatureIntroCard` views covering the signed-off feature set
 - Shown once, dismissable
 - User can retry AI setup from Settings
 

@@ -13,7 +13,7 @@ Single working list of every known divergence between the design system and the 
 
 **Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
 
-**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction, write-queue background scheduling, archive-cache policy, file derivative offline availability, deprecated ingestion-center cleanup, onboarding permission recovery card consolidation, and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 19 gaps.
+**Last audit**: Reviewed against the codebase on 2026-05-11. Resolved Task 15 auth construction, write-queue background scheduling, archive-cache policy, file derivative offline availability, deprecated ingestion-center cleanup, onboarding permission recovery card consolidation, signed-off feature discovery scope, and stale rows were removed; partially addressed gaps remain narrowed to the remaining divergence. Remaining count: 18 gaps.
 
 ---
 
@@ -24,7 +24,6 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | Shared local-first offline status and mutation-channel contract remains incomplete across chats, notes, tasks, websites, and files - `OfflineCapabilityPolicy`, `SyncCoordinator`, `WriteQueue`, `LocalFirstRepository`, and archive-cache policy helpers now define shared read/write/cache rules, but `WriteQueue`, `PendingShareStore`, and background upload paths still expose separate status, retry, and recovery surfaces | `Services/Offline/`, `AppEnvironment+PendingShares.swift`, `IngestionUploadManager.swift`, stores/view models | [offline-and-sync](./patterns/offline-and-sync), [wait-ux](./patterns/wait-ux) |
-| Phase 2 AI-guided feature tour is partially implemented - `FeatureIntroCard`, `StaticFeatureCarousel`, onboarding-aware backend context, SSE events, and `onboarding-coach` exist, but a complete `FeatureTourManager`-owned tour flow is still missing | `Views/Onboarding/`, `backend/api/services/agent/` | [onboarding](./patterns/onboarding) |
 
 ### Medium priority
 
