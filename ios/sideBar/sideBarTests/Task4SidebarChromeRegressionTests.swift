@@ -10,14 +10,14 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("NSCursor.pop()"))
     }
 
-    func testMacInputSurfaceUsesWhiteLightModeFill() throws {
+    func testInputSurfaceUsesCanonicalLightModeFill() throws {
         let normalized = try source(
             at: ["sideBar", "Views", "Common", "Color+Platform.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(
             normalized.contains(
-                "staticletinput=makeDynamicNSColor(name:\"macosInput\",light:NSColor(srgbRed:1,green:1,blue:1,alpha:1)"
+                "staticletinput=AppDynamicColor(name:\"appInput\",light:.hexE5E5E5,dark:.white.opacity(0.15))"
             )
         )
     }

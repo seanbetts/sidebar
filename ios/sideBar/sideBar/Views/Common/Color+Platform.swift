@@ -1,84 +1,108 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 
-#if os(macOS)
-private enum MacOSPalette {
-    static let background = makeDynamicNSColor(
-        name: "macosBackground",
-        light: NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
-        dark: NSColor(srgbRed: 0.039, green: 0.039, blue: 0.039, alpha: 1)
-    )
-    static let card = makeDynamicNSColor(
-        name: "macosCard",
-        light: NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
-        dark: NSColor(srgbRed: 0.090, green: 0.090, blue: 0.090, alpha: 1)
-    )
-    static let muted = makeDynamicNSColor(
-        name: "macosMuted",
-        light: NSColor(srgbRed: 0.961, green: 0.961, blue: 0.961, alpha: 1),
-        dark: NSColor(srgbRed: 0.149, green: 0.149, blue: 0.149, alpha: 1)
-    )
-    static let sidebar = makeDynamicNSColor(
-        name: "macosSidebar",
-        light: NSColor(srgbRed: 0.980, green: 0.980, blue: 0.980, alpha: 1),
-        dark: NSColor(srgbRed: 0.090, green: 0.090, blue: 0.090, alpha: 1)
-    )
-    static let sidebarAccent = makeDynamicNSColor(
-        name: "macosSidebarAccent",
-        light: NSColor(srgbRed: 0.961, green: 0.961, blue: 0.961, alpha: 1),
-        dark: NSColor(srgbRed: 0.149, green: 0.149, blue: 0.149, alpha: 1)
-    )
-    static let border = makeDynamicNSColor(
-        name: "macosBorder",
-        light: NSColor(srgbRed: 0.898, green: 0.898, blue: 0.898, alpha: 1),
-        dark: NSColor(white: 1, alpha: 0.1)
-    )
-    static let input = makeDynamicNSColor(
-        name: "macosInput",
-        light: NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
-        dark: NSColor(white: 1, alpha: 0.15)
-    )
+private struct AppRGBA {
+    let red: Double
+    let green: Double
+    let blue: Double
+    let alpha: Double
+
+    init(_ red: Double, _ green: Double, _ blue: Double, alpha: Double = 1) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+
+    func opacity(_ alpha: Double) -> AppRGBA {
+        AppRGBA(red, green, blue, alpha: alpha)
+    }
+
+    static let white = AppRGBA(1, 1, 1)
+    static let hex0A0A0A = AppRGBA(0.039, 0.039, 0.039)
+    static let hex171717 = AppRGBA(0.090, 0.090, 0.090)
+    static let hex262626 = AppRGBA(0.149, 0.149, 0.149)
+    static let hexFAFAFA = AppRGBA(0.980, 0.980, 0.980)
+    static let hexF5F5F5 = AppRGBA(0.961, 0.961, 0.961)
+    static let hexE5E5E5 = AppRGBA(0.898, 0.898, 0.898)
 }
 
-private func makeDynamicNSColor(name: String, light: NSColor, dark: NSColor) -> NSColor {
-    NSColor(name: NSColor.Name(name)) { appearance in
-        let match = appearance.bestMatch(from: [.darkAqua, .aqua])
-        return match == .darkAqua ? dark : light
+private struct AppDynamicColor {
+    let name: String
+    let light: AppRGBA
+    let dark: AppRGBA
+
+    var color: Color {
+        #if os(macOS)
+        return Color(nsColor: nsColor)
+        #else
+        return Color(uiColor: uiColor)
+        #endif
+    }
+}
+
+private enum AppPalette {
+    static let background = AppDynamicColor(name: "appBackground", light: .white, dark: .hex0A0A0A)
+    static let surface = AppDynamicColor(name: "appSurface", light: .white, dark: .hex171717)
+    static let muted = AppDynamicColor(name: "appMuted", light: .hexF5F5F5, dark: .hex262626)
+    static let sidebar = AppDynamicColor(name: "appSidebar", light: .hexFAFAFA, dark: .hex171717)
+    static let sidebarAccent = AppDynamicColor(name: "appSidebarAccent", light: .hexF5F5F5, dark: .hex262626)
+    static let border = AppDynamicColor(name: "appBorder", light: .hexE5E5E5, dark: .white.opacity(0.10))
+    static let input = AppDynamicColor(name: "appInput", light: .hexE5E5E5, dark: .white.opacity(0.15))
+}
+
+#if os(macOS)
+private extension AppRGBA {
+    var nsColor: NSColor {
+        NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
+private extension AppDynamicColor {
+    var nsColor: NSColor {
+        NSColor(name: NSColor.Name(name)) { appearance in
+            let match = appearance.bestMatch(from: [.darkAqua, .aqua])
+            return match == .darkAqua ? dark.nsColor : light.nsColor
+        }
     }
 }
 
 extension NSColor {
     static var appBackground: NSColor {
-        MacOSPalette.background
+        AppPalette.background.nsColor
+    }
+}
+#else
+private extension AppRGBA {
+    var uiColor: UIColor {
+        UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
+private extension AppDynamicColor {
+    var uiColor: UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark.uiColor : light.uiColor
+        }
     }
 }
 #endif
 
 extension Color {
     static var platformSystemBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.background)
-        #else
-        return Color(uiColor: .systemBackground)
-        #endif
+        AppPalette.background.color
     }
 
     static var platformSecondarySystemBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.muted)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        AppPalette.muted.color
     }
 
     static var platformSeparator: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.border)
-        #else
-        return Color(uiColor: .separator)
-        #endif
+        AppPalette.border.color
     }
 
     static var platformTertiaryLabel: Color {
@@ -90,75 +114,39 @@ extension Color {
     }
 
     static var platformSystemGray6: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.muted)
-        #else
-        return Color(uiColor: .systemGray6)
-        #endif
+        AppPalette.muted.color
     }
 
     static var platformUnderPageBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.sidebar)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        AppPalette.sidebar.color
     }
 
     static var appBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.background)
-        #else
-        return Color(uiColor: .systemBackground)
-        #endif
+        AppPalette.background.color
     }
 
     static var appSurface: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.card)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        AppPalette.surface.color
     }
 
     static var appMuted: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.muted)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        AppPalette.muted.color
     }
 
     static var appSidebar: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.sidebar)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        AppPalette.sidebar.color
     }
 
     static var appSidebarAccent: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.sidebarAccent)
-        #else
-        return Color(uiColor: .systemBackground)
-        #endif
+        AppPalette.sidebarAccent.color
     }
 
     static var appBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.border)
-        #else
-        return Color(uiColor: .separator)
-        #endif
+        AppPalette.border.color
     }
 
     static var appInput: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.input)
-        #else
-        return Color(uiColor: .systemBackground)
-        #endif
+        AppPalette.input.color
     }
 
     static var appSelection: Color {
@@ -166,22 +154,12 @@ extension Color {
     }
 
     /// Outer chrome/wrapper background for settings panels.
-    /// Uses the grouped surface hierarchy so it naturally contrasts with form content.
     static var appSettingsBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.background)
-        #else
-        return Color(uiColor: .systemGroupedBackground)
-        #endif
+        AppPalette.background.color
     }
 
     /// Inner form/list background for settings panels.
-    /// Sits on top of appSettingsBackground to create the layered grouped-form look.
     static var appSettingsFormBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: MacOSPalette.card)
-        #else
-        return Color(uiColor: .secondarySystemGroupedBackground)
-        #endif
+        AppPalette.surface.color
     }
 }
