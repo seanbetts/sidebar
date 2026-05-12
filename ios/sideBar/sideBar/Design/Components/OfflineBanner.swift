@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct OfflineBanner: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -55,10 +56,14 @@ struct OfflineBanner: View {
     }
 
     private var statusIcon: some View {
+        Image(appIcon: statusAppIcon)
+    }
+
+    private var statusAppIcon: AppIcon {
         if environment.isOffline {
-            return Image(systemName: "wifi.slash")
+            return AppIcon.State.offline
         }
-        return Image(systemName: "wifi.exclamationmark")
+        return AppIcon.State.networkWarning
     }
 
     private var statusAlertTitle: String {

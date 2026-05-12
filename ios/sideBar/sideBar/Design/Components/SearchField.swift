@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum SearchFieldChrome {
     case standard
@@ -14,7 +15,7 @@ struct SearchField: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: "magnifyingglass")
+            Image(appIcon: AppIcon.Action.search)
                 .font(.system(size: iconPointSize))
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             if let isFocused {
@@ -33,7 +34,7 @@ struct SearchField: View {
                 Button {
                     text = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .font(.system(size: iconPointSize))
                         .foregroundStyle(DesignTokens.Colors.textTertiary)
                 }

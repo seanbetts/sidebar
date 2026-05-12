@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum StatusPillTone: String, CaseIterable {
     case neutral
@@ -35,16 +36,16 @@ enum StatusPillTone: String, CaseIterable {
         }
     }
 
-    var iconName: String? {
+    var icon: AppIcon? {
         switch self {
         case .neutral:
-            return "info.circle.fill"
+            return AppIcon.State.infoFilled
         case .success:
-            return "checkmark.circle.fill"
+            return AppIcon.State.successFilled
         case .warning:
-            return "exclamationmark.triangle.fill"
+            return AppIcon.State.warningFilled
         case .error:
-            return "exclamationmark.triangle.fill"
+            return AppIcon.State.warningFilled
         case .loading:
             return nil
         }
@@ -161,8 +162,8 @@ struct StatusPill: View {
             ProgressView()
                 .controlSize(style.progressControlSize)
                 .tint(DesignTokens.Colors.textSecondary)
-        } else if let iconName = tone.iconName {
-            Image(systemName: iconName)
+        } else if let icon = tone.icon {
+            Image(appIcon: icon)
                 .appFont(style.symbolFontStyle)
                 .foregroundStyle(tone.foregroundColor)
         }

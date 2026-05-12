@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, and menu action slice completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, and shared empty/search/status component slices completed after the initial catalog work.
 
 Categories:
 
@@ -59,6 +59,7 @@ Categories:
 | `checkmark` | Success/check | Canonical | `AppIcon.State.success` | Inline selected checks |
 | `checkmark.circle` | Success circle or new task | Canonical | `AppIcon.State.successCircle` | Use for task creation and circular success state |
 | `checkmark.circle.fill` | Filled success | Canonical | `AppIcon.State.successFilled` | Filled success indicators |
+| `info.circle.fill` | Filled info | Canonical | `AppIcon.State.infoFilled` | Neutral status pill indicator |
 | `circle` | Empty circle | Canonical | `AppIcon.State.emptyCircle` | Task checkbox empty state |
 | `circle.fill` | Filled circle | Canonical | `AppIcon.State.selectedCircle` | Page dots and selected state |
 | `exclamationmark.triangle` | Warning | Canonical | `AppIcon.State.warning` | Non-filled warning |
@@ -117,6 +118,17 @@ Categories:
 | Archive section row | `archivebox`, `chevron.down`, `chevron.right` | `AppIcon.Action.archive`, `AppIcon.Navigation.chevronDown`, `AppIcon.Navigation.chevronRight` |
 | Workspace expand/collapse | `arrow.up.right.and.arrow.down.left`, `arrow.down.left.and.arrow.up.right` | `AppIcon.Navigation.expandWorkspace`, `AppIcon.Navigation.collapseWorkspace` |
 
+## Shared Empty, Search, And Status Component Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Empty-state content defaults | `magnifyingglass`, `checkmark.circle` | `EmptyStateContent.icon` using `AppIcon.Action.search` and `AppIcon.State.successCircle` |
+| Empty-state view rendering | Dynamic `systemImage` boundary | `EmptyStateView.icon` with a string bridge for remaining feature-level call sites |
+| Search field | `magnifyingglass`, `xmark.circle.fill` | `AppIcon.Action.search`, `AppIcon.Action.clearFilled` |
+| Offline banner | `wifi.slash`, `wifi.exclamationmark` | `AppIcon.State.offline`, `AppIcon.State.networkWarning` |
+| Status pill | `info.circle.fill`, `checkmark.circle.fill`, `exclamationmark.triangle.fill` | `AppIcon.State.infoFilled`, `AppIcon.State.successFilled`, `AppIcon.State.warningFilled` |
+| Success badge | `checkmark` | `AppIcon.State.success` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -125,6 +137,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- empty-state and status components not touched by this slice
+- feature-level empty-state and status call sites that still pass raw strings into shared bridges
 - non-menu feature view icons and dynamic/external symbol payloads
 - the production-wide strict source guard

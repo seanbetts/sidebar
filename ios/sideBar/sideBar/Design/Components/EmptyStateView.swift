@@ -1,20 +1,29 @@
 import SwiftUI
+import sideBarShared
 
 struct EmptyStateView: View {
     let title: String
     let subtitle: String?
-    let systemImage: String?
+    let icon: AppIcon?
 
-    init(title: String, subtitle: String? = nil, systemImage: String? = nil) {
+    var systemImage: String? {
+        icon?.rawValue
+    }
+
+    init(title: String, subtitle: String? = nil, icon: AppIcon? = nil) {
         self.title = title
         self.subtitle = subtitle
-        self.systemImage = systemImage
+        self.icon = icon
+    }
+
+    init(title: String, subtitle: String? = nil, systemImage: String?) {
+        self.init(title: title, subtitle: subtitle, icon: systemImage.map(AppIcon.init(rawValue:)))
     }
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
-            if let systemImage {
-                Image(systemName: systemImage)
+            if let icon {
+                Image(appIcon: icon)
                     .appScaledFont(size: DesignTokens.Icon.lg, weight: .medium)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .frame(width: DesignTokens.Icon.xxl, height: DesignTokens.Icon.xxl)

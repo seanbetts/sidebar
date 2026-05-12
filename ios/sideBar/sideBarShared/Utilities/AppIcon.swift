@@ -59,6 +59,7 @@ public extension AppIcon {
     }
 
     enum State {
+        public static let infoFilled = AppIcon(rawValue: "info.circle.fill")
         public static let success = AppIcon(rawValue: "checkmark")
         public static let successCircle = AppIcon(rawValue: "checkmark.circle")
         public static let successFilled = AppIcon(rawValue: "checkmark.circle.fill")

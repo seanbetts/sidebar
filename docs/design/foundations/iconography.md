@@ -223,6 +223,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 
 | Concept | `AppIcon` | SF Symbol |
 |---|---|---|
+| Info filled | `State.infoFilled` | `info.circle.fill` |
 | Success | `State.success` | `checkmark` |
 | Success in circle | `State.successCircle` | `checkmark.circle` |
 | Success filled | `State.successFilled` | `checkmark.circle.fill` |
@@ -374,6 +375,23 @@ Context menu and swipe action icons are centralized in `SidebarMenuItem`. Factor
 | Delete | `Action.delete` |
 
 **Rule**: Use `SidebarMenuItem` factory methods for context menu and swipe actions. Do not assign icon names inline in views.
+
+---
+
+## Shared status and empty-state icons
+
+Shared empty, search, and status components accept or choose `AppIcon` values directly:
+
+| Component | Icon owner |
+|---|---|
+| `EmptyStateContent` | Shared empty-state defaults such as search and completed tasks |
+| `EmptyStateView` | Rendering of an `AppIcon`, with a temporary string bridge for remaining feature-level migrations |
+| `SearchField` | Search and clear controls |
+| `OfflineBanner` | Offline and degraded-network state |
+| `StatusPill` | Neutral, success, warning, and error indicators |
+| `SuccessCheckBadge` | Success check mark |
+
+**Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level call sites that still pass symbol strings into bridge initializers remain tracked under `RES-MP-13`.
 
 ---
 

@@ -1,16 +1,18 @@
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 final class EmptyStateViewTests: XCTestCase {
     func testInitializerStoresIconAndCopy() {
         let view = EmptyStateView(
             title: "No conversations",
             subtitle: "Start a new chat to begin.",
-            systemImage: "bubble.left.and.bubble.right"
+            icon: AppIcon.Skills.conversations
         )
 
         XCTAssertEqual(view.title, "No conversations")
         XCTAssertEqual(view.subtitle, "Start a new chat to begin.")
+        XCTAssertEqual(view.icon, AppIcon.Skills.conversations)
         XCTAssertEqual(view.systemImage, "bubble.left.and.bubble.right")
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct SuccessCheckBadge: View {
     let size: CGFloat
@@ -10,7 +11,7 @@ struct SuccessCheckBadge: View {
         ZStack {
             Circle()
                 .fill(backgroundColor)
-            Image(systemName: "checkmark")
+            Image(appIcon: AppIcon.State.success)
                 .appScaledFont(size: symbolSize, weight: .bold)
                 .foregroundStyle(foregroundColor)
         }
