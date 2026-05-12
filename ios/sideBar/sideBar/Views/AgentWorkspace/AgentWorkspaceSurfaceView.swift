@@ -71,14 +71,14 @@ struct AgentWorkspaceSurfaceView: View {
                     surfaceActionsMenu
                     if surface.capabilities.canRefresh {
                         HeaderActionButton(
-                            systemName: "arrow.clockwise",
+                            icon: AppIcon.Action.refresh,
                             accessibilityLabel: "Refresh surface",
                             action: refreshSurface
                         )
                     }
                     if surface.capabilities.canClose {
                         HeaderActionButton(
-                            systemName: "xmark",
+                            icon: AppIcon.Action.close,
                             accessibilityLabel: "Close surface",
                             action: closeSurface
                         )
@@ -106,24 +106,10 @@ struct AgentWorkspaceSurfaceView: View {
         }
 
         if surface.capabilities.canRefresh {
-            items.append(
-                SidebarMenuItem(
-                    title: "Refresh",
-                    systemImage: "arrow.clockwise",
-                    role: nil,
-                    handler: refreshSurface
-                )
-            )
+            items.append(.refresh(handler: refreshSurface))
         }
         if surface.capabilities.canClose {
-            items.append(
-                SidebarMenuItem(
-                    title: "Close",
-                    systemImage: "xmark",
-                    role: nil,
-                    handler: closeSurface
-                )
-            )
+            items.append(.close(handler: closeSurface))
         }
 
         return items

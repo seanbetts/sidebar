@@ -224,7 +224,7 @@ extension FilesPanelView {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(
-                            systemName: "play.rectangle",
+                            icon: AppIcon.Media.video,
                             accessibilityLabel: "Add YouTube video",
                             action: {
                             newYouTubeUrl = ""
@@ -233,7 +233,7 @@ extension FilesPanelView {
                             chromeStyle: Self.actionControlChromeStyle
                         )
                         HeaderActionButton(
-                            systemName: "plus",
+                            icon: AppIcon.Action.add,
                             accessibilityLabel: "Add file",
                             action: {
                             isFileImporterPresented = true

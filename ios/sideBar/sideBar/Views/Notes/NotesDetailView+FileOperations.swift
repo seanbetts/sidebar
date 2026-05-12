@@ -19,22 +19,6 @@ extension NotesDetailView {
         activeNode?.archived == true
     }
 
-    var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
-    }
-
-    var archiveMenuTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    var archiveIconName: String {
-        isArchived ? "archivebox.fill" : "archivebox"
-    }
-
     var currentFolderPath: String {
         guard let path = activeNode?.path else { return "" }
         guard let lastSlash = path.lastIndex(of: "/") else { return "" }

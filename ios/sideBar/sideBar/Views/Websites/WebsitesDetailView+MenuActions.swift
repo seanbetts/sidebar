@@ -1,10 +1,11 @@
 import SwiftUI
+import sideBarShared
 
 extension WebsitesDetailView {
     var websiteActionsMenu: some View {
         #if os(macOS)
         HeaderActionMenuControl(
-            systemName: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Website options",
             chromeStyle: Self.actionControlChromeStyle
         ) {
@@ -14,7 +15,7 @@ extension WebsitesDetailView {
         .disabled(viewModel.active == nil)
         #else
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Website options",
             items: websiteHeaderMenuItems,
             isCompact: isCompact,
@@ -28,7 +29,7 @@ extension WebsitesDetailView {
     #if os(iOS)
     var websiteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Website options",
             items: websiteHeaderMenuItems,
             isCompact: isCompact,

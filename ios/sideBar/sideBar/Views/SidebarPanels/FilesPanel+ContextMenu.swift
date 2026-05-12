@@ -29,7 +29,7 @@ extension FilesPanelView {
                     self.appEnvironment.emitShortcutAction(.openInDefaultApp)
                 }
             },
-            SidebarMenuItem(title: "Share", systemImage: "square.and.arrow.up", role: nil) {
+            .shareFile {
                 Task { await shareFile(item) }
             },
             .delete {

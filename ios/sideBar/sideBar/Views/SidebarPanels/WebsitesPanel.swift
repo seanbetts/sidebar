@@ -243,7 +243,7 @@ extension WebsitesPanelView {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(
-                            systemName: "plus",
+                            icon: AppIcon.Action.add,
                             accessibilityLabel: "Add website",
                             action: {
                             newWebsiteUrl = ""
@@ -393,13 +393,13 @@ extension WebsitesPanelView {
                             },
                             content: {
                             HStack(spacing: DesignTokens.Spacing.xs) {
-                                Label("Archive", systemImage: "archivebox")
+                                Label("Archive", systemImage: AppIcon.Action.archive.rawValue)
                                     .appFont(SidebarTypography.primary)
                                 Spacer()
                                 if isArchiveLoading && !archivedItems.isEmpty {
                                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                                 }
-                                Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                                Image(appIcon: isArchiveExpanded ? AppIcon.Navigation.chevronDown : AppIcon.Navigation.chevronRight)
                                     .appFont(SidebarTypography.secondary)
                                     .foregroundStyle(.secondary)
                             }

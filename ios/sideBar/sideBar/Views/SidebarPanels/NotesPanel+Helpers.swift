@@ -47,7 +47,7 @@ extension NotesPanelView {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(
-                            systemName: "folder",
+                            icon: AppIcon.Content.folder,
                             accessibilityLabel: "Add folder",
                             action: {
                             newFolderName = ""
@@ -57,7 +57,7 @@ extension NotesPanelView {
                             chromeStyle: Self.actionControlChromeStyle
                         )
                         HeaderActionButton(
-                            systemName: "plus",
+                            icon: AppIcon.Action.add,
                             accessibilityLabel: "Add note",
                             action: {
                             createBlankNote()

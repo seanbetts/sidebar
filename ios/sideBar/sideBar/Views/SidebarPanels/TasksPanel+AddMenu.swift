@@ -1,11 +1,12 @@
 import SwiftUI
+import sideBarShared
 
 extension TasksPanelView {
     @ViewBuilder
     var addMenuButton: some View {
         #if os(macOS)
         HeaderActionMenuControl(
-            systemName: "plus",
+            icon: AppIcon.Action.add,
             accessibilityLabel: "Add",
             chromeStyle: Self.actionControlChromeStyle
         ) {
@@ -13,7 +14,7 @@ extension TasksPanelView {
         }
         #else
         HeaderActionMenuButton(
-            systemImage: "plus",
+            icon: AppIcon.Action.add,
             accessibilityLabel: "Add",
             items: addSidebarMenuItems,
             isCompact: isCompact,
@@ -24,32 +25,18 @@ extension TasksPanelView {
 
     @ViewBuilder
     var addMenuItems: some View {
-        Button {
-            handleNewTaskTap()
-        } label: {
-            Label("New task", systemImage: "checkmark.circle")
-        }
-        Button {
-            showNewGroupAlert = true
-        } label: {
-            Label("New group", systemImage: "folder")
-        }
-        Button {
-            showNewProjectAlert = true
-        } label: {
-            Label("New project", systemImage: "list.bullet.rectangle")
-        }
+        sidebarMenuItemsView(addSidebarMenuItems)
     }
 
     var addSidebarMenuItems: [SidebarMenuItem] {
         [
-            SidebarMenuItem(title: "New task", systemImage: "checkmark.circle", role: nil) {
+            .newTask {
                 handleNewTaskTap()
             },
-            SidebarMenuItem(title: "New group", systemImage: "folder", role: nil) {
+            .newGroup {
                 showNewGroupAlert = true
             },
-            SidebarMenuItem(title: "New project", systemImage: "list.bullet.rectangle", role: nil) {
+            .newProject {
                 showNewProjectAlert = true
             }
         ]

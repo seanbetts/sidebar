@@ -138,6 +138,8 @@ HeaderActionButton(
 
 `AppIcon` should be a curated vocabulary, not a one-to-one wrapper around every historical SF Symbol literal.
 
+The implementation-facing mapping lives in [Apple Icon Rationalization](../audits/apple-icon-rationalization-2026-05-09).
+
 When adding or migrating symbols, classify each icon by concept:
 
 | Category | Meaning | Design-system outcome |
@@ -199,6 +201,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Archive | `Action.archive` | `archivebox` |
 | Unarchive | `Action.unarchive` | `archivebox.fill` |
 | Search | `Action.search` | `magnifyingglass` |
+| Refresh | `Action.refresh` | `arrow.clockwise` |
 | Send | `Action.send` | `arrow.up` |
 | Attach | `Action.attach` | `paperclip` |
 | Open external | `Action.openExternal` | `arrow.up.right.square` |
@@ -213,6 +216,8 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Disclosure right | `Navigation.chevronRight` | `chevron.right` |
 | Disclosure down | `Navigation.chevronDown` | `chevron.down` |
 | Expand picker | `Navigation.pickerDisclosure` | `chevron.up.chevron.down` |
+| Expand workspace | `Navigation.expandWorkspace` | `arrow.up.right.and.arrow.down.left` |
+| Collapse workspace | `Navigation.collapseWorkspace` | `arrow.down.left.and.arrow.up.right` |
 
 ### States
 
@@ -240,7 +245,9 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Text document | `Content.textDocument` | `doc.text` |
 | Generic document | `Content.document` | `doc` |
 | Filled document | `Content.documentFilled` | `doc.fill` |
+| Folder | `Content.folder` | `folder` |
 | Image placeholder | `Content.photo` | `photo` |
+| Task list | `Content.taskList` | `list.bullet.rectangle` |
 | Website fallback | `Content.websiteFallback` | `globe` |
 | YouTube or video | `Media.video` | `play.rectangle` |
 | Play | `Media.playFilled` | `play.circle.fill` |
@@ -359,6 +366,11 @@ Context menu and swipe action icons are centralized in `SidebarMenuItem`. Factor
 | Copy | `Action.copy` |
 | Download | `Action.download` |
 | Share URL / Text | `Action.shareOnSquare` |
+| Refresh | `Action.refresh` |
+| Close | `Action.close` |
+| New Task | `State.successCircle` |
+| New Group | `Content.folder` |
+| New Project | `Content.taskList` |
 | Delete | `Action.delete` |
 
 **Rule**: Use `SidebarMenuItem` factory methods for context menu and swipe actions. Do not assign icon names inline in views.

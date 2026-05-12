@@ -384,7 +384,7 @@ extension WebsitesDetailView {
 
     private var closeButton: some View {
         HeaderActionButton(
-            systemName: "xmark",
+            icon: AppIcon.Action.close,
             accessibilityLabel: "Close website",
             action: closeWebsite,
             isDisabled: viewModel.active == nil,
@@ -395,7 +395,7 @@ extension WebsitesDetailView {
 
     private func expandButton(chromeStyle: HeaderActionControlChromeStyle) -> some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandWebsiteView,
             isDisabled: viewModel.active == nil,
@@ -422,22 +422,6 @@ extension WebsitesDetailView {
 
     var isArchived: Bool {
         viewModel.active?.archived == true
-    }
-
-    var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
-    }
-
-    var archiveMenuTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    var archiveIconName: String {
-        isArchived ? "archivebox.fill" : "archivebox"
     }
 
     var isCompact: Bool {
@@ -513,8 +497,8 @@ extension WebsitesDetailView {
         isWorkspaceExpanded.toggle()
     }
 
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    private var expandButtonIcon: AppIcon {
+        isWorkspaceExpanded ? AppIcon.Navigation.expandWorkspace : AppIcon.Navigation.collapseWorkspace
     }
 
     private var expandButtonLabel: String {

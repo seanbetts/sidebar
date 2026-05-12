@@ -30,6 +30,7 @@ public extension AppIcon {
         public static let archive = AppIcon(rawValue: "archivebox")
         public static let unarchive = AppIcon(rawValue: "archivebox.fill")
         public static let search = AppIcon(rawValue: "magnifyingglass")
+        public static let refresh = AppIcon(rawValue: "arrow.clockwise")
         public static let send = AppIcon(rawValue: "arrow.up")
         public static let attach = AppIcon(rawValue: "paperclip")
         public static let openExternal = AppIcon(rawValue: "arrow.up.right.square")
@@ -53,6 +54,8 @@ public extension AppIcon {
         public static let chevronRight = AppIcon(rawValue: "chevron.right")
         public static let chevronDown = AppIcon(rawValue: "chevron.down")
         public static let pickerDisclosure = AppIcon(rawValue: "chevron.up.chevron.down")
+        public static let expandWorkspace = AppIcon(rawValue: "arrow.up.right.and.arrow.down.left")
+        public static let collapseWorkspace = AppIcon(rawValue: "arrow.down.left.and.arrow.up.right")
     }
 
     enum State {
@@ -76,7 +79,9 @@ public extension AppIcon {
         public static let textDocument = AppIcon(rawValue: "doc.text")
         public static let document = AppIcon(rawValue: "doc")
         public static let documentFilled = AppIcon(rawValue: "doc.fill")
+        public static let folder = AppIcon(rawValue: "folder")
         public static let photo = AppIcon(rawValue: "photo")
+        public static let taskList = AppIcon(rawValue: "list.bullet.rectangle")
         public static let websiteFallback = AppIcon(rawValue: "globe")
     }
 

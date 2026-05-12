@@ -113,7 +113,7 @@ public struct WebsitesView: View {
     #if os(iOS)
     private var websiteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Website options",
             items: [
                 .pin(isPinned: isPinned) {

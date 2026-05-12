@@ -11,9 +11,14 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("publicstaticletadd=AppIcon(rawValue:\"plus\")"))
         XCTAssertTrue(normalized.contains("publicstaticletmore=AppIcon(rawValue:\"ellipsis\")"))
         XCTAssertTrue(normalized.contains("publicstaticletdelete=AppIcon(rawValue:\"trash\")"))
+        XCTAssertTrue(normalized.contains("publicstaticletrefresh=AppIcon(rawValue:\"arrow.clockwise\")"))
         XCTAssertTrue(normalized.contains("enumDomain"))
         XCTAssertTrue(normalized.contains("publicstaticletchat=AppIcon(rawValue:\"bubble\")"))
         XCTAssertTrue(normalized.contains("publicstaticlettasks=AppIcon(rawValue:\"checkmark.square\")"))
+        XCTAssertTrue(normalized.contains("publicstaticletexpandWorkspace=AppIcon(rawValue:\"arrow.up.right.and.arrow.down.left\")"))
+        XCTAssertTrue(normalized.contains("publicstaticletcollapseWorkspace=AppIcon(rawValue:\"arrow.down.left.and.arrow.up.right\")"))
+        XCTAssertTrue(normalized.contains("publicstaticletfolder=AppIcon(rawValue:\"folder\")"))
+        XCTAssertTrue(normalized.contains("publicstaticlettaskList=AppIcon(rawValue:\"list.bullet.rectangle\")"))
         XCTAssertFalse(normalized.contains("publicenumAction"))
         XCTAssertFalse(normalized.contains("publicenumDomain"))
     }
@@ -53,6 +58,145 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("icon:AppIcon.Action.delete"))
         XCTAssertFalse(normalized.contains("systemImage:\"trash\""))
         XCTAssertFalse(normalized.contains("systemImage:\"doc.on.doc\""))
+    }
+
+    func testSidebarPanelActionFactoriesUseAppIcon() throws {
+        let normalized = try source(at: ["sideBar", "Design", "Components", "SidebarMenuItem.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("staticfuncnewTask(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(normalized.contains("title:\"Newtask\",icon:AppIcon.State.successCircle"))
+        XCTAssertTrue(normalized.contains("staticfuncnewGroup(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(normalized.contains("title:\"Newgroup\",icon:AppIcon.Content.folder"))
+        XCTAssertTrue(normalized.contains("staticfuncnewProject(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(normalized.contains("title:\"Newproject\",icon:AppIcon.Content.taskList"))
+        XCTAssertTrue(normalized.contains("staticfuncrefresh(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(normalized.contains("title:\"Refresh\",icon:AppIcon.Action.refresh"))
+        XCTAssertTrue(normalized.contains("staticfuncclose(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(normalized.contains("title:\"Close\",icon:AppIcon.Action.close"))
+    }
+
+    func testNotesAndFilesMenuActionSurfacesUseAppIconVocabulary() throws {
+        try assertNoForbiddenIconPatterns([
+            (
+                ["sideBar", "Views", "Notes", "NotesDetailView+MenuActions.swift"],
+                [
+                    "systemImage:\"ellipsis\"",
+                    "systemName:\"ellipsis\"",
+                    "systemName:\"xmark\"",
+                    "Label(\"Rename\",systemImage:\"pencil\")",
+                    "Label(\"Move\",systemImage:\"arrow.forward.folder\")",
+                    "Label(\"CopyText\",systemImage:\"doc.on.doc\")",
+                    "Label(\"ShareText\",systemImage:\"square.and.arrow.up.on.square\")",
+                    "Label(\"Download\",systemImage:\"square.and.arrow.down\")",
+                    "Label(\"Delete\",systemImage:\"trash\")"
+                ]
+            ),
+            (
+                ["sideBar", "Views", "Notes", "NotesView.swift"],
+                ["systemImage:\"ellipsis\""]
+            ),
+            (
+                ["sideBar", "Views", "Files", "FilesHeaderActions.swift"],
+                [
+                    "systemName:\"ellipsis\"",
+                    "systemImage:\"ellipsis\"",
+                    "systemName:\"xmark\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "FilesPanel+ContextMenu.swift"],
+                ["systemImage:\"square.and.arrow.up\""]
+            )
+        ])
+    }
+
+    func testWebsiteMenuActionSurfacesUseAppIconVocabulary() throws {
+        try assertNoForbiddenIconPatterns([
+            (
+                ["sideBar", "Views", "Websites", "WebsitesDetailView+MenuActions.swift"],
+                [
+                    "systemName:\"ellipsis\"",
+                    "systemImage:\"ellipsis\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "Websites", "WebsitesView.swift"],
+                ["systemImage:\"ellipsis\""]
+            ),
+            (
+                ["sideBar", "Views", "Websites", "WebsitesDetailView.swift"],
+                [
+                    "systemName:\"xmark\"",
+                    "systemName:expandButtonIconName",
+                    "\"arrow.up.right.and.arrow.down.left\"",
+                    "\"arrow.down.left.and.arrow.up.right\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"],
+                [
+                    "systemName:\"plus\"",
+                    "Label(\"Archive\",systemImage:\"archivebox\")",
+                    "Image(systemName:isArchiveExpanded?\"chevron.down\":\"chevron.right\")"
+                ]
+            )
+        ])
+    }
+
+    func testPanelAndWorkspaceActionSurfacesUseAppIconVocabulary() throws {
+        try assertNoForbiddenIconPatterns([
+            (
+                ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"],
+                [
+                    "Label(\"Archive\",systemImage:\"archivebox\")",
+                    "Image(systemName:isArchiveExpanded?\"chevron.down\":\"chevron.right\")"
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "TasksPanel+AddMenu.swift"],
+                [
+                    "systemName:\"plus\"",
+                    "systemImage:\"plus\"",
+                    "systemImage:\"checkmark.circle\"",
+                    "systemImage:\"folder\"",
+                    "systemImage:\"list.bullet.rectangle\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"],
+                ["systemName:\"plus\""]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"],
+                [
+                    "systemName:\"folder\"",
+                    "systemName:\"plus\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"],
+                [
+                    "systemName:\"play.rectangle\"",
+                    "systemName:\"plus\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "AgentWorkspace", "AgentWorkspaceSurfaceView.swift"],
+                [
+                    "systemName:\"arrow.clockwise\"",
+                    "systemName:\"xmark\"",
+                    "systemImage:\"arrow.clockwise\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "AgentWorkspace", "AgentWorkspaceSurfaceView+Helpers.swift"],
+                [
+                    "HeaderActionIcon(systemName:\"ellipsis\")",
+                    "systemImage:\"ellipsis\""
+                ]
+            )
+        ])
     }
 
     func testChatConversationActionsUseAppIconFactories() throws {
@@ -96,6 +240,25 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("\"audio-transcribe\":AppIcon.Media.waveform"))
         XCTAssertFalse(normalized.contains("fallbackSystemName"))
         XCTAssertFalse(normalized.contains("skillSymbols:[String:String]"))
+    }
+
+    private func assertNoForbiddenIconPatterns(
+        _ forbiddenByFile: [([String], [String])],
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        for (path, forbiddenPatterns) in forbiddenByFile {
+            let normalized = try source(at: path)
+                .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+            for pattern in forbiddenPatterns {
+                XCTAssertFalse(
+                    normalized.contains(pattern),
+                    "\(path.joined(separator: "/")) still contains \(pattern)",
+                    file: file,
+                    line: line
+                )
+            }
+        }
     }
 
     private func source(

@@ -122,6 +122,26 @@ extension SidebarMenuItem {
     static func delete(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Delete", icon: AppIcon.Action.delete, role: .destructive, handler: handler)
     }
+
+    static func newTask(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "New task", icon: AppIcon.State.successCircle, role: nil, handler: handler)
+    }
+
+    static func newGroup(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "New group", icon: AppIcon.Content.folder, role: nil, handler: handler)
+    }
+
+    static func newProject(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "New project", icon: AppIcon.Content.taskList, role: nil, handler: handler)
+    }
+
+    static func refresh(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Refresh", icon: AppIcon.Action.refresh, role: nil, handler: handler)
+    }
+
+    static func close(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Close", icon: AppIcon.Action.close, role: nil, handler: handler)
+    }
 }
 
 @ViewBuilder

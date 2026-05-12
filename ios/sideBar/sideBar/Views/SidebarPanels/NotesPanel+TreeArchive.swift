@@ -67,13 +67,13 @@ extension NotesPanelView {
                         },
                         content: {
                         HStack(spacing: DesignTokens.Spacing.xs) {
-                            Label("Archive", systemImage: "archivebox")
+                            Label("Archive", systemImage: AppIcon.Action.archive.rawValue)
                                 .appFont(SidebarTypography.primary)
                             Spacer()
                             if isArchiveLoading && !archivedNodes.isEmpty {
                                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                             }
-                            Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                            Image(appIcon: isArchiveExpanded ? AppIcon.Navigation.chevronDown : AppIcon.Navigation.chevronRight)
                                 .appFont(SidebarTypography.secondary)
                                 .foregroundStyle(.secondary)
                         }

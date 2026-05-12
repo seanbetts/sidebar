@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 import UniformTypeIdentifiers
 #if os(iOS)
 import UIKit
@@ -129,7 +130,7 @@ public struct NotesView: View {
     #if os(iOS)
     private var noteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Note options",
             items: [
                 .pin(isPinned: isPinned) {

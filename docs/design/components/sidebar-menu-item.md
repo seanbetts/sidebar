@@ -22,9 +22,19 @@ Provide a single source of truth for the title, `AppIcon`, and destructive role 
 | `.copyText()` | "Copy Text" | `AppIcon.Action.copy` | none |
 | `.copyMarkdown()` | "Copy Markdown" | `AppIcon.Action.copy` | none |
 | `.copyTranscript()` | "Copy Transcript" | `AppIcon.Action.copy` | none |
+| `.copyTitle()` | "Copy Title" | `AppIcon.Action.copyTitle` | none |
+| `.copyURL()` | "Copy URL" | `AppIcon.Action.copyURL` | none |
 | `.download()` | "Download" | `AppIcon.Action.download` | none |
 | `.share()` | "Share URL" | `AppIcon.Action.shareOnSquare` | none |
+| `.shareFile()` | "Share" | `AppIcon.Action.share` | none |
 | `.shareText()` | "Share Text" | `AppIcon.Action.shareOnSquare` | none |
+| `.shareTranscript()` | "Share Transcript" | `AppIcon.Action.share` | none |
+| `.exportTranscript()` | "Export Transcript" | `AppIcon.Action.download` | none |
+| `.newTask()` | "New task" | `AppIcon.State.successCircle` | none |
+| `.newGroup()` | "New group" | `AppIcon.Content.folder` | none |
+| `.newProject()` | "New project" | `AppIcon.Content.taskList` | none |
+| `.refresh()` | "Refresh" | `AppIcon.Action.refresh` | none |
+| `.close()` | "Close" | `AppIcon.Action.close` | none |
 | `.delete()` | "Delete" | `AppIcon.Action.delete` | `.destructive` |
 
 Each factory method takes a `handler: @escaping () -> Void` parameter.

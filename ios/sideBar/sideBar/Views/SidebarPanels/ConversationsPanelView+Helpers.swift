@@ -111,7 +111,7 @@ extension ConversationsPanelView {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if showNewChatButton && !isCompactPhone {
                         HeaderActionButton(
-                            systemName: "plus",
+                            icon: AppIcon.Action.add,
                             accessibilityLabel: "New chat",
                             action: {
                             Task {

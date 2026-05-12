@@ -91,7 +91,7 @@ struct FilesHeaderActions: View {
     private var fileActionsMenu: some View {
         #if os(macOS)
         HeaderActionMenuControl(
-            systemName: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "File options",
             chromeStyle: Self.actionControlChromeStyle
         ) {
@@ -100,7 +100,7 @@ struct FilesHeaderActions: View {
         .disabled(viewModel.selectedFileId == nil)
         #else
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "File options",
             items: fileHeaderMenuItems,
             isCompact: isCompact,
@@ -154,15 +154,15 @@ struct FilesHeaderActions: View {
 
     private var expandButton: some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandFilesView,
             chromeStyle: compactPhoneToolbarChromeStyle
         )
     }
 
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    private var expandButtonIcon: AppIcon {
+        isWorkspaceExpanded ? AppIcon.Navigation.expandWorkspace : AppIcon.Navigation.collapseWorkspace
     }
 
     private var expandButtonLabel: String {
@@ -207,7 +207,7 @@ struct FilesHeaderActions: View {
             EmptyView()
         } else {
             HeaderActionButton(
-                systemName: "xmark",
+                icon: AppIcon.Action.close,
                 accessibilityLabel: "Close file",
                 action: {
                     viewModel.clearSelection()
@@ -218,7 +218,7 @@ struct FilesHeaderActions: View {
         }
         #else
         HeaderActionButton(
-            systemName: "xmark",
+            icon: AppIcon.Action.close,
             accessibilityLabel: "Close file",
             action: {
                 viewModel.clearSelection()
@@ -227,14 +227,6 @@ struct FilesHeaderActions: View {
             chromeStyle: Self.actionControlChromeStyle
         )
         #endif
-    }
-
-    private var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    private var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
     }
 
     private var isPinned: Bool {

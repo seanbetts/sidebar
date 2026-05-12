@@ -1,0 +1,130 @@
+# Apple Icon Rationalization
+
+Date: 2026-05-09
+
+Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
+
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, and menu action slice completed after the initial catalog work.
+
+Categories:
+
+- Canonical: stable sideBar concept, add to `AppIcon`
+- Replace: local variation, migrate to a clearer canonical `AppIcon`
+- Context-specific: low-frequency but distinct enough to keep
+- Dynamic/external: string boundary remains explicit
+
+## Canonical And Context-Specific Mapping
+
+| Current symbol | Concept | Category | Target `AppIcon` | Notes |
+|---|---|---|---|---|
+| `bubble` | Chat domain | Canonical | `AppIcon.Domain.chat` | Primary chat navigation icon |
+| `text.document` | Notes domain | Canonical | `AppIcon.Domain.notes` | Primary notes navigation icon |
+| `checkmark.square` | Tasks domain | Canonical | `AppIcon.Domain.tasks` | Primary tasks navigation icon |
+| `globe` | Websites domain and website fallback | Canonical | `AppIcon.Domain.websites` / `AppIcon.Content.websiteFallback` | Same raw value, separate semantic aliases |
+| `folder` | Files domain, folder content, and new group action | Canonical | `AppIcon.Domain.files` / `AppIcon.Content.folder` | Use the semantic alias that matches the surface |
+| `command.circle` | Skills Store | Canonical | `AppIcon.Domain.skillsStore` | App section icon |
+| `square.grid.2x2` | Settings domain | Canonical | `AppIcon.Domain.settings` | App section icon |
+| `bookmark` | Memories | Canonical | `AppIcon.Domain.memories` | Settings memory surfaces |
+| `plus` | Add or create | Canonical | `AppIcon.Action.add` | Header add buttons and add menus |
+| `xmark` | Close or dismiss | Canonical | `AppIcon.Action.close` | Header close buttons and close menu items |
+| `xmark.circle.fill` | Clear field or filled dismiss | Canonical | `AppIcon.Action.clearFilled` | Search and inline clear controls |
+| `ellipsis` | More options | Canonical | `AppIcon.Action.more` | Header menus and overflow actions |
+| `trash` | Delete | Canonical | `AppIcon.Action.delete` | Destructive action |
+| `square.and.arrow.up` | Share file or transcript | Canonical | `AppIcon.Action.share` | Generic share action |
+| `square.and.arrow.up.on.square` | Share URL or text | Canonical | `AppIcon.Action.shareOnSquare` | URL/text share affordance |
+| `square.and.arrow.down` | Download or export | Canonical | `AppIcon.Action.download` | Downloads and transcript export |
+| `doc.on.doc` | Copy | Canonical | `AppIcon.Action.copy` | Generic copy, copy text, markdown, and transcript |
+| `textformat` | Copy title | Context-specific | `AppIcon.Action.copyTitle` | Distinguishes title text from generic copy |
+| `link` | Copy URL | Context-specific | `AppIcon.Action.copyURL` | Distinguishes URLs from generic copy |
+| `pencil` | Rename or edit | Canonical | `AppIcon.Action.rename` | Context menu edit/rename |
+| `square.and.pencil` | Compose | Canonical | `AppIcon.Action.compose` | Compose affordance |
+| `arrow.forward.folder` | Move | Canonical | `AppIcon.Action.move` | Move to folder actions |
+| `line.3.horizontal` | Reorder | Canonical | `AppIcon.Action.reorder` | Reorder actions |
+| `pin` | Pin | Canonical | `AppIcon.Action.pin` | Pin actions |
+| `pin.slash` | Unpin | Canonical | `AppIcon.Action.unpin` | Pin inverse |
+| `archivebox` | Archive | Canonical | `AppIcon.Action.archive` | Archive actions and archive row header |
+| `archivebox.fill` | Unarchive | Canonical | `AppIcon.Action.unarchive` | Archive inverse |
+| `magnifyingglass` | Search | Canonical | `AppIcon.Action.search` | Search fields and empty search states |
+| `arrow.clockwise` | Refresh or retry | Canonical | `AppIcon.Action.refresh` / `AppIcon.State.retry` | Use action alias for explicit refresh actions, state alias for retry state |
+| `arrow.up` | Send | Canonical | `AppIcon.Action.send` | Chat input |
+| `paperclip` | Attach | Context-specific | `AppIcon.Action.attach` | Attachment control |
+| `arrow.up.right.square` | Open external | Context-specific | `AppIcon.Action.openExternal` | External open action |
+| `rectangle.portrait.and.arrow.right` | Sign out | Context-specific | `AppIcon.Action.signOut` | Account action |
+| `chevron.left` | Back | Canonical | `AppIcon.Navigation.back` | Back navigation |
+| `chevron.right` | Forward or collapsed disclosure | Canonical | `AppIcon.Navigation.forward` / `AppIcon.Navigation.chevronRight` | Use the semantic alias that matches context |
+| `chevron.down` | Expanded disclosure | Canonical | `AppIcon.Navigation.chevronDown` | Expanded archive and disclosure rows |
+| `chevron.up.chevron.down` | Picker disclosure | Context-specific | `AppIcon.Navigation.pickerDisclosure` | Form picker affordance |
+| `arrow.up.right.and.arrow.down.left` | Expand workspace | Context-specific | `AppIcon.Navigation.expandWorkspace` | Workspace and detail expansion action |
+| `arrow.down.left.and.arrow.up.right` | Collapse workspace | Context-specific | `AppIcon.Navigation.collapseWorkspace` | Workspace and detail collapse action |
+| `checkmark` | Success/check | Canonical | `AppIcon.State.success` | Inline selected checks |
+| `checkmark.circle` | Success circle or new task | Canonical | `AppIcon.State.successCircle` | Use for task creation and circular success state |
+| `checkmark.circle.fill` | Filled success | Canonical | `AppIcon.State.successFilled` | Filled success indicators |
+| `circle` | Empty circle | Canonical | `AppIcon.State.emptyCircle` | Task checkbox empty state |
+| `circle.fill` | Filled circle | Canonical | `AppIcon.State.selectedCircle` | Page dots and selected state |
+| `exclamationmark.triangle` | Warning | Canonical | `AppIcon.State.warning` | Non-filled warning |
+| `exclamationmark.triangle.fill` | Filled warning | Canonical | `AppIcon.State.warningFilled` | Error banners and ingestion warning |
+| `exclamationmark.circle` | Error circle | Canonical | `AppIcon.State.error` | Inline error state |
+| `exclamationmark.circle.fill` | Filled error | Canonical | `AppIcon.State.errorFilled` | Filled error state |
+| `wifi.slash` | Offline | Canonical | `AppIcon.State.offline` | Offline banner and auth status |
+| `wifi.exclamationmark` | Network warning | Canonical | `AppIcon.State.networkWarning` | Degraded network banner |
+| `arrow.triangle.2.circlepath` | Syncing | Canonical | `AppIcon.State.syncing` | Queue/sync state |
+| `note.text` | Note document | Canonical | `AppIcon.Content.note` | Note content |
+| `doc.text` | Text document | Canonical | `AppIcon.Content.textDocument` | Text document content |
+| `doc` | Generic document | Canonical | `AppIcon.Content.document` | File fallback |
+| `doc.fill` | Filled document | Context-specific | `AppIcon.Content.documentFilled` | Filled document row |
+| `photo` | Image placeholder | Canonical | `AppIcon.Content.photo` | Markdown/image fallback |
+| `list.bullet.rectangle` | Task project list | Context-specific | `AppIcon.Content.taskList` | New project action |
+| `play.rectangle` | YouTube or video | Canonical | `AppIcon.Media.video` | Video save and YouTube skill |
+| `play.circle.fill` | Play filled | Context-specific | `AppIcon.Media.playFilled` | Media viewer |
+| `waveform` | Audio waveform | Context-specific | `AppIcon.Media.waveform` | Audio skill |
+| `captions.bubble` | Captions/transcript | Context-specific | `AppIcon.Media.captions` | YouTube transcript skill |
+| `doc.viewfinder` | PDF page fit | Context-specific | `AppIcon.PDF.fitPage` | PDF controls |
+| `plus.magnifyingglass` | Zoom in | Context-specific | `AppIcon.PDF.zoomIn` | PDF controls |
+| `minus.magnifyingglass` | Zoom out | Context-specific | `AppIcon.PDF.zoomOut` | PDF controls |
+| `distribute.horizontal` | Fit width | Context-specific | `AppIcon.PDF.fitWidth` | PDF controls |
+| `distribute.vertical` | Fit height | Context-specific | `AppIcon.PDF.fitHeight` | PDF controls |
+| `person.crop.circle` | Profile | Canonical | `AppIcon.Settings.profile` | Profile/account |
+| `person.crop.circle.fill` | Filled profile | Context-specific | `AppIcon.Settings.profileFilled` | Profile display |
+| `person.crop.circle.badge.plus` | Add profile image | Context-specific | `AppIcon.Settings.profileAdd` | Onboarding profile |
+| `person.line.dotted.person` | User settings | Context-specific | `AppIcon.Settings.user` | Settings tab |
+| `brain.fill` | Assistant | Canonical | `AppIcon.Settings.assistant` | Settings and calibration |
+| `key.horizontal` | Credentials | Context-specific | `AppIcon.Settings.credentials` | Provider key |
+| `key.horizontal.fill` | Connected credentials | Context-specific | `AppIcon.Settings.credentialsFilled` | Provider key banner |
+| `paintpalette` | Theme | Context-specific | `AppIcon.Settings.theme` | Theme setting |
+| `puzzlepiece.extension` | Skill fallback | Canonical | `AppIcon.Skills.fallback` | Unknown skill |
+| `tag.fill` | Skill category fallback | Context-specific | `AppIcon.Skills.categoryFallback` | Unknown skill category |
+| `hammer` | Skill tools | Context-specific | `AppIcon.Skills.tools` | Tool category |
+| `person.crop.circle.badge.checkmark` | Assistant identity skill | Context-specific | `AppIcon.Skills.assistantIdentity` | Skill resolver |
+| `sparkles` | Assistant soul skill | Context-specific | `AppIcon.Skills.assistantSoul` | Skill resolver |
+| `bubble.left.and.bubble.right` | Conversations skill | Context-specific | `AppIcon.Skills.conversations` | Skill resolver |
+| `exclamationmark.bubble` | Product feedback skill | Context-specific | `AppIcon.Skills.productFeedback` | Skill resolver |
+| `eye` | Prompt preview skill | Context-specific | `AppIcon.Skills.promptPreview` | Skill resolver |
+| `gearshape` | Settings/preferences skill | Canonical | `AppIcon.Skills.settingsOtherPreferences` | Skill resolver |
+| `shield` | Web crawler policy skill | Context-specific | `AppIcon.Skills.webCrawlerPolicy` | Skill resolver |
+
+## Sidebar, Panel, And Menu Action Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Header overflow menus | `ellipsis` | `HeaderActionMenuButton(icon: AppIcon.Action.more)` or `HeaderActionMenuControl(icon: AppIcon.Action.more)` |
+| Header add buttons | `plus` | `HeaderActionButton(icon: AppIcon.Action.add)` |
+| Header close buttons | `xmark` | `HeaderActionButton(icon: AppIcon.Action.close)` |
+| Workspace refresh menu/action | `arrow.clockwise` | `AppIcon.Action.refresh` through `HeaderActionButton` and `SidebarMenuItem.refresh` |
+| Workspace close menu/action | `xmark` | `AppIcon.Action.close` through `HeaderActionButton` and `SidebarMenuItem.close` |
+| Notes menus | `pencil`, `arrow.forward.folder`, `doc.on.doc`, `square.and.arrow.up.on.square`, `square.and.arrow.down`, `archivebox`, `trash` | Existing `SidebarMenuItem` factories |
+| Files context menu | `square.and.arrow.up` | `SidebarMenuItem.shareFile` |
+| Tasks add menu | `checkmark.circle`, `folder`, `list.bullet.rectangle` | `SidebarMenuItem.newTask`, `SidebarMenuItem.newGroup`, `SidebarMenuItem.newProject` |
+| Archive section row | `archivebox`, `chevron.down`, `chevron.right` | `AppIcon.Action.archive`, `AppIcon.Navigation.chevronDown`, `AppIcon.Navigation.chevronRight` |
+| Workspace expand/collapse | `arrow.up.right.and.arrow.down.left`, `arrow.down.left.and.arrow.up.right` | `AppIcon.Navigation.expandWorkspace`, `AppIcon.Navigation.collapseWorkspace` |
+
+## Explicit Later Boundaries
+
+The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
+
+- widgets and extensions
+- PDF controls
+- auth, onboarding, and settings form icons
+- chat input UIKit/AppKit icons
+- empty-state and status components not touched by this slice
+- non-menu feature view icons and dynamic/external symbol payloads
+- the production-wide strict source guard

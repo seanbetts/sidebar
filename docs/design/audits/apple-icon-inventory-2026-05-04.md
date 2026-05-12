@@ -4,6 +4,8 @@ Date: 2026-05-04
 
 Scope: production Swift under `ios/sideBar`, excluding tests, build output, and vendored code. This includes the main iOS/macOS app, widgets, and share extension code.
 
+Follow-up rationalization table: [Apple Icon Rationalization](./apple-icon-rationalization-2026-05-09).
+
 ## Summary
 
 - Production Swift files scanned: 778

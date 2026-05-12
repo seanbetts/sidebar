@@ -39,16 +39,16 @@ extension AgentWorkspaceSurfaceView {
 
     var expandButton: some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandWorkspaceView
         )
     }
 
-    var expandButtonIconName: String {
+    var expandButtonIcon: AppIcon {
         isWorkspaceExpanded
-            ? "arrow.up.right.and.arrow.down.left"
-            : "arrow.down.left.and.arrow.up.right"
+            ? AppIcon.Navigation.expandWorkspace
+            : AppIcon.Navigation.collapseWorkspace
     }
 
     var expandButtonLabel: String {
@@ -266,7 +266,7 @@ extension AgentWorkspaceSurfaceView {
         Menu {
             sidebarMenuItemsView(contextMenuItems)
         } label: {
-            HeaderActionIcon(systemName: "ellipsis")
+            HeaderActionIcon(icon: AppIcon.Action.more)
         }
         .buttonStyle(.plain)
         .systemShareAnchor(id: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId))
@@ -274,7 +274,7 @@ extension AgentWorkspaceSurfaceView {
         .disabled(contextMenuItems.isEmpty)
         #else
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Workspace options",
             items: contextMenuItems,
             isCompact: true

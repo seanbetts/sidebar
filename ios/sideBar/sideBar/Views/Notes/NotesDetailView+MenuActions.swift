@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -9,7 +10,7 @@ extension NotesDetailView {
     #if os(iOS)
     var noteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Note options",
             items: noteSidebarMenuItems,
             isCompact: isCompact,
@@ -24,7 +25,7 @@ extension NotesDetailView {
     var noteActionsMenu: some View {
         #if os(macOS)
         HeaderActionMenuControl(
-            systemName: "ellipsis",
+            icon: AppIcon.Action.more,
             accessibilityLabel: "Note options",
             chromeStyle: Self.actionControlChromeStyle
         ) {
@@ -35,7 +36,7 @@ extension NotesDetailView {
         #else
         if isCompact {
             HeaderActionMenuButton(
-                systemImage: "ellipsis",
+                icon: AppIcon.Action.more,
                 accessibilityLabel: "Note options",
                 items: noteSidebarMenuItems,
                 isCompact: isCompact,
@@ -45,7 +46,7 @@ extension NotesDetailView {
             .disabled(viewModel.activeNote == nil)
         } else {
             HeaderActionMenuButton(
-                systemImage: "ellipsis",
+                icon: AppIcon.Action.more,
                 accessibilityLabel: "Note options",
                 items: noteSidebarMenuItems,
                 isCompact: isCompact,
@@ -89,53 +90,13 @@ extension NotesDetailView {
 
     @ViewBuilder
     var noteActionsMenuItems: some View {
-        Button {
-            togglePinnedForActiveNote()
-        } label: {
-            Label(pinActionTitle, systemImage: pinIconName)
-        }
-        Button {
-            beginRenameForActiveNote()
-        } label: {
-            Label("Rename", systemImage: "pencil")
-        }
-        Button {
-            moveSelection = currentFolderPath
-            isMoveSheetPresented = true
-        } label: {
-            Label("Move", systemImage: "arrow.forward.folder")
-        }
-        Button {
-            copyNoteText()
-        } label: {
-            Label("Copy Text", systemImage: "doc.on.doc")
-        }
-        Button {
-            shareNoteText()
-        } label: {
-            Label("Share Text", systemImage: "square.and.arrow.up.on.square")
-        }
-        Button {
-            exportNoteText()
-        } label: {
-            Label("Download", systemImage: "square.and.arrow.down")
-        }
-        Button {
-            archiveActiveNote()
-        } label: {
-            Label(archiveMenuTitle, systemImage: archiveIconName)
-        }
-        Button(role: .destructive) {
-            isDeleteAlertPresented = true
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
+        sidebarMenuItemsView(noteSidebarMenuItems)
     }
 
     @ViewBuilder
     var closeButton: some View {
         HeaderActionButton(
-            systemName: "xmark",
+            icon: AppIcon.Action.close,
             accessibilityLabel: "Close note",
             action: {
                 requestCloseNote()
