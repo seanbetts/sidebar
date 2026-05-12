@@ -55,6 +55,36 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("systemImage:\"doc.on.doc\""))
     }
 
+    func testChatConversationActionsUseAppIconFactories() throws {
+        let sidebarMenuItemSource = try source(at: ["sideBar", "Design", "Components", "SidebarMenuItem.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let chatHeaderSource = try source(at: ["sideBar", "Views", "Chat", "ChatHeaderView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let conversationPanelSource = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        )
+        .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(sidebarMenuItemSource.contains("staticfuncshareTranscript(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(sidebarMenuItemSource.contains("title:\"ShareTranscript\",icon:AppIcon.Action.share"))
+        XCTAssertTrue(sidebarMenuItemSource.contains("staticfuncexportTranscript(handler:@escaping()->Void)->SidebarMenuItem"))
+        XCTAssertTrue(sidebarMenuItemSource.contains("title:\"ExportTranscript\",icon:AppIcon.Action.download"))
+
+        XCTAssertTrue(chatHeaderSource.contains("HeaderActionIcon(icon:AppIcon.Action.more)"))
+        XCTAssertTrue(chatHeaderSource.contains("HeaderActionMenuButton(icon:AppIcon.Action.more"))
+        XCTAssertTrue(chatHeaderSource.contains("Image(appIcon:AppIcon.Action.more)"))
+        XCTAssertTrue(chatHeaderSource.contains(".shareTranscript{"))
+        XCTAssertTrue(chatHeaderSource.contains(".exportTranscript{"))
+        XCTAssertFalse(chatHeaderSource.contains("systemName:\"ellipsis\""))
+        XCTAssertFalse(chatHeaderSource.contains("systemImage:\"square.and.arrow.up\""))
+        XCTAssertFalse(chatHeaderSource.contains("systemImage:\"square.and.arrow.down\""))
+
+        XCTAssertTrue(conversationPanelSource.contains(".shareTranscript{"))
+        XCTAssertTrue(conversationPanelSource.contains(".exportTranscript{"))
+        XCTAssertFalse(conversationPanelSource.contains("systemImage:\"square.and.arrow.up\""))
+        XCTAssertFalse(conversationPanelSource.contains("systemImage:\"square.and.arrow.down\""))
+    }
+
     func testSkillIconResolverUsesAppIconVocabularyInternally() throws {
         let normalized = try source(at: ["sideBar", "Utilities", "SkillIconResolver.swift"])
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

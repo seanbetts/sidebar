@@ -390,10 +390,10 @@ extension ConversationsPanelView {
             .copyTranscript {
                 Task { await copyConversation(conversation) }
             },
-            SidebarMenuItem(title: "Share Transcript", systemImage: "square.and.arrow.up", role: nil) {
+            .shareTranscript {
                 Task { await shareConversation(conversation) }
             },
-            SidebarMenuItem(title: "Export Transcript", systemImage: "square.and.arrow.down", role: nil) {
+            .exportTranscript {
                 Task { await exportConversation(conversation) }
             },
             .delete {

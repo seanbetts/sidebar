@@ -5,8 +5,10 @@ final class ConversationContextMenuTests: XCTestCase {
         let normalized = try conversationHelpersSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("SidebarMenuItem(title:\"ShareTranscript\",systemImage:\"square.and.arrow.up\",role:nil){"))
-        XCTAssertTrue(normalized.contains("SidebarMenuItem(title:\"ExportTranscript\",systemImage:\"square.and.arrow.down\",role:nil){"))
+        XCTAssertTrue(normalized.contains(".shareTranscript{"))
+        XCTAssertTrue(normalized.contains(".exportTranscript{"))
+        XCTAssertFalse(normalized.contains("systemImage:\"square.and.arrow.up\""))
+        XCTAssertFalse(normalized.contains("systemImage:\"square.and.arrow.down\""))
     }
 }
 

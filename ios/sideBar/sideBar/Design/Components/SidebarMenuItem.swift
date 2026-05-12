@@ -74,6 +74,14 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Copy Transcript", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }
 
+    static func shareTranscript(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Share Transcript", icon: AppIcon.Action.share, role: nil, handler: handler)
+    }
+
+    static func exportTranscript(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Export Transcript", icon: AppIcon.Action.download, role: nil, handler: handler)
+    }
+
     static func copyText(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Copy Text", icon: AppIcon.Action.copy, role: nil, handler: handler)
     }

@@ -34,7 +34,7 @@ struct ChatConversationActionsMenu: View {
         Menu {
             actionButtons
         } label: {
-            HeaderActionIcon(systemName: "ellipsis")
+            HeaderActionIcon(icon: AppIcon.Action.more)
                 .headerActionControlChrome(chromeStyle)
         }
         .buttonStyle(.plain)
@@ -43,7 +43,7 @@ struct ChatConversationActionsMenu: View {
         switch surface {
         case .header:
             HeaderActionMenuButton(
-                systemImage: "ellipsis",
+                icon: AppIcon.Action.more,
                 accessibilityLabel: "Chat options",
                 items: actionItems,
                 isCompact: false,
@@ -53,7 +53,7 @@ struct ChatConversationActionsMenu: View {
             Menu {
                 actionButtons
             } label: {
-                Image(systemName: "ellipsis")
+                Image(appIcon: AppIcon.Action.more)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Chat options")
@@ -63,10 +63,10 @@ struct ChatConversationActionsMenu: View {
 
     private var actionItems: [SidebarMenuItem] {
         [
-            SidebarMenuItem(title: "Share Transcript", systemImage: "square.and.arrow.up", role: nil) {
+            .shareTranscript {
                 shareConversation()
             },
-            SidebarMenuItem(title: "Export Transcript", systemImage: "square.and.arrow.down", role: nil) {
+            .exportTranscript {
                 exportConversation()
             }
         ]
@@ -77,12 +77,12 @@ struct ChatConversationActionsMenu: View {
         Button {
             shareConversation()
         } label: {
-            Label("Share Transcript", systemImage: "square.and.arrow.up")
+            Label("Share Transcript", systemImage: AppIcon.Action.share.rawValue)
         }
         Button {
             exportConversation()
         } label: {
-            Label("Export Transcript", systemImage: "square.and.arrow.down")
+            Label("Export Transcript", systemImage: AppIcon.Action.download.rawValue)
         }
     }
 
