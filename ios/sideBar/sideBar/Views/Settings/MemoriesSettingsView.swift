@@ -101,13 +101,13 @@ struct MemoriesSettingsDetailView: View {
                     EmptyStateView(
                         title: "No memories yet",
                         subtitle: "Memories saved from your chats appear here.",
-                        systemImage: "bookmark"
+                        icon: AppIcon.Domain.memories
                     )
                     .frame(maxWidth: .infinity, minHeight: 220)
                 } else {
                     EmptyStateView(
                         title: "No memories match that search",
-                        systemImage: "magnifyingglass"
+                        icon: AppIcon.Action.search
                     )
                         .frame(maxWidth: .infinity, minHeight: 220)
                 }
@@ -243,13 +243,13 @@ struct MemoriesSettingsDetailView: View {
                 EmptyStateView(
                     title: "No memories yet",
                     subtitle: "Memories saved from your chats appear here.",
-                    systemImage: "bookmark"
+                    icon: AppIcon.Domain.memories
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 EmptyStateView(
                     title: "No memories match that search",
-                    systemImage: "magnifyingglass"
+                    icon: AppIcon.Action.search
                 )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

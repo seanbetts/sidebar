@@ -1,3 +1,4 @@
+import sideBarShared
 import SwiftUI
 
 public struct ScratchpadPopoverView: View {
@@ -254,7 +255,7 @@ public struct ScratchpadPopoverView: View {
         EmptyStateView(
             title: "Scratchpad is empty.",
             subtitle: ScratchpadConstants.placeholder,
-            systemImage: "square.and.pencil"
+            icon: AppIcon.Action.compose
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .contentShape(Rectangle())

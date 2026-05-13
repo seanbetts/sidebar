@@ -295,7 +295,7 @@ extension WebsitesPanelView {
             let emptyState = EmptyStateContent.noContentYet(
                 title: "No websites yet",
                 subtitle: "Save a link to get started.",
-                systemImage: "globe"
+                icon: AppIcon.Domain.websites
             )
             EmptyStateView(
                 title: emptyState.title,

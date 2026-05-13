@@ -6,7 +6,7 @@ final class ScratchpadPopoverSourceTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "EmptyStateView(title:\"Scratchpadisempty.\",subtitle:ScratchpadConstants.placeholder,systemImage:\"square.and.pencil\")"
+                "EmptyStateView(title:\"Scratchpadisempty.\",subtitle:ScratchpadConstants.placeholder,icon:AppIcon.Action.compose)"
             )
         )
         XCTAssertFalse(normalized.contains("Text(draft.isEmpty?ScratchpadConstants.placeholder:draft)"))

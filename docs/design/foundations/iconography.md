@@ -391,7 +391,7 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 | `StatusPill` | Neutral, success, warning, and error indicators |
 | `SuccessCheckBadge` | Success check mark |
 
-**Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level call sites that still pass symbol strings into bridge initializers remain tracked under `RES-MP-13`.
+**Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Call sites that still pass symbol strings into bridge initializers, such as the task upcoming `calendar` boundary, remain tracked under `RES-MP-13`.
 
 ---
 

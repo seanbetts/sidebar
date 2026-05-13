@@ -109,12 +109,12 @@ private struct SettingsMoreMemoriesBrowser: View {
                         EmptyStateView(
                             title: "No memories yet",
                             subtitle: "Memories saved from your chats appear here.",
-                            systemImage: "bookmark"
+                            icon: AppIcon.Domain.memories
                         )
                     } else {
                         EmptyStateView(
                             title: "No memories match that search",
-                            systemImage: "magnifyingglass"
+                            icon: AppIcon.Action.search
                         )
                     }
                 } else {

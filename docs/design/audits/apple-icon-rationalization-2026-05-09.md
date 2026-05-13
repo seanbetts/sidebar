@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, and shared empty/search/status component slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, and feature-level empty-state slices completed after the initial catalog work.
 
 Categories:
 
@@ -129,6 +129,20 @@ Categories:
 | Status pill | `info.circle.fill`, `checkmark.circle.fill`, `exclamationmark.triangle.fill` | `AppIcon.State.infoFilled`, `AppIcon.State.successFilled`, `AppIcon.State.warningFilled` |
 | Success badge | `checkmark` | `AppIcon.State.success` |
 
+## Feature-Level Empty-State Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Files panel empty state | `folder` | `EmptyStateContent.noContentYet(icon: AppIcon.Domain.files)` |
+| Websites panel empty state | `globe` | `EmptyStateContent.noContentYet(icon: AppIcon.Domain.websites)` |
+| Notes panel empty state | `text.document` | `EmptyStateContent.noContentYet(icon: AppIcon.Domain.notes)` |
+| Conversations panel empty state | `bubble` | `EmptyStateContent.noContentYet(icon: AppIcon.Domain.chat)` |
+| Memories empty states | `bookmark` | `EmptyStateView(icon: AppIcon.Domain.memories)` |
+| Memories search empty states | `magnifyingglass` | `EmptyStateView(icon: AppIcon.Action.search)` |
+| Scratchpad empty state | `square.and.pencil` | `EmptyStateView(icon: AppIcon.Action.compose)` |
+| Task selection and completed empty states | `checkmark.circle` | `EmptyStateContent.noSelection(icon: AppIcon.State.successCircle)` and `EmptyStateContent.noContentYet(icon: AppIcon.State.successCircle)` |
+| Task upcoming empty state | `calendar` | Left as a later rationalization boundary because no `AppIcon` value has been agreed yet |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -137,6 +151,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- feature-level empty-state and status call sites that still pass raw strings into shared bridges
+- remaining feature-level empty-state and status call sites, including the task upcoming `calendar` boundary
 - non-menu feature view icons and dynamic/external symbol payloads
 - the production-wide strict source guard

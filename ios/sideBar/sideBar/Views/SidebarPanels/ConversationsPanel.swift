@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -77,7 +78,7 @@ struct ConversationsPanelView: View {
                     let emptyState = EmptyStateContent.noContentYet(
                         title: "No conversations",
                         subtitle: "Start a new chat to begin.",
-                        systemImage: "bubble"
+                        icon: AppIcon.Domain.chat
                     )
                     EmptyStateView(
                         title: emptyState.title,

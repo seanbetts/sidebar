@@ -196,7 +196,7 @@ extension FilesPanelView {
                 let emptyState = EmptyStateContent.noContentYet(
                     title: "No files yet",
                     subtitle: "Upload or create a file to get started.",
-                    systemImage: "folder"
+                    icon: AppIcon.Domain.files
                 )
                 EmptyStateView(
                     title: emptyState.title,

@@ -873,12 +873,12 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",systemImage:\"bookmark\")"
+                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",icon:AppIcon.Domain.memories)"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",systemImage:\"magnifyingglass\")"
+                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",icon:AppIcon.Action.search)"
             )
         )
         XCTAssertFalse(normalized.contains("SidebarPanelPlaceholder(title:searchQuery.trimmed.isEmpty?\"No memories yet.\""))
@@ -959,12 +959,12 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",systemImage:\"bookmark\")"
+                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",icon:AppIcon.Domain.memories)"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",systemImage:\"magnifyingglass\")"
+                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",icon:AppIcon.Action.search)"
             )
         )
     }

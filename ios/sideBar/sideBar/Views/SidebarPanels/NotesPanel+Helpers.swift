@@ -330,7 +330,7 @@ extension NotesPanelView {
                 let emptyState = EmptyStateContent.noContentYet(
                     title: "No notes yet",
                     subtitle: "Create a note to get started.",
-                    systemImage: "text.document"
+                    icon: AppIcon.Domain.notes
                 )
                 EmptyStateView(
                     title: emptyState.title,

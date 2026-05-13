@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension TasksDetailView {
     static func emptyStateContent(
@@ -10,7 +11,7 @@ extension TasksDetailView {
             return .noSelection(
                 title: "Select a list",
                 subtitle: "Pick a task list from the sidebar to get started.",
-                systemImage: "checkmark.circle"
+                icon: AppIcon.State.successCircle
             )
         case .search:
             let subtitle = (searchQuery ?? "").isEmpty
@@ -27,7 +28,7 @@ extension TasksDetailView {
         case .completed:
             return .noContentYet(
                 title: "No completed tasks yet",
-                systemImage: "checkmark.circle"
+                icon: AppIcon.State.successCircle
             )
         }
     }

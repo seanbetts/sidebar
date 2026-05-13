@@ -1,5 +1,6 @@
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 final class SidebarPanelEmptyStateIconTests: XCTestCase {
     func testChatAndNotesEmptyStatesMatchSidebarRailIcons() throws {
@@ -9,9 +10,11 @@ final class SidebarPanelEmptyStateIconTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertEqual(AppSection.chat.iconName, "bubble")
-        XCTAssertTrue(conversations.contains("systemImage:\"bubble\""))
+        XCTAssertEqual(AppSection.chat.appIcon, AppIcon.Domain.chat)
+        XCTAssertTrue(conversations.contains("icon:AppIcon.Domain.chat"))
         XCTAssertEqual(AppSection.notes.iconName, "text.document")
-        XCTAssertTrue(notes.contains("systemImage:\"text.document\""))
+        XCTAssertEqual(AppSection.notes.appIcon, AppIcon.Domain.notes)
+        XCTAssertTrue(notes.contains("icon:AppIcon.Domain.notes"))
     }
 }
 
