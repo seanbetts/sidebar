@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 struct TasksDetailView: View {
     static let expandButtonChromeStyle: HeaderActionControlChromeStyle = .glass
 
@@ -232,7 +233,7 @@ extension TasksDetailView {
             }
             if state.selection != .completed && shouldShowCompactAddButton {
                 HeaderActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "New task",
                     action: {
                         viewModel.startNewTask()
@@ -268,15 +269,14 @@ extension TasksDetailView {
 
     private var expandButton: some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandTasksView,
             chromeStyle: Self.expandButtonChromeStyle
         )
     }
-
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    private var expandButtonIcon: AppIcon {
+        isWorkspaceExpanded ? AppIcon.Navigation.expandWorkspace : AppIcon.Navigation.collapseWorkspace
     }
 
     private var expandButtonLabel: String {
@@ -346,7 +346,7 @@ extension TasksDetailView {
                     ForEach(state.sections) { section in
                         sectionHeaderView(section: section, state: state)
                         if section.tasks.isEmpty, case .upcoming = state.selection {
-                            Label("No tasks due", systemImage: "checkmark.circle")
+                            Label("No tasks due", systemImage: AppIcon.State.successCircle.rawValue)
                                 .appFont(.subheading)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
                                 .padding(.leading, DesignTokens.Spacing.md + 14)
@@ -487,7 +487,7 @@ extension TasksDetailView {
     private func headerStatusView(_ status: HeaderStatus) -> some View {
         switch status {
         case .complete:
-            Image(systemName: "checkmark")
+            Image(appIcon: AppIcon.State.success)
                 .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .accessibilityLabel("No tasks")

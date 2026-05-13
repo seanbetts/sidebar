@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 func taskRowTapGestureMask() -> GestureMask {
     .gesture
@@ -43,18 +44,18 @@ func taskRowAccessibilityLabel(
 
 struct TaskPill: View {
     let text: String
-    let iconName: String?
+    let icon: AppIcon?
     @Environment(\.colorScheme) private var colorScheme
 
-    init(text: String, iconName: String? = nil) {
+    init(text: String, icon: AppIcon? = nil) {
         self.text = text
-        self.iconName = iconName
+        self.icon = icon
     }
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xxs) {
-            if let iconName {
-                Image(systemName: iconName)
+            if let icon {
+                Image(appIcon: icon)
                     .appFont(.caption)
             }
             Text(text)
@@ -147,7 +148,7 @@ struct TaskRow<MenuContent: View>: View {
                                     .fill(checkboxFillColor)
                                     .opacity(1)
                                     .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
-                                Image(systemName: "checkmark")
+                                Image(appIcon: AppIcon.State.success)
                                     .appFont(.caption)
                                     .foregroundStyle(checkboxMarkColor)
                                     .opacity(1)
@@ -157,7 +158,7 @@ struct TaskRow<MenuContent: View>: View {
                                 if isCompleting {
                                     SuccessCheckBadge(size: DesignTokens.Icon.md, symbolSize: 11)
                                 } else {
-                                    Image(systemName: "circle")
+                                    Image(appIcon: AppIcon.State.emptyCircle)
                                         .appFont(.body)
                                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 }
@@ -181,7 +182,7 @@ struct TaskRow<MenuContent: View>: View {
                             Button {
                                 onOpenNotes()
                             } label: {
-                                Image(systemName: "text.document")
+                                Image(appIcon: AppIcon.Domain.notes)
                                     .appFont(.caption)
                                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                             }
@@ -194,11 +195,11 @@ struct TaskRow<MenuContent: View>: View {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if selection != .completed && TasksUtils.isOverdue(task) {
                         if isCompact {
-                            Image(systemName: "exclamationmark.circle")
+                            Image(appIcon: AppIcon.State.error)
                                 .appFont(.subheading)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                         } else {
-                            TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
+                            TaskPill(text: "Overdue", icon: AppIcon.State.error)
                                 .overlay(isExpanded ? pillBorder : nil)
                         }
                     }
@@ -216,7 +217,7 @@ struct TaskRow<MenuContent: View>: View {
                         Button(role: .destructive) {
                             onDelete()
                         } label: {
-                            Image(systemName: "trash")
+                            Image(appIcon: AppIcon.Action.delete)
                                 .appFont(.subheading)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .frame(width: 24, height: 24)
@@ -226,7 +227,7 @@ struct TaskRow<MenuContent: View>: View {
                         Menu {
                             menuContent()
                         } label: {
-                            Image(systemName: "ellipsis")
+                            Image(appIcon: AppIcon.Action.more)
                                 .appFont(.subheading)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .frame(width: 24, height: 24)
@@ -296,7 +297,7 @@ struct TaskRow<MenuContent: View>: View {
                     Button {
                         onMove()
                     } label: {
-                        Image(systemName: "folder")
+                        Image(appIcon: AppIcon.Content.folder)
                             .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .padding(DesignTokens.Spacing.xxxs)

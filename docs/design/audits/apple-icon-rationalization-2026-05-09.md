@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, and feature-level empty-state slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, and task row/detail/modal action/status slices completed after the initial catalog work.
 
 Categories:
 
@@ -143,6 +143,20 @@ Categories:
 | Task selection and completed empty states | `checkmark.circle` | `EmptyStateContent.noSelection(icon: AppIcon.State.successCircle)` and `EmptyStateContent.noContentYet(icon: AppIcon.State.successCircle)` |
 | Task upcoming empty state | `calendar` | Left as a later rationalization boundary because no `AppIcon` value has been agreed yet |
 
+## Task Row, Detail, And Modal Action/Status Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Task row checkbox states | `checkmark`, `circle` | `AppIcon.State.success`, `AppIcon.State.emptyCircle` |
+| Task row notes affordance | `text.document` | `AppIcon.Domain.notes` |
+| Task overdue indicators | `exclamationmark.circle` | `AppIcon.State.error` |
+| Task row delete and overflow actions | `trash`, `ellipsis` | `AppIcon.Action.delete`, `AppIcon.Action.more` |
+| Task row move affordance | `folder` | `AppIcon.Content.folder` |
+| Task detail add and expand actions | `plus`, `arrow.up.right.and.arrow.down.left`, `arrow.down.left.and.arrow.up.right` | `AppIcon.Action.add`, `AppIcon.Navigation.expandWorkspace`, `AppIcon.Navigation.collapseWorkspace` |
+| Task detail success statuses | `checkmark`, `checkmark.circle` | `AppIcon.State.success`, `AppIcon.State.successCircle` |
+| Task modal clear and selection states | `xmark.circle.fill`, `checkmark` | `AppIcon.Action.clearFilled`, `AppIcon.State.success` |
+| Task panel zero-count status | `checkmark` | `AppIcon.State.success` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -151,6 +165,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- remaining feature-level empty-state and status call sites, including the task upcoming `calendar` boundary
+- task list taxonomy and recurrence symbols, including `calendar`, calendar badges, `list.bullet`, `square.3.layers.3d`, and `repeat`
 - non-menu feature view icons and dynamic/external symbol payloads
 - the production-wide strict source guard

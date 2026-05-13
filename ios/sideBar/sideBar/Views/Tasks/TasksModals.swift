@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum RepeatType: String, CaseIterable {
     case none
@@ -123,7 +124,7 @@ struct NewTaskSheet: View {
                             Button {
                                 hasDueDate = false
                             } label: {
-                                Image(systemName: "xmark.circle.fill")
+                                Image(appIcon: AppIcon.Action.clearFilled)
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)

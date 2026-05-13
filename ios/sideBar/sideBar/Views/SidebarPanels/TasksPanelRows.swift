@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct TaskPanelRow: View, Equatable {
     let title: String
@@ -59,7 +60,7 @@ struct TaskPanelRow: View, Equatable {
                 Spacer()
                 if let count {
                     if count == 0 {
-                        Image(systemName: "checkmark")
+                        Image(appIcon: AppIcon.State.success)
                             .appFont(SidebarTypography.secondary)
                             .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                             .accessibilityLabel("No tasks")

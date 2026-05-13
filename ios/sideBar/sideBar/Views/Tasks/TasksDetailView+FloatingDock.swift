@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -25,7 +26,7 @@ extension TasksDetailView {
     var workspaceFloatingActionDock: some View {
         PhoneFloatingActionDock {
             PhoneFloatingActionButton(
-                systemName: "plus",
+                systemName: AppIcon.Action.add.rawValue,
                 accessibilityLabel: "New task"
             ) {
                 viewModel.startNewTask()

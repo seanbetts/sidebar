@@ -393,6 +393,8 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 
 **Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Call sites that still pass symbol strings into bridge initializers, such as the task upcoming `calendar` boundary, remain tracked under `RES-MP-13`.
 
+Task row, detail, modal, and panel zero-count action/status affordances use `AppIcon` for rationalized success, error, add, delete, overflow, clear, notes, move, and expand/collapse concepts. Task taxonomy and recurrence symbols remain a later rationalization boundary.
+
 ---
 
 ## Web icon mapping

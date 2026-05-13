@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct DueDateSheet: View {
     let task: TaskItem
@@ -22,7 +23,7 @@ struct DueDateSheet: View {
                             onClear()
                             onDismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Image(appIcon: AppIcon.Action.clearFilled)
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -193,7 +194,7 @@ struct MoveTaskSheet: View {
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if selectedId == destination.id {
-                    Image(systemName: "checkmark")
+                    Image(appIcon: AppIcon.State.success)
                         .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
