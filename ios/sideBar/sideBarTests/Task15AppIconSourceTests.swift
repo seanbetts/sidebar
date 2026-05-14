@@ -143,36 +143,6 @@ final class Task15AppIconSourceTests: XCTestCase {
                 ]
             )
         ])
-
-        let files = try source(at: ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"])
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-        let expectedFilesEmptyState = [
-            "EmptyStateContent.noContentYet(title:\"Nofilesyet\",",
-            "subtitle:\"Uploadorcreateafiletogetstarted.\",",
-            "icon:AppIcon.Domain.files)"
-        ].joined()
-        XCTAssertTrue(files.contains(expectedFilesEmptyState))
-
-        let websites = try source(at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"])
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-        let expectedWebsitesEmptyState = [
-            "EmptyStateContent.noContentYet(title:\"Nowebsitesyet\",",
-            "subtitle:\"Savealinktogetstarted.\",",
-            "icon:AppIcon.Domain.websites)"
-        ].joined()
-        XCTAssertTrue(websites.contains(expectedWebsitesEmptyState))
-
-        let tasks = try source(at: ["sideBar", "Views", "Tasks", "TasksDetailView+EmptyState.swift"])
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-        let expectedNoSelection = [
-            "return.noSelection(title:\"Selectalist\",",
-            "subtitle:\"Pickatasklistfromthesidebartogetstarted.\",",
-            "icon:AppIcon.State.successCircle)"
-        ].joined()
-        XCTAssertTrue(tasks.contains(expectedNoSelection))
-        XCTAssertTrue(
-            tasks.contains("return.noContentYet(title:\"Nocompletedtasksyet\",icon:AppIcon.State.successCircle)")
-        )
     }
 
     func testPanelAndWorkspaceActionSurfacesUseAppIconVocabulary() throws {
@@ -228,6 +198,36 @@ final class Task15AppIconSourceTests: XCTestCase {
                 ]
             )
         ])
+
+        let files = try source(at: ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedFilesEmptyState = [
+            "EmptyStateContent.noContentYet(title:\"Nofilesyet\",",
+            "subtitle:\"Uploadorcreateafiletogetstarted.\",",
+            "icon:AppIcon.Domain.files)"
+        ].joined()
+        XCTAssertTrue(files.contains(expectedFilesEmptyState))
+
+        let websites = try source(at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedWebsitesEmptyState = [
+            "EmptyStateContent.noContentYet(title:\"Nowebsitesyet\",",
+            "subtitle:\"Savealinktogetstarted.\",",
+            "icon:AppIcon.Domain.websites)"
+        ].joined()
+        XCTAssertTrue(websites.contains(expectedWebsitesEmptyState))
+
+        let tasks = try source(at: ["sideBar", "Views", "Tasks", "TasksDetailView+EmptyState.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedNoSelection = [
+            "return.noSelection(title:\"Selectalist\",",
+            "subtitle:\"Pickatasklistfromthesidebartogetstarted.\",",
+            "icon:AppIcon.State.successCircle)"
+        ].joined()
+        XCTAssertTrue(tasks.contains(expectedNoSelection))
+        XCTAssertTrue(
+            tasks.contains("return.noContentYet(title:\"Nocompletedtasksyet\",icon:AppIcon.State.successCircle)")
+        )
     }
 
     func testChatConversationActionsUseAppIconFactories() throws {
