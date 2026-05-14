@@ -197,23 +197,22 @@ extension TasksDetailView {
 
     private func header(state: TasksViewState) -> some View {
         ContentHeaderRow(
-            iconName: state.titleIcon,
+            iconView: AnyView(Image(appIcon: state.titleIcon).appFont(.titleSm).foregroundStyle(.primary)),
             title: state.selectionLabel,
             subtitle: nil,
             titleLineLimit: 2,
             subtitleLineLimit: 1,
             titleLayoutPriority: 1,
-            subtitleLayoutPriority: 0
-        , trailing: {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                if let status = Self.headerStatus(totalCount: state.totalCount, selection: state.selection) {
-                    headerStatusView(status)
-                }
-                if shouldShowExpandButton {
-                    expandButton
+            subtitleLayoutPriority: 0,
+            trailing: {
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    if let status = Self.headerStatus(totalCount: state.totalCount, selection: state.selection) {
+                        headerStatusView(status)
+                    }
+                    if shouldShowExpandButton { expandButton }
                 }
             }
-        })
+        )
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight, alignment: .leading)
     }
@@ -221,7 +220,7 @@ extension TasksDetailView {
     @ViewBuilder
     private func compactHeader(state: TasksViewState) -> some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: state.titleIcon)
+            Image(appIcon: state.titleIcon)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             Text(state.selectionLabel)
                 .appFont(.titleMd)
@@ -415,7 +414,7 @@ extension TasksDetailView {
             case .upcoming, .completed:
                 sectionHeaderLabel(
                     title: section.title,
-                    iconName: "calendar"
+                    icon: AppIcon.Tasks.today
                 )
                 .padding(.horizontal, DesignTokens.Spacing.md)
             case .group:
@@ -434,9 +433,9 @@ extension TasksDetailView {
 
     @ViewBuilder
     private func todaySectionHeader(section: TaskSection, state: TasksViewState) -> some View {
-        let iconName = todaySectionIcon(for: section, state: state)
+        let icon = todaySectionIcon(for: section, state: state)
         let targetSelection = todaySectionSelection(for: section, state: state)
-        let label = sectionHeaderLabel(title: section.title, iconName: iconName)
+        let label = sectionHeaderLabel(title: section.title, icon: icon)
         if let targetSelection {
             Button {
                 Task { await viewModel.load(selection: targetSelection) }
@@ -449,30 +448,30 @@ extension TasksDetailView {
         }
     }
 
-    private func todaySectionIcon(for section: TaskSection, state: TasksViewState) -> String? {
+    private func todaySectionIcon(for section: TaskSection, state: TasksViewState) -> AppIcon? {
         if section.id.hasPrefix("project:") || state.projectTitleById[section.id] != nil {
-            return "list.bullet"
+            return AppIcon.Tasks.project
         }
         if state.groupTitleById[section.id] != nil {
-            return "square.3.layers.3d"
+            return AppIcon.Tasks.group
         }
         return nil
     }
 
     private func groupSectionHeader(section: TaskSection, state: TasksViewState) -> some View {
-        let iconName: String?
+        let icon: AppIcon?
         if section.id != "group" {
-            iconName = "list.bullet"
+            icon = AppIcon.Tasks.project
         } else {
-            iconName = nil
+            icon = nil
         }
-        return sectionHeaderLabel(title: section.title, iconName: iconName)
+        return sectionHeaderLabel(title: section.title, icon: icon)
     }
 
-    private func sectionHeaderLabel(title: String, iconName: String?) -> some View {
+    private func sectionHeaderLabel(title: String, icon: AppIcon?) -> some View {
         HStack(spacing: 6) {
-            if let iconName {
-                Image(systemName: iconName)
+            if let icon {
+                Image(appIcon: icon)
                     .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }

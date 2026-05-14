@@ -48,6 +48,15 @@ public extension AppIcon {
         public static let memories = AppIcon(rawValue: "bookmark")
     }
 
+    enum Tasks {
+        public static let today = AppIcon(rawValue: "calendar")
+        public static let upcoming = AppIcon(rawValue: "calendar.badge.clock")
+        public static let completed = AppIcon(rawValue: "calendar.badge.checkmark")
+        public static let group = AppIcon(rawValue: "square.3.layers.3d")
+        public static let project = AppIcon(rawValue: "list.bullet")
+        public static let recurrence = AppIcon(rawValue: "repeat")
+    }
+
     enum Navigation {
         public static let back = AppIcon(rawValue: "chevron.left")
         public static let forward = AppIcon(rawValue: "chevron.right")

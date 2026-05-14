@@ -3,7 +3,7 @@ import sideBarShared
 
 struct TaskPanelRow: View, Equatable {
     let title: String
-    let iconName: String
+    let icon: AppIcon
     let count: Int?
     let isSelected: Bool
     let indent: CGFloat
@@ -14,7 +14,7 @@ struct TaskPanelRow: View, Equatable {
 
     init(
         title: String,
-        iconName: String,
+        icon: AppIcon,
         count: Int? = nil,
         isSelected: Bool = false,
         indent: CGFloat = 0,
@@ -24,7 +24,7 @@ struct TaskPanelRow: View, Equatable {
         onDelete: (() -> Void)? = nil
     ) {
         self.title = title
-        self.iconName = iconName
+        self.icon = icon
         self.count = count
         self.isSelected = isSelected
         self.indent = indent
@@ -36,7 +36,7 @@ struct TaskPanelRow: View, Equatable {
 
     static func == (lhs: TaskPanelRow, rhs: TaskPanelRow) -> Bool {
         lhs.title == rhs.title &&
-        lhs.iconName == rhs.iconName &&
+        lhs.icon == rhs.icon &&
         lhs.count == rhs.count &&
         lhs.isSelected == rhs.isSelected &&
         lhs.indent == rhs.indent &&
@@ -51,7 +51,7 @@ struct TaskPanelRow: View, Equatable {
             primaryAction: rowPrimaryAction
         ) {
             HStack(spacing: 8) {
-                Image(systemName: iconName)
+                Image(appIcon: icon)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 Text(title)
                     .appFont(SidebarTypography.primary)

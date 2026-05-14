@@ -325,17 +325,17 @@ extension TasksViewModel {
         let groupTitleById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.title) })
 
         let selectionLabel: String
-        let titleIcon: String
+        let titleIcon: AppIcon
         let sections: [TaskSection]
 
         switch selection {
         case .none:
             selectionLabel = "Tasks"
-            titleIcon = "checkmark.square"
+            titleIcon = AppIcon.Domain.tasks
             sections = []
         case .today:
             selectionLabel = "Today"
-            titleIcon = "calendar"
+            titleIcon = AppIcon.Tasks.today
             sections = TasksUtils.buildTodaySections(
                 tasks: sortedTasks,
                 groups: groups,
@@ -345,16 +345,16 @@ extension TasksViewModel {
             )
         case .upcoming:
             selectionLabel = "Upcoming"
-            titleIcon = "calendar.badge.clock"
+            titleIcon = AppIcon.Tasks.upcoming
             sections = TasksUtils.buildUpcomingSections(tasks: sortedTasks)
         case .completed:
             selectionLabel = "Completed"
-            titleIcon = "calendar.badge.checkmark"
+            titleIcon = AppIcon.Tasks.completed
             sections = TasksUtils.buildCompletedSections(tasks: sortedTasks)
         case .group(let id):
             let title = groups.first(where: { $0.id == id })?.title ?? "Group"
             selectionLabel = title
-            titleIcon = "square.3.layers.3d"
+            titleIcon = AppIcon.Tasks.group
             sections = TasksUtils.buildGroupSections(
                 tasks: sortedTasks,
                 groupId: id,
@@ -363,11 +363,11 @@ extension TasksViewModel {
             )
         case .project(let id):
             selectionLabel = projects.first(where: { $0.id == id })?.title ?? "Project"
-            titleIcon = "list.bullet"
+            titleIcon = AppIcon.Tasks.project
             sections = sortedTasks.isEmpty ? [] : [TaskSection(id: "all", title: "", tasks: sortedTasks)]
         case .search(let query):
             selectionLabel = query.isEmpty ? "Search" : "Search: \(query)"
-            titleIcon = "magnifyingglass"
+            titleIcon = AppIcon.Action.search
             sections = TasksUtils.buildSearchSections(tasks: sortedTasks, groups: groups)
         }
 

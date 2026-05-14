@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, and task row/detail/modal action/status slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, and task taxonomy/recurrence slices completed after the initial catalog work.
 
 Categories:
 
@@ -20,6 +20,12 @@ Categories:
 | `bubble` | Chat domain | Canonical | `AppIcon.Domain.chat` | Primary chat navigation icon |
 | `text.document` | Notes domain | Canonical | `AppIcon.Domain.notes` | Primary notes navigation icon |
 | `checkmark.square` | Tasks domain | Canonical | `AppIcon.Domain.tasks` | Primary tasks navigation icon |
+| `calendar` | Today task filter and date section | Canonical | `AppIcon.Tasks.today` | Task taxonomy/date affordance |
+| `calendar.badge.clock` | Upcoming task filter | Canonical | `AppIcon.Tasks.upcoming` | Task taxonomy/date affordance |
+| `calendar.badge.checkmark` | Completed task filter | Canonical | `AppIcon.Tasks.completed` | Task taxonomy/date affordance |
+| `square.3.layers.3d` | Task group | Canonical | `AppIcon.Tasks.group` | Task grouping taxonomy |
+| `list.bullet` | Task project | Canonical | `AppIcon.Tasks.project` | Task grouping taxonomy |
+| `repeat` | Task recurrence | Context-specific | `AppIcon.Tasks.recurrence` | Repeat rule affordance |
 | `globe` | Websites domain and website fallback | Canonical | `AppIcon.Domain.websites` / `AppIcon.Content.websiteFallback` | Same raw value, separate semantic aliases |
 | `folder` | Files domain, folder content, and new group action | Canonical | `AppIcon.Domain.files` / `AppIcon.Content.folder` | Use the semantic alias that matches the surface |
 | `command.circle` | Skills Store | Canonical | `AppIcon.Domain.skillsStore` | App section icon |
@@ -141,7 +147,7 @@ Categories:
 | Memories search empty states | `magnifyingglass` | `EmptyStateView(icon: AppIcon.Action.search)` |
 | Scratchpad empty state | `square.and.pencil` | `EmptyStateView(icon: AppIcon.Action.compose)` |
 | Task selection and completed empty states | `checkmark.circle` | `EmptyStateContent.noSelection(icon: AppIcon.State.successCircle)` and `EmptyStateContent.noContentYet(icon: AppIcon.State.successCircle)` |
-| Task upcoming empty state | `calendar` | Left as a later rationalization boundary because no `AppIcon` value has been agreed yet |
+| Task upcoming empty state | `calendar` | `EmptyStateContent.noContentYet(icon: AppIcon.Tasks.today)` |
 
 ## Task Row, Detail, And Modal Action/Status Slice
 
@@ -157,6 +163,15 @@ Categories:
 | Task modal clear and selection states | `xmark.circle.fill`, `checkmark` | `AppIcon.Action.clearFilled`, `AppIcon.State.success` |
 | Task panel zero-count status | `checkmark` | `AppIcon.State.success` |
 
+## Task Taxonomy And Recurrence Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Task selection and search headers | `checkmark.square`, `magnifyingglass` | `AppIcon.Domain.tasks`, `AppIcon.Action.search` |
+| Task date filters and date sections | `calendar`, `calendar.badge.clock`, `calendar.badge.checkmark` | `AppIcon.Tasks.today`, `AppIcon.Tasks.upcoming`, `AppIcon.Tasks.completed` |
+| Task grouping taxonomy | `square.3.layers.3d`, `list.bullet` | `AppIcon.Tasks.group`, `AppIcon.Tasks.project` |
+| Task recurrence affordance | `repeat` | `AppIcon.Tasks.recurrence` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -165,6 +180,5 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- task list taxonomy and recurrence symbols, including `calendar`, calendar badges, `list.bullet`, `square.3.layers.3d`, and `repeat`
 - non-menu feature view icons and dynamic/external symbol payloads
 - the production-wide strict source guard

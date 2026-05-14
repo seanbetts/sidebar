@@ -109,7 +109,7 @@ struct TaskRow<MenuContent: View>: View {
                             showRepeatInfo = true
                         }
                     } label: {
-                        Image(systemName: "repeat")
+                        Image(appIcon: AppIcon.Tasks.recurrence)
                             .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
@@ -306,7 +306,7 @@ struct TaskRow<MenuContent: View>: View {
                     Button {
                         onRepeat()
                     } label: {
-                        Image(systemName: "repeat")
+                        Image(appIcon: AppIcon.Tasks.recurrence)
                             .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .padding(DesignTokens.Spacing.xxxs)

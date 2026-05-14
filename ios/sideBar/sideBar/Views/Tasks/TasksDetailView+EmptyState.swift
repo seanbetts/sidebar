@@ -23,7 +23,7 @@ extension TasksDetailView {
         case .upcoming:
             return .noContentYet(
                 title: "No upcoming tasks yet",
-                systemImage: "calendar"
+                icon: AppIcon.Tasks.today
             )
         case .completed:
             return .noContentYet(

@@ -58,6 +58,81 @@ final class Task15TaskIconSourceTests: XCTestCase {
         XCTAssertTrue(taskDetail.contains("Image(appIcon:AppIcon.State.success)"))
     }
 
+    func testTaskTaxonomyAndRecurrenceIconsUseAppIconVocabulary() throws {
+        try assertNoForbiddenIconPatterns([
+            (
+                ["sideBar", "Views", "SidebarPanels", "TasksPanel.swift"],
+                [
+                    "iconName:\"calendar\"",
+                    "iconName:\"calendar.badge.clock\"",
+                    "iconName:\"calendar.badge.checkmark\"",
+                    "iconName:\"square.3.layers.3d\"",
+                    "iconName:\"list.bullet\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "SidebarPanels", "TasksPanelRows.swift"],
+                ["Image(systemName:iconName)"]
+            ),
+            (
+                ["sideBar", "ViewModels", "TasksViewModel.swift"],
+                [
+                    "titleIcon=\"checkmark.square\"",
+                    "titleIcon=\"calendar\"",
+                    "titleIcon=\"calendar.badge.clock\"",
+                    "titleIcon=\"calendar.badge.checkmark\"",
+                    "titleIcon=\"square.3.layers.3d\"",
+                    "titleIcon=\"list.bullet\"",
+                    "titleIcon=\"magnifyingglass\""
+                ]
+            ),
+            (
+                ["sideBar", "Views", "Tasks", "TasksDetailView+EmptyState.swift"],
+                ["systemImage:\"calendar\""]
+            ),
+            (
+                ["sideBar", "Views", "Tasks", "TasksDetailView.swift"],
+                [
+                    "Image(systemName:state.titleIcon)",
+                    "iconName:\"calendar\"",
+                    "iconName=\"list.bullet\"",
+                    "iconName=\"square.3.layers.3d\"",
+                    "Image(systemName:iconName)"
+                ]
+            ),
+            (
+                ["sideBar", "Views", "Tasks", "TasksViewComponents.swift"],
+                ["Image(systemName:\"repeat\")"]
+            )
+        ])
+
+        let appIcon = try source(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        XCTAssertTrue(appIcon.contains("enumTasks"))
+        XCTAssertTrue(appIcon.contains("publicstaticlettoday=AppIcon(rawValue:\"calendar\")"))
+        XCTAssertTrue(appIcon.contains("publicstaticletupcoming=AppIcon(rawValue:\"calendar.badge.clock\")"))
+        XCTAssertTrue(appIcon.contains("publicstaticletcompleted=AppIcon(rawValue:\"calendar.badge.checkmark\")"))
+        XCTAssertTrue(appIcon.contains("publicstaticletgroup=AppIcon(rawValue:\"square.3.layers.3d\")"))
+        XCTAssertTrue(appIcon.contains("publicstaticletproject=AppIcon(rawValue:\"list.bullet\")"))
+        XCTAssertTrue(appIcon.contains("publicstaticletrecurrence=AppIcon(rawValue:\"repeat\")"))
+
+        let detailState = try source(at: ["sideBar", "ViewModels", "TasksViewModel+ViewState.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        XCTAssertTrue(detailState.contains("publiclettitleIcon:AppIcon"))
+
+        let taskRows = try source(at: ["sideBar", "Views", "SidebarPanels", "TasksPanelRows.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        XCTAssertTrue(taskRows.contains("leticon:AppIcon"))
+        XCTAssertTrue(taskRows.contains("Image(appIcon:icon)"))
+
+        let taskDetail = try source(at: ["sideBar", "Views", "Tasks", "TasksDetailView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        XCTAssertTrue(taskDetail.contains("Image(appIcon:state.titleIcon)"))
+        XCTAssertTrue(taskDetail.contains("icon:AppIcon.Tasks.today"))
+        XCTAssertTrue(taskDetail.contains("icon=AppIcon.Tasks.project"))
+        XCTAssertTrue(taskDetail.contains("AppIcon.Tasks.group"))
+    }
+
     private func assertNoForbiddenIconPatterns(
         _ forbiddenByFile: [([String], [String])],
         file: StaticString = #filePath,

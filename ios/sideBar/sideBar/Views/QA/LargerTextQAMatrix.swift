@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 private struct LargerTextQAMatrixView: View {
     var body: some View {
@@ -28,7 +29,7 @@ private struct LargerTextQAMatrixView: View {
                         .appFont(.caption)
                     TaskPanelRow(
                         title: "Review long-term roadmap and resolve pending platform migrations",
-                        iconName: "checklist",
+                        icon: AppIcon.Domain.tasks,
                         count: 12,
                         isSelected: false
                     )

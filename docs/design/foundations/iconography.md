@@ -179,6 +179,17 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Settings | `Domain.settings` | `square.grid.2x2` |
 | Memories | `Domain.memories` | `bookmark` |
 
+### Tasks
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Today tasks | `Tasks.today` | `calendar` |
+| Upcoming tasks | `Tasks.upcoming` | `calendar.badge.clock` |
+| Completed tasks | `Tasks.completed` | `calendar.badge.checkmark` |
+| Task group | `Tasks.group` | `square.3.layers.3d` |
+| Task project | `Tasks.project` | `list.bullet` |
+| Task recurrence | `Tasks.recurrence` | `repeat` |
+
 ### Actions
 
 | Concept | `AppIcon` | SF Symbol |
@@ -391,9 +402,9 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 | `StatusPill` | Neutral, success, warning, and error indicators |
 | `SuccessCheckBadge` | Success check mark |
 
-**Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Call sites that still pass symbol strings into bridge initializers, such as the task upcoming `calendar` boundary, remain tracked under `RES-MP-13`.
+**Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Remaining feature-level string bridges stay tracked under `RES-MP-13`.
 
-Task row, detail, modal, and panel zero-count action/status affordances use `AppIcon` for rationalized success, error, add, delete, overflow, clear, notes, move, and expand/collapse concepts. Task taxonomy and recurrence symbols remain a later rationalization boundary.
+Task row, detail, modal, panel zero-count, taxonomy, and recurrence affordances use `AppIcon` for rationalized success, error, add, delete, overflow, clear, notes, move, expand/collapse, date filter, group/project, and recurrence concepts.
 
 ---
 

@@ -152,19 +152,19 @@ extension TasksPanelView {
             Section {
                 tasksListRow(
                     title: "Today",
-                    iconName: "calendar",
+                    icon: AppIcon.Tasks.today,
                     count: viewModel.counts?.counts.today,
                     selection: .today
                 )
                 tasksListRow(
                     title: "Upcoming",
-                    iconName: "calendar.badge.clock",
+                    icon: AppIcon.Tasks.upcoming,
                     count: upcomingCount,
                     selection: .upcoming
                 )
                 tasksListRow(
                     title: "Completed",
-                    iconName: "calendar.badge.checkmark",
+                    icon: AppIcon.Tasks.completed,
                     count: viewModel.counts?.counts.completed,
                     selection: .completed
                 )
@@ -175,7 +175,7 @@ extension TasksPanelView {
                     ForEach(groupsSorted, id: \.id) { group in
                         tasksListRow(
                             title: group.title,
-                            iconName: "square.3.layers.3d",
+                            icon: AppIcon.Tasks.group,
                             count: groupCounts[group.id],
                             selection: .group(id: group.id),
                             onRename: { promptRename(group: group) },
@@ -185,7 +185,7 @@ extension TasksPanelView {
                         ForEach(projects, id: \.id) { project in
                             tasksListRow(
                                 title: project.title,
-                                iconName: "list.bullet",
+                                icon: AppIcon.Tasks.project,
                                 count: projectCounts[project.id],
                                 selection: .project(id: project.id),
                                 indent: 18,
@@ -202,7 +202,7 @@ extension TasksPanelView {
                     ForEach(orphanProjects, id: \.id) { project in
                         tasksListRow(
                             title: project.title,
-                            iconName: "list.bullet",
+                            icon: AppIcon.Tasks.project,
                             count: projectCounts[project.id],
                             selection: .project(id: project.id),
                             onRename: { promptRename(project: project) },
@@ -229,7 +229,7 @@ extension TasksPanelView {
     @ViewBuilder
     private func tasksListRow(
         title: String,
-        iconName: String,
+        icon: AppIcon,
         count: Int?,
         selection: TaskSelection,
         indent: CGFloat = 0,
@@ -238,7 +238,7 @@ extension TasksPanelView {
     ) -> some View {
         TaskPanelRow(
             title: title,
-            iconName: iconName,
+            icon: icon,
             count: count,
             isSelected: isCompact ? false : viewModel.selection == selection,
             indent: indent,
