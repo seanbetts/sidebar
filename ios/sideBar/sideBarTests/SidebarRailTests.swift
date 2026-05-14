@@ -53,6 +53,16 @@ final class SidebarRailTests: XCTestCase {
         XCTAssertFalse(normalized.contains(".frame(width:32,height:32)"))
         XCTAssertFalse(normalized.contains("ProfileAvatarView(size:32)"))
     }
+
+    func testSidebarRailStackSpacingUsesTokens() throws {
+        let normalized = try sidebarRailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("VStack(spacing:DesignTokens.Spacing.md)"))
+        XCTAssertTrue(normalized.contains("VStack(spacing:DesignTokens.Spacing.sm)"))
+        XCTAssertFalse(normalized.contains("VStack(spacing:16)"))
+        XCTAssertFalse(normalized.contains("VStack(spacing:12)"))
+    }
 }
 
 private func sidebarRailSource(

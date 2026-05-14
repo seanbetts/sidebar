@@ -52,7 +52,7 @@ struct PanelHeader<Trailing: View>: View {
 
     private var headerContent: some View {
         let content = HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                 Text(title)
                     .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)

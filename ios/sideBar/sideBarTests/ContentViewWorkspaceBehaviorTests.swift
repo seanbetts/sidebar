@@ -337,6 +337,20 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
         XCTAssertFalse(normalized.contains("defaultRightSidebarWidth,420,480,maxAllowed,half"))
     }
 
+    func testWorkspaceLayoutUsesDesignTokensForTrackedLayoutConstants() throws {
+        let normalized = try workspaceLayoutSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privateletleftPanelWidth:Double=Double(DesignTokens.Size.sidebarWidth)"))
+        XCTAssertTrue(normalized.contains("privateletminRightSidebarWidth:Double=Double(DesignTokens.Size.sidebarWidth)"))
+        XCTAssertTrue(normalized.contains("privateletminMainWidth:Double=Double(DesignTokens.Size.panelMinWidth)"))
+        XCTAssertTrue(normalized.contains("privateletminRightSidebarSnapSpacing:Double=Double(DesignTokens.Spacing.xxl)"))
+        XCTAssertFalse(normalized.contains("privateletleftPanelWidth:Double=280"))
+        XCTAssertFalse(normalized.contains("privateletminRightSidebarWidth:Double=280"))
+        XCTAssertFalse(normalized.contains("privateletminMainWidth:Double=320"))
+        XCTAssertFalse(normalized.contains("privateletminRightSidebarSnapSpacing:Double=32"))
+    }
+
     func testSignedInContentHandlesSidebarToggleAndScratchpadShortcutsOnMacOS() throws {
         let normalized = try signedInContentSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

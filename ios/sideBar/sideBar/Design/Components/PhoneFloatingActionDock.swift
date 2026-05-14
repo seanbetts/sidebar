@@ -1,8 +1,8 @@
 import SwiftUI
 
 enum PhoneFloatingActionMetrics {
-    static let buttonSize: CGFloat = 44
-    static let contentSpacing: CGFloat = 6
+    static let buttonSize: CGFloat = DesignTokens.Size.touchTarget
+    static let contentSpacing: CGFloat = DesignTokens.Spacing.xxsPlus
 }
 
 struct PhoneFloatingActionDock<Content: View>: View {
@@ -48,6 +48,6 @@ struct PhoneFloatingActionDivider: View {
     var body: some View {
         Rectangle()
             .fill(DesignTokens.Colors.border)
-            .frame(width: 1, height: 12)
+            .frame(width: 1, height: DesignTokens.Spacing.sm)
     }
 }

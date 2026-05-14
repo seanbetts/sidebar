@@ -53,10 +53,10 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     private let defaultRightSidebarWidth: Double = Double(DesignTokens.Size.rightSidebarDefaultWidth)
     private let railWidth: Double = Double(DesignTokens.Size.railWidth)
     private let dividerWidth: Double = Double(DesignTokens.Size.dividerWidth)
-    private let leftPanelWidth: Double = 280
-    private let minRightSidebarWidth: Double = 280
-    private let minMainWidth: Double = 320
-    private let minRightSidebarSnapSpacing: Double = 32
+    private let leftPanelWidth: Double = Double(DesignTokens.Size.sidebarWidth)
+    private let minRightSidebarWidth: Double = Double(DesignTokens.Size.sidebarWidth)
+    private let minMainWidth: Double = Double(DesignTokens.Size.panelMinWidth)
+    private let minRightSidebarSnapSpacing: Double = Double(DesignTokens.Spacing.xxl)
 
     private struct LayoutWidths {
         let leftPanel: Double

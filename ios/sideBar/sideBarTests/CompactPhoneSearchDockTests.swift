@@ -7,6 +7,21 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         XCTAssertEqual(PhoneFloatingActionMetrics.buttonSize, 44)
     }
 
+    func testCompactPhoneDockMetricsUseDesignTokens() throws {
+        XCTAssertEqual(PhoneFloatingActionMetrics.buttonSize, DesignTokens.Size.touchTarget)
+        XCTAssertEqual(PhoneFloatingActionMetrics.contentSpacing, DesignTokens.Spacing.xxsPlus)
+
+        let normalized = try phoneFloatingActionDockSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("staticletbuttonSize:CGFloat=DesignTokens.Size.touchTarget"))
+        XCTAssertTrue(normalized.contains("staticletcontentSpacing:CGFloat=DesignTokens.Spacing.xxsPlus"))
+        XCTAssertTrue(normalized.contains(".frame(width:1,height:DesignTokens.Spacing.sm)"))
+        XCTAssertFalse(normalized.contains("staticletbuttonSize:CGFloat=44"))
+        XCTAssertFalse(normalized.contains("staticletcontentSpacing:CGFloat=6"))
+        XCTAssertFalse(normalized.contains(".frame(width:1,height:12)"))
+    }
+
     func testCompactPhoneBottomSearchSectionsIncludeFilesAndSkillsStore() {
         let sections = ContentView.compactPhoneBottomSearchSections
         XCTAssertEqual(
@@ -288,5 +303,27 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         )
         XCTAssertEqual(model.searchPresentation, .expandedField)
         XCTAssertEqual(model.actionPresentation, .collapsedMenu)
+    }
+}
+
+private func phoneFloatingActionDockSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Design")
+        .appendingPathComponent("Components")
+        .appendingPathComponent("PhoneFloatingActionDock.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read PhoneFloatingActionDock.swift: \(error)", file: file, line: line)
+        throw error
     }
 }

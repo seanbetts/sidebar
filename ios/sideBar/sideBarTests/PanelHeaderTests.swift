@@ -108,4 +108,34 @@ final class PanelHeaderTests: XCTestCase {
             DesignTokens.Spacing.xs
         )
     }
+
+    func testPanelHeaderTitleStackUsesSpacingToken() throws {
+        let normalized = try panelHeaderSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("VStack(alignment:.leading,spacing:DesignTokens.Spacing.xxxs)"))
+        XCTAssertFalse(normalized.contains("VStack(alignment:.leading,spacing:2)"))
+    }
+}
+
+private func panelHeaderSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Design")
+        .appendingPathComponent("Components")
+        .appendingPathComponent("PanelHeader.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read PanelHeader.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }

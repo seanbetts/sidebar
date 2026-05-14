@@ -45,13 +45,9 @@ enum Spacing {
 **Coverage**: Good. The scale covers the full range of spacing values visible in components.
 
 **Gaps / drift**:
-- `PanelHeader.swift:45` uses `VStack spacing: 2` (= `xxxs`) but references it as a bare literal.
-- `PhoneFloatingActionMetrics.contentSpacing = 6` matches `xxsPlus` but is a separate constant.
-- `PhoneFloatingActionDivider` uses `frame(height: 12)` matching `sm` but as a literal.
-- `SidebarRail` uses `VStack(spacing: 16)` (= `md`) and `VStack(spacing: 12)` (= `sm`) as literals.
-- Several padding values in `WorkspaceLayout` are literals that match existing tokens.
+- The tracked `PanelHeader`, `PhoneFloatingActionDock`, `SidebarRail`, and `WorkspaceLayout` spacing/layout literals were resolved on 2026-05-13 and now reference existing `DesignTokens` values.
 
-**Verdict**: The scale is correct. The problem is adoption: several spots in `Views/` still use literals that match tokens but don't reference them.
+**Verdict**: The scale is correct. The tracked Task 15 spacing adoption drift has been cleaned up; continue using named `DesignTokens.Spacing` values for new view spacing.
 
 ---
 
@@ -75,38 +71,39 @@ enum Radius {
 **Coverage**: Good.
 
 **Gaps / drift**:
-- `SidebarRail.swift:109` uses `cornerRadius: 8` (matches `xsPlus`) as a literal.
 - `SelectableRow.swift` uses `DesignTokens.Radius.sm` correctly.
 - `SearchField.swift` uses `DesignTokens.Radius.sm` correctly.
 - `CardModifier.swift` uses `DesignTokens.Radius.md` correctly.
+- The tracked `SidebarRail` literal drift has been resolved.
 
-**Verdict**: Token adoption is good in `Design/` components. Drift is localised to feature views, especially `SidebarRail`.
+**Verdict**: Token adoption is good in `Design/` components. No Task 15 radius drift remains in the tracked views.
 
 ---
 
 ## DesignTokens.Size
 
-Four values covering structural layout dimensions.
+Structural layout dimensions.
 
 ```swift
 enum Size {
     static let touchTarget:    CGFloat = 44
     static let sidebarWidth:   CGFloat = 280
+    static let railWidth:      CGFloat = 56
+    static let dividerWidth:   CGFloat = 8
+    static let rightSidebarDefaultWidth: CGFloat = 360
     static let panelMinWidth:  CGFloat = 320
     static let contentMaxWidth: CGFloat = 520
 }
 ```
 
-**Coverage**: Partial. The most-used layout constants are not here.
+**Coverage**: Improved. Core workspace, rail, divider, touch target, and content sizing tokens exist.
 
 **Gaps**:
-- `WorkspaceLayout.swift` has `railWidth: 56`, `dividerWidth: 8`, `defaultRightSidebarWidth: 360`, `minRightSidebarWidth: 280` as private constants. `minRightSidebarWidth = 280` matches `sidebarWidth` but doesn't reference it.
-- `SidebarRail.swift` has `.frame(width: 56)` hardcoded. Should match a `Size.railWidth` token.
 - `SidebarSplitView.swift` has `railWidth = 56`, `dividerWidth = 8`, `minPanelWidth = 200`, `maxPanelWidth = 500` as private constants. These duplicate `WorkspaceLayout` values.
 - Profile avatar in Settings is `.frame(width: 56, height: 56)` - matches rail width by coincidence.
-- No token for `defaultRightSidebarWidth = 360`.
+- The tracked `WorkspaceLayout` width constants now reference `DesignTokens.Size` aliases.
 
-**Verdict**: Needs extension. At minimum add `railWidth = 56`, `dividerWidth = 8`, and a right sidebar default width.
+**Verdict**: The Task 15 workspace layout token drift is resolved. Remaining size cleanup, if pursued later, should decide whether older split-view constants are still active before changing them.
 
 ---
 

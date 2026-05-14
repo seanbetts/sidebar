@@ -30,7 +30,7 @@ public struct SidebarRail: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: DesignTokens.Spacing.md) {
             Button(
                 action: { onTogglePanel?() },
                 label: {
@@ -51,7 +51,7 @@ public struct SidebarRail: View {
             .accessibilityLabel("Toggle sidebar")
             .sidebarHover($isLogoHovered)
 
-            VStack(spacing: 12) {
+            VStack(spacing: DesignTokens.Spacing.sm) {
                 ForEach(sections) { section in
                     sectionButton(for: section)
                 }
