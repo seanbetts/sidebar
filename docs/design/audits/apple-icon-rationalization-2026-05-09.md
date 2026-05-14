@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, and task taxonomy/recurrence slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, and compact phone search/action dock slices completed after the initial catalog work.
 
 Categories:
 
@@ -172,6 +172,18 @@ Categories:
 | Task grouping taxonomy | `square.3.layers.3d`, `list.bullet` | `AppIcon.Tasks.group`, `AppIcon.Tasks.project` |
 | Task recurrence affordance | `repeat` | `AppIcon.Tasks.recurrence` |
 
+## Compact Phone Search And Action Dock Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Collapsed compact phone search affordance | `magnifyingglass` | `Image(appIcon: AppIcon.Action.search)` |
+| Floating add controls and collapsed add menu labels | `plus` | `PhoneFloatingActionButton(icon: AppIcon.Action.add)` and `Image(appIcon: AppIcon.Action.add)` |
+| Notes folder creation controls | `folder` | `PhoneFloatingActionButton(icon: AppIcon.Content.folder)` and `Label(..., systemImage: AppIcon.Content.folder.rawValue)` |
+| Task quick-create menu item | `checkmark.circle` | `Label(..., systemImage: AppIcon.State.successCircle.rawValue)` |
+| Task group and project menu items | `folder`, `list.bullet.rectangle` | `AppIcon.Content.folder` and `AppIcon.Content.taskList` at the SwiftUI `Label` boundary |
+| File YouTube action | `play.rectangle` | `PhoneFloatingActionButton(icon: AppIcon.Media.video)` and `Label(..., systemImage: AppIcon.Media.video.rawValue)` |
+| Floating action button component | Dynamic `systemName` parameter | `PhoneFloatingActionButton(icon: AppIcon, ...)` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -180,5 +192,5 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- non-menu feature view icons and dynamic/external symbol payloads
+- non-menu feature view icons outside the completed compact phone search/action dock slice and dynamic/external symbol payloads
 - the production-wide strict source guard

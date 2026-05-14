@@ -287,14 +287,14 @@ extension ContentView {
         case .notes:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(
-                    systemName: "folder",
+                    icon: AppIcon.Content.folder,
                     accessibilityLabel: "Add folder"
                 ) {
                     environment.emitShortcutAction(.createFolder)
                 }
                 PhoneFloatingActionDivider()
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "Add note"
                 ) {
                     environment.emitShortcutAction(.newItem)
@@ -307,20 +307,20 @@ extension ContentView {
                         Button {
                             environment.emitShortcutAction(.newItem)
                         } label: {
-                            Label("New task", systemImage: "checkmark.circle")
+                            Label("New task", systemImage: AppIcon.State.successCircle.rawValue)
                         }
                         Button {
                             environment.emitShortcutAction(.createTaskGroup)
                         } label: {
-                            Label("New group", systemImage: "folder")
+                            Label("New group", systemImage: AppIcon.Content.folder.rawValue)
                         }
                         Button {
                             environment.emitShortcutAction(.createTaskProject)
                         } label: {
-                            Label("New project", systemImage: "list.bullet.rectangle")
+                            Label("New project", systemImage: AppIcon.Content.taskList.rawValue)
                         }
                     } label: {
-                        Image(systemName: "plus")
+                        Image(appIcon: AppIcon.Action.add)
                             .appFont(.label)
                             .frame(
                                 width: PhoneFloatingActionMetrics.buttonSize,
@@ -331,7 +331,7 @@ extension ContentView {
                     .accessibilityLabel("Add")
                 } else {
                     PhoneFloatingActionButton(
-                        systemName: "plus",
+                        icon: AppIcon.Action.add,
                         accessibilityLabel: "New task"
                     ) {
                         environment.tasksViewModel.startNewTask()
@@ -341,7 +341,7 @@ extension ContentView {
         case .websites:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "Add website"
                 ) {
                     environment.emitShortcutAction(.newItem)
@@ -350,14 +350,14 @@ extension ContentView {
         case .files:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(
-                    systemName: "play.rectangle",
+                    icon: AppIcon.Media.video,
                     accessibilityLabel: "Add YouTube video"
                 ) {
                     environment.emitShortcutAction(.addYouTubeVideo)
                 }
                 PhoneFloatingActionDivider()
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "Add file"
                 ) {
                     environment.emitShortcutAction(.newItem)
@@ -366,7 +366,7 @@ extension ContentView {
         case .chat:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "New chat"
                 ) {
                     environment.emitShortcutAction(.newItem)

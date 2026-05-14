@@ -22,6 +22,51 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         XCTAssertFalse(normalized.contains(".frame(width:1,height:12)"))
     }
 
+    func testCompactPhoneDockIconsUseAppIconVocabulary() throws {
+        let dockSource = try normalizedSource("sideBar/Design/Components/PhoneFloatingActionDock.swift")
+        let searchDockSource = try normalizedSource("sideBar/Views/ContentView+CompactPhoneSearchDock.swift")
+        let layoutSource = try normalizedSource("sideBar/Views/ContentView+Layout.swift")
+        let taskDockSource = try normalizedSource("sideBar/Views/Tasks/TasksDetailView+FloatingDock.swift")
+
+        XCTAssertTrue(dockSource.contains("leticon:AppIcon"))
+        XCTAssertTrue(dockSource.contains("Image(appIcon:icon)"))
+        XCTAssertFalse(dockSource.contains("letsystemName:String"))
+        XCTAssertFalse(dockSource.contains("Image(systemName:systemName)"))
+
+        XCTAssertTrue(searchDockSource.contains("Image(appIcon:AppIcon.Action.search)"))
+        XCTAssertTrue(searchDockSource.contains("PhoneFloatingActionButton(icon:AppIcon.Action.add"))
+        XCTAssertTrue(searchDockSource.contains("PhoneFloatingActionButton(icon:AppIcon.Content.folder"))
+        XCTAssertTrue(searchDockSource.contains("PhoneFloatingActionButton(icon:AppIcon.Media.video"))
+        XCTAssertTrue(searchDockSource.contains("Label(\"Addfolder\",systemImage:AppIcon.Content.folder.rawValue)"))
+        XCTAssertTrue(searchDockSource.contains("Label(\"Newtask\",systemImage:AppIcon.State.successCircle.rawValue)"))
+        XCTAssertTrue(searchDockSource.contains("Label(\"Newproject\",systemImage:AppIcon.Content.taskList.rawValue)"))
+        XCTAssertFalse(searchDockSource.contains("Image(systemName:\"magnifyingglass\")"))
+        XCTAssertFalse(searchDockSource.contains("Image(systemName:\"plus\")"))
+        XCTAssertFalse(searchDockSource.contains("systemName:\"plus\""))
+        XCTAssertFalse(searchDockSource.contains("systemName:\"folder\""))
+        XCTAssertFalse(searchDockSource.contains("systemName:\"play.rectangle\""))
+        XCTAssertFalse(searchDockSource.contains("systemImage:\"plus\""))
+        XCTAssertFalse(searchDockSource.contains("systemImage:\"folder\""))
+        XCTAssertFalse(searchDockSource.contains("systemImage:\"checkmark.circle\""))
+        XCTAssertFalse(searchDockSource.contains("systemImage:\"list.bullet.rectangle\""))
+        XCTAssertFalse(searchDockSource.contains("systemImage:\"play.rectangle\""))
+
+        XCTAssertTrue(layoutSource.contains("PhoneFloatingActionButton(icon:AppIcon.Action.add"))
+        XCTAssertTrue(layoutSource.contains("PhoneFloatingActionButton(icon:AppIcon.Content.folder"))
+        XCTAssertTrue(layoutSource.contains("PhoneFloatingActionButton(icon:AppIcon.Media.video"))
+        XCTAssertTrue(layoutSource.contains("Label(\"Newtask\",systemImage:AppIcon.State.successCircle.rawValue)"))
+        XCTAssertTrue(layoutSource.contains("Label(\"Newgroup\",systemImage:AppIcon.Content.folder.rawValue)"))
+        XCTAssertTrue(layoutSource.contains("Label(\"Newproject\",systemImage:AppIcon.Content.taskList.rawValue)"))
+        XCTAssertFalse(layoutSource.contains("PhoneFloatingActionButton(systemName:"))
+        XCTAssertFalse(layoutSource.contains("systemImage:\"checkmark.circle\""))
+        XCTAssertFalse(layoutSource.contains("systemImage:\"folder\""))
+        XCTAssertFalse(layoutSource.contains("systemImage:\"list.bullet.rectangle\""))
+        XCTAssertFalse(layoutSource.contains("Image(systemName:\"plus\")"))
+
+        XCTAssertTrue(taskDockSource.contains("PhoneFloatingActionButton(icon:AppIcon.Action.add"))
+        XCTAssertFalse(taskDockSource.contains("systemName:AppIcon.Action.add.rawValue"))
+    }
+
     func testCompactPhoneBottomSearchSectionsIncludeFilesAndSkillsStore() {
         let sections = ContentView.compactPhoneBottomSearchSections
         XCTAssertEqual(
@@ -310,10 +355,6 @@ private func phoneFloatingActionDockSource(
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> String {
-    let fileURL = URL(fileURLWithPath: "\(file)")
-    let sideBarRoot = fileURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
     let sourceURL = sideBarRoot
         .appendingPathComponent("sideBar")
         .appendingPathComponent("Design")
@@ -326,4 +367,27 @@ private func phoneFloatingActionDockSource(
         XCTFail("Failed to read PhoneFloatingActionDock.swift: \(error)", file: file, line: line)
         throw error
     }
+}
+
+private func normalizedSource(
+    _ path: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = sideBarRoot.appendingPathComponent(path)
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    } catch {
+        XCTFail("Failed to read \(path): \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private var sideBarRoot: URL {
+    let fileURL = URL(fileURLWithPath: #filePath)
+    return fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
 }

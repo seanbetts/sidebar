@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum PhoneFloatingActionMetrics {
     static let buttonSize: CGFloat = DesignTokens.Size.touchTarget
@@ -23,7 +24,7 @@ struct PhoneFloatingActionDock<Content: View>: View {
 }
 
 struct PhoneFloatingActionButton: View {
-    let systemName: String
+    let icon: AppIcon
     let accessibilityLabel: String
     let action: () -> Void
 
@@ -32,7 +33,7 @@ struct PhoneFloatingActionButton: View {
             Haptics.impact(.light)
             action()
         } label: {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appFont(.label)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())

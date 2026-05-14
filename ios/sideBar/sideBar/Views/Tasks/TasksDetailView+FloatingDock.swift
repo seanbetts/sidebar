@@ -26,7 +26,7 @@ extension TasksDetailView {
     var workspaceFloatingActionDock: some View {
         PhoneFloatingActionDock {
             PhoneFloatingActionButton(
-                systemName: AppIcon.Action.add.rawValue,
+                icon: AppIcon.Action.add,
                 accessibilityLabel: "New task"
             ) {
                 viewModel.startNewTask()

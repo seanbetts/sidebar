@@ -92,7 +92,7 @@ private struct CompactPhoneSearchDockView: View {
             Button {
                 isSearchExplicitlyExpanded.wrappedValue = true
             } label: {
-                Image(systemName: "magnifyingglass")
+                Image(appIcon: AppIcon.Action.search)
                     .appFont(.label)
                     .frame(
                         width: PhoneFloatingActionMetrics.buttonSize,
@@ -243,7 +243,7 @@ extension ContentView {
         case .websites:
             return AnyView(
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "Add website"
                 ) {
                     environment.emitShortcutAction(.newItem)
@@ -254,7 +254,7 @@ extension ContentView {
         case .chat:
             return AnyView(
                 PhoneFloatingActionButton(
-                    systemName: "plus",
+                    icon: AppIcon.Action.add,
                     accessibilityLabel: "New chat"
                 ) {
                     environment.emitShortcutAction(.newItem)
@@ -275,12 +275,12 @@ extension ContentView {
                 Button {
                     environment.emitShortcutAction(.createFolder)
                 } label: {
-                    Label("Add folder", systemImage: "folder")
+                    Label("Add folder", systemImage: AppIcon.Content.folder.rawValue)
                 }
                 Button {
                     environment.emitShortcutAction(.newItem)
                 } label: {
-                    Label("Add note", systemImage: "plus")
+                    Label("Add note", systemImage: AppIcon.Action.add.rawValue)
                 }
             } label: {
                 compactPhoneSearchDockMenuLabel
@@ -289,14 +289,14 @@ extension ContentView {
             .accessibilityLabel("Add")
         case .buttons:
             PhoneFloatingActionButton(
-                systemName: "folder",
+                icon: AppIcon.Content.folder,
                 accessibilityLabel: "Add folder"
             ) {
                 environment.emitShortcutAction(.createFolder)
             }
             PhoneFloatingActionDivider()
             PhoneFloatingActionButton(
-                systemName: "plus",
+                icon: AppIcon.Action.add,
                 accessibilityLabel: "Add note"
             ) {
                 environment.emitShortcutAction(.newItem)
@@ -316,17 +316,17 @@ extension ContentView {
                 Button {
                     environment.emitShortcutAction(.newItem)
                 } label: {
-                    Label("New task", systemImage: "checkmark.circle")
+                    Label("New task", systemImage: AppIcon.State.successCircle.rawValue)
                 }
                 Button {
                     environment.emitShortcutAction(.createTaskGroup)
                 } label: {
-                    Label("New group", systemImage: "folder")
+                    Label("New group", systemImage: AppIcon.Content.folder.rawValue)
                 }
                 Button {
                     environment.emitShortcutAction(.createTaskProject)
                 } label: {
-                    Label("New project", systemImage: "list.bullet.rectangle")
+                    Label("New project", systemImage: AppIcon.Content.taskList.rawValue)
                 }
             } label: {
                 compactPhoneSearchDockMenuLabel
@@ -348,12 +348,12 @@ extension ContentView {
                 Button {
                     environment.emitShortcutAction(.addYouTubeVideo)
                 } label: {
-                    Label("Add YouTube video", systemImage: "play.rectangle")
+                    Label("Add YouTube video", systemImage: AppIcon.Media.video.rawValue)
                 }
                 Button {
                     environment.emitShortcutAction(.newItem)
                 } label: {
-                    Label("Add file", systemImage: "plus")
+                    Label("Add file", systemImage: AppIcon.Action.add.rawValue)
                 }
             } label: {
                 compactPhoneSearchDockMenuLabel
@@ -362,14 +362,14 @@ extension ContentView {
             .accessibilityLabel("Add")
         case .buttons:
             PhoneFloatingActionButton(
-                systemName: "play.rectangle",
+                icon: AppIcon.Media.video,
                 accessibilityLabel: "Add YouTube video"
             ) {
                 environment.emitShortcutAction(.addYouTubeVideo)
             }
             PhoneFloatingActionDivider()
             PhoneFloatingActionButton(
-                systemName: "plus",
+                icon: AppIcon.Action.add,
                 accessibilityLabel: "Add file"
             ) {
                 environment.emitShortcutAction(.newItem)
@@ -380,7 +380,7 @@ extension ContentView {
     }
 
     private var compactPhoneSearchDockMenuLabel: some View {
-        Image(systemName: "plus")
+        Image(appIcon: AppIcon.Action.add)
             .appFont(.label)
             .frame(
                 width: PhoneFloatingActionMetrics.buttonSize,

@@ -115,6 +115,15 @@ HeaderActionButton(
 ) { ... }
 ```
 
+Compact floating action controls use the same pattern:
+
+```swift
+PhoneFloatingActionButton(
+    icon: AppIcon.Action.add,
+    accessibilityLabel: "New note"
+) { ... }
+```
+
 ---
 
 ## Semantic ownership
@@ -386,6 +395,8 @@ Context menu and swipe action icons are centralized in `SidebarMenuItem`. Factor
 | Delete | `Action.delete` |
 
 **Rule**: Use `SidebarMenuItem` factory methods for context menu and swipe actions. Do not assign icon names inline in views.
+
+Compact phone floating action docks should pass `AppIcon` values into `PhoneFloatingActionButton`. SwiftUI `Label(..., systemImage:)` remains an acceptable boundary for menu rows when it receives `AppIcon.*.rawValue`.
 
 ---
 
