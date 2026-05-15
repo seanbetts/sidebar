@@ -56,6 +56,13 @@ alembic upgrade head
 
 Ensure your Supabase connection env vars are set before running migrations.
 
+When a migration creates or exposes a table that Supabase clients consume through
+Realtime, PostgREST, GraphQL, or another Data API path, include explicit grants
+in the migration. Prefer the narrowest access needed, for example `GRANT SELECT`
+to `authenticated` for signed-in Realtime subscriptions. Do not grant `anon` or
+client-side write privileges unless the product flow requires them and RLS
+policies are already in place.
+
 ## Maintenance Mode (Optional)
 
 The frontend supports a maintenance/holding page controlled by `MAINTENANCE_MODE=true`.
