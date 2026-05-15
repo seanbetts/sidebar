@@ -15,6 +15,7 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("enumDomain"))
         XCTAssertTrue(normalized.contains("publicstaticletchat=AppIcon(rawValue:\"bubble\")"))
         XCTAssertTrue(normalized.contains("publicstaticlettasks=AppIcon(rawValue:\"checkmark.square\")"))
+        XCTAssertTrue(normalized.contains("publicstaticletmemoriesFilled=AppIcon(rawValue:\"bookmark.fill\")"))
         XCTAssertTrue(normalized.contains("publicstaticletexpandWorkspace=AppIcon(rawValue:\"arrow.up.right.and.arrow.down.left\")"))
         XCTAssertTrue(normalized.contains("publicstaticletcollapseWorkspace=AppIcon(rawValue:\"arrow.down.left.and.arrow.up.right\")"))
         XCTAssertTrue(normalized.contains("publicstaticletfolder=AppIcon(rawValue:\"folder\")"))
@@ -360,6 +361,47 @@ final class Task15AppIconSourceTests: XCTestCase {
                 ]
             )
         ])
+    }
+
+    func testMemoriesAndSkillsStoreChromeUseAppIconVocabulary() throws {
+        let memoriesSource = try source(at: ["sideBar", "Views", "Settings", "MemoriesSettingsView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let skillsStoreSource = try source(at: ["sideBar", "Views", "SkillsStore", "SkillsStoreDetailView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let settingsMacSource = try source(at: ["sideBar", "Views", "Settings", "SettingsMacStyles.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let contentHeaderSource = try source(at: ["sideBar", "Design", "Components", "ContentHeaderRow.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let placeholderSource = try source(at: ["sideBar", "Views", "Common", "ContentViewComponents.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            memoriesSource.contains("icon:selection==item.id?AppIcon.Domain.memoriesFilled:AppIcon.Domain.memories")
+        )
+        XCTAssertTrue(memoriesSource.contains("Image(appIcon:AppIcon.Action.search)"))
+        XCTAssertTrue(memoriesSource.contains("Image(appIcon:AppIcon.Action.clearFilled)"))
+        XCTAssertTrue(memoriesSource.contains("icon:AppIcon.Domain.memories"))
+        XCTAssertTrue(memoriesSource.contains("Image(appIcon:AppIcon.Domain.memories)"))
+        XCTAssertFalse(memoriesSource.contains("systemImage:selection==item.id?\"bookmark.fill\":\"bookmark\""))
+        XCTAssertFalse(memoriesSource.contains("Image(systemName:\"magnifyingglass\")"))
+        XCTAssertFalse(memoriesSource.contains("Image(systemName:\"xmark.circle.fill\")"))
+        XCTAssertFalse(memoriesSource.contains("iconName:\"bookmark\""))
+        XCTAssertFalse(memoriesSource.contains("Image(systemName:\"bookmark\")"))
+
+        XCTAssertTrue(settingsMacSource.contains("leticon:AppIcon"))
+        XCTAssertTrue(settingsMacSource.contains("Image(appIcon:icon)"))
+
+        XCTAssertTrue(contentHeaderSource.contains("init(icon:AppIcon,"))
+        XCTAssertTrue(contentHeaderSource.contains("Image(appIcon:icon)"))
+        XCTAssertTrue(placeholderSource.contains("icon:AppIcon?=nil"))
+        XCTAssertTrue(placeholderSource.contains("Image(appIcon:icon)"))
+
+        XCTAssertTrue(skillsStoreSource.contains("ContentHeaderRow(icon:AppIcon.Domain.skillsStore"))
+        XCTAssertTrue(skillsStoreSource.contains("icon:AppIcon.State.warning"))
+        XCTAssertTrue(skillsStoreSource.contains("icon:AppIcon.Action.search"))
+        XCTAssertFalse(skillsStoreSource.contains("iconName:\"command.circle\""))
+        XCTAssertFalse(skillsStoreSource.contains("iconName:\"exclamationmark.triangle\""))
+        XCTAssertFalse(skillsStoreSource.contains("iconName:\"magnifyingglass\""))
     }
 
     private func assertNoForbiddenIconPatterns(

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct ContentHeaderRow<Trailing: View>: View {
     let icon: AnyView
@@ -44,6 +45,52 @@ struct ContentHeaderRow<Trailing: View>: View {
     ) {
         self.icon = AnyView(
             Image(systemName: iconName)
+                .appFont(.titleSm)
+                .foregroundStyle(.primary)
+        )
+        self.title = title
+        self.titleAccessory = titleAccessory
+        self.subtitle = subtitle
+        self.titleStyle = titleStyle
+        self.titleWeight = titleWeight
+        self.titleLineLimit = titleLineLimit
+        self.subtitleLineLimit = subtitleLineLimit
+        self.titleLayoutPriority = titleLayoutPriority
+        self.subtitleLayoutPriority = subtitleLayoutPriority
+        self.subtitleShowsDivider = subtitleShowsDivider
+        self.subtitleDividerWidth = subtitleDividerWidth
+        self.subtitleDividerHeight = subtitleDividerHeight
+        self.subtitleTracking = subtitleTracking
+        self.alignment = alignment
+        self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.titleSubtitleAxis = titleSubtitleAxis
+        self.onTitleTap = onTitleTap
+        self.trailing = trailing()
+    }
+
+    init(
+        icon: AppIcon,
+        title: String,
+        titleAccessory: AnyView? = nil,
+        subtitle: String? = nil,
+        titleStyle: AppFontStyle = .subheading,
+        titleWeight: Font.Weight = .regular,
+        titleLineLimit: Int = 2,
+        subtitleLineLimit: Int = 2,
+        titleLayoutPriority: Double = 1,
+        subtitleLayoutPriority: Double = 0,
+        subtitleShowsDivider: Bool = false,
+        subtitleDividerWidth: CGFloat = 2,
+        subtitleDividerHeight: CGFloat = 20,
+        subtitleTracking: CGFloat = 0,
+        alignment: VerticalAlignment = .center,
+        titleSubtitleAlignment: VerticalAlignment = .center,
+        titleSubtitleAxis: Axis = .horizontal,
+        onTitleTap: (() -> Void)? = nil,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() }
+    ) {
+        self.icon = AnyView(
+            Image(appIcon: icon)
                 .appFont(.titleSm)
                 .foregroundStyle(.primary)
         )

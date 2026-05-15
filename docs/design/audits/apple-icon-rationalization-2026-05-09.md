@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, and compact phone search/action dock slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, and feature search plus Memories/Skills Store chrome slices completed after the initial catalog work.
 
 Categories:
 
@@ -31,6 +31,7 @@ Categories:
 | `command.circle` | Skills Store | Canonical | `AppIcon.Domain.skillsStore` | App section icon |
 | `square.grid.2x2` | Settings domain | Canonical | `AppIcon.Domain.settings` | App section icon |
 | `bookmark` | Memories | Canonical | `AppIcon.Domain.memories` | Settings memory surfaces |
+| `bookmark.fill` | Selected memory | Context-specific | `AppIcon.Domain.memoriesFilled` | Selected Memories row chrome |
 | `plus` | Add or create | Canonical | `AppIcon.Action.add` | Header add buttons and add menus |
 | `xmark` | Close or dismiss | Canonical | `AppIcon.Action.close` | Header close buttons and close menu items |
 | `xmark.circle.fill` | Clear field or filled dismiss | Canonical | `AppIcon.Action.clearFilled` | Search and inline clear controls |
@@ -184,6 +185,17 @@ Categories:
 | File YouTube action | `play.rectangle` | `PhoneFloatingActionButton(icon: AppIcon.Media.video)` and `Label(..., systemImage: AppIcon.Media.video.rawValue)` |
 | Floating action button component | Dynamic `systemName` parameter | `PhoneFloatingActionButton(icon: AppIcon, ...)` |
 
+## Feature Search And Memories/Skills Store Chrome Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Memories search fields | `magnifyingglass`, `xmark.circle.fill` | `Image(appIcon: AppIcon.Action.search)` and `Image(appIcon: AppIcon.Action.clearFilled)` |
+| Memories selected row | `bookmark.fill`, `bookmark` | `SettingsMacSkillRow(icon: AppIcon.Domain.memoriesFilled)` and `SettingsMacSkillRow(icon: AppIcon.Domain.memories)` |
+| Memories detail placeholder and header | `bookmark` | `PlaceholderView(icon: AppIcon.Domain.memories)` and `Image(appIcon: AppIcon.Domain.memories)` |
+| Skills Store content header | `command.circle` | `ContentHeaderRow(icon: AppIcon.Domain.skillsStore)` |
+| Skills Store warning and empty-search placeholders | `exclamationmark.triangle`, `magnifyingglass` | `PlaceholderView(icon: AppIcon.State.warning)` and `PlaceholderView(icon: AppIcon.Action.search)` |
+| Feature chrome helper APIs | Dynamic `systemName` or `iconName` parameters | `ContentHeaderRow(icon:)`, `SettingsMacSkillRow(icon:)`, and `PlaceholderView(icon:)` for migrated call sites |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -192,5 +204,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth, onboarding, and settings form icons
 - chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock slice and dynamic/external symbol payloads
+- non-menu feature view icons outside the completed compact phone search/action dock and feature search plus Memories/Skills Store chrome slices
+- dynamic/external symbol payloads
 - the production-wide strict source guard

@@ -117,7 +117,7 @@ struct MemoriesSettingsDetailView: View {
                         SettingsMacSkillRow(
                             title: displayName(item.path),
                             subtitle: item.content,
-                            systemImage: selection == item.id ? "bookmark.fill" : "bookmark"
+                            icon: selection == item.id ? AppIcon.Domain.memoriesFilled : AppIcon.Domain.memories
                         ) {
                             EmptyView()
                         }
@@ -142,7 +142,7 @@ struct MemoriesSettingsDetailView: View {
 
     private var memorySearchField: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
+            Image(appIcon: AppIcon.Action.search)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             TextField("Search memories", text: $searchQuery)
                 .textFieldStyle(.plain)
@@ -150,7 +150,7 @@ struct MemoriesSettingsDetailView: View {
                 Button {
                     searchQuery = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
                 .buttonStyle(.plain)
@@ -195,7 +195,7 @@ struct MemoriesSettingsDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
+                Image(appIcon: AppIcon.Action.search)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                 TextField("Search memories", text: $searchQuery)
                     .textFieldStyle(.plain)
@@ -203,7 +203,7 @@ struct MemoriesSettingsDetailView: View {
                     Button {
                         searchQuery = ""
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        Image(appIcon: AppIcon.Action.clearFilled)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                     }
                     .buttonStyle(.plain)
@@ -316,14 +316,14 @@ struct MemoriesSettingsDetailView: View {
             PlaceholderView(
                 title: "Select a memory",
                 subtitle: "Choose a memory from the sidebar to open it.",
-                iconName: "bookmark"
+                icon: AppIcon.Domain.memories
             )
         }
     }
 
     private func detailHeader(memory: MemoryItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "bookmark")
+            Image(appIcon: AppIcon.Domain.memories)
                 .appFont(.titleSm)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             VStack(alignment: .leading, spacing: 4) {

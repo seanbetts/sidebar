@@ -46,6 +46,7 @@ public extension AppIcon {
         public static let skillsStore = AppIcon(rawValue: "command.circle")
         public static let settings = AppIcon(rawValue: "square.grid.2x2")
         public static let memories = AppIcon(rawValue: "bookmark")
+        public static let memoriesFilled = AppIcon(rawValue: "bookmark.fill")
     }
 
     enum Tasks {

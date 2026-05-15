@@ -116,7 +116,7 @@ public struct SkillsStoreView: View {
                     subtitle: initialLoadError,
                     actionTitle: "Retry",
                     action: { Task { await reloadSkillsStore() } },
-                    iconName: "exclamationmark.triangle"
+                    icon: AppIcon.State.warning
                 )
             } else {
                 ScrollView {
@@ -143,7 +143,7 @@ public struct SkillsStoreView: View {
 
     private var headerBar: some View {
         ContentHeaderRow(
-            iconName: "command.circle",
+            icon: AppIcon.Domain.skillsStore,
             title: "Skills Store",
             titleStyle: .subheading,
             titleWeight: .semibold,
@@ -199,7 +199,7 @@ public struct SkillsStoreView: View {
             PlaceholderView(
                 title: "No store skills found",
                 subtitle: searchQueryBinding.wrappedValue.trimmed.isEmpty ? "Try another category." : "Try a different search.",
-                iconName: "magnifyingglass"
+                icon: AppIcon.Action.search
             )
         } else {
             LazyVGrid(columns: skillGridColumns, spacing: DesignTokens.Spacing.md) {

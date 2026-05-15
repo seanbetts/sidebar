@@ -124,6 +124,14 @@ PhoneFloatingActionButton(
 ) { ... }
 ```
 
+Feature chrome helpers use the same direct `AppIcon` API for migrated surfaces:
+
+```swift
+ContentHeaderRow(icon: AppIcon.Domain.skillsStore, title: "Skills Store")
+PlaceholderView(title: "No store skills found", icon: AppIcon.Action.search)
+SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Domain.memories)
+```
+
 ---
 
 ## Semantic ownership
@@ -187,6 +195,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Skills Store | `Domain.skillsStore` | `command.circle` |
 | Settings | `Domain.settings` | `square.grid.2x2` |
 | Memories | `Domain.memories` | `bookmark` |
+| Selected memory | `Domain.memoriesFilled` | `bookmark.fill` |
 
 ### Tasks
 

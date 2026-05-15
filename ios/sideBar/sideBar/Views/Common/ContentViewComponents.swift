@@ -148,24 +148,31 @@ public struct PlaceholderView: View {
     public let actionTitle: String?
     public let action: (() -> Void)?
     public let iconName: String?
+    public let icon: AppIcon?
 
     public init(
         title: String,
         subtitle: String? = nil,
         actionTitle: String? = nil,
         action: (() -> Void)? = nil,
-        iconName: String? = nil
+        iconName: String? = nil,
+        icon: AppIcon? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.action = action
         self.iconName = iconName
+        self.icon = icon
     }
 
     public var body: some View {
         VStack(spacing: 12) {
-            if let iconName {
+            if let icon {
+                Image(appIcon: icon)
+                    .appFont(.displayLg)
+                    .foregroundStyle(.secondary)
+            } else if let iconName {
                 Image(systemName: iconName)
                     .appFont(.displayLg)
                     .foregroundStyle(.secondary)

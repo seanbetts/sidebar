@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 func settingsMacSidebarWidth() -> CGFloat {
     232
@@ -193,7 +194,8 @@ struct SettingsMacPanelCard<Content: View>: View {
 struct SettingsMacSkillRow<Trailing: View>: View {
     let title: String
     let subtitle: String
-    let systemImage: String
+    let systemImage: String?
+    let icon: AppIcon?
     let action: (() -> Void)?
     private let trailing: Trailing
 
@@ -207,6 +209,22 @@ struct SettingsMacSkillRow<Trailing: View>: View {
         self.title = title
         self.subtitle = subtitle
         self.systemImage = systemImage
+        self.icon = nil
+        self.action = action
+        self.trailing = trailing()
+    }
+
+    init(
+        title: String,
+        subtitle: String,
+        icon: AppIcon,
+        action: (() -> Void)? = nil,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = nil
+        self.icon = icon
         self.action = action
         self.trailing = trailing()
     }
@@ -226,9 +244,7 @@ struct SettingsMacSkillRow<Trailing: View>: View {
 
     private var rowContent: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            Image(systemName: systemImage)
-                .appFont(.subheading)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            rowIcon
                 .frame(width: 20, height: 20)
                 .padding(.top, 2)
 
@@ -256,5 +272,18 @@ struct SettingsMacSkillRow<Trailing: View>: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private var rowIcon: some View {
+        if let icon {
+            Image(appIcon: icon)
+                .appFont(.subheading)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        } else if let systemImage {
+            Image(systemName: systemImage)
+                .appFont(.subheading)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
     }
 }
