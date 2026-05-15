@@ -34,7 +34,7 @@ final class Task15AuthOnboardingIconSourceTests: XCTestCase {
         )
         let formField = try normalizedSource(at: ["sideBar", "Design", "Components", "FormField.swift"])
 
-        XCTAssertTrue(login.contains("LoginFieldRow(leadingIcon:AppIcon.Auth.email)"))
+        XCTAssertTrue(login.contains("FormField(leadingIcon:AppIcon.Auth.email)"))
         XCTAssertTrue(login.contains("FormField(leadingIcon:AppIcon.Auth.password)"))
         XCTAssertTrue(login.contains("Image(appIcon:AppIcon.State.warningFilled)"))
         XCTAssertTrue(login.contains("Image(appIcon:AppIcon.Action.clearFilled)"))

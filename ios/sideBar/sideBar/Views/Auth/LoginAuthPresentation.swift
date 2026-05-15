@@ -65,42 +65,6 @@ enum LoginFieldChromeMetrics {
     }
 }
 
-struct LoginFieldRow<Content: View, Trailing: View>: View {
-    let leadingIcon: AppIcon
-    private let content: Content
-    private let trailing: Trailing
-
-    init(
-        leadingIcon: AppIcon,
-        @ViewBuilder content: () -> Content,
-        @ViewBuilder trailing: () -> Trailing
-    ) {
-        self.leadingIcon = leadingIcon
-        self.content = content()
-        self.trailing = trailing()
-    }
-
-    var body: some View {
-        HStack(spacing: LoginFieldChromeMetrics.rowSpacing) {
-            Image(appIcon: leadingIcon)
-                .foregroundStyle(.secondary)
-                .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
-                .frame(width: LoginFieldChromeMetrics.leadingIconWidth)
-
-            content
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
-                trailing
-            }
-        }
-        .appFont(.subheading)
-        .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
-        .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
-        .glassChrome(LoginChrome.fieldKind)
-    }
-}
-
 struct LoginPrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled

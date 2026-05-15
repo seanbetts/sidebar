@@ -6,7 +6,11 @@ struct AddApiKeyStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
     let bottomContentInset: CGFloat
-    @FocusState private var keyFieldFocused: Bool
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case apiKey
+    }
 
     var body: some View {
         OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
@@ -59,21 +63,20 @@ struct AddApiKeyStepView: View {
                         .appFont(.label)
                         .foregroundStyle(.secondary)
                         .tracking(0.5)
-                    SecureField(viewModel.apiKeyPlaceholder, text: $viewModel.apiKey)
-                        .textContentType(.password)
-#if canImport(UIKit)
-                        .textInputAutocapitalization(.never)
-#endif
-                        .autocorrectionDisabled()
-                        .padding(DesignTokens.Spacing.sm)
-                        .background(DesignTokens.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
-                        .focused($keyFieldFocused)
-                        .submitLabel(.continue)
-                        .onSubmit {
-                            guard !viewModel.trimmedApiKey.isEmpty && !viewModel.isLoading else { return }
-                            Task { await viewModel.validateAndSaveApiKey() }
-                        }
+                    FormField(leadingIcon: AppIcon.Settings.credentials) {
+                        FormFieldSecureInput(
+                            title: viewModel.apiKeyPlaceholder,
+                            text: $viewModel.apiKey,
+                            focus: $focusedField,
+                            field: .apiKey,
+                            textContentType: .password,
+                            submitLabel: .continue,
+                            onSubmit: {
+                                guard !viewModel.trimmedApiKey.isEmpty && !viewModel.isLoading else { return }
+                                Task { await viewModel.validateAndSaveApiKey() }
+                            }
+                        )
+                    }
                 }
                 .frame(maxWidth: 310)
 
@@ -99,6 +102,6 @@ struct AddApiKeyStepView: View {
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
         }
-        .onboardingDeferredAutofocus($keyFieldFocused)
+        .onboardingDeferredAutofocus($focusedField, equals: .apiKey)
     }
 }

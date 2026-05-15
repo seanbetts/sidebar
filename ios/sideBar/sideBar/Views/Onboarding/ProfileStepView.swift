@@ -36,16 +36,16 @@ struct ProfileStepView: View {
                         .appFont(.label)
                         .foregroundStyle(.secondary)
                         .tracking(0.5)
-                    TextField("Your name", text: $viewModel.displayName)
-                        .textContentType(.name)
-                        .padding(DesignTokens.Spacing.sm)
-                        .background(DesignTokens.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
-                        .focused($nameFieldFocused)
-                        .submitLabel(.continue)
-                        .onSubmit {
-                            Task { await viewModel.saveProfile() }
-                        }
+                    FormField(leadingIcon: AppIcon.Settings.profile) {
+                        TextField("Your name", text: $viewModel.displayName)
+                            .textContentType(.name)
+                            .textFieldStyle(.plain)
+                            .focused($nameFieldFocused)
+                            .submitLabel(.continue)
+                            .onSubmit {
+                                Task { await viewModel.saveProfile() }
+                            }
+                    }
                 }
                 .frame(maxWidth: 310)
 

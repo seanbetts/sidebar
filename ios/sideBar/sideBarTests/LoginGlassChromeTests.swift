@@ -35,19 +35,20 @@ final class LoginGlassChromeTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".stroke(DesignTokens.Colors.border"))
     }
 
-    func testLoginSourcesUseSharedFieldRowHelper() throws {
+    func testLoginSourcesUseUnifiedFormFieldForCredentialRows() throws {
         let normalized = try combinedLoginChromeSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertEqual(
-            normalized.components(separatedBy: "LoginFieldRow(").count - 1,
+            normalized.components(separatedBy: "FormField(leadingIcon:AppIcon.Auth.email)").count - 1,
             1
         )
         XCTAssertEqual(
             normalized.components(separatedBy: "FormField(leadingIcon:AppIcon.Auth.password)").count - 1,
             1
         )
-        XCTAssertTrue(normalized.contains("structLoginFieldRow<Content:View,Trailing:View>:View{"))
+        XCTAssertFalse(normalized.contains("LoginFieldRow("))
+        XCTAssertFalse(normalized.contains("structLoginFieldRow<Content:View,Trailing:View>:View{"))
     }
 
     func testUnifiedFormFieldUsesSharedLoginFieldMetricsForAuthLayout() throws {
@@ -61,12 +62,6 @@ final class LoginGlassChromeTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".font(.system(size:LoginFieldChromeMetrics.trailingSymbolPointSize))"))
     }
 
-    func testSecureFieldWrapperDelegatesToUnifiedFormFieldInput() throws {
-        let normalized = try secureFieldSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertTrue(normalized.contains("FormFieldSecureInput("))
-    }
 }
 
 private func combinedLoginChromeSource(
@@ -115,27 +110,6 @@ private func loginGroupBoxStyleSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read LoginGroupBoxStyle.swift: \(error)", file: file, line: line)
-        throw error
-    }
-}
-
-private func secureFieldSource(
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws -> String {
-    let fileURL = URL(fileURLWithPath: "\(file)")
-    let sourceURL = fileURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appendingPathComponent("sideBar")
-        .appendingPathComponent("Views")
-        .appendingPathComponent("Auth")
-        .appendingPathComponent("SecureFieldWithToggle.swift")
-
-    do {
-        return try String(contentsOf: sourceURL, encoding: .utf8)
-    } catch {
-        XCTFail("Failed to read SecureFieldWithToggle.swift: \(error)", file: file, line: line)
         throw error
     }
 }

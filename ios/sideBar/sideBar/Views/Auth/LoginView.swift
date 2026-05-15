@@ -136,7 +136,7 @@ public struct LoginView: View {
         }
     }
     private var emailFieldRow: some View {
-        LoginFieldRow(leadingIcon: AppIcon.Auth.email) {
+        FormField(leadingIcon: AppIcon.Auth.email) {
             TextField("Email", text: $email)
                 .textContentType(LoginCredentialAutofillHints.email)
         #if canImport(UIKit)
@@ -144,6 +144,7 @@ public struct LoginView: View {
                 .textInputAutocapitalization(.never)
         #endif
                 .autocorrectionDisabled()
+                .textFieldStyle(.plain)
                 .focused($focusedField, equals: .email)
                 .submitLabel(.next)
                 .onSubmit {

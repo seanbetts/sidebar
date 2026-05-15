@@ -42,26 +42,21 @@ struct CreateAccountStepView: View {
                             .appFont(.label)
                             .foregroundStyle(.secondary)
                             .tracking(0.5)
-                        TextField("Enter your email", text: $viewModel.email)
-                            .textContentType(LoginCredentialAutofillHints.email)
+                        FormField(leadingIcon: AppIcon.Auth.email) {
+                            TextField("Enter your email", text: $viewModel.email)
+                                .textContentType(LoginCredentialAutofillHints.email)
 #if canImport(UIKit)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                .textInputAutocapitalization(.never)
 #endif
-                            .autocorrectionDisabled()
-                            .padding(DesignTokens.Spacing.sm)
-                            .background {
-                                RoundedRectangle(
-                                    cornerRadius: DesignTokens.Radius.sm,
-                                    style: .continuous
-                                )
-                                .fill(DesignTokens.Colors.surface)
-                            }
-                            .focused($focusedField, equals: .email)
-                            .submitLabel(.next)
-                            .onSubmit {
-                                focusedField = .password
-                            }
+                                .autocorrectionDisabled()
+                                .textFieldStyle(.plain)
+                                .focused($focusedField, equals: .email)
+                                .submitLabel(.next)
+                                .onSubmit {
+                                    focusedField = .password
+                                }
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
@@ -69,22 +64,20 @@ struct CreateAccountStepView: View {
                             .appFont(.label)
                             .foregroundStyle(.secondary)
                             .tracking(0.5)
-                        SecureField("Choose a password", text: $viewModel.password)
-                            .textContentType(.password)
-                            .padding(DesignTokens.Spacing.sm)
-                            .background {
-                                RoundedRectangle(
-                                    cornerRadius: DesignTokens.Radius.sm,
-                                    style: .continuous
-                                )
-                                .fill(DesignTokens.Colors.surface)
-                            }
-                            .focused($focusedField, equals: .password)
-                            .submitLabel(.continue)
-                            .onSubmit {
-                                guard viewModel.isCreateAccountValid && !viewModel.isLoading else { return }
-                                Task { await viewModel.createAccount() }
-                            }
+                        FormField(leadingIcon: AppIcon.Auth.password) {
+                            FormFieldSecureInput(
+                                title: "Choose a password",
+                                text: $viewModel.password,
+                                focus: $focusedField,
+                                field: .password,
+                                textContentType: .password,
+                                submitLabel: .continue,
+                                onSubmit: {
+                                    guard viewModel.isCreateAccountValid && !viewModel.isLoading else { return }
+                                    Task { await viewModel.createAccount() }
+                                }
+                            )
+                        }
 
                         HStack(spacing: 4) {
                             ForEach(0..<4, id: \.self) { index in
