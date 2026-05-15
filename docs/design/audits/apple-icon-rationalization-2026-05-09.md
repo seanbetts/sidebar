@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, and settings/profile chrome slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, and Store Skill credential/config chrome slices completed after the initial catalog work.
 
 Categories:
 
@@ -33,10 +33,12 @@ Categories:
 | `bookmark` | Memories | Canonical | `AppIcon.Domain.memories` | Settings memory surfaces |
 | `bookmark.fill` | Selected memory | Context-specific | `AppIcon.Domain.memoriesFilled` | Selected Memories row chrome |
 | `plus` | Add or create | Canonical | `AppIcon.Action.add` | Header add buttons and add menus |
+| `plus.circle.fill` | Add filled circle | Context-specific | `AppIcon.Action.addCircleFilled` | Store Skill install and credential add actions |
 | `xmark` | Close or dismiss | Canonical | `AppIcon.Action.close` | Header close buttons and close menu items |
 | `xmark.circle.fill` | Clear field or filled dismiss | Canonical | `AppIcon.Action.clearFilled` | Search and inline clear controls |
 | `ellipsis` | More options | Canonical | `AppIcon.Action.more` | Header menus and overflow actions |
 | `trash` | Delete | Canonical | `AppIcon.Action.delete` | Destructive action |
+| `trash.circle.fill` | Delete filled circle | Context-specific | `AppIcon.Action.deleteCircleFilled` | Store Skill credential removal action |
 | `square.and.arrow.up` | Share file or transcript | Canonical | `AppIcon.Action.share` | Generic share action |
 | `square.and.arrow.up.on.square` | Share URL or text | Canonical | `AppIcon.Action.shareOnSquare` | URL/text share affordance |
 | `square.and.arrow.down` | Download or export | Canonical | `AppIcon.Action.download` | Downloads and transcript export |
@@ -44,6 +46,7 @@ Categories:
 | `textformat` | Copy title | Context-specific | `AppIcon.Action.copyTitle` | Distinguishes title text from generic copy |
 | `link` | Copy URL | Context-specific | `AppIcon.Action.copyURL` | Distinguishes URLs from generic copy |
 | `pencil` | Rename or edit | Canonical | `AppIcon.Action.rename` | Context menu edit/rename |
+| `pencil.circle.fill` | Rename/edit filled circle | Context-specific | `AppIcon.Action.renameCircleFilled` | Store Skill credential update action |
 | `square.and.pencil` | Compose | Canonical | `AppIcon.Action.compose` | Compose affordance |
 | `arrow.forward.folder` | Move | Canonical | `AppIcon.Action.move` | Move to folder actions |
 | `line.3.horizontal` | Reorder | Canonical | `AppIcon.Action.reorder` | Reorder actions |
@@ -209,6 +212,15 @@ Categories:
 | More tab destination rows | `bookmark`, `gearshape` | `AppIcon.Domain.memories`, `AppIcon.Settings.appPreferences` |
 | Feature chrome helper APIs | Dynamic `systemName` or `iconName` parameters | `ContentHeaderRow(icon:)`, `SettingsMacSkillRow(icon:)`, and `PlaceholderView(icon:)` for migrated call sites |
 
+## Store Skill Credential And Config Chrome Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Store Skill requirements rows | `checkmark.circle` | `Image(appIcon: AppIcon.State.successCircle)` |
+| Store Skill provider credential rows | `key`, `key.fill` | `SettingsMacSkillRow(icon: AppIcon.Settings.credentials)` and `SettingsMacSkillRow(icon: AppIcon.Settings.credentialsFilled)` |
+| Store Skill credential add/update/remove actions | `plus.circle.fill`, `pencil.circle.fill`, `trash.circle.fill` | `Image(appIcon: AppIcon.Action.addCircleFilled)`, `Image(appIcon: AppIcon.Action.renameCircleFilled)`, and `Image(appIcon: AppIcon.Action.deleteCircleFilled)` |
+| Store Skill install/config action pills | `plus.circle.fill`, `checkmark.circle.fill` | `StoreSkillInstallIcon(icon: AppIcon.Action.addCircleFilled)` and `StoreSkillInstallIcon(icon: AppIcon.State.successFilled)` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -217,6 +229,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - PDF controls
 - auth and onboarding icons
 - chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock and feature search plus Memories/Skills Store chrome slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, and Store Skill credential/config chrome slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

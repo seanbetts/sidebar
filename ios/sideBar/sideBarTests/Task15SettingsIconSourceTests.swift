@@ -7,6 +7,39 @@ final class Task15SettingsIconSourceTests: XCTestCase {
         try assertSettingsProfileFormChromeUsesAppIcon()
     }
 
+    func testStoreSkillCredentialConfigChromeUsesAppIconVocabulary() throws {
+        let credentials = try normalizedSource(
+            at: ["sideBar", "Views", "Settings", "StoreSkillCredentialsView.swift"]
+        )
+        let config = try normalizedSource(at: ["sideBar", "Views", "Settings", "StoreSkillConfigView.swift"])
+
+        XCTAssertTrue(
+            credentials.contains(
+                "icon:isConnected?AppIcon.Settings.credentialsFilled:AppIcon.Settings.credentials"
+            )
+        )
+        XCTAssertTrue(
+            credentials.contains(
+                "Image(appIcon:isConnected?AppIcon.Action.renameCircleFilled:AppIcon.Action.addCircleFilled)"
+            )
+        )
+        XCTAssertTrue(credentials.contains("Image(appIcon:AppIcon.Action.deleteCircleFilled)"))
+        XCTAssertFalse(credentials.contains("systemImage:isConnected?\"key.fill\":\"key\""))
+        XCTAssertFalse(
+            credentials.contains("Image(systemName:isConnected?\"pencil.circle.fill\":\"plus.circle.fill\")")
+        )
+        XCTAssertFalse(credentials.contains("Image(systemName:\"trash.circle.fill\")"))
+
+        XCTAssertTrue(config.contains("Image(appIcon:AppIcon.State.successCircle)"))
+        XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.State.successFilled"))
+        XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.addCircleFilled"))
+        XCTAssertTrue(config.contains("leticon:AppIcon"))
+        XCTAssertFalse(config.contains("Image(systemName:\"checkmark.circle\")"))
+        XCTAssertFalse(config.contains("StoreSkillInstallIcon(systemName:\"checkmark.circle.fill\""))
+        XCTAssertFalse(config.contains("StoreSkillInstallIcon(systemName:\"plus.circle.fill\""))
+        XCTAssertFalse(config.contains("Image(systemName:systemName)"))
+    }
+
     private func assertSettingsVocabularyExists() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
 

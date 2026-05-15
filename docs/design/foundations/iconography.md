@@ -130,6 +130,8 @@ Feature chrome helpers use the same direct `AppIcon` API for migrated surfaces:
 ContentHeaderRow(icon: AppIcon.Domain.skillsStore, title: "Skills Store")
 PlaceholderView(title: "No store skills found", icon: AppIcon.Action.search)
 SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Domain.memories)
+SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Settings.credentials)
+StoreSkillInstallIcon(icon: AppIcon.State.successFilled, busy: isBusy)
 Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 ```
 
@@ -214,15 +216,18 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Concept | `AppIcon` | SF Symbol |
 |---|---|---|
 | Add or create | `Action.add` | `plus` |
+| Add filled circle | `Action.addCircleFilled` | `plus.circle.fill` |
 | Close or dismiss | `Action.close` | `xmark` |
 | Clear field | `Action.clearFilled` | `xmark.circle.fill` |
 | More options | `Action.more` | `ellipsis` |
 | Delete | `Action.delete` | `trash` |
+| Delete filled circle | `Action.deleteCircleFilled` | `trash.circle.fill` |
 | Share | `Action.share` | `square.and.arrow.up` |
 | Share URL or text | `Action.shareOnSquare` | `square.and.arrow.up.on.square` |
 | Download | `Action.download` | `square.and.arrow.down` |
 | Copy | `Action.copy` | `doc.on.doc` |
 | Rename or edit | `Action.rename` | `pencil` |
+| Rename or edit filled circle | `Action.renameCircleFilled` | `pencil.circle.fill` |
 | Compose | `Action.compose` | `square.and.pencil` |
 | Move | `Action.move` | `arrow.forward.folder` |
 | Reorder | `Action.reorder` | `line.3.horizontal` |
@@ -429,6 +434,8 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 **Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Remaining feature-level string bridges stay tracked under `RES-MP-13`.
 
 Task row, detail, modal, panel zero-count, taxonomy, and recurrence affordances use `AppIcon` for rationalized success, error, add, delete, overflow, clear, notes, move, expand/collapse, date filter, group/project, and recurrence concepts.
+
+Store Skill credential and config chrome uses `AppIcon` for requirement checks, credential provider rows, credential add/update/remove actions, and install state pills.
 
 ---
 

@@ -126,13 +126,13 @@ struct StoreSkillCredentialsView: View {
             SettingsMacSkillRow(
                 title: providerDisplayName(normalizedProvider),
                 subtitle: providerStatusLabel(for: normalizedProvider),
-                systemImage: isConnected ? "key.fill" : "key"
+                icon: isConnected ? AppIcon.Settings.credentialsFilled : AppIcon.Settings.credentials
             ) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Button {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
-                        Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
+                        Image(appIcon: isConnected ? AppIcon.Action.renameCircleFilled : AppIcon.Action.addCircleFilled)
                             .appFont(.titleSm)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
@@ -143,7 +143,7 @@ struct StoreSkillCredentialsView: View {
                         Button(role: .destructive) {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
-                            Image(systemName: "trash.circle.fill")
+                            Image(appIcon: AppIcon.Action.deleteCircleFilled)
                                 .appFont(.titleSm)
                         }
                         .accessibilityLabel("Turn Off Skill")
@@ -184,7 +184,7 @@ struct StoreSkillCredentialsView: View {
                     Button {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
-                        Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
+                        Image(appIcon: isConnected ? AppIcon.Action.renameCircleFilled : AppIcon.Action.addCircleFilled)
                             .appFont(.titleSm)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
@@ -196,7 +196,7 @@ struct StoreSkillCredentialsView: View {
                         Button(role: .destructive) {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
-                            Image(systemName: "trash.circle.fill")
+                            Image(appIcon: AppIcon.Action.deleteCircleFilled)
                                 .appFont(.titleSm)
                         }
                         .accessibilityLabel("Turn Off Skill")

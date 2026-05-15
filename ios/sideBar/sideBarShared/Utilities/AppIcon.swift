@@ -11,10 +11,12 @@ public struct AppIcon: RawRepresentable, Hashable, Sendable {
 public extension AppIcon {
     enum Action {
         public static let add = AppIcon(rawValue: "plus")
+        public static let addCircleFilled = AppIcon(rawValue: "plus.circle.fill")
         public static let close = AppIcon(rawValue: "xmark")
         public static let clearFilled = AppIcon(rawValue: "xmark.circle.fill")
         public static let more = AppIcon(rawValue: "ellipsis")
         public static let delete = AppIcon(rawValue: "trash")
+        public static let deleteCircleFilled = AppIcon(rawValue: "trash.circle.fill")
         public static let share = AppIcon(rawValue: "square.and.arrow.up")
         public static let shareOnSquare = AppIcon(rawValue: "square.and.arrow.up.on.square")
         public static let download = AppIcon(rawValue: "square.and.arrow.down")
@@ -22,6 +24,7 @@ public extension AppIcon {
         public static let copyTitle = AppIcon(rawValue: "textformat")
         public static let copyURL = AppIcon(rawValue: "link")
         public static let rename = AppIcon(rawValue: "pencil")
+        public static let renameCircleFilled = AppIcon(rawValue: "pencil.circle.fill")
         public static let compose = AppIcon(rawValue: "square.and.pencil")
         public static let move = AppIcon(rawValue: "arrow.forward.folder")
         public static let reorder = AppIcon(rawValue: "line.3.horizontal")

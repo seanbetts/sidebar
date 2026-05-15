@@ -159,7 +159,7 @@ struct StoreSkillConfigView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(userRequirementLines.enumerated()), id: \.offset) { _, line in
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Image(systemName: "checkmark.circle")
+                                Image(appIcon: AppIcon.State.successCircle)
                                     .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(line)
@@ -251,7 +251,7 @@ struct StoreSkillConfigView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(userRequirementLines.enumerated()), id: \.offset) { _, line in
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Image(systemName: "checkmark.circle")
+                                Image(appIcon: AppIcon.State.successCircle)
                                     .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(line)
@@ -312,7 +312,7 @@ struct StoreSkillConfigView: View {
             Button {
                 onInstalledTap?()
             } label: {
-                StoreSkillInstallIcon(systemName: "checkmark.circle.fill", busy: isStoreActionBusy)
+                StoreSkillInstallIcon(icon: AppIcon.State.successFilled, busy: isStoreActionBusy)
             }
             .accessibilityLabel("Installed")
             .disabled(isStoreActionBusy)
@@ -321,7 +321,7 @@ struct StoreSkillConfigView: View {
             Button {
                 onInstallTap?()
             } label: {
-                StoreSkillInstallIcon(systemName: "plus.circle.fill", busy: isStoreActionBusy)
+                StoreSkillInstallIcon(icon: AppIcon.Action.addCircleFilled, busy: isStoreActionBusy)
             }
             .accessibilityLabel("Install")
             .disabled(isStoreActionBusy)
@@ -415,7 +415,7 @@ struct StoreSkillConfigView: View {
 }
 
 private struct StoreSkillInstallIcon: View {
-    let systemName: String
+    let icon: AppIcon
     let busy: Bool
 
     var body: some View {
@@ -425,7 +425,7 @@ private struct StoreSkillInstallIcon: View {
                     .controlSize(.small)
                     .tint(Color.primary)
             } else {
-                Image(systemName: systemName)
+                Image(appIcon: icon)
                     .appFont(.displayMd)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)
