@@ -91,7 +91,7 @@ struct SettingsMacHeroButtonRow<Leading: View>: View {
 
                 Spacer(minLength: DesignTokens.Spacing.md)
 
-                Image(systemName: "chevron.right")
+                Image(appIcon: AppIcon.Navigation.chevronRight)
                     .appFont(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -108,7 +108,7 @@ struct SettingsMacStatusBanner: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: tone == .error ? "exclamationmark.triangle.fill" : "info.circle.fill")
+            Image(appIcon: tone == .error ? AppIcon.State.warningFilled : AppIcon.State.infoFilled)
                 .foregroundStyle(iconColor)
                 .padding(.top, 2)
 

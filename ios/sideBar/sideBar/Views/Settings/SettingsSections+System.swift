@@ -173,7 +173,7 @@ struct AgentSettingsView: View {
                                 await viewModel.deletePrimaryProviderKey(provider: selectedPrimaryProvider)
                             }
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Image(appIcon: AppIcon.Action.clearFilled)
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)

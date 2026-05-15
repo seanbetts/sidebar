@@ -130,6 +130,7 @@ Feature chrome helpers use the same direct `AppIcon` API for migrated surfaces:
 ContentHeaderRow(icon: AppIcon.Domain.skillsStore, title: "Skills Store")
 PlaceholderView(title: "No store skills found", icon: AppIcon.Action.search)
 SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Domain.memories)
+Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 ```
 
 ---
@@ -298,8 +299,11 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Add profile image | `Settings.profileAdd` | `person.crop.circle.badge.plus` |
 | User settings | `Settings.user` | `person.line.dotted.person` |
 | Assistant | `Settings.assistant` | `brain.fill` |
+| Settings skills tab | `Settings.skills` | `command.circle` |
 | Credentials | `Settings.credentials` | `key.horizontal` |
 | Credentials connected | `Settings.credentialsFilled` | `key.horizontal.fill` |
+| App preferences | `Settings.appPreferences` | `gearshape` |
+| More settings tab | `Settings.more` | `ellipsis.circle` |
 | Theme | `Settings.theme` | `paintpalette` |
 | Skill fallback | `Skills.fallback` | `puzzlepiece.extension` |
 | Skill category fallback | `Skills.categoryFallback` | `tag.fill` |

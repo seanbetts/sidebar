@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 #if os(macOS)
 struct SidebarToggleHider: ViewModifier {
@@ -23,22 +24,22 @@ struct SettingsTabsView: View {
             settingsTabContent(ProfileSettingsView(viewModel: viewModel))
                 .tag(Tab.profile.rawValue)
                 .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
+                    Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
                 }
             settingsTabContent(UserSettingsView(viewModel: viewModel))
                 .tag(Tab.user.rawValue)
                 .tabItem {
-                    Label("User", systemImage: "person.line.dotted.person")
+                    Label("User", systemImage: AppIcon.Settings.user.rawValue)
                 }
             settingsTabContent(AgentSettingsView(viewModel: viewModel))
                 .tag(Tab.agent.rawValue)
                 .tabItem {
-                    Label(viewModel.assistantDisplayName, systemImage: "brain.fill")
+                    Label(viewModel.assistantDisplayName, systemImage: AppIcon.Settings.assistant.rawValue)
                 }
             settingsTabContent(SkillsSettingsView(viewModel: viewModel))
                 .tag(Tab.skills.rawValue)
                 .tabItem {
-                    Label("Skills", systemImage: "command.circle")
+                    Label("Skills", systemImage: AppIcon.Settings.skills.rawValue)
                 }
             settingsTabContent(
                 SettingsMoreTabView(
@@ -47,7 +48,7 @@ struct SettingsTabsView: View {
             )
                 .tag(Tab.more.rawValue)
                 .tabItem {
-                    Label("More", systemImage: "ellipsis.circle")
+                    Label("More", systemImage: AppIcon.Settings.more.rawValue)
                 }
         }
         .padding(DesignTokens.Spacing.md)

@@ -1,5 +1,6 @@
 import SwiftUI
 import LocalAuthentication
+import sideBarShared
 #if os(macOS)
 import UniformTypeIdentifiers
 #endif
@@ -85,7 +86,7 @@ public struct SettingsView: View {
             Button {
                 onClose?()
             } label: {
-                Image(systemName: "xmark.circle.fill")
+                Image(appIcon: AppIcon.Action.clearFilled)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
@@ -134,20 +135,20 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         return title
     }
 
-    var systemImage: String {
+    var appIcon: AppIcon {
         switch self {
         case .profile:
-            return "person.crop.circle"
+            return AppIcon.Settings.profile
         case .settings:
-            return "gearshape"
+            return AppIcon.Settings.appPreferences
         case .user:
-            return "person.line.dotted.person"
+            return AppIcon.Settings.user
         case .agent:
-            return "brain.fill"
+            return AppIcon.Settings.assistant
         case .skills:
-            return "command.circle"
+            return AppIcon.Settings.skills
         case .memories:
-            return "bookmark"
+            return AppIcon.Domain.memories
         }
     }
 }
@@ -165,7 +166,7 @@ private struct SettingsSplitView: View {
                 settingsSidebarHeader
 
                 List(SettingsSection.allCases, selection: selectionBinding) { section in
-                    Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
+                    Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.appIcon.rawValue)
                         .appFont(.subheading)
                         .padding(.vertical, DesignTokens.Spacing.xxsPlus)
                         .tag(section)

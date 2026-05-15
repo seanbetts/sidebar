@@ -36,7 +36,7 @@ struct SettingsMoreTabView: View {
     }
 
     private func destinationRow(for destination: Destination) -> some View {
-        Label(destination.title, systemImage: destination.systemImage)
+        Label(destination.title, systemImage: destination.appIcon.rawValue)
             .appFont(.body)
             .symbolRenderingMode(.monochrome)
             .foregroundStyle(DesignTokens.Colors.textPrimary)
@@ -70,12 +70,12 @@ extension SettingsMoreTabView {
             }
         }
 
-        var systemImage: String {
+        var appIcon: AppIcon {
             switch self {
             case .memories:
-                return "bookmark"
+                return AppIcon.Domain.memories
             case .app:
-                return "gearshape"
+                return AppIcon.Settings.appPreferences
             }
         }
     }

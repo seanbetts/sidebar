@@ -20,7 +20,7 @@ extension ProfileSettingsView {
             } else if viewModel.isLoadingProfileImage {
                 LoadingIndicatorView(size: LoadingIndicatorSize.panel)
             } else {
-                Image(systemName: "person.crop.circle.fill")
+                Image(appIcon: AppIcon.Settings.profileFilled)
                     .resizable()
                     .scaledToFit()
                     .foregroundStyle(.secondary)

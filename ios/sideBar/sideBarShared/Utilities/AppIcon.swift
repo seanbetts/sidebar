@@ -117,8 +117,11 @@ public extension AppIcon {
         public static let profileAdd = AppIcon(rawValue: "person.crop.circle.badge.plus")
         public static let user = AppIcon(rawValue: "person.line.dotted.person")
         public static let assistant = AppIcon(rawValue: "brain.fill")
+        public static let skills = AppIcon(rawValue: "command.circle")
         public static let credentials = AppIcon(rawValue: "key.horizontal")
         public static let credentialsFilled = AppIcon(rawValue: "key.horizontal.fill")
+        public static let appPreferences = AppIcon(rawValue: "gearshape")
+        public static let more = AppIcon(rawValue: "ellipsis.circle")
         public static let theme = AppIcon(rawValue: "paintpalette")
     }
 

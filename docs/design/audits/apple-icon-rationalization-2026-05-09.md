@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, and feature search plus Memories/Skills Store chrome slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, and settings/profile chrome slices completed after the initial catalog work.
 
 Categories:
 
@@ -28,7 +28,7 @@ Categories:
 | `repeat` | Task recurrence | Context-specific | `AppIcon.Tasks.recurrence` | Repeat rule affordance |
 | `globe` | Websites domain and website fallback | Canonical | `AppIcon.Domain.websites` / `AppIcon.Content.websiteFallback` | Same raw value, separate semantic aliases |
 | `folder` | Files domain, folder content, and new group action | Canonical | `AppIcon.Domain.files` / `AppIcon.Content.folder` | Use the semantic alias that matches the surface |
-| `command.circle` | Skills Store | Canonical | `AppIcon.Domain.skillsStore` | App section icon |
+| `command.circle` | Skills Store and settings skills tab | Canonical | `AppIcon.Domain.skillsStore` / `AppIcon.Settings.skills` | Use the semantic alias that matches the surface |
 | `square.grid.2x2` | Settings domain | Canonical | `AppIcon.Domain.settings` | App section icon |
 | `bookmark` | Memories | Canonical | `AppIcon.Domain.memories` | Settings memory surfaces |
 | `bookmark.fill` | Selected memory | Context-specific | `AppIcon.Domain.memoriesFilled` | Selected Memories row chrome |
@@ -98,6 +98,8 @@ Categories:
 | `brain.fill` | Assistant | Canonical | `AppIcon.Settings.assistant` | Settings and calibration |
 | `key.horizontal` | Credentials | Context-specific | `AppIcon.Settings.credentials` | Provider key |
 | `key.horizontal.fill` | Connected credentials | Context-specific | `AppIcon.Settings.credentialsFilled` | Provider key banner |
+| `gearshape` | App preferences | Context-specific | `AppIcon.Settings.appPreferences` | Settings app/general chrome |
+| `ellipsis.circle` | More settings tab | Context-specific | `AppIcon.Settings.more` | iOS settings more tab |
 | `paintpalette` | Theme | Context-specific | `AppIcon.Settings.theme` | Theme setting |
 | `puzzlepiece.extension` | Skill fallback | Canonical | `AppIcon.Skills.fallback` | Unknown skill |
 | `tag.fill` | Skill category fallback | Context-specific | `AppIcon.Skills.categoryFallback` | Unknown skill category |
@@ -194,6 +196,17 @@ Categories:
 | Memories detail placeholder and header | `bookmark` | `PlaceholderView(icon: AppIcon.Domain.memories)` and `Image(appIcon: AppIcon.Domain.memories)` |
 | Skills Store content header | `command.circle` | `ContentHeaderRow(icon: AppIcon.Domain.skillsStore)` |
 | Skills Store warning and empty-search placeholders | `exclamationmark.triangle`, `magnifyingglass` | `PlaceholderView(icon: AppIcon.State.warning)` and `PlaceholderView(icon: AppIcon.Action.search)` |
+
+## Settings/Profile Chrome Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| iOS settings tabs | `person.crop.circle`, `person.line.dotted.person`, `brain.fill`, `command.circle`, `ellipsis.circle` | `Label(..., systemImage: AppIcon.Settings.*.rawValue)` |
+| macOS settings sidebar | `person.crop.circle`, `gearshape`, `person.line.dotted.person`, `brain.fill`, `command.circle`, `bookmark` | `SettingsSection.appIcon` using `AppIcon.Settings.*` and `AppIcon.Domain.memories` |
+| Settings modal and form clear controls | `xmark.circle.fill` | `Image(appIcon: AppIcon.Action.clearFilled)` |
+| macOS settings disclosure and banners | `chevron.right`, `exclamationmark.triangle.fill`, `info.circle.fill` | `AppIcon.Navigation.chevronRight`, `AppIcon.State.warningFilled`, `AppIcon.State.infoFilled` |
+| Profile avatar fallback | `person.crop.circle.fill` | `Image(appIcon: AppIcon.Settings.profileFilled)` |
+| More tab destination rows | `bookmark`, `gearshape` | `AppIcon.Domain.memories`, `AppIcon.Settings.appPreferences` |
 | Feature chrome helper APIs | Dynamic `systemName` or `iconName` parameters | `ContentHeaderRow(icon:)`, `SettingsMacSkillRow(icon:)`, and `PlaceholderView(icon:)` for migrated call sites |
 
 ## Explicit Later Boundaries
@@ -202,7 +215,7 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 
 - widgets and extensions
 - PDF controls
-- auth, onboarding, and settings form icons
+- auth and onboarding icons
 - chat input UIKit/AppKit icons
 - non-menu feature view icons outside the completed compact phone search/action dock and feature search plus Memories/Skills Store chrome slices
 - dynamic/external symbol payloads

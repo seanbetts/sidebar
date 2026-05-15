@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct ProfileDateOfBirthField: View {
     @Binding var dateOfBirthEnabled: Bool
@@ -49,7 +50,7 @@ struct ProfileDateOfBirthField: View {
                 Button {
                     dateOfBirthEnabled = false
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .appFont(.body)
                 }
                 .buttonStyle(.plain)
@@ -111,7 +112,7 @@ struct ProfileDateOfBirthField: View {
                 Button {
                     dateOfBirthEnabled = false
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .appFont(.body)
                 }
                 .buttonStyle(.plain)
