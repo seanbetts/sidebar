@@ -1,3 +1,4 @@
+import sideBarShared
 import SwiftUI
 
 struct ChatRetryHeaderSlotState: Equatable {
@@ -52,7 +53,7 @@ struct ChatErrorPillView: View {
             showPopover = true
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle.fill")
+                Image(appIcon: AppIcon.State.warningFilled)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
                 Text(presentation.pillText)
@@ -97,7 +98,7 @@ struct ChatErrorRetryActionView: View {
                     ProgressView()
                         .controlSize(.mini)
                 } else {
-                    Image(systemName: "arrow.clockwise")
+                    Image(appIcon: AppIcon.State.retry)
                         .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -132,7 +133,7 @@ struct ChatErrorPopoverContent: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(appIcon: AppIcon.State.warningFilled)
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text(presentation.title)
                         .appFont(.subheading)

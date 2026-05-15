@@ -106,10 +106,7 @@ enum SkillIconResolver {
     }
 
     static func iconName(for toolCall: ToolCall) -> String {
-        iconName(
-            skillId: toolCall.skillId ?? skillId(forToolDisplayName: toolCall.name),
-            iconKey: toolCall.iconKey
-        )
+        appIcon(for: toolCall).rawValue
     }
 
     static func settingsIconName(for skill: SkillItem) -> String {
@@ -139,6 +136,13 @@ enum SkillIconResolver {
             return icon
         }
         return fallbackIcon
+    }
+
+    static func appIcon(for toolCall: ToolCall) -> AppIcon {
+        appIcon(
+            skillId: toolCall.skillId ?? skillId(forToolDisplayName: toolCall.name),
+            iconKey: toolCall.iconKey
+        )
     }
 
     static func skillId(forToolDisplayName name: String) -> String? {

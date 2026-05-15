@@ -4,8 +4,12 @@ import SwiftUI
 
 struct ChatToolSummaryPresentation: Equatable {
     let text: String
-    let iconName: String
+    let icon: AppIcon
     let hasError: Bool
+
+    var iconName: String {
+        icon.rawValue
+    }
 
     static func from(toolCalls: [ToolCall]) -> ChatToolSummaryPresentation {
         let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
@@ -17,24 +21,24 @@ struct ChatToolSummaryPresentation: Equatable {
             let displayName = ChatToolPresentation.displayName(for: toolCall)
             return ChatToolSummaryPresentation(
                 text: hasError ? "\(displayName) failed" : displayName,
-                iconName: hasError
-                    ? "exclamationmark.circle"
-                    : SkillIconResolver.iconName(for: toolCall),
+                icon: hasError
+                    ? AppIcon.State.error
+                    : SkillIconResolver.appIcon(for: toolCall),
                 hasError: hasError
             )
         }
 
-        let iconName: String
+        let icon: AppIcon
         if hasError {
-            iconName = "exclamationmark.circle"
+            icon = AppIcon.State.error
         } else {
-            let uniqueIcons = Set(presentedToolCalls.map { SkillIconResolver.iconName(for: $0) })
-            iconName = uniqueIcons.count == 1 ? uniqueIcons.first ?? "square.stack.3d.up" : "square.stack.3d.up"
+            let uniqueIcons = Set(presentedToolCalls.map { SkillIconResolver.appIcon(for: $0) })
+            icon = uniqueIcons.count == 1 ? uniqueIcons.first ?? AppIcon.Skills.multiple : AppIcon.Skills.multiple
         }
 
         return ChatToolSummaryPresentation(
             text: "\(presentedToolCalls.count) skills used",
-            iconName: iconName,
+            icon: icon,
             hasError: hasError
         )
     }
@@ -72,8 +76,8 @@ struct ToolCallListView: View {
         }
     }
 
-    private var summaryIconName: String {
-        summaryPresentation.iconName
+    private var summaryIcon: AppIcon {
+        summaryPresentation.icon
     }
 
     @ViewBuilder
@@ -82,7 +86,7 @@ struct ToolCallListView: View {
     ) -> some View {
         MetadataPill(text, maxTitleWidth: maxToolPillTextWidth) {
             SkillSymbolIcon(
-                systemName: summaryIconName,
+                appIcon: summaryIcon,
                 appFontStyle: .caption,
                 foreground: toolPillForeground
             )
@@ -105,7 +109,7 @@ struct ToolCallRow: View {
     var body: some View {
         HStack(spacing: 6) {
             SkillSymbolIcon(
-                systemName: SkillIconResolver.iconName(for: toolCall),
+                appIcon: SkillIconResolver.appIcon(for: toolCall),
                 appFontStyle: .caption,
                 foreground: .secondary
             )
@@ -119,7 +123,7 @@ struct ToolCallRow: View {
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
             if isSelected {
-                Image(systemName: "checkmark.circle.fill")
+                Image(appIcon: AppIcon.State.successFilled)
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
             }

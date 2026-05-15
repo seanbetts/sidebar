@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 final class ChatMessageCopyFeedbackStateTests: XCTestCase {
@@ -6,7 +7,7 @@ final class ChatMessageCopyFeedbackStateTests: XCTestCase {
         let state = ChatMessageCopyFeedbackState()
 
         XCTAssertFalse(state.isCopied)
-        XCTAssertEqual(state.iconName, "doc.on.doc")
+        XCTAssertEqual(state.appIcon, AppIcon.Action.copy)
         XCTAssertEqual(state.accessibilityLabel, "Copy message")
         XCTAssertEqual(state.foregroundStyle, .secondary)
         XCTAssertFalse(state.usesContrastingBackground)
@@ -18,7 +19,7 @@ final class ChatMessageCopyFeedbackStateTests: XCTestCase {
         state.markCopied()
 
         XCTAssertTrue(state.isCopied)
-        XCTAssertEqual(state.iconName, "checkmark.circle")
+        XCTAssertEqual(state.appIcon, AppIcon.State.successCircle)
         XCTAssertEqual(state.accessibilityLabel, "Copied message")
         XCTAssertEqual(state.foregroundStyle, .primary)
         XCTAssertFalse(state.usesContrastingBackground)
@@ -31,7 +32,7 @@ final class ChatMessageCopyFeedbackStateTests: XCTestCase {
         state.reset()
 
         XCTAssertFalse(state.isCopied)
-        XCTAssertEqual(state.iconName, "doc.on.doc")
+        XCTAssertEqual(state.appIcon, AppIcon.Action.copy)
         XCTAssertEqual(state.accessibilityLabel, "Copy message")
     }
 }

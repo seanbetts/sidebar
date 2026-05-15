@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, and auth/onboarding chrome slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, and bounded chat/tool/error presentation slices completed after the initial catalog work.
 
 Categories:
 
@@ -56,6 +56,7 @@ Categories:
 | `archivebox.fill` | Unarchive | Canonical | `AppIcon.Action.unarchive` | Archive inverse |
 | `magnifyingglass` | Search | Canonical | `AppIcon.Action.search` | Search fields and empty search states |
 | `arrow.clockwise` | Refresh or retry | Canonical | `AppIcon.Action.refresh` / `AppIcon.State.retry` | Use action alias for explicit refresh actions, state alias for retry state |
+| `arrow.uturn.backward` | Tool undo action | Context-specific | `AppIcon.Action.undo` | Chat tool undo action |
 | `arrow.up` | Send | Canonical | `AppIcon.Action.send` | Chat input |
 | `paperclip` | Attach | Context-specific | `AppIcon.Action.attach` | Attachment control |
 | `arrow.up.right.square` | Open external | Context-specific | `AppIcon.Action.openExternal` | External open action |
@@ -117,6 +118,7 @@ Categories:
 | `puzzlepiece.extension` | Skill fallback | Canonical | `AppIcon.Skills.fallback` | Unknown skill |
 | `tag.fill` | Skill category fallback | Context-specific | `AppIcon.Skills.categoryFallback` | Unknown skill category |
 | `hammer` | Skill tools | Context-specific | `AppIcon.Skills.tools` | Tool category |
+| `square.stack.3d.up` | Multiple tool or skill summary | Context-specific | `AppIcon.Skills.multiple` | Chat tool summary fallback |
 | `person.crop.circle.badge.checkmark` | Assistant identity skill | Context-specific | `AppIcon.Skills.assistantIdentity` | Skill resolver |
 | `sparkles` | Assistant soul skill | Context-specific | `AppIcon.Skills.assistantSoul` | Skill resolver |
 | `bubble.left.and.bubble.right` | Conversations skill | Context-specific | `AppIcon.Skills.conversations` | Skill resolver |
@@ -243,6 +245,17 @@ Categories:
 | Onboarding permission recovery cards | `location.fill`, `bell.badge.fill` | `OnboardingPermissionRecoveryItem.appIcon` returning `AppIcon.Onboarding.*` |
 | Chat add-key banner | `key.horizontal.fill`, `gearshape` | `AppIcon.Settings.credentialsFilled`, `AppIcon.Settings.appPreferences` |
 
+## Bounded Chat, Tool, And Error Presentation Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Chat message copy feedback | `doc.on.doc`, `checkmark.circle` | `AppIcon.Action.copy`, `AppIcon.State.successCircle` |
+| Chat stream error pill, retry, and popover | `exclamationmark.triangle.fill`, `arrow.clockwise` | `AppIcon.State.warningFilled`, `AppIcon.State.retry` |
+| Active tool banner error state | `exclamationmark.triangle.fill` | `Image(appIcon: AppIcon.State.warningFilled)` |
+| Tool action controls | `xmark`, `checkmark`, `arrow.uturn.backward`, `arrow.clockwise` | `AppIcon.Action.close`, `AppIcon.State.success`, `AppIcon.Action.undo`, `AppIcon.State.retry` |
+| Tool summary and row icons | `exclamationmark.circle`, `square.stack.3d.up`, `checkmark.circle.fill` | `AppIcon.State.error`, `AppIcon.Skills.multiple`, `AppIcon.State.successFilled` |
+| Skill icon wrapper in touched tool surfaces | Resolved `systemName` strings | `SkillIconResolver.appIcon(for:)` rendered through `SkillSymbolIcon(appIcon:)` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -250,6 +263,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - widgets and extensions
 - PDF controls
 - chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, and auth/onboarding chrome slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, and bounded chat/tool/error presentation slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

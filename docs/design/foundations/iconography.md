@@ -134,6 +134,7 @@ SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Settings.cre
 StoreSkillInstallIcon(icon: AppIcon.State.successFilled, busy: isBusy)
 FormField(leadingIcon: AppIcon.Auth.password) { ... }
 Image(appIcon: AppIcon.Onboarding.emailVerification)
+SkillSymbolIcon(appIcon: AppIcon.Skills.multiple, appFontStyle: .caption)
 Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 ```
 
@@ -150,6 +151,7 @@ Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 | `SkillIconResolver` | Which skill ID or icon key maps to which `AppIcon` |
 | `SidebarMenuItem` | Which action title, role, and `AppIcon.Action` belong together |
 | Empty-state helpers | Which empty-state semantic category maps to which `AppIcon` |
+| Chat presentation helpers | Which chat error, tool action, and tool summary concepts map to which `AppIcon` |
 | Widget models | Which widget selection state maps to which shared `AppIcon` |
 
 **Rule**: Keep semantic decisions close to the domain. Keep raw symbol values in `AppIcon`.
@@ -239,6 +241,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Unarchive | `Action.unarchive` | `archivebox.fill` |
 | Search | `Action.search` | `magnifyingglass` |
 | Refresh | `Action.refresh` | `arrow.clockwise` |
+| Tool undo | `Action.undo` | `arrow.uturn.backward` |
 | Send | `Action.send` | `arrow.up` |
 | Attach | `Action.attach` | `paperclip` |
 | Open external | `Action.openExternal` | `arrow.up.right.square` |
@@ -335,6 +338,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Skill fallback | `Skills.fallback` | `puzzlepiece.extension` |
 | Skill category fallback | `Skills.categoryFallback` | `tag.fill` |
 | Skill tools | `Skills.tools` | `hammer` |
+| Multiple skills | `Skills.multiple` | `square.stack.3d.up` |
 
 ---
 
@@ -408,6 +412,8 @@ The resolver remains the single source of truth for skill icon assignments. It i
 - chat tool result surfaces
 - agent workspace surfaces
 - settings skill rows
+
+Bounded chat error and tool presentation uses `AppIcon` for warning, error, retry, success, copy, undo, and multiple-tool concepts. Skill-specific icons stay behind `SkillIconResolver` and are rendered through `SkillSymbolIcon(appIcon:)` in migrated chat tool surfaces.
 
 **Rule**: Do not hardcode skill symbol names outside `SkillIconResolver`. Add new skill-to-icon mappings there, using `AppIcon`.
 

@@ -20,8 +20,8 @@ struct ChatMessageCopyFeedbackState {
         isCopied = false
     }
 
-    var iconName: String {
-        isCopied ? "checkmark.circle" : "doc.on.doc"
+    var appIcon: AppIcon {
+        isCopied ? AppIcon.State.successCircle : AppIcon.Action.copy
     }
 
     var accessibilityLabel: String {
@@ -90,7 +90,7 @@ struct ChatMessageRow: View {
                         copyMessage()
                         showCopyFeedback()
                     } label: {
-                        Image(systemName: copyFeedback.iconName)
+                        Image(appIcon: copyFeedback.appIcon)
                             .appFont(.caption)
                             .foregroundStyle(copyFeedbackForeground)
                             .contentTransition(.symbolEffect(.replace))

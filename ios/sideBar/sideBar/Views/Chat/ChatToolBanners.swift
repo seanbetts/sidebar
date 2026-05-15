@@ -1,3 +1,4 @@
+import sideBarShared
 import SwiftUI
 
 struct ChatActiveToolBanner: View {
@@ -32,7 +33,7 @@ struct ChatActiveToolBanner: View {
         case .success:
             SuccessCheckBadge(size: 16, symbolSize: 9)
         case .error:
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(appIcon: AppIcon.State.warningFilled)
                 .foregroundStyle(DesignTokens.Colors.error)
         }
     }

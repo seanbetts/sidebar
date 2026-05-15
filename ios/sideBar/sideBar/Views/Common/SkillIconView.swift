@@ -1,3 +1,4 @@
+import sideBarShared
 import SwiftUI
 
 struct SkillSymbolIcon: View {
@@ -22,6 +23,18 @@ struct SkillSymbolIcon: View {
     }
 
     init(
+        appIcon: AppIcon,
+        appFontStyle: AppFontStyle = .subheading,
+        foreground: Color = DesignTokens.Colors.textSecondary
+    ) {
+        self.init(
+            systemName: appIcon.rawValue,
+            appFontStyle: appFontStyle,
+            foreground: foreground
+        )
+    }
+
+    init(
         systemName: String,
         pointSize: CGFloat,
         weight: Font.Weight = .regular,
@@ -34,6 +47,22 @@ struct SkillSymbolIcon: View {
         self.weight = weight
         self.design = design
         self.foreground = foreground
+    }
+
+    init(
+        appIcon: AppIcon,
+        pointSize: CGFloat,
+        weight: Font.Weight = .regular,
+        design: Font.Design = .default,
+        foreground: Color = DesignTokens.Colors.textSecondary
+    ) {
+        self.init(
+            systemName: appIcon.rawValue,
+            pointSize: pointSize,
+            weight: weight,
+            design: design,
+            foreground: foreground
+        )
     }
 
     @ViewBuilder

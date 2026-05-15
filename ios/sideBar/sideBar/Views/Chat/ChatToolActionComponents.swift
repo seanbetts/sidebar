@@ -43,7 +43,7 @@ struct ChatToolActionCard: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             actionButton(
                 title: "Decline",
-                systemImage: "xmark",
+                icon: AppIcon.Action.close,
                 foreground: secondaryButtonForeground,
                 background: secondaryButtonBackground
             ) {
@@ -52,7 +52,7 @@ struct ChatToolActionCard: View {
 
             actionButton(
                 title: "Confirm",
-                systemImage: "checkmark",
+                icon: AppIcon.State.success,
                 foreground: primaryButtonForeground,
                 background: primaryButtonBackground
             ) {
@@ -65,7 +65,7 @@ struct ChatToolActionCard: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             actionButton(
                 title: "Undo",
-                systemImage: "arrow.uturn.backward",
+                icon: AppIcon.Action.undo,
                 foreground: secondaryButtonForeground,
                 background: secondaryButtonBackground
             ) {
@@ -78,7 +78,7 @@ struct ChatToolActionCard: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             actionButton(
                 title: "Retry",
-                systemImage: "arrow.clockwise",
+                icon: AppIcon.State.retry,
                 foreground: secondaryButtonForeground,
                 background: secondaryButtonBackground,
                 isEnabled: true
@@ -90,7 +90,7 @@ struct ChatToolActionCard: View {
 
     private func actionButton(
         title: String,
-        systemImage: String,
+        icon: AppIcon,
         foreground: Color,
         background: Color,
         isEnabled: Bool? = nil,
@@ -98,7 +98,7 @@ struct ChatToolActionCard: View {
     ) -> some View {
         let canTap = isEnabled ?? isPending
         return Button(action: handler) {
-            Label(title, systemImage: systemImage)
+            Label(title, systemImage: icon.rawValue)
                 .appFont(.subheading)
                 .lineLimit(1)
                 .foregroundStyle(foreground)
