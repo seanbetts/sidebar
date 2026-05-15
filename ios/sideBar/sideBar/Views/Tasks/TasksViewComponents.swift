@@ -45,7 +45,6 @@ func taskRowAccessibilityLabel(
 struct TaskPill: View {
     let text: String
     let icon: AppIcon?
-    @Environment(\.colorScheme) private var colorScheme
 
     init(text: String, icon: AppIcon? = nil) {
         self.text = text
@@ -53,27 +52,15 @@ struct TaskPill: View {
     }
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xxs) {
-            if let icon {
+        if let icon {
+            MetadataPill(text) {
                 Image(appIcon: icon)
                     .appFont(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
-            Text(text)
-                .appFont(.caption)
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
+        } else {
+            MetadataPill(text)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xs)
-        .padding(.vertical, DesignTokens.Spacing.xxs)
-        .background(pillBackground)
-        .overlay(
-            Capsule()
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-        .clipShape(Capsule())
-    }
-
-    private var pillBackground: Color {
-        colorScheme == .dark ? .black : .white
     }
 }
 

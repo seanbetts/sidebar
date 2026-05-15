@@ -44,7 +44,6 @@ struct ChatMessageRow: View {
     let toolActions: [ChatToolAction]
     let onRetry: () -> Void
     let onToolAction: (ChatToolAction, ChatToolActionDecision?) -> Void
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
     @State private var resetCopyFeedbackTask: Task<Void, Never>?
@@ -73,18 +72,9 @@ struct ChatMessageRow: View {
                         .padding(.trailing, DesignTokens.Spacing.xxs)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
-                Text(message.role == .assistant ? assistantDisplayName : "You")
-                    .appFont(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .layoutPriority(1)
-                    .padding(.horizontal, DesignTokens.Spacing.xs)
-                    .padding(.vertical, DesignTokens.Spacing.xxs)
+                MetadataPill(message.role == .assistant ? assistantDisplayName : "You")
                     .frame(minHeight: headerPillMinHeight)
-                    .background(rolePillBackground)
-                    .foregroundStyle(rolePillText)
-                    .overlay(rolePillBorder)
-                    .clipShape(Capsule())
+                    .layoutPriority(1)
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
                     if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
@@ -200,39 +190,12 @@ struct ChatMessageRow: View {
         DesignTokens.Colors.border
     }
 
-    private var rolePillBackground: Color {
-        if colorScheme == .dark {
-            return message.role == .assistant ? Color.black : Color.white
-        }
-        return message.role == .assistant ? Color.white : Color.black
-    }
-
-    private var rolePillText: Color {
-        if colorScheme == .dark {
-            return message.role == .assistant ? Color.white : Color.black
-        }
-        return message.role == .assistant ? Color.black : Color.white
-    }
-
-    @ViewBuilder
-    private var rolePillBorder: some View {
-        Capsule()
-            .stroke(pillBorderColor, lineWidth: 1)
-    }
-
-    private var pillBorderColor: Color {
-        if colorScheme == .light, message.role == .assistant {
-            return DesignTokens.Colors.border
-        }
-        return .clear
-    }
-
     private var copyFeedbackForeground: Color {
         switch copyFeedback.foregroundStyle {
         case .secondary:
             return .secondary
         case .primary:
-            return message.role == .assistant ? rolePillText : Color.primary
+            return Color.primary
         }
     }
 

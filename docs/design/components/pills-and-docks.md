@@ -58,7 +58,7 @@ A small capsule that communicates a transient or ongoing state. Always has an ic
 
 ### Target
 
-These should converge on a shared `StatusPill` component in `Design/Components/` that accepts a semantic state and optional tap action. Individual implementations should not build their own capsule + border + icon layout.
+Tracked status surfaces now converge on the shared `StatusPill` component in `Design/Components/`, which accepts a semantic state and optional tap action. Individual implementations should not build their own capsule + border + icon layout.
 
 ### Key rules
 
@@ -96,7 +96,7 @@ A lightweight label that describes a content attribute. Display-only, never inte
 
 ### Target
 
-These should converge on a shared `MetadataPill` component in `Design/Components/` that accepts optional icon and text. The component should enforce the standard capsule + border treatment so metadata labels are visually consistent across sections.
+Tracked task, chat role, and chat tool summary surfaces now converge on the shared `MetadataPill` component in `Design/Components/`, which accepts optional icon content, required text, and an optional text-width cap for constrained summaries. The component enforces the standard capsule treatment so metadata labels are visually consistent across sections.
 
 ### Key rules
 

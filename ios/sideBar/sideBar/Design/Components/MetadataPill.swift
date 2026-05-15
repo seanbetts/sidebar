@@ -2,20 +2,24 @@ import SwiftUI
 
 struct MetadataPill<LeadingAccessory: View>: View {
     let title: String
+    let maxTitleWidth: CGFloat?
     private let leadingAccessory: LeadingAccessory
     private let showsLeadingAccessory: Bool
 
     init(
         _ title: String,
+        maxTitleWidth: CGFloat? = nil,
         @ViewBuilder leadingAccessory: () -> LeadingAccessory
     ) {
         self.title = title
+        self.maxTitleWidth = maxTitleWidth
         self.leadingAccessory = leadingAccessory()
         self.showsLeadingAccessory = true
     }
 
-    init(_ title: String) where LeadingAccessory == EmptyView {
+    init(_ title: String, maxTitleWidth: CGFloat? = nil) where LeadingAccessory == EmptyView {
         self.title = title
+        self.maxTitleWidth = maxTitleWidth
         self.leadingAccessory = EmptyView()
         self.showsLeadingAccessory = false
     }
@@ -30,6 +34,7 @@ struct MetadataPill<LeadingAccessory: View>: View {
                 .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .lineLimit(1)
+                .frame(maxWidth: maxTitleWidth, alignment: .leading)
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.xxs)

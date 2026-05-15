@@ -43,7 +43,6 @@ struct ChatToolSummaryPresentation: Equatable {
 struct ToolCallListView: View {
     let toolCalls: [ToolCall]
     let role: MessageRole
-    @Environment(\.colorScheme) private var colorScheme
     @State private var showPopover = false
     private let maxToolPillTextWidth: CGFloat = 120
     private let headerPillMinHeight: CGFloat = 22
@@ -56,10 +55,7 @@ struct ToolCallListView: View {
         Button {
             showPopover = true
         } label: {
-            ViewThatFits(in: .horizontal) {
-                toolPill(text: summaryPresentation.text)
-                toolIconOnlyPill
-            }
+            toolPill(text: summaryPresentation.text)
         }
         .fixedSize(horizontal: true, vertical: false)
         .buttonStyle(.plain)
@@ -84,68 +80,21 @@ struct ToolCallListView: View {
     private func toolPill(
         text: String
     ) -> some View {
-        HStack(spacing: 6) {
+        MetadataPill(text, maxTitleWidth: maxToolPillTextWidth) {
             SkillSymbolIcon(
                 systemName: summaryIconName,
                 appFontStyle: .caption,
                 foreground: toolPillForeground
             )
-            Text(text)
-                .appFont(.caption)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: maxToolPillTextWidth, alignment: .leading)
-                .foregroundStyle(toolPillForeground)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xs)
-        .padding(.vertical, DesignTokens.Spacing.xxs)
         .frame(minHeight: headerPillMinHeight)
-        .background(
-            Capsule(style: .continuous)
-                .fill(toolPillBackground)
-        )
-        .overlay(toolPillBorder)
-    }
-
-    private var toolIconOnlyPill: some View {
-        SkillSymbolIcon(
-            systemName: summaryIconName,
-            appFontStyle: .caption,
-            foreground: toolPillForeground
-        )
-        .padding(.horizontal, DesignTokens.Spacing.xs)
-        .padding(.vertical, DesignTokens.Spacing.xxs)
-        .frame(minHeight: headerPillMinHeight)
-        .background(
-            Capsule(style: .continuous)
-                .fill(toolPillBackground)
-        )
-        .overlay(toolPillBorder)
-    }
-
-    private var toolPillBackground: Color {
-        if colorScheme == .dark {
-            return role == .assistant ? Color.black : Color.white
-        }
-        return role == .assistant ? Color.white : Color.black
     }
 
     private var toolPillForeground: Color {
         if summaryPresentation.hasError {
             return DesignTokens.Colors.error
         }
-        if colorScheme == .dark {
-            return role == .assistant ? Color.white : Color.black
-        }
-        return role == .assistant ? Color.black : Color.white
-    }
-
-    @ViewBuilder
-    private var toolPillBorder: some View {
-        if colorScheme == .light, role == .assistant {
-            Capsule()
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        }
+        return DesignTokens.Colors.textSecondary
     }
 }
 
