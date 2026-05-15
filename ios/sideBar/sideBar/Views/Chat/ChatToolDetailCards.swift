@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum WorkspaceSurfaceActionPresentation: Equatable {
     case singleButton(ToolResultWorkspaceSurfaceTarget)
@@ -52,7 +53,7 @@ struct WorkspaceSurfaceActionGroup: View {
                 source: "chat_workspace_surface_link"
             )
         } label: {
-            Label(target.label, systemImage: target.iconName)
+            Label(target.label, systemImage: target.appIcon.rawValue)
                 .appFont(.caption)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -110,7 +111,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                     source: "chat_workspace_surface_inline"
                 )
             } label: {
-                Label(target.label, systemImage: target.iconName)
+                Label(target.label, systemImage: target.appIcon.rawValue)
                     .appFont(.caption)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
@@ -125,7 +126,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                     source: "chat_workspace_surface_inline"
                 )
             } label: {
-                Label(target.label, systemImage: target.iconName)
+                Label(target.label, systemImage: target.appIcon.rawValue)
                     .appFont(.caption)
                     .lineLimit(1)
             }
@@ -174,7 +175,7 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
                     source: "chat_workspace_open_entity_inline"
                 )
             } label: {
-                Label(target.label, systemImage: target.iconName)
+                Label(target.label, systemImage: target.appIcon.rawValue)
                     .appFont(.caption)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
@@ -188,7 +189,7 @@ struct WorkspaceOpenEntityInlineActionsBar: View {
                     source: "chat_workspace_open_entity_inline"
                 )
             } label: {
-                Label(target.label, systemImage: target.iconName)
+                Label(target.label, systemImage: target.appIcon.rawValue)
                     .appFont(.caption)
                     .lineLimit(1)
             }

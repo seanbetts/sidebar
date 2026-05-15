@@ -145,6 +145,17 @@ public extension AppIcon {
         public static let notificationsPermission = AppIcon(rawValue: "bell.badge.fill")
     }
 
+    enum Workspace {
+        public static let surface = AppIcon(rawValue: "rectangle.on.rectangle")
+        public static let openEntityFallback = AppIcon(rawValue: "arrow.up.forward.app")
+        public static let markdownSurface = AppIcon(rawValue: "doc.plaintext")
+        public static let tableSurface = AppIcon(rawValue: "tablecells")
+        public static let chartSurface = AppIcon(rawValue: "chart.bar.xaxis")
+        public static let mapSurface = AppIcon(rawValue: "map")
+        public static let formSurface = AppIcon(rawValue: "list.bullet.clipboard")
+        public static let actionPanelSurface = AppIcon(rawValue: "slider.horizontal.3")
+    }
+
     enum Skills {
         public static let fallback = AppIcon(rawValue: "puzzlepiece.extension")
         public static let categoryFallback = AppIcon(rawValue: "tag.fill")

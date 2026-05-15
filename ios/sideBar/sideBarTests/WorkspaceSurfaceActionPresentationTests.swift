@@ -33,7 +33,7 @@ final class WorkspaceSurfaceActionPresentationTests: XCTestCase {
             ),
             pane: .primary,
             label: "Show System Prompt Preview",
-            iconName: "eye"
+            appIcon: AppIcon.Skills.promptPreview
         )
     }
 }

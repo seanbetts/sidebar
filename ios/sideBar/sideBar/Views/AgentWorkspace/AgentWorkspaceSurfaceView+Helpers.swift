@@ -182,20 +182,20 @@ extension AgentWorkspaceSurfaceView {
         return nil
     }
 
-    func iconName(for type: AgentWorkspaceSurfaceType) -> String {
+    func appIcon(for type: AgentWorkspaceSurfaceType) -> AppIcon {
         switch type {
         case .markdown:
-            return "doc.plaintext"
+            return AppIcon.Workspace.markdownSurface
         case .table:
-            return "tablecells"
+            return AppIcon.Workspace.tableSurface
         case .chart:
-            return "chart.bar.xaxis"
+            return AppIcon.Workspace.chartSurface
         case .map:
-            return "map"
+            return AppIcon.Workspace.mapSurface
         case .form:
-            return "list.bullet.clipboard"
+            return AppIcon.Workspace.formSurface
         case .actionPanel:
-            return "slider.horizontal.3"
+            return AppIcon.Workspace.actionPanelSurface
         }
     }
 

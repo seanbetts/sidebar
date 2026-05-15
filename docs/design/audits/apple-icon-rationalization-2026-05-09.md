@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, and bounded chat/tool/error presentation slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, and dynamic workspace target/parser presentation slices completed after the initial catalog work.
 
 Categories:
 
@@ -68,6 +68,14 @@ Categories:
 | `chevron.up.chevron.down` | Picker disclosure | Context-specific | `AppIcon.Navigation.pickerDisclosure` | Form picker affordance |
 | `arrow.up.right.and.arrow.down.left` | Expand workspace | Context-specific | `AppIcon.Navigation.expandWorkspace` | Workspace and detail expansion action |
 | `arrow.down.left.and.arrow.up.right` | Collapse workspace | Context-specific | `AppIcon.Navigation.collapseWorkspace` | Workspace and detail collapse action |
+| `rectangle.on.rectangle` | Workspace surface target | Context-specific | `AppIcon.Workspace.surface` | Inline workspace handoff fallback |
+| `arrow.up.forward.app` | Workspace open-entity fallback | Context-specific | `AppIcon.Workspace.openEntityFallback` | Unknown entity fallback |
+| `doc.plaintext` | Workspace markdown surface | Context-specific | `AppIcon.Workspace.markdownSurface` | Agent workspace header |
+| `tablecells` | Workspace table surface | Context-specific | `AppIcon.Workspace.tableSurface` | Agent workspace header |
+| `chart.bar.xaxis` | Workspace chart surface | Context-specific | `AppIcon.Workspace.chartSurface` | Agent workspace header |
+| `map` | Workspace map surface | Context-specific | `AppIcon.Workspace.mapSurface` | Agent workspace header |
+| `list.bullet.clipboard` | Workspace form surface | Context-specific | `AppIcon.Workspace.formSurface` | Agent workspace header |
+| `slider.horizontal.3` | Workspace action-panel surface | Context-specific | `AppIcon.Workspace.actionPanelSurface` | Agent workspace header |
 | `checkmark` | Success/check | Canonical | `AppIcon.State.success` | Inline selected checks |
 | `checkmark.circle` | Success circle or new task | Canonical | `AppIcon.State.successCircle` | Use for task creation and circular success state |
 | `checkmark.circle.fill` | Filled success | Canonical | `AppIcon.State.successFilled` | Filled success indicators |
@@ -256,6 +264,22 @@ Categories:
 | Tool summary and row icons | `exclamationmark.circle`, `square.stack.3d.up`, `checkmark.circle.fill` | `AppIcon.State.error`, `AppIcon.Skills.multiple`, `AppIcon.State.successFilled` |
 | Skill icon wrapper in touched tool surfaces | Resolved `systemName` strings | `SkillIconResolver.appIcon(for:)` rendered through `SkillSymbolIcon(appIcon:)` |
 
+## Dynamic Workspace Target And Parser Presentation Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Workspace surface parser fallback | `rectangle.on.rectangle` | `AppIcon.Workspace.surface` on `ToolResultWorkspaceSurfaceTarget.appIcon` |
+| Tool-originated workspace targets | Skill resolver string names | `SkillIconResolver.appIcon(for:)` assigned to parser targets |
+| Open note entity target | `doc.text` | `AppIcon.Content.textDocument` |
+| Open website entity target | `globe` | `AppIcon.Domain.websites` |
+| Open file entity target | `folder` | `AppIcon.Domain.files` |
+| Open conversation entity target | `bubble.left` | `AppIcon.Domain.chat`, consolidating on the canonical chat icon |
+| Open scratchpad entity target | `square.and.pencil` | `AppIcon.Action.compose` |
+| Open task entity targets | `checkmark.square` | `AppIcon.Domain.tasks` |
+| Unknown open-entity fallback | `arrow.up.forward.app` | `AppIcon.Workspace.openEntityFallback` |
+| Agent workspace surface headers | `doc.plaintext`, `tablecells`, `chart.bar.xaxis`, `map`, `list.bullet.clipboard`, `slider.horizontal.3` | `AppIcon.Workspace.*Surface` values through `ContentHeaderRow(icon:)` |
+| Inline workspace action labels | Target-owned `iconName` strings | SwiftUI `Label(..., systemImage: target.appIcon.rawValue)` at the rendering boundary |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
@@ -263,6 +287,6 @@ The following direct symbol areas remain tracked under `RES-MP-13` for later sli
 - widgets and extensions
 - PDF controls
 - chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, and bounded chat/tool/error presentation slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, and dynamic workspace target/parser presentation slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

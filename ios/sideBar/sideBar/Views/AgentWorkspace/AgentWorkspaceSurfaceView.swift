@@ -55,7 +55,7 @@ struct AgentWorkspaceSurfaceView: View {
 
     private var header: some View {
         ContentHeaderRow(
-            iconName: iconName(for: surface.surfaceType),
+            icon: appIcon(for: surface.surfaceType),
             title: resolvedTitle,
             subtitle: surfaceLabel,
             titleStyle: .subheading,

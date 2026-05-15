@@ -298,6 +298,19 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Location permission | `Onboarding.locationPermission` | `location.fill` |
 | Notifications permission | `Onboarding.notificationsPermission` | `bell.badge.fill` |
 
+### Workspace
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Workspace surface target | `Workspace.surface` | `rectangle.on.rectangle` |
+| Open entity fallback | `Workspace.openEntityFallback` | `arrow.up.forward.app` |
+| Markdown surface | `Workspace.markdownSurface` | `doc.plaintext` |
+| Table surface | `Workspace.tableSurface` | `tablecells` |
+| Chart surface | `Workspace.chartSurface` | `chart.bar.xaxis` |
+| Map surface | `Workspace.mapSurface` | `map` |
+| Form surface | `Workspace.formSurface` | `list.bullet.clipboard` |
+| Action panel surface | `Workspace.actionPanelSurface` | `slider.horizontal.3` |
+
 ### Content and media
 
 | Concept | `AppIcon` | SF Symbol |
@@ -415,6 +428,8 @@ The resolver remains the single source of truth for skill icon assignments. It i
 
 Bounded chat error and tool presentation uses `AppIcon` for warning, error, retry, success, copy, undo, and multiple-tool concepts. Skill-specific icons stay behind `SkillIconResolver` and are rendered through `SkillSymbolIcon(appIcon:)` in migrated chat tool surfaces.
 
+Workspace target and open-entity presentation uses parser-owned `AppIcon` values. SwiftUI `Label(..., systemImage:)` remains the rendering boundary when it receives `target.appIcon.rawValue`.
+
 **Rule**: Do not hardcode skill symbol names outside `SkillIconResolver`. Add new skill-to-icon mappings there, using `AppIcon`.
 
 ---
@@ -466,6 +481,8 @@ Task row, detail, modal, panel zero-count, taxonomy, and recurrence affordances 
 Store Skill credential and config chrome uses `AppIcon` for requirement checks, credential provider rows, credential add/update/remove actions, and install state pills.
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, and add-key banner symbols.
+
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
 ---
 

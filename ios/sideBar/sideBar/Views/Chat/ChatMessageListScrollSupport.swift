@@ -236,7 +236,7 @@ struct ChatMessageScrollSignature: Equatable {
 private extension ChatMessageListScrollBehavior {
     static func visibleWorkspaceTargetsSignature(for toolCalls: [ToolCall]?) -> String {
         ToolResultWorkspaceSurfaceParser.parse(toolCalls: toolCalls ?? []).map {
-            "\($0.id):\($0.label):\($0.iconName)"
+            "\($0.id):\($0.label):\($0.appIcon.rawValue)"
         }.joined(separator: "|")
     }
 }

@@ -5,7 +5,9 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
     let surface: AgentWorkspaceSurfaceDescriptor
     let pane: WorkspacePane
     let label: String
-    let iconName: String
+    let appIcon: AppIcon
+
+    var iconName: String { appIcon.rawValue }
 
     var id: String {
         "\(pane.rawValue):\(surface.surfaceId)"
@@ -15,7 +17,9 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
 struct ToolResultWorkspaceOpenEntityTarget: Equatable, Identifiable {
     let request: WorkspaceEntityOpenRequest
     let label: String
-    let iconName: String
+    let appIcon: AppIcon
+
+    var iconName: String { appIcon.rawValue }
 
     var id: String {
         "\(request.pane.rawValue):\(request.entity.type):\(request.entity.id)"
@@ -24,13 +28,13 @@ struct ToolResultWorkspaceOpenEntityTarget: Equatable, Identifiable {
 
 enum ToolResultWorkspaceSurfaceParser {
     static func parse(_ toolCall: ToolCall) -> [ToolResultWorkspaceSurfaceTarget] {
-        let skillIconName = SkillIconResolver.iconName(for: toolCall)
+        let skillIcon = SkillIconResolver.appIcon(for: toolCall)
         var targets = parse(toolCall.result).map { target in
             ToolResultWorkspaceSurfaceTarget(
                 surface: target.surface,
                 pane: target.pane,
                 label: target.label,
-                iconName: skillIconName
+                appIcon: skillIcon
             )
         }
         if let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result),
@@ -39,7 +43,7 @@ enum ToolResultWorkspaceSurfaceParser {
                 surface: surface,
                 pane: .primary,
                 label: "Show System Prompt Preview",
-                iconName: skillIconName
+                appIcon: skillIcon
             )
             if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
                 targets.insert(promptPreviewTarget, at: 0)
@@ -82,7 +86,7 @@ enum ToolResultWorkspaceSurfaceParser {
                         surface: surface,
                         pane: pane,
                         label: label,
-                        iconName: "rectangle.on.rectangle"
+                        appIcon: AppIcon.Workspace.surface
                     )
                     if seenTargetIDs.insert(target.id).inserted {
                         targets.append(target)
@@ -171,7 +175,7 @@ enum ToolResultWorkspaceOpenEntityParser {
                     let target = ToolResultWorkspaceOpenEntityTarget(
                         request: request,
                         label: label(for: request),
-                        iconName: iconName(for: request.entity.type)
+                        appIcon: appIcon(for: request.entity.type)
                     )
                     if seenTargetIDs.insert(target.id).inserted {
                         targets.append(target)
@@ -237,22 +241,22 @@ enum ToolResultWorkspaceOpenEntityParser {
         }
     }
 
-    private static func iconName(for entityType: String) -> String {
+    private static func appIcon(for entityType: String) -> AppIcon {
         switch entityType {
         case "note":
-            return "doc.text"
+            return AppIcon.Content.textDocument
         case "website":
-            return "globe"
+            return AppIcon.Domain.websites
         case "file":
-            return "folder"
+            return AppIcon.Domain.files
         case "conversation":
-            return "bubble.left"
+            return AppIcon.Domain.chat
         case "scratchpad":
-            return "square.and.pencil"
+            return AppIcon.Action.compose
         case "task", "task_scope", "task_project", "task_group":
-            return "checkmark.square"
+            return AppIcon.Domain.tasks
         default:
-            return "arrow.up.forward.app"
+            return AppIcon.Workspace.openEntityFallback
         }
     }
 }
