@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 4 of onboarding for optional profile naming.
 struct ProfileStepView: View {
@@ -13,7 +14,7 @@ struct ProfileStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "person.crop.circle.badge.plus")
+                Image(appIcon: AppIcon.Settings.profileAdd)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)

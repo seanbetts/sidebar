@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 #if canImport(UIKit)
 import UIKit
@@ -18,7 +19,7 @@ enum FormFieldLayoutMetrics {
 struct FormField<Content: View, Trailing: View>: View {
     private enum Layout {
         case settings(label: String)
-        case auth(leadingSystemName: String?)
+        case auth(leadingIcon: AppIcon?)
     }
 
     private let layout: Layout
@@ -32,20 +33,20 @@ struct FormField<Content: View, Trailing: View>: View {
     }
 
     init(
-        leadingSystemName: String? = nil,
+        leadingIcon: AppIcon? = nil,
         @ViewBuilder content: () -> Content
     ) where Trailing == EmptyView {
-        layout = .auth(leadingSystemName: leadingSystemName)
+        layout = .auth(leadingIcon: leadingIcon)
         self.content = content()
         trailing = EmptyView()
     }
 
     init(
-        leadingSystemName: String? = nil,
+        leadingIcon: AppIcon? = nil,
         @ViewBuilder content: () -> Content,
         @ViewBuilder trailing: () -> Trailing
     ) {
-        layout = .auth(leadingSystemName: leadingSystemName)
+        layout = .auth(leadingIcon: leadingIcon)
         self.content = content()
         self.trailing = trailing()
     }
@@ -54,8 +55,8 @@ struct FormField<Content: View, Trailing: View>: View {
         switch layout {
         case let .settings(label):
             settingsBody(label: label)
-        case let .auth(leadingSystemName):
-            authBody(leadingSystemName: leadingSystemName)
+        case let .auth(leadingIcon):
+            authBody(leadingIcon: leadingIcon)
         }
     }
 
@@ -87,10 +88,10 @@ struct FormField<Content: View, Trailing: View>: View {
         #endif
     }
 
-    private func authBody(leadingSystemName: String?) -> some View {
+    private func authBody(leadingIcon: AppIcon?) -> some View {
         HStack(spacing: LoginFieldChromeMetrics.rowSpacing) {
-            if let leadingSystemName {
-                Image(systemName: leadingSystemName)
+            if let leadingIcon {
+                Image(appIcon: leadingIcon)
                     .foregroundStyle(.secondary)
                     .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                     .frame(width: LoginFieldChromeMetrics.leadingIconWidth)
@@ -167,7 +168,7 @@ public struct FormFieldSecureInput<Field: Hashable>: View {
                     }
                 }
             } label: {
-                Image(systemName: isSecure ? "eye.slash.fill" : "eye.fill")
+                Image(appIcon: isSecure ? AppIcon.Auth.passwordHidden : AppIcon.Auth.passwordVisible)
                     .foregroundStyle(.secondary)
                     .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
             }

@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public enum OnboardingDiscoveryFeature: String, Identifiable, Equatable, CaseIterable {
     case notes
@@ -47,18 +48,18 @@ public enum OnboardingDiscoveryFeature: String, Identifiable, Equatable, CaseIte
         }
     }
 
-    public var systemImage: String {
+    public var appIcon: AppIcon {
         switch self {
         case .notes:
-            "text.document"
+            AppIcon.Domain.notes
         case .tasks:
-            "checkmark.square"
+            AppIcon.Domain.tasks
         case .websites:
-            "globe"
+            AppIcon.Domain.websites
         case .files:
-            "folder"
+            AppIcon.Domain.files
         case .skills:
-            "command.circle"
+            AppIcon.Domain.skillsStore
         }
     }
 

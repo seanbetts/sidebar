@@ -27,7 +27,7 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Updatepassword"))
         XCTAssertTrue(normalized.contains("Backtosignin"))
         XCTAssertTrue(normalized.contains("FormFieldSecureInput("))
-        XCTAssertTrue(normalized.contains("FormField(leadingSystemName:\"lock\")"))
+        XCTAssertTrue(normalized.contains("FormField(leadingIcon:AppIcon.Auth.password)"))
         XCTAssertFalse(normalized.contains("SecureFieldWithToggle("))
         XCTAssertTrue(normalized.contains("ForEach(0..<4,id:\\.self)"))
         XCTAssertTrue(normalized.contains("Passwordsdonotmatch."))

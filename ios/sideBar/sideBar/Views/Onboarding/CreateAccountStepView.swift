@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 2 of onboarding for account creation.
 struct CreateAccountStepView: View {
@@ -18,7 +19,7 @@ struct CreateAccountStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "person.crop.circle")
+                Image(appIcon: AppIcon.Settings.profile)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)

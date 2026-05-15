@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 8 of onboarding for explicit notifications permission handling.
 struct NotificationsPermissionStepView: View {
@@ -32,7 +33,7 @@ struct NotificationsPermissionStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "bell.badge.fill")
+                Image(appIcon: AppIcon.Onboarding.notificationsPermission)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)

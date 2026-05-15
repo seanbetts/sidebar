@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Final onboarding step before entering the signed-in experience.
 struct FinalStepView: View {
@@ -16,7 +17,7 @@ struct FinalStepView: View {
                     Circle()
                         .fill(DesignTokens.Colors.surface)
                         .frame(width: 72, height: 72)
-                    Image(systemName: "checkmark")
+                    Image(appIcon: AppIcon.State.success)
                         .appFont(.displayLg)
                         .foregroundStyle(.primary)
                 }
@@ -38,7 +39,7 @@ struct FinalStepView: View {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                         ForEach(viewModel.transitionHighlights, id: \.self) { highlight in
                             HStack(alignment: .top, spacing: DesignTokens.Spacing.xs) {
-                                Image(systemName: "circle.fill")
+                                Image(appIcon: AppIcon.State.selectedCircle)
                                     .appFont(.badge)
                                     .padding(.top, 6)
                                 Text(highlight)

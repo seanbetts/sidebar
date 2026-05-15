@@ -132,6 +132,8 @@ PlaceholderView(title: "No store skills found", icon: AppIcon.Action.search)
 SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Domain.memories)
 SettingsMacSkillRow(title: title, subtitle: subtitle, icon: AppIcon.Settings.credentials)
 StoreSkillInstallIcon(icon: AppIcon.State.successFilled, busy: isBusy)
+FormField(leadingIcon: AppIcon.Auth.password) { ... }
+Image(appIcon: AppIcon.Onboarding.emailVerification)
 Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 ```
 
@@ -272,6 +274,26 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Network degraded | `State.networkWarning` | `wifi.exclamationmark` |
 | Syncing | `State.syncing` | `arrow.triangle.2.circlepath` |
 | Retry | `State.retry` | `arrow.clockwise` |
+
+### Auth
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Email field | `Auth.email` | `envelope` |
+| Password field | `Auth.password` | `lock` |
+| Password lockout | `Auth.passwordLocked` | `lock.fill` |
+| Show password | `Auth.passwordVisible` | `eye.fill` |
+| Hide password | `Auth.passwordHidden` | `eye.slash.fill` |
+
+### Onboarding
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Email verification | `Onboarding.emailVerification` | `envelope.badge` |
+| Assistant selection | `Onboarding.assistantBrain` | `brain` |
+| External help link | `Onboarding.externalHelp` | `arrow.up.right` |
+| Location permission | `Onboarding.locationPermission` | `location.fill` |
+| Notifications permission | `Onboarding.notificationsPermission` | `bell.badge.fill` |
 
 ### Content and media
 
@@ -436,6 +458,8 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 Task row, detail, modal, panel zero-count, taxonomy, and recurrence affordances use `AppIcon` for rationalized success, error, add, delete, overflow, clear, notes, move, expand/collapse, date filter, group/project, and recurrence concepts.
 
 Store Skill credential and config chrome uses `AppIcon` for requirement checks, credential provider rows, credential add/update/remove actions, and install state pills.
+
+Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, and add-key banner symbols.
 
 ---
 

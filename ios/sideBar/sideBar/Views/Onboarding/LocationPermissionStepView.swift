@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 7 of onboarding for explicit location permission handling.
 struct LocationPermissionStepView: View {
@@ -35,7 +36,7 @@ struct LocationPermissionStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "location.fill")
+                Image(appIcon: AppIcon.Onboarding.locationPermission)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)

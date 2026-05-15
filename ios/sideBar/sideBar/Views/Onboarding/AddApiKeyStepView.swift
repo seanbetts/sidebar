@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 6 of onboarding for BYOK setup.
 struct AddApiKeyStepView: View {
@@ -21,7 +22,7 @@ struct AddApiKeyStepView: View {
                     )
                         .padding(.bottom, layoutMode.iconBottomSpacing)
                 } else {
-                    Image(systemName: "key.horizontal")
+                    Image(appIcon: AppIcon.Settings.credentials)
                         .appFont(.displayLg)
                         .foregroundStyle(.primary)
                         .padding(.bottom, layoutMode.iconBottomSpacing)
@@ -43,7 +44,7 @@ struct AddApiKeyStepView: View {
                     Link(destination: url, label: {
                         HStack(spacing: 4) {
                             Text("Where do I find this?")
-                            Image(systemName: "arrow.up.right")
+                            Image(appIcon: AppIcon.Onboarding.externalHelp)
                                 .appFont(.caption)
                         }
                         .appFont(.body)

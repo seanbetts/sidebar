@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct FeatureIntroCard: View {
     let feature: OnboardingDiscoveryFeature
@@ -22,7 +23,7 @@ struct FeatureIntroCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                    Image(systemName: feature.systemImage)
+                    Image(appIcon: feature.appIcon)
                         .appFont(.body)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)

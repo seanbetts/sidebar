@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -246,7 +247,7 @@ struct OnboardingView: View {
     private var backButton: some View {
         Button(action: { viewModel.goBack() }, label: {
             HStack(spacing: DesignTokens.Spacing.xxs) {
-                Image(systemName: "chevron.left")
+                Image(appIcon: AppIcon.Navigation.back)
                     .appFont(.body)
                 Text("Back")
                     .appFont(.body)

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct OnboardingPermissionCard: View {
     let item: OnboardingPermissionRecoveryItem
@@ -31,7 +32,7 @@ struct OnboardingPermissionCard: View {
 
     private var label: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: item.systemImage)
+            Image(appIcon: item.appIcon)
                 .appFont(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: DesignTokens.Icon.lg, height: DesignTokens.Icon.lg)

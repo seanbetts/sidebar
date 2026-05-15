@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, and Store Skill credential/config chrome slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, and auth/onboarding chrome slices completed after the initial catalog work.
 
 Categories:
 
@@ -59,6 +59,7 @@ Categories:
 | `arrow.up` | Send | Canonical | `AppIcon.Action.send` | Chat input |
 | `paperclip` | Attach | Context-specific | `AppIcon.Action.attach` | Attachment control |
 | `arrow.up.right.square` | Open external | Context-specific | `AppIcon.Action.openExternal` | External open action |
+| `arrow.up.right` | Onboarding external help | Context-specific | `AppIcon.Onboarding.externalHelp` | Inline help link affordance |
 | `rectangle.portrait.and.arrow.right` | Sign out | Context-specific | `AppIcon.Action.signOut` | Account action |
 | `chevron.left` | Back | Canonical | `AppIcon.Navigation.back` | Back navigation |
 | `chevron.right` | Forward or collapsed disclosure | Canonical | `AppIcon.Navigation.forward` / `AppIcon.Navigation.chevronRight` | Use the semantic alias that matches context |
@@ -79,6 +80,15 @@ Categories:
 | `wifi.slash` | Offline | Canonical | `AppIcon.State.offline` | Offline banner and auth status |
 | `wifi.exclamationmark` | Network warning | Canonical | `AppIcon.State.networkWarning` | Degraded network banner |
 | `arrow.triangle.2.circlepath` | Syncing | Canonical | `AppIcon.State.syncing` | Queue/sync state |
+| `envelope` | Auth email field | Canonical | `AppIcon.Auth.email` | Auth credential field chrome |
+| `lock` | Auth password field | Canonical | `AppIcon.Auth.password` | Auth credential field chrome |
+| `lock.fill` | Auth password lockout | Context-specific | `AppIcon.Auth.passwordLocked` | Lockout state |
+| `eye.fill` | Show password | Context-specific | `AppIcon.Auth.passwordVisible` | Secure field visibility toggle |
+| `eye.slash.fill` | Hide password | Context-specific | `AppIcon.Auth.passwordHidden` | Secure field visibility toggle |
+| `envelope.badge` | Email verification | Context-specific | `AppIcon.Onboarding.emailVerification` | Onboarding verification step |
+| `brain` | Onboarding provider selection | Context-specific | `AppIcon.Onboarding.assistantBrain` | Distinct from filled assistant settings icon |
+| `location.fill` | Location permission | Context-specific | `AppIcon.Onboarding.locationPermission` | Onboarding and permission recovery |
+| `bell.badge.fill` | Notifications permission | Context-specific | `AppIcon.Onboarding.notificationsPermission` | Onboarding and permission recovery |
 | `note.text` | Note document | Canonical | `AppIcon.Content.note` | Note content |
 | `doc.text` | Text document | Canonical | `AppIcon.Content.textDocument` | Text document content |
 | `doc` | Generic document | Canonical | `AppIcon.Content.document` | File fallback |
@@ -221,14 +231,25 @@ Categories:
 | Store Skill credential add/update/remove actions | `plus.circle.fill`, `pencil.circle.fill`, `trash.circle.fill` | `Image(appIcon: AppIcon.Action.addCircleFilled)`, `Image(appIcon: AppIcon.Action.renameCircleFilled)`, and `Image(appIcon: AppIcon.Action.deleteCircleFilled)` |
 | Store Skill install/config action pills | `plus.circle.fill`, `checkmark.circle.fill` | `StoreSkillInstallIcon(icon: AppIcon.Action.addCircleFilled)` and `StoreSkillInstallIcon(icon: AppIcon.State.successFilled)` |
 
+## Auth And Onboarding Chrome Slice
+
+| Surface | Former direct symbols | Target |
+|---|---|---|
+| Login email, password, warning, clear, lockout, success, and offline chrome | `envelope`, `lock`, `exclamationmark.triangle.fill`, `xmark.circle.fill`, `lock.fill`, `checkmark.circle.fill`, `wifi.slash` | `AppIcon.Auth.email`, `AppIcon.Auth.password`, `AppIcon.State.warningFilled`, `AppIcon.Action.clearFilled`, `AppIcon.Auth.passwordLocked`, `AppIcon.State.successFilled`, `AppIcon.State.offline` |
+| Shared auth secure field visibility controls | `eye.fill`, `eye.slash.fill` | `AppIcon.Auth.passwordVisible`, `AppIcon.Auth.passwordHidden` |
+| Password reset and password change field chrome | `lock` | `FormField(leadingIcon: AppIcon.Auth.password)` |
+| Onboarding step hero and inline action chrome | `person.crop.circle`, `envelope.badge`, `person.crop.circle.badge.plus`, `brain`, `key.horizontal`, `arrow.up.right`, `location.fill`, `bell.badge.fill`, `checkmark`, `circle.fill`, `chevron.left` | Existing `AppIcon.Settings`, `AppIcon.Onboarding`, `AppIcon.State`, and `AppIcon.Navigation` constants |
+| Onboarding discovery feature cards | `text.document`, `checkmark.square`, `globe`, `folder`, `command.circle` | `OnboardingDiscoveryFeature.appIcon` returning `AppIcon.Domain.*` |
+| Onboarding permission recovery cards | `location.fill`, `bell.badge.fill` | `OnboardingPermissionRecoveryItem.appIcon` returning `AppIcon.Onboarding.*` |
+| Chat add-key banner | `key.horizontal.fill`, `gearshape` | `AppIcon.Settings.credentialsFilled`, `AppIcon.Settings.appPreferences` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
 - PDF controls
-- auth and onboarding icons
 - chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, and Store Skill credential/config chrome slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, and auth/onboarding chrome slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

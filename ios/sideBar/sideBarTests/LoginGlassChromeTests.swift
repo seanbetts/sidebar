@@ -44,7 +44,7 @@ final class LoginGlassChromeTests: XCTestCase {
             1
         )
         XCTAssertEqual(
-            normalized.components(separatedBy: "FormField(leadingSystemName:\"lock\")").count - 1,
+            normalized.components(separatedBy: "FormField(leadingIcon:AppIcon.Auth.password)").count - 1,
             1
         )
         XCTAssertTrue(normalized.contains("structLoginFieldRow<Content:View,Trailing:View>:View{"))

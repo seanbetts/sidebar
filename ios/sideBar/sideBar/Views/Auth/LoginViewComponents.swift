@@ -8,7 +8,7 @@ struct LoginPasswordResetNoticeView: View {
     var body: some View {
         HStack {
             VStack(alignment: .center, spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
+                Image(appIcon: AppIcon.State.successFilled)
                     .foregroundStyle(DesignTokens.Colors.actionPrimary)
                 Text(message)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
@@ -33,7 +33,7 @@ struct LoginOfflineNoticeView: View {
     var body: some View {
         HStack {
             VStack(alignment: .center, spacing: 6) {
-                Image(systemName: "wifi.slash")
+                Image(appIcon: AppIcon.State.offline)
                     .foregroundStyle(DesignTokens.Colors.error)
                 Text("You're offline.")
                     .foregroundStyle(DesignTokens.Colors.error)

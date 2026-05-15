@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct SettingsPasswordChangeView: View {
     @Environment(\.dismiss) private var dismiss
@@ -179,7 +180,7 @@ struct SettingsPasswordChangeView: View {
         submitLabel: SubmitLabel,
         onSubmit: @escaping () -> Void
     ) -> some View {
-        FormField(leadingSystemName: "lock") {
+        FormField(leadingIcon: AppIcon.Auth.password) {
             FormFieldSecureInput(
                 title: title,
                 text: text,

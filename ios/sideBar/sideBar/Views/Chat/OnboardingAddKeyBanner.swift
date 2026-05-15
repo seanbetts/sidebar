@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct OnboardingAddKeyBanner: View {
     let onOpenSettings: () -> Void
@@ -14,7 +15,7 @@ struct OnboardingAddKeyBanner: View {
             HStack(spacing: DesignTokens.Spacing.xsPlus) {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     HStack(spacing: DesignTokens.Spacing.xs) {
-                        Image(systemName: "key.horizontal.fill")
+                        Image(appIcon: AppIcon.Settings.credentialsFilled)
                             .appFont(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 18, alignment: .leading)
@@ -29,7 +30,7 @@ struct OnboardingAddKeyBanner: View {
                 Spacer(minLength: DesignTokens.Spacing.sm)
 
                 Button(action: onOpenSettings) {
-                    Image(systemName: "gearshape")
+                    Image(appIcon: AppIcon.Settings.appPreferences)
                         .appFont(.caption)
                         .frame(width: 28, height: 28)
                 }

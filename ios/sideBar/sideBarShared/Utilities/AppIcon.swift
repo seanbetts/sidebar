@@ -88,6 +88,14 @@ public extension AppIcon {
         public static let retry = AppIcon(rawValue: "arrow.clockwise")
     }
 
+    enum Auth {
+        public static let email = AppIcon(rawValue: "envelope")
+        public static let password = AppIcon(rawValue: "lock")
+        public static let passwordLocked = AppIcon(rawValue: "lock.fill")
+        public static let passwordVisible = AppIcon(rawValue: "eye.fill")
+        public static let passwordHidden = AppIcon(rawValue: "eye.slash.fill")
+    }
+
     enum Content {
         public static let note = AppIcon(rawValue: "note.text")
         public static let textDocument = AppIcon(rawValue: "doc.text")
@@ -126,6 +134,14 @@ public extension AppIcon {
         public static let appPreferences = AppIcon(rawValue: "gearshape")
         public static let more = AppIcon(rawValue: "ellipsis.circle")
         public static let theme = AppIcon(rawValue: "paintpalette")
+    }
+
+    enum Onboarding {
+        public static let emailVerification = AppIcon(rawValue: "envelope.badge")
+        public static let assistantBrain = AppIcon(rawValue: "brain")
+        public static let externalHelp = AppIcon(rawValue: "arrow.up.right")
+        public static let locationPermission = AppIcon(rawValue: "location.fill")
+        public static let notificationsPermission = AppIcon(rawValue: "bell.badge.fill")
     }
 
     enum Skills {

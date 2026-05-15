@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Actionable Apple permission kinds exposed in signed-in settings recovery.
 public enum OnboardingPermissionRecoveryKind: String, Identifiable, Equatable {
@@ -25,12 +26,12 @@ public enum OnboardingPermissionRecoveryKind: String, Identifiable, Equatable {
         }
     }
 
-    var systemImage: String {
+    var appIcon: AppIcon {
         switch self {
         case .location:
-            return "location.fill"
+            return AppIcon.Onboarding.locationPermission
         case .notifications:
-            return "bell.badge.fill"
+            return AppIcon.Onboarding.notificationsPermission
         }
     }
 }
@@ -44,7 +45,7 @@ public struct OnboardingPermissionRecoveryItem: Identifiable, Equatable {
 
     public var title: String { kind.title }
     public var message: String { kind.message }
-    public var systemImage: String { kind.systemImage }
+    public var appIcon: AppIcon { kind.appIcon }
     public var actionTitle: String { permissionState == .denied ? "Open Settings" : "Enable" }
     public var opensSystemSettings: Bool { permissionState == .denied }
 }

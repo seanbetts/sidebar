@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 5 of onboarding for primary provider selection.
 struct ChooseProviderStepView: View {
@@ -25,7 +26,7 @@ struct ChooseProviderStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "brain")
+                Image(appIcon: AppIcon.Onboarding.assistantBrain)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
@@ -94,7 +95,7 @@ struct ChooseProviderStepView: View {
                             .fill(Color.primary)
                             .frame(width: 24, height: 24)
                             .overlay {
-                                Image(systemName: "checkmark")
+                                Image(appIcon: AppIcon.State.success)
                                     .appFont(.badge)
                                     .foregroundStyle(DesignTokens.Colors.background)
                             }

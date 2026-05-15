@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 3 of onboarding for OTP verification.
 struct VerifyEmailStepView: View {
@@ -15,7 +16,7 @@ struct VerifyEmailStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "envelope.badge")
+                Image(appIcon: AppIcon.Onboarding.emailVerification)
                     .appFont(.displayLg)
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)

@@ -136,7 +136,7 @@ public struct LoginView: View {
         }
     }
     private var emailFieldRow: some View {
-        LoginFieldRow(leadingSystemName: "envelope") {
+        LoginFieldRow(leadingIcon: AppIcon.Auth.email) {
             TextField("Email", text: $email)
                 .textContentType(LoginCredentialAutofillHints.email)
         #if canImport(UIKit)
@@ -157,7 +157,7 @@ public struct LoginView: View {
                         symbolSize: LoginFieldChromeMetrics.statusBadgeSymbolSize
                     )
                 } else {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(appIcon: AppIcon.State.warningFilled)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
@@ -166,7 +166,7 @@ public struct LoginView: View {
                 Button {
                     email = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .foregroundStyle(.secondary)
                         .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
@@ -177,7 +177,7 @@ public struct LoginView: View {
         .accessibilitySortPriority(3)
     }
     private var passwordFieldRow: some View {
-        FormField(leadingSystemName: "lock") {
+        FormField(leadingIcon: AppIcon.Auth.password) {
             FormFieldSecureInput(
                 title: "Password",
                 text: $password,
@@ -192,7 +192,7 @@ public struct LoginView: View {
                 Button {
                     password = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(appIcon: AppIcon.Action.clearFilled)
                         .foregroundStyle(.secondary)
                         .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
@@ -216,7 +216,7 @@ public struct LoginView: View {
         if isLockedOut, let seconds = lockoutSecondsRemaining {
             HStack {
                 VStack(alignment: .center, spacing: 6) {
-                    Image(systemName: "lock.fill")
+                    Image(appIcon: AppIcon.Auth.passwordLocked)
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text("Too many failed attempts")
                         .foregroundStyle(DesignTokens.Colors.error)
@@ -236,7 +236,7 @@ public struct LoginView: View {
         } else if let errorMessage, shouldShowErrorMessage {
             HStack {
                 VStack(alignment: .center, spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(appIcon: AppIcon.State.warningFilled)
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text(errorMessage)
                         .foregroundStyle(DesignTokens.Colors.error)

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum LoginCredentialAutofillHints {
     static let email: PlatformTextContentType = .username
@@ -65,23 +66,23 @@ enum LoginFieldChromeMetrics {
 }
 
 struct LoginFieldRow<Content: View, Trailing: View>: View {
-    let leadingSystemName: String
+    let leadingIcon: AppIcon
     private let content: Content
     private let trailing: Trailing
 
     init(
-        leadingSystemName: String,
+        leadingIcon: AppIcon,
         @ViewBuilder content: () -> Content,
         @ViewBuilder trailing: () -> Trailing
     ) {
-        self.leadingSystemName = leadingSystemName
+        self.leadingIcon = leadingIcon
         self.content = content()
         self.trailing = trailing()
     }
 
     var body: some View {
         HStack(spacing: LoginFieldChromeMetrics.rowSpacing) {
-            Image(systemName: leadingSystemName)
+            Image(appIcon: leadingIcon)
                 .foregroundStyle(.secondary)
                 .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 .frame(width: LoginFieldChromeMetrics.leadingIconWidth)

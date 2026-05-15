@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct PasswordResetCompletionView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -188,7 +189,7 @@ struct PasswordResetCompletionView: View {
         submitLabel: SubmitLabel,
         onSubmit: @escaping () -> Void
     ) -> some View {
-        FormField(leadingSystemName: "lock") {
+        FormField(leadingIcon: AppIcon.Auth.password) {
             FormFieldSecureInput(
                 title: title,
                 text: text,
