@@ -422,11 +422,22 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Site header weather item | `cloud.sun` | `HeaderInfoItem(icon: AppIcon.State.weather)` |
 | Header status row actions | `arrow.clockwise`, `xmark` | `AppIcon.State.retry`, `AppIcon.Action.close` |
 
+## Core Navigation Icon Bridge Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Sidebar rail section buttons | `AppSection.iconName` through `Image(systemName:)` | `Image(appIcon: section.appIcon)` |
+| Compact phone bottom tabs | `compactPhoneTabIconName`, section icon strings, `ellipsis` | `compactPhoneTabAppIcon(...)` returning `section.appIcon` or `AppIcon.Action.more` |
+| Compact phone regular tab sections | `phoneIconName(for:)` through `Image(systemName:)` | `Image(appIcon: section.appIcon)` |
+| Compact phone More root rows | `phoneIconName(for:)` through `Label(..., systemImage:)` | `Label` view-builder icon with `Image(appIcon: section.appIcon)` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, and website header/status quick-action slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, and core navigation icon bridge slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

@@ -31,8 +31,7 @@ extension ContentView {
                 backgroundColor: Self.compactPhoneMoreRootTopSafeAreaStyle().color
             ) {
                 CompactPhoneMoreRootView(
-                    sections: Self.compactPhoneOverflowSections,
-                    iconName: phoneIconName(for:)
+                    sections: Self.compactPhoneOverflowSections
                 )
             }
             .navigationDestination(for: AppSection.self) { section in
@@ -44,10 +43,6 @@ extension ContentView {
             .toolbarBackground(.visible, for: .navigationBar)
             #endif
         }
-    }
-
-    func phoneIconName(for section: AppSection) -> String {
-        section.iconName
     }
 
     @ViewBuilder
@@ -347,7 +342,6 @@ struct CompactPhoneRootSafeAreaView<Content: View>: View {
 
 private struct CompactPhoneMoreRootView: View {
     let sections: [AppSection]
-    let iconName: (AppSection) -> String
 #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #endif
@@ -366,9 +360,13 @@ private struct CompactPhoneMoreRootView: View {
             List {
                 ForEach(sections, id: \.self) { section in
                     NavigationLink(value: section) {
-                        Label(section.title, systemImage: iconName(section))
-                            .appFont(.body)
-                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        Label {
+                            Text(section.title)
+                        } icon: {
+                            Image(appIcon: section.appIcon)
+                        }
+                        .appFont(.body)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
                     }
                     .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 }

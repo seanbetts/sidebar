@@ -1,6 +1,7 @@
 // swiftlint:disable file_length
 
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
@@ -16,12 +17,12 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(sections, [.files, .skillsStore])
     }
 
-    func testCompactPhoneMoreTabUsesPlainEllipsisIcon() {
-        let iconName = ContentView.compactPhoneTabIconName(
+    func testCompactPhoneMoreTabUsesMoreAppIcon() {
+        let icon = ContentView.compactPhoneTabAppIcon(
             for: .more,
-            phoneIconName: { _ in "unused" }
+            phoneAppIcon: { _ in AppIcon.Domain.chat }
         )
-        XCTAssertEqual(iconName, "ellipsis")
+        XCTAssertEqual(icon, AppIcon.Action.more)
     }
 
     func testCompactPhoneMoreHeaderShowsSettingsAvatarInCompactLayout() {

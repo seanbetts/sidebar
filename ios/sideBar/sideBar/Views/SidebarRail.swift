@@ -141,7 +141,7 @@ public struct SidebarRail: View {
                 selection = section
             }
         } label: {
-            Image(systemName: iconName(for: section))
+            Image(appIcon: section.appIcon)
                 .appFont(.titleSm)
                 .scaleEffect(iconScale(for: section))
                 .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
@@ -165,10 +165,6 @@ public struct SidebarRail: View {
                 }
             )
         )
-    }
-
-    private func iconName(for section: AppSection) -> String {
-        section.iconName
     }
 
     static func buttonChrome(isActive: Bool, isHovered: Bool) -> GlassChrome.Kind? {

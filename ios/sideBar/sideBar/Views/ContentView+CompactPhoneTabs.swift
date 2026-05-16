@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum CompactPhoneTab: Hashable {
     case section(AppSection)
@@ -77,19 +78,19 @@ extension ContentView {
         }
     }
 
-    func compactPhoneTabIconName(for tab: CompactPhoneTab) -> String {
-        Self.compactPhoneTabIconName(for: tab, phoneIconName: phoneIconName(for:))
+    func compactPhoneTabAppIcon(for tab: CompactPhoneTab) -> AppIcon {
+        Self.compactPhoneTabAppIcon(for: tab, phoneAppIcon: { $0.appIcon })
     }
 
-    static func compactPhoneTabIconName(
+    static func compactPhoneTabAppIcon(
         for tab: CompactPhoneTab,
-        phoneIconName: (AppSection) -> String
-    ) -> String {
+        phoneAppIcon: (AppSection) -> AppIcon
+    ) -> AppIcon {
         switch tab {
         case .section(let section):
-            return phoneIconName(section)
+            return phoneAppIcon(section)
         case .more:
-            return "ellipsis"
+            return AppIcon.Action.more
         }
     }
 }

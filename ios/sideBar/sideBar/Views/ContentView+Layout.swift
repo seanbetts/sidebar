@@ -90,7 +90,7 @@ extension ContentView {
                             Label {
                                 Text(compactPhoneTabTitle(for: tab))
                             } icon: {
-                                Image(systemName: compactPhoneTabIconName(for: tab))
+                                Image(appIcon: compactPhoneTabAppIcon(for: tab))
                                     .symbolVariant(.none)
                             }
                         }
@@ -103,7 +103,7 @@ extension ContentView {
                                 Label {
                                     Text(section.title)
                                 } icon: {
-                                    Image(systemName: phoneIconName(for: section))
+                                    Image(appIcon: section.appIcon)
                                         .symbolVariant(.none)
                                 }
                             }
