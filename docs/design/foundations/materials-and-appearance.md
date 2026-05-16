@@ -16,7 +16,7 @@ sideBar uses two distinct surface systems depending on the surface's role:
 | System | Used for | Implementation |
 |---|---|---|
 | **Solid fills** | Persistent surfaces — backgrounds, panels, sidebars | `DesignTokens.Colors.*` |
-| **Liquid Glass** | Transient chrome — pills, action bars, floating docks, popovers, headers | `glassEffect` (iOS/macOS 26+) |
+| **Liquid Glass** | Transient chrome — pills, action bars, floating docks, popovers, and action/header controls | `glassEffect` (iOS/macOS 26+) |
 
 The dividing line is persistence. A panel background is always visible and provides the reading surface for content — it must be solid and predictable. A floating action dock or save status pill is transient chrome that sits above content — it benefits from Liquid Glass depth and adaptability.
 
@@ -31,9 +31,9 @@ From base to top, the visual stack:
 | Layer | Surface | Fill |
 |---|---|---|
 | 1 | Window / app background | `DesignTokens.Colors.background` (solid) |
-| 2 | Sidebar rail | `DesignTokens.Colors.sidebar` (solid, planned: Liquid Glass) |
+| 2 | Sidebar rail | `DesignTokens.Colors.sidebar` (solid) |
 | 3 | Panel / content area | `DesignTokens.Colors.surface` (solid) |
-| 4 | Panel header | `panelHeaderBackground()` — `.sidebar` on macOS light, `.surface` on macOS dark |
+| 4 | Panel header | Inherits the solid sidebar/panel surface |
 | 5 | List rows | Transparent over panel; `DesignTokens.Colors.muted` for hover and selected states |
 | 6 | Floating chrome | Liquid Glass — floating docks, action pills, formatting bars |
 | 7 | Popovers and menus | Liquid Glass via `MacPopoverShell` / `MacModalShell` (planned) |
@@ -55,15 +55,22 @@ The following surfaces use Liquid Glass. Rollout order matters: primitives and s
 | `MacPopoverShell` | macOS | Popover background |
 | `MacModalShell` | macOS | Modal background |
 | `SettingsMacStyles` | macOS | Settings surface chrome |
-| `SidebarRail` | iOS + macOS | Validate against content legibility before adopting |
-| `SiteHeaderBar` | iOS + macOS | Site section header chrome |
-| `HeaderActionIcon` | iOS + macOS | Icon button chrome |
+| `HeaderActionIcon` / header action controls | iOS + macOS | Icon button chrome, including `SiteHeaderBar` trailing actions |
 | `NoteFormattingBar` | iOS | Note formatting bar |
-| `SearchField` dock chrome | iOS | Floating search chrome |
-| `PanelHeader` | iOS + macOS | Section panel header |
+| `SearchField` standard chrome | iOS + macOS | Search input chrome. The compact dock variant remains transparent inside `PhoneFloatingActionDock` |
+| Feature discovery and intro cards | iOS + macOS | Onboarding discovery chrome |
 | `LoginView` | iOS + macOS | Onboarding/auth chrome |
 
 **Rule**: New transient surface chrome must use Liquid Glass. Do not introduce new `.regularMaterial` or `.ultraThinMaterial` usage for interactive chrome.
+
+The following surfaces intentionally stay solid or inherit glass from their parent surface:
+
+| Component | Reason |
+|---|---|
+| `PanelHeader` | Persistent panel structure; it should inherit the surrounding solid sidebar/panel surface rather than add standalone glass. |
+| `SidebarRail` | Persistent navigation rail; active and hover affordances may use tokenized button treatment, but the rail container remains solid for legibility. |
+| `SiteHeaderBar` | Persistent app header container; trailing action controls may use glass, but the container remains solid. |
+| `SearchField` dock chrome | The field sits inside `PhoneFloatingActionDock`, so it remains transparent to avoid nested glass. |
 
 ---
 
