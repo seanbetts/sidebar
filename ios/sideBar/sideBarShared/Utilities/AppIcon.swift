@@ -91,6 +91,7 @@ public extension AppIcon {
         public static let offline = AppIcon(rawValue: "wifi.slash")
         public static let networkWarning = AppIcon(rawValue: "wifi.exclamationmark")
         public static let syncing = AppIcon(rawValue: "arrow.triangle.2.circlepath")
+        public static let queuedForSync = AppIcon(rawValue: "icloud.and.arrow.up")
         public static let retry = AppIcon(rawValue: "arrow.clockwise")
         public static let weather = AppIcon(rawValue: "cloud.sun")
     }
@@ -137,6 +138,7 @@ public extension AppIcon {
 
     enum Notes {
         public static let formatting = AppIcon(rawValue: "textformat")
+        public static let unsavedChanges = AppIcon(rawValue: "pencil.circle.fill")
     }
 
     enum Spreadsheet {
@@ -189,6 +191,7 @@ public extension AppIcon {
 
     enum Skills {
         public static let fallback = AppIcon(rawValue: "puzzlepiece.extension")
+        public static let categoryAll = AppIcon(rawValue: "square.grid.2x2")
         public static let categoryFallback = AppIcon(rawValue: "tag.fill")
         public static let tools = AppIcon(rawValue: "hammer")
         public static let multiple = AppIcon(rawValue: "square.stack.3d.up")

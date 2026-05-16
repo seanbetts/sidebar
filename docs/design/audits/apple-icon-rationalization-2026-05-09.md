@@ -433,11 +433,21 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Compact phone regular tab sections | `phoneIconName(for:)` through `Image(systemName:)` | `Image(appIcon: section.appIcon)` |
 | Compact phone More root rows | `phoneIconName(for:)` through `Label(..., systemImage:)` | `Label` view-builder icon with `Image(appIcon: section.appIcon)` |
 
+## Feature Static Chrome Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Skills Store category filter chips | Local category strings such as `square.grid.2x2`, `waveform`, `play.rectangle`, `globe`, `folder`, `checkmark.square`, `note.text`, `brain`, `gearshape`, `hammer`, and `tag.fill` | `SkillsStoreCategoryIcon.appIcon(for:)` returning `AppIcon.Skills.categoryAll`, existing domain/content/media/settings icons, or `AppIcon.Skills.categoryFallback` |
+| Skills Store install state pill | `checkmark.circle.fill`, `plus.circle.fill` | `AppIcon.State.successFilled`, `AppIcon.Action.addCircleFilled` |
+| Notes save status accessory and toolbar icon | `arrow.triangle.2.circlepath`, `icloud.and.arrow.up`, `exclamationmark.triangle.fill`, `pencil.circle.fill`, `checkmark.circle.fill` through `NoteStatus.iconName` | `NoteStatus.icon` with `AppIcon.State.syncing`, `AppIcon.State.queuedForSync`, `AppIcon.State.warningFilled`, `AppIcon.Notes.unsavedChanges`, and `AppIcon.State.successFilled` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, and core navigation icon bridge slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, and feature static chrome slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

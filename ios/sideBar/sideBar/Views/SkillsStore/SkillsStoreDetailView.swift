@@ -174,7 +174,7 @@ public struct SkillsStoreView: View {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 SkillsStoreFilterChip(
                     title: "All",
-                    iconName: SkillsStoreCategoryIcon.iconName(for: "all"),
+                    icon: SkillsStoreCategoryIcon.appIcon(for: "all"),
                     isSelected: selectedCategory == nil
                 ) {
                     selectedCategory = nil
@@ -182,7 +182,7 @@ public struct SkillsStoreView: View {
                 ForEach(storeCategories, id: \.self) { category in
                     SkillsStoreFilterChip(
                         title: category,
-                        iconName: SkillsStoreCategoryIcon.iconName(for: category),
+                        icon: SkillsStoreCategoryIcon.appIcon(for: category),
                         isSelected: selectedCategory == category
                     ) {
                         selectedCategory = category

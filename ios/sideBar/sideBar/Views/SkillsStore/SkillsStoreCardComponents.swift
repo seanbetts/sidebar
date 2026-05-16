@@ -1,46 +1,47 @@
 import SwiftUI
+import sideBarShared
 
 enum SkillsStoreCategoryIcon {
-    static func iconName(for raw: String) -> String {
+    static func appIcon(for raw: String) -> AppIcon {
         let normalized = raw
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
 
-        if normalized == "all" { return "square.grid.2x2" }
+        if normalized == "all" { return AppIcon.Skills.categoryAll }
         if normalized.contains("audio") || normalized.contains("media") {
-            return "waveform"
+            return AppIcon.Media.waveform
         }
         if normalized.contains("video") || normalized.contains("youtube") {
-            return "play.rectangle"
+            return AppIcon.Media.video
         }
         if normalized.contains("web") || normalized.contains("browser") || normalized.contains("internet") {
-            return "globe"
+            return AppIcon.Domain.websites
         }
         if normalized.contains("file") || normalized.contains("document") {
-            return "folder"
+            return AppIcon.Domain.files
         }
         if normalized.contains("task") || normalized.contains("productivity") {
-            return "checkmark.square"
+            return AppIcon.Domain.tasks
         }
         if normalized.contains("note") {
-            return "note.text"
+            return AppIcon.Content.note
         }
         if normalized.contains("memory") {
-            return "brain"
+            return AppIcon.Skills.memory
         }
         if normalized.contains("setting") || normalized.contains("system") {
-            return "gearshape"
+            return AppIcon.Settings.appPreferences
         }
         if normalized.contains("developer") || normalized.contains("code") || normalized.contains("tool") {
-            return "hammer"
+            return AppIcon.Skills.tools
         }
-        return "tag.fill"
+        return AppIcon.Skills.categoryFallback
     }
 }
 
 struct SkillsStoreFilterChip: View {
     let title: String
-    let iconName: String
+    let icon: AppIcon
     let isSelected: Bool
     let onTap: () -> Void
     @State private var isHovered = false
@@ -48,7 +49,7 @@ struct SkillsStoreFilterChip: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 4) {
-                Image(systemName: iconName)
+                Image(appIcon: icon)
                     .appFont(.caption)
                 Text(title)
                     .appFont(.caption)
@@ -143,12 +144,12 @@ struct SkillsStoreCard: View {
         Group {
             if isInstalled {
                 Button(action: onInstalledTap) {
-                    SkillsStoreInstallPill(systemName: "checkmark.circle.fill", busy: isBusy)
+                    SkillsStoreInstallPill(icon: AppIcon.State.successFilled, busy: isBusy)
                 }
                 .accessibilityLabel("Installed")
             } else {
                 Button(action: onInstall) {
-                    SkillsStoreInstallPill(systemName: "plus.circle.fill", busy: isBusy)
+                    SkillsStoreInstallPill(icon: AppIcon.Action.addCircleFilled, busy: isBusy)
                 }
                 .accessibilityLabel("Install")
             }
@@ -160,7 +161,7 @@ struct SkillsStoreCard: View {
 }
 
 private struct SkillsStoreInstallPill: View {
-    let systemName: String
+    let icon: AppIcon
     let busy: Bool
 
     var body: some View {
@@ -170,7 +171,7 @@ private struct SkillsStoreInstallPill: View {
                     .controlSize(.small)
                     .tint(Color.primary)
             } else {
-                Image(systemName: systemName)
+                Image(appIcon: icon)
                     .appFont(.displayMd)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)

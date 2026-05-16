@@ -280,7 +280,7 @@ extension NotesDetailView {
     }
 
     private struct NoteStatus: Equatable {
-        let iconName: String
+        let icon: AppIcon
         let accessibilityLabel: String
         let helpText: String
         let color: Color
@@ -304,7 +304,7 @@ extension NotesDetailView {
     private var noteStatus: NoteStatus? {
         if editorViewModel.isSaving {
             return NoteStatus(
-                iconName: "arrow.triangle.2.circlepath",
+                icon: AppIcon.State.syncing,
                 accessibilityLabel: "Saving",
                 helpText: "Saving",
                 color: .primary
@@ -313,7 +313,7 @@ extension NotesDetailView {
         if editorViewModel.isQueuedForSync {
             let label = "Saved for later"
             return NoteStatus(
-                iconName: "icloud.and.arrow.up",
+                icon: AppIcon.State.queuedForSync,
                 accessibilityLabel: label,
                 helpText: label,
                 color: .primary
@@ -321,7 +321,7 @@ extension NotesDetailView {
         }
         if let error = editorViewModel.saveErrorMessage, !error.isEmpty {
             return NoteStatus(
-                iconName: "exclamationmark.triangle.fill",
+                icon: AppIcon.State.warningFilled,
                 accessibilityLabel: "Save error",
                 helpText: error,
                 color: DesignTokens.Colors.error
@@ -329,7 +329,7 @@ extension NotesDetailView {
         }
         if editorViewModel.isDirty {
             return NoteStatus(
-                iconName: "pencil.circle.fill",
+                icon: AppIcon.Notes.unsavedChanges,
                 accessibilityLabel: "Unsaved changes",
                 helpText: "Unsaved changes",
                 color: .primary
@@ -337,7 +337,7 @@ extension NotesDetailView {
         }
         if let label = lastSavedLabel {
             return NoteStatus(
-                iconName: "checkmark.circle.fill",
+                icon: AppIcon.State.successFilled,
                 accessibilityLabel: "Saved \(label)",
                 helpText: "Saved \(label)",
                 color: .primary
@@ -352,7 +352,7 @@ extension NotesDetailView {
     }
 
     private func noteStatusText(_ status: NoteStatus) -> some View {
-        Image(systemName: status.iconName)
+        Image(appIcon: status.icon)
             .appFont(.body)
             .frame(width: 32, height: 22)
             .imageScale(.medium)
@@ -363,7 +363,7 @@ extension NotesDetailView {
 
     #if os(iOS)
     private func noteToolbarStatusIcon(_ status: NoteStatus) -> some View {
-        HeaderActionIcon(systemName: status.iconName)
+        HeaderActionIcon(icon: status.icon)
             .foregroundStyle(status.color)
             .accessibilityLabel(status.accessibilityLabel)
             .help(status.helpText)
