@@ -67,6 +67,7 @@ public extension AppIcon {
         public static let back = AppIcon(rawValue: "chevron.left")
         public static let forward = AppIcon(rawValue: "chevron.right")
         public static let chevronRight = AppIcon(rawValue: "chevron.right")
+        public static let chevronUp = AppIcon(rawValue: "chevron.up")
         public static let chevronDown = AppIcon(rawValue: "chevron.down")
         public static let pickerDisclosure = AppIcon(rawValue: "chevron.up.chevron.down")
         public static let expandWorkspace = AppIcon(rawValue: "arrow.up.right.and.arrow.down.left")
@@ -141,6 +142,7 @@ public extension AppIcon {
     enum Onboarding {
         public static let emailVerification = AppIcon(rawValue: "envelope.badge")
         public static let assistantBrain = AppIcon(rawValue: "brain")
+        public static let featureDiscovery = AppIcon(rawValue: "sparkles.rectangle.stack")
         public static let externalHelp = AppIcon(rawValue: "arrow.up.right")
         public static let locationPermission = AppIcon(rawValue: "location.fill")
         public static let notificationsPermission = AppIcon(rawValue: "bell.badge.fill")

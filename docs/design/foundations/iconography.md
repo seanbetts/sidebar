@@ -255,6 +255,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Back | `Navigation.back` | `chevron.left` |
 | Forward | `Navigation.forward` | `chevron.right` |
 | Disclosure right | `Navigation.chevronRight` | `chevron.right` |
+| Disclosure up | `Navigation.chevronUp` | `chevron.up` |
 | Disclosure down | `Navigation.chevronDown` | `chevron.down` |
 | Expand picker | `Navigation.pickerDisclosure` | `chevron.up.chevron.down` |
 | Expand workspace | `Navigation.expandWorkspace` | `arrow.up.right.and.arrow.down.left` |
@@ -295,6 +296,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 |---|---|---|
 | Email verification | `Onboarding.emailVerification` | `envelope.badge` |
 | Assistant selection | `Onboarding.assistantBrain` | `brain` |
+| Feature discovery | `Onboarding.featureDiscovery` | `sparkles.rectangle.stack` |
 | External help link | `Onboarding.externalHelp` | `arrow.up.right` |
 | Location permission | `Onboarding.locationPermission` | `location.fill` |
 | Notifications permission | `Onboarding.notificationsPermission` | `bell.badge.fill` |
@@ -481,7 +483,7 @@ Task row, detail, modal, panel zero-count, taxonomy, and recurrence affordances 
 
 Store Skill credential and config chrome uses `AppIcon` for requirement checks, credential provider rows, credential add/update/remove actions, and install state pills.
 
-Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, and add-key banner symbols.
+Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
 Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
@@ -517,6 +519,7 @@ The web app uses `lucide-svelte`. Lucide does not have parity with SF Symbols, b
 | Send | `Action.send` | `arrow.up` | `ArrowUp` |
 | Attach | `Action.attach` | `paperclip` | `Paperclip` |
 | Chevron right | `Navigation.chevronRight` | `chevron.right` | `ChevronRight` |
+| Chevron up | `Navigation.chevronUp` | `chevron.up` | `ChevronUp` |
 | Sign out | `Action.signOut` | `rectangle.portrait.and.arrow.right` | `LogOut` |
 
 **Rule**: When adding a new icon concept to both platforms, update this table before shipping the cross-platform change.

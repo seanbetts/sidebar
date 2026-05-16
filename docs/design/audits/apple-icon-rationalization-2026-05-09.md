@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, and dynamic workspace target/parser presentation slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, and static discovery carousel slices completed after the initial catalog work.
 
 Categories:
 
@@ -65,6 +65,7 @@ Categories:
 | `rectangle.portrait.and.arrow.right` | Sign out | Context-specific | `AppIcon.Action.signOut` | Account action |
 | `chevron.left` | Back | Canonical | `AppIcon.Navigation.back` | Back navigation |
 | `chevron.right` | Forward or collapsed disclosure | Canonical | `AppIcon.Navigation.forward` / `AppIcon.Navigation.chevronRight` | Use the semantic alias that matches context |
+| `chevron.up` | Collapse disclosure | Canonical | `AppIcon.Navigation.chevronUp` | Static discovery carousel expanded-state disclosure |
 | `chevron.down` | Expanded disclosure | Canonical | `AppIcon.Navigation.chevronDown` | Expanded archive and disclosure rows |
 | `chevron.up.chevron.down` | Picker disclosure | Context-specific | `AppIcon.Navigation.pickerDisclosure` | Form picker affordance |
 | `arrow.up.right.and.arrow.down.left` | Expand workspace | Context-specific | `AppIcon.Navigation.expandWorkspace` | Workspace and detail expansion action |
@@ -97,6 +98,7 @@ Categories:
 | `eye.slash.fill` | Hide password | Context-specific | `AppIcon.Auth.passwordHidden` | Secure field visibility toggle |
 | `envelope.badge` | Email verification | Context-specific | `AppIcon.Onboarding.emailVerification` | Onboarding verification step |
 | `brain` | Onboarding provider selection | Context-specific | `AppIcon.Onboarding.assistantBrain` | Distinct from filled assistant settings icon |
+| `sparkles.rectangle.stack` | Static feature discovery | Context-specific | `AppIcon.Onboarding.featureDiscovery` | Chat feature discovery carousel header |
 | `location.fill` | Location permission | Context-specific | `AppIcon.Onboarding.locationPermission` | Onboarding and permission recovery |
 | `bell.badge.fill` | Notifications permission | Context-specific | `AppIcon.Onboarding.notificationsPermission` | Onboarding and permission recovery |
 | `note.text` | Note document | Canonical | `AppIcon.Content.note` | Note content |
@@ -298,12 +300,23 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Ready attachment chip icon | `paperclip` | `AppIcon.Action.attach` |
 | Ready attachment remove action | `xmark` | `AppIcon.Action.close` |
 
+## Static Discovery Carousel Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Static discovery carousel header | `sparkles.rectangle.stack` | `AppIcon.Onboarding.featureDiscovery` |
+| Static discovery carousel expanded disclosure | `chevron.up` | `AppIcon.Navigation.chevronUp` |
+| Static discovery carousel collapsed disclosure | `chevron.down` | `AppIcon.Navigation.chevronDown` |
+| Static discovery carousel dismiss control | `xmark` | `AppIcon.Action.close` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
 - PDF controls
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, and chat input plus attachment control slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, and static discovery carousel slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

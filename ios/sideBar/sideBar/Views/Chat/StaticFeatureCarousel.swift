@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct StaticFeatureCarousel: View {
     let onSelectFeature: (OnboardingDiscoveryFeature) -> Void
@@ -43,7 +44,7 @@ struct StaticFeatureCarousel: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Button(action: toggleExpanded) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
-                    Image(systemName: "sparkles.rectangle.stack")
+                    Image(appIcon: AppIcon.Onboarding.featureDiscovery)
                         .appFont(.body)
                         .foregroundStyle(.secondary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
@@ -74,7 +75,7 @@ struct StaticFeatureCarousel: View {
 
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Button(action: toggleExpanded) {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    Image(appIcon: isExpanded ? AppIcon.Navigation.chevronUp : AppIcon.Navigation.chevronDown)
                         .appFont(.caption)
                         .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 }
@@ -83,7 +84,7 @@ struct StaticFeatureCarousel: View {
                 .modifier(FeatureDiscoveryIconButtonChrome())
 
                 Button(action: onDismiss) {
-                    Image(systemName: "xmark")
+                    Image(appIcon: AppIcon.Action.close)
                         .appFont(.caption)
                         .frame(width: DesignTokens.Icon.xl, height: DesignTokens.Icon.xl)
                 }

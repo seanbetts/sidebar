@@ -112,7 +112,7 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("Text(\"ExploresideBar\")"))
         XCTAssertTrue(normalized.contains(".appFont(.titleMd)"))
-        XCTAssertTrue(normalized.contains("Image(systemName:\"sparkles.rectangle.stack\")"))
+        XCTAssertTrue(normalized.contains("Image(appIcon:AppIcon.Onboarding.featureDiscovery)"))
         XCTAssertTrue(normalized.contains(".appFont(.body)"))
         XCTAssertTrue(normalized.contains(".offset(y:isTitleInExpandedPosition?DesignTokens.Spacing.xxxs:0)"))
         XCTAssertTrue(normalized.contains("Text(previewSummary)"))
