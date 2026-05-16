@@ -29,7 +29,7 @@ final class TasksDetailViewSourceTests: XCTestCase {
         )
         XCTAssertTrue(
             normalized.contains(
-                "HeaderActionButton(systemName:\"plus\",accessibilityLabel:\"Newtask\""
+                "HeaderActionButton(icon:AppIcon.Action.add,accessibilityLabel:\"Newtask\""
             )
         )
         let compactPlusIcon =

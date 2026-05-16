@@ -71,7 +71,8 @@ final class Task15ChatToolErrorIconSourceTests: XCTestCase {
         XCTAssertFalse(toolComponents.contains("Image(systemName:\"checkmark.circle.fill\")"))
 
         XCTAssertTrue(skillIconView.contains("init(appIcon:AppIcon"))
-        XCTAssertTrue(skillIconView.contains("systemName:appIcon.rawValue"))
+        XCTAssertTrue(skillIconView.contains("self.icon=appIcon"))
+        XCTAssertTrue(skillIconView.contains("Image(appIcon:icon)"))
         XCTAssertTrue(resolver.contains("staticfuncappIcon(fortoolCall:ToolCall)->AppIcon"))
     }
 

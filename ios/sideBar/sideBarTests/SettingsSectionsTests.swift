@@ -825,7 +825,7 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("settingsTabContent(SettingsMoreTabView("))
         XCTAssertFalse(normalized.contains("Label(\"Memories\",systemImage:\"bookmark\")"))
         XCTAssertFalse(normalized.contains("Label(\"App\",systemImage:\"gearshape\")"))
-        XCTAssertTrue(normalized.contains("Label(\"More\",systemImage:\"ellipsis.circle\")"))
+        XCTAssertTrue(normalized.contains("Label(\"More\",systemImage:AppIcon.Settings.more.rawValue)"))
     }
 
     func testSettingsTabsIOSPersistsSelectedTabForExternalRouting() throws {

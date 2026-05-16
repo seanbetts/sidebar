@@ -200,8 +200,8 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("SelectableRow("))
         XCTAssertTrue(normalized.contains("toggleCategoryExpansion(category)"))
-        XCTAssertTrue(normalized.contains("chevron.down"))
-        XCTAssertTrue(normalized.contains("chevron.right"))
+        XCTAssertTrue(normalized.contains("AppIcon.Navigation.chevronDown"))
+        XCTAssertTrue(normalized.contains("AppIcon.Navigation.chevronRight"))
         XCTAssertFalse(normalized.contains("DisclosureGroup("))
     }
 

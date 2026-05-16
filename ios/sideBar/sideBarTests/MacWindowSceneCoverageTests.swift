@@ -80,7 +80,7 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("settingsSidebarHeader"))
         XCTAssertFalse(normalized.contains("inlineSaveStatusView"))
         XCTAssertTrue(normalized.contains("Settings"))
-        XCTAssertTrue(normalized.contains("Image(systemName:\"xmark.circle.fill\")"))
+        XCTAssertTrue(normalized.contains("Image(appIcon:AppIcon.Action.clearFilled)"))
         XCTAssertFalse(normalized.contains("Button(\"Done\""))
     }
 

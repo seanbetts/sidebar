@@ -82,7 +82,7 @@ final class HeaderStatusPopoverTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains(expectedButtonStyle))
         XCTAssertFalse(normalized.contains(".buttonStyle(.borderless)"))
-        XCTAssertTrue(normalized.contains("Image(systemName:actionSymbolName(action))"))
+        XCTAssertTrue(normalized.contains("Image(appIcon:actionAppIcon(action))"))
         XCTAssertFalse(normalized.contains("Text(action.title)"))
         XCTAssertTrue(normalized.contains(".accessibilityLabel(action.title)"))
     }

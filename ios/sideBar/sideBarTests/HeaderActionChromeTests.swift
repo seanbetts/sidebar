@@ -123,7 +123,7 @@ final class HeaderActionChromeTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains(".rename{beginRenameForActiveNote()}"))
-        XCTAssertTrue(normalized.contains("Label(\"Rename\",systemImage:\"pencil\")"))
+        XCTAssertTrue(normalized.contains("sidebarMenuItemsView(noteSidebarMenuItems)"))
     }
 
     func testMacOSWebsitesMenuAppliesChromeToMenuControl() throws {

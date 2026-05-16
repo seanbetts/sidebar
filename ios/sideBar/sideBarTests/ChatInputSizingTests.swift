@@ -11,8 +11,8 @@ final class ChatInputSizingTests: XCTestCase {
         let normalized = try chatInputSource(named: "ChatInputUIKit.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("systemName:\"paperclip\""))
-        XCTAssertTrue(normalized.contains("systemName:\"arrow.up\""))
+        XCTAssertTrue(normalized.contains("makeAccessoryButton(appIcon:AppIcon.Action.attach)"))
+        XCTAssertTrue(normalized.contains("makeAccessoryButton(appIcon:AppIcon.Action.send)"))
         XCTAssertFalse(normalized.contains("paperclip.circle.fill"))
         XCTAssertFalse(normalized.contains("arrow.up.circle.fill"))
     }
@@ -21,8 +21,8 @@ final class ChatInputSizingTests: XCTestCase {
         let normalized = try chatInputSource(named: "ChatInputAppKit.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("systemSymbolName:\"paperclip\""))
-        XCTAssertTrue(normalized.contains("systemSymbolName:\"arrow.up\""))
+        XCTAssertTrue(normalized.contains("symbolImage(for:AppIcon.Action.attach)"))
+        XCTAssertTrue(normalized.contains("symbolImage(for:AppIcon.Action.send)"))
         XCTAssertFalse(normalized.contains("paperclip.circle.fill"))
         XCTAssertFalse(normalized.contains("arrow.up.circle.fill"))
     }
