@@ -69,7 +69,7 @@ struct ConversationsPanelView: View {
                             title: searchEmptyState.title,
                             subtitle: searchEmptyState.subtitle,
                             style: searchErrorMessage == nil ? .standard : .error,
-                            iconName: searchEmptyState.systemImage
+                            icon: searchEmptyState.icon
                         )
                     } else {
                         conversationsList

@@ -337,7 +337,7 @@ extension TasksDetailView {
             PlaceholderView(
                 title: emptyState.title,
                 subtitle: emptyState.subtitle,
-                iconName: emptyState.systemImage
+                icon: emptyState.icon
             )
         } else {
             ScrollView {

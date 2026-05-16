@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 public struct SidebarPanelPlaceholder: View {
     public enum Style {
@@ -11,29 +12,29 @@ public struct SidebarPanelPlaceholder: View {
     public let actionTitle: String?
     public let action: (() -> Void)?
     public let style: Style
-    public let iconName: String?
+    public let icon: AppIcon?
 
     public init(
         title: String,
         subtitle: String? = nil,
         actionTitle: String? = nil,
         style: Style = .standard,
-        iconName: String? = nil,
+        icon: AppIcon? = nil,
         action: (() -> Void)? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.style = style
-        self.iconName = iconName
+        self.icon = icon
         self.action = action
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                if let icon = resolvedIconName {
-                    Image(systemName: icon)
+                if let icon = resolvedIcon {
+                    Image(appIcon: icon)
                         .appFont(.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(iconColor)
@@ -67,11 +68,11 @@ public struct SidebarPanelPlaceholder: View {
         .padding(DesignTokens.Spacing.md)
     }
 
-    private var resolvedIconName: String? {
-        if let iconName {
-            return iconName
+    private var resolvedIcon: AppIcon? {
+        if let icon {
+            return icon
         }
-        return style == .error ? "exclamationmark.triangle.fill" : nil
+        return style == .error ? AppIcon.State.warningFilled : nil
     }
 
     private var iconColor: Color {

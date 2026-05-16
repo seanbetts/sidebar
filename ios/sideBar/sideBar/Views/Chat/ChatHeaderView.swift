@@ -141,7 +141,7 @@ struct ChatHeaderView: View {
 
     private var headerContent: some View {
         ContentHeaderRow(
-            iconName: "bubble",
+            icon: AppIcon.Domain.chat,
             title: selectedTitle,
             titleLineLimit: 1,
             trailing: {

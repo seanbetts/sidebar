@@ -321,7 +321,7 @@ extension WebsitesPanelView {
                         SidebarPanelPlaceholder(
                             title: searchEmptyState.title,
                             subtitle: searchEmptyState.subtitle,
-                            iconName: searchEmptyState.systemImage
+                            icon: searchEmptyState.icon
                         )
                     } else {
                         ForEach(filteredItems, id: \.id) { item in
@@ -348,7 +348,7 @@ extension WebsitesPanelView {
                 if listSectionLayout.contains(.sparseState) {
                     Section {
                         SidebarSparseStateRow(
-                            iconName: "globe",
+                            icon: AppIcon.Content.websiteFallback,
                             title: Self.sparseStateTitle,
                             subtitle: Self.sparseStateSubtitle
                         )

@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, and files panel category/markdown fallback controls slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, and shared bridge plus notes panel static icon slices completed after the initial catalog work.
 
 Categories:
 
@@ -396,11 +396,23 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Morning digest open tasks row | `checklist` | `AppIcon.Tasks.checklist` |
 | Notes formatting entrypoint and selected menu rows | `textformat`, `checkmark` | `AppIcon.Notes.formatting`, `AppIcon.State.selectionCheck` |
 
+## Shared Bridge And Notes Panel Static Icons Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Content header domain and QA icons | `bubble`, `text.document`, `checklist` | `ContentHeaderRow(icon:)` with `AppIcon.Domain.chat`, `AppIcon.Domain.notes`, and `AppIcon.Tasks.checklist` |
+| Detail offline and unsupported placeholders | `AppSection.iconName`, `exclamationmark.triangle` | `DetailOfflineUnavailableResource.appIcon` and `AppIcon.State.warning` |
+| Sidebar panel search/error placeholders | `magnifyingglass`, `exclamationmark.triangle.fill` | `SidebarPanelPlaceholder(icon:)` with `EmptyStateContent.icon` and `AppIcon.State.warningFilled` |
+| Sidebar sparse state rows | `note.text`, `globe` | `AppIcon.Content.note`, `AppIcon.Content.websiteFallback` |
+| Notes panel tree rows and folder disclosures | `doc.text`, `folder`, `chevron.down`, `chevron.right` | `AppIcon.Content.textDocument`, `AppIcon.Content.folder`, `AppIcon.Navigation.chevronDown`, `AppIcon.Navigation.chevronRight` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, and chrome/status/website/notes controls slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, and shared bridge plus notes panel static icon slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

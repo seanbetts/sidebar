@@ -1,12 +1,13 @@
 import SwiftUI
+import sideBarShared
 
 public struct SidebarSparseStateRow: View {
-    public let iconName: String
+    public let icon: AppIcon
     public let title: String
     public let subtitle: String?
 
-    public init(iconName: String, title: String, subtitle: String? = nil) {
-        self.iconName = iconName
+    public init(icon: AppIcon, title: String, subtitle: String? = nil) {
+        self.icon = icon
         self.title = title
         self.subtitle = subtitle
     }
@@ -14,7 +15,7 @@ public struct SidebarSparseStateRow: View {
     public var body: some View {
         SelectableRow(isSelected: false) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: iconName)
+                Image(appIcon: icon)
                     .appFont(.body)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                 Text(title)

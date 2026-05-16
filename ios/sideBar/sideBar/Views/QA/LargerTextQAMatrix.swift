@@ -57,7 +57,7 @@ private struct LargerTextQAMatrixView: View {
                     Text("Task Header")
                         .appFont(.caption)
                     ContentHeaderRow(
-                        iconName: "checklist",
+                        icon: AppIcon.Tasks.checklist,
                         title: "Review long task header title for wrapping behavior at accessibility sizes",
                         subtitle: "12 open tasks",
                         titleStyle: .subheading,

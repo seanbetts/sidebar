@@ -493,6 +493,10 @@ Shared empty, search, and status components accept or choose `AppIcon` values di
 | `OfflineBanner` | Offline and degraded-network state |
 | `StatusPill` | Neutral, success, warning, and error indicators |
 | `SuccessCheckBadge` | Success check mark |
+| `ContentHeaderRow` | Header domain/content icons |
+| `PlaceholderView` | Detail empty/offline icons |
+| `SidebarPanelPlaceholder` | Panel search/error placeholder icons |
+| `SidebarSparseStateRow` | Sparse panel row icons |
 
 **Rule**: Shared primitives should not choose raw SF Symbol strings inline. Feature-level empty states should pass semantic `AppIcon` values where the concept is already rationalized. Remaining feature-level string bridges stay tracked under `RES-MP-13`.
 
@@ -502,7 +506,7 @@ Store Skill credential and config chrome uses `AppIcon` for requirement checks, 
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
-Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Shared bridge helpers now take `AppIcon` directly for content headers, detail placeholders, panel placeholders, sparse rows, and notes panel row/disclosure symbols. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
 ---
 

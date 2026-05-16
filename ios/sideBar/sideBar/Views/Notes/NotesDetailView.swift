@@ -5,6 +5,7 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+import sideBarShared
 
 struct NotesDetailView: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
@@ -179,7 +180,7 @@ extension NotesDetailView {
     private var header: some View {
         ZStack(alignment: .bottomLeading) {
             ContentHeaderRow(
-                iconName: "text.document",
+                icon: AppIcon.Domain.notes,
                 title: displayTitle,
                 titleAccessory: noteStatusTitleAccessory,
                 subtitle: createdDateSubtitle,
@@ -231,7 +232,7 @@ extension NotesDetailView {
                 PlaceholderView(
                     title: unsupportedContentPlaceholderTitle,
                     subtitle: unsupportedContentPlaceholderMessage,
-                    iconName: "exclamationmark.triangle"
+                    icon: AppIcon.State.warning
                 )
             } else {
                 supportedNoteSurface

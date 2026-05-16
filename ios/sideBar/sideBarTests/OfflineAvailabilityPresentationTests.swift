@@ -28,24 +28,24 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
             "Open it while online on this device to keep it available here."
         )
         XCTAssertEqual(
-            DetailOfflineUnavailableResource.note.iconName,
-            AppSection.notes.iconName
+            DetailOfflineUnavailableResource.note.appIcon,
+            AppSection.notes.appIcon
         )
         XCTAssertEqual(
-            DetailOfflineUnavailableResource.website.iconName,
-            AppSection.websites.iconName
+            DetailOfflineUnavailableResource.website.appIcon,
+            AppSection.websites.appIcon
         )
         XCTAssertEqual(
-            DetailOfflineUnavailableResource.file.iconName,
-            AppSection.files.iconName
+            DetailOfflineUnavailableResource.file.appIcon,
+            AppSection.files.appIcon
         )
         XCTAssertEqual(
-            DetailOfflineUnavailableResource.chat.iconName,
-            AppSection.chat.iconName
+            DetailOfflineUnavailableResource.chat.appIcon,
+            AppSection.chat.appIcon
         )
         XCTAssertEqual(
-            DetailOfflineUnavailableResource.taskList.iconName,
-            AppSection.tasks.iconName
+            DetailOfflineUnavailableResource.taskList.appIcon,
+            AppSection.tasks.appIcon
         )
     }
 

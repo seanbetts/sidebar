@@ -139,7 +139,7 @@ struct NotesTreeRow: View {
             primaryAction: primaryAction
         ) {
             HStack(spacing: 8) {
-                Image(systemName: item.isFile ? "doc.text" : "folder")
+                Image(appIcon: item.isFile ? AppIcon.Content.textDocument : AppIcon.Content.folder)
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
                 if item.isFile {
                     VStack(alignment: .leading, spacing: 2) {
@@ -160,7 +160,7 @@ struct NotesTreeRow: View {
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     Spacer()
-                    Image(systemName: (isExpanded ?? false) ? "chevron.down" : "chevron.right")
+                    Image(appIcon: (isExpanded ?? false) ? AppIcon.Navigation.chevronDown : AppIcon.Navigation.chevronRight)
                         .appFont(.caption)
                         .foregroundStyle(secondaryTextColor)
                 }

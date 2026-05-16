@@ -29,7 +29,7 @@ extension NotesPanelView {
             case .sparse:
                 Section {
                     SidebarSparseStateRow(
-                        iconName: "note.text",
+                        icon: AppIcon.Content.note,
                         title: Self.sparseStateTitle,
                         subtitle: Self.sparseStateSubtitle
                     )
