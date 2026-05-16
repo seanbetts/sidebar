@@ -1449,6 +1449,61 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(pending.count, 1)
     }
 
+    func testArchiveActiveWebsiteDoesNotWaitForSlowDetailCacheRemoval() async throws {
+        let cache = SlowWebsiteDetailRemovalCacheClient(delay: 1.0)
+        let archivedItem = WebsiteItem(
+            id: "site-1",
+            title: "Site",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: true,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: nil,
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [makeItem(id: "site-1")])),
+            getResult: .success(makeDetail(id: "site-1")),
+            archiveResult: .success(archivedItem)
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load()
+        try await store.loadDetail(id: "site-1")
+
+        let start = Date()
+        await viewModel.setArchived(id: "site-1", archived: true)
+
+        XCTAssertLessThan(Date().timeIntervalSince(start), 0.3)
+        XCTAssertNil(viewModel.active)
+        XCTAssertNil(viewModel.selectedWebsiteId)
+    }
+
     func testDeleteWebsiteQueuesWriteUsingListUpdatedAt() async throws {
         let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
         let staleItem = makeItem(id: "site-1", updatedAt: staleUpdatedAt)
@@ -2375,6 +2430,50 @@ private func makeItem(
         lastOpenedAt: nil,
         deletedAt: nil
     )
+}
+
+private final class SlowWebsiteDetailRemovalCacheClient: CacheClient, @unchecked Sendable {
+    private struct Entry {
+        let expiresAt: Date
+        let data: Data
+    }
+
+    private let delay: TimeInterval
+    private let lock = NSLock()
+    private var storage: [String: Entry] = [:]
+
+    init(delay: TimeInterval) {
+        self.delay = delay
+    }
+
+    func get<T: Codable>(key: String) -> T? {
+        lock.lock()
+        let entry = storage[key]
+        lock.unlock()
+        guard let entry, Date() <= entry.expiresAt else { return nil }
+        return try? JSONDecoder().decode(T.self, from: entry.data)
+    }
+
+    func setEncoded(key: String, payload data: Data, typeName _: String, ttlSeconds: TimeInterval) {
+        lock.lock()
+        storage[key] = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
+        lock.unlock()
+    }
+
+    func remove(key: String) {
+        if key.hasPrefix("websites.detail.") {
+            Thread.sleep(forTimeInterval: delay)
+        }
+        lock.lock()
+        storage.removeValue(forKey: key)
+        lock.unlock()
+    }
+
+    func clear() {
+        lock.lock()
+        storage.removeAll()
+        lock.unlock()
+    }
 }
 
 private func makePinnedWebsiteItem(

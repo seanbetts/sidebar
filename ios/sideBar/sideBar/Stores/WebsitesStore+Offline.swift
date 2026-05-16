@@ -148,7 +148,8 @@ extension WebsitesStore {
             payload: payload,
             serverSnapshot: snapshot
         )
-        applyLocalUpdate(id: id) { item in
+        let shouldClearActive = archived && active?.id == id
+        applyLocalUpdate(id: id, persistDetailCache: !shouldClearActive) { item in
             WebsiteItem(
                 id: item.id,
                 title: item.title,
@@ -168,7 +169,10 @@ extension WebsitesStore {
                 deletedAt: item.deletedAt
             )
         }
-        if archived, active?.id == id {
+        if shouldClearActive {
+            if let active {
+                maintainPersistedDetailAsync(active)
+            }
             active = nil
         }
     }
@@ -243,10 +247,19 @@ extension WebsitesStore {
         )
     }
 
-    private func applyLocalUpdate(id: String, update: (WebsiteItem) -> WebsiteItem) {
+    private func applyLocalUpdate(
+        id: String,
+        persistDetailCache: Bool = true,
+        update: (WebsiteItem) -> WebsiteItem
+    ) {
         guard let current = websiteItem(for: id) else { return }
         let updated = update(current)
-        updateListItem(updated, persist: true)
+        updateListItem(
+            updated,
+            persistList: true,
+            persistDetailCache: persistDetailCache,
+            updateWidgets: true
+        )
     }
 
     private func websiteItem(for id: String) -> WebsiteItem? {
