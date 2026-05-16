@@ -166,30 +166,12 @@ struct StaticFeatureCarousel: View {
 
 private struct FeatureDiscoveryPanelChrome: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.xl))
-        } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.xl))
-                .overlay {
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-        }
+        content.glassChrome(.extraLargeCard)
     }
 }
 
 private struct FeatureDiscoveryIconButtonChrome: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-        }
+        content.glassChrome(.pill)
     }
 }

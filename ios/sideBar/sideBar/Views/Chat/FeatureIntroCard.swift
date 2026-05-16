@@ -51,15 +51,6 @@ struct FeatureIntroCard: View {
 
 private struct FeatureIntroCardChrome: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
-        } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
-                .overlay {
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-        }
+        content.glassChrome(.largeCard)
     }
 }

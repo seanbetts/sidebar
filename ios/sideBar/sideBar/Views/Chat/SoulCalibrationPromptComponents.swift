@@ -158,13 +158,9 @@ struct SoulCalibrationChoiceChip: View {
         } else if !isEnabled {
             Capsule()
                 .fill(disabledBackgroundColor)
-        } else if #available(iOS 26.0, macOS 26.0, *) {
-            Capsule()
-                .fill(.clear)
-                .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            Capsule()
-                .fill(DesignTokens.Colors.surface)
+            Color.clear
+                .glassChrome(.pill)
         }
     }
 

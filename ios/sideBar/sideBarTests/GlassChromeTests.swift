@@ -18,6 +18,24 @@ final class GlassChromeTests: XCTestCase {
         )
     }
 
+    func testLargeFeatureCardChromeUsesLargeRoundedRectShape() {
+        XCTAssertEqual(
+            GlassChrome.tokens(for: .largeCard).shape,
+            .roundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+        )
+        XCTAssertEqual(GlassChrome.tokens(for: .largeCard).fallbackFill, .surface)
+        XCTAssertEqual(GlassChrome.tokens(for: .largeCard).borderOpacity, 0.18)
+    }
+
+    func testExtraLargeFeatureCardChromeUsesExtraLargeRoundedRectShape() {
+        XCTAssertEqual(
+            GlassChrome.tokens(for: .extraLargeCard).shape,
+            .roundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+        )
+        XCTAssertEqual(GlassChrome.tokens(for: .extraLargeCard).fallbackFill, .surface)
+        XCTAssertEqual(GlassChrome.tokens(for: .extraLargeCard).borderOpacity, 0.18)
+    }
+
     func testFieldChromeFallsBackToInputFill() {
         XCTAssertEqual(GlassChrome.tokens(for: .field).fallbackFill, .input)
     }

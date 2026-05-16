@@ -112,7 +112,7 @@ struct WebsiteContentQuickActionsPill: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .glassEffect(.regular.interactive(), in: Capsule())
+        .glassChrome(.pill)
     }
 
     @ViewBuilder

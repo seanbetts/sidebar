@@ -1,11 +1,13 @@
 import SwiftUI
 
 enum GlassChrome {
-    enum Kind {
+    enum Kind: Hashable {
         case pill
         case statusPill
         case metadataPill
         case card
+        case largeCard
+        case extraLargeCard
         case panelHeader
         case actionButton
         case field
@@ -50,72 +52,80 @@ enum GlassChrome {
         let borderOpacity: Double
     }
 
+    private static let tokenTable: [Kind: Tokens] = [
+        .pill: Tokens(
+            shape: .capsule,
+            material: .interactive,
+            fallbackFill: .surface,
+            borderOpacity: 0.18
+        ),
+        .statusPill: Tokens(
+            shape: .capsule,
+            material: .regular,
+            fallbackFill: .surface,
+            borderOpacity: 0
+        ),
+        .metadataPill: Tokens(
+            shape: .capsule,
+            material: .regular,
+            fallbackFill: .surface,
+            borderOpacity: 1
+        ),
+        .card: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.md),
+            material: .regular,
+            fallbackFill: .surface,
+            borderOpacity: 1
+        ),
+        .largeCard: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.lg),
+            material: .regular,
+            fallbackFill: .surface,
+            borderOpacity: 0.18
+        ),
+        .extraLargeCard: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.xl),
+            material: .regular,
+            fallbackFill: .surface,
+            borderOpacity: 0.18
+        ),
+        .panelHeader: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
+            material: .regular,
+            fallbackFill: .sidebar,
+            borderOpacity: 0.18
+        ),
+        .actionButton: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
+            material: .interactive,
+            fallbackFill: .surface,
+            borderOpacity: 1
+        ),
+        .field: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
+            material: .regular,
+            fallbackFill: .input,
+            borderOpacity: 1
+        ),
+        .popoverShell: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.lg),
+            material: .regular,
+            fallbackFill: .background,
+            borderOpacity: 0.12
+        ),
+        .modalShell: Tokens(
+            shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.xl),
+            material: .regular,
+            fallbackFill: .background,
+            borderOpacity: 0.12
+        )
+    ]
+
     static func tokens(for kind: Kind) -> Tokens {
-        switch kind {
-        case .pill:
-            return Tokens(
-                shape: .capsule,
-                material: .interactive,
-                fallbackFill: .surface,
-                borderOpacity: 0.18
-            )
-        case .statusPill:
-            return Tokens(
-                shape: .capsule,
-                material: .regular,
-                fallbackFill: .surface,
-                borderOpacity: 0
-            )
-        case .metadataPill:
-            return Tokens(
-                shape: .capsule,
-                material: .regular,
-                fallbackFill: .surface,
-                borderOpacity: 1
-            )
-        case .card:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.md),
-                material: .regular,
-                fallbackFill: .surface,
-                borderOpacity: 1
-            )
-        case .panelHeader:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
-                material: .regular,
-                fallbackFill: .sidebar,
-                borderOpacity: 0.18
-            )
-        case .actionButton:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
-                material: .interactive,
-                fallbackFill: .surface,
-                borderOpacity: 1
-            )
-        case .field:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.sm),
-                material: .regular,
-                fallbackFill: .input,
-                borderOpacity: 1
-            )
-        case .popoverShell:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.lg),
-                material: .regular,
-                fallbackFill: .background,
-                borderOpacity: 0.12
-            )
-        case .modalShell:
-            return Tokens(
-                shape: .roundedRectangle(cornerRadius: DesignTokens.Radius.xl),
-                material: .regular,
-                fallbackFill: .background,
-                borderOpacity: 0.12
-            )
+        guard let tokens = tokenTable[kind] else {
+            preconditionFailure("Missing glass chrome tokens for \(kind)")
         }
+        return tokens
     }
 }
 
