@@ -218,8 +218,8 @@ extension FilesPanelView {
         IngestionViewModel.panelCategoryOrder
     }
 
-    func categoryIconName(_ category: String) -> String {
-        viewModel.panelCategoryIconName(category)
+    func categoryIcon(_ category: String) -> AppIcon {
+        viewModel.panelCategoryIcon(category)
     }
 
     func staggerIndex(for id: String, section: String? = nil) -> Int {

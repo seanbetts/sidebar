@@ -7,7 +7,7 @@ struct FilesHeaderView: View {
 
     var body: some View {
         ContentHeaderRow(
-            iconName: iconName,
+            icon: icon,
             title: activeTitle,
             subtitle: activeFileType,
             titleLineLimit: 1,
@@ -40,33 +40,33 @@ struct FilesHeaderView: View {
         return fileTypeLabel(name: name, mime: selectedMimeOriginal)
     }
 
-    private var iconName: String {
+    private var icon: AppIcon {
         if selectedCategory == "reports" {
-            return "chart.line.text.clipboard"
+            return AppIcon.Content.report
         }
         if selectedCategory == "presentations" {
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         }
         guard let viewer = selectedRecommendedViewer else {
-            return "folder"
+            return AppIcon.Content.folder
         }
         switch viewer {
         case "viewer_pdf":
-            return "doc.richtext"
+            return AppIcon.Content.richTextDocument
         case "viewer_json":
-            return "tablecells"
+            return AppIcon.Content.table
         case "viewer_video":
-            return "video"
+            return AppIcon.Media.videoFile
         case "viewer_presentation":
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         case "image_original":
-            return "photo"
+            return AppIcon.Content.photo
         case "audio_original":
-            return "waveform"
+            return AppIcon.Media.waveform
         case "text_original", "ai_md":
-            return "doc.text"
+            return AppIcon.Content.textDocument
         default:
-            return "doc"
+            return AppIcon.Content.document
         }
     }
 

@@ -320,18 +320,25 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 |---|---|---|
 | Note document | `Content.note` | `note.text` |
 | Text document | `Content.textDocument` | `doc.text` |
+| Rich text/PDF document | `Content.richTextDocument` | `doc.richtext` |
 | Generic document | `Content.document` | `doc` |
 | Filled document | `Content.documentFilled` | `doc.fill` |
 | Folder | `Content.folder` | `folder` |
 | Image placeholder | `Content.photo` | `photo` |
 | Task list | `Content.taskList` | `list.bullet.rectangle` |
 | Website fallback | `Content.websiteFallback` | `globe` |
+| Table/spreadsheet document | `Content.table` | `tablecells` |
+| Report document | `Content.report` | `chart.line.text.clipboard` |
+| Presentation document | `Content.presentation` | `rectangle.on.rectangle.angled` |
 | YouTube or video | `Media.video` | `play.rectangle` |
+| Video file/category | `Media.videoFile` | `video` |
 | Audio play control | `Media.playControl` | `play.fill` |
 | Audio pause control | `Media.pauseControl` | `pause.fill` |
 | Play | `Media.playFilled` | `play.circle.fill` |
 | Audio transcription | `Media.waveform` | `waveform` |
 | Captions | `Media.captions` | `captions.bubble` |
+| Completed markdown task | `Markdown.taskCompleted` | `checkmark.square.fill` |
+| Incomplete markdown task | `Markdown.taskIncomplete` | `square` |
 | Spreadsheet row filter | `Spreadsheet.filterRows` | `line.3.horizontal.decrease.circle` |
 | Spreadsheet ascending sort | `Spreadsheet.sortAscending` | `arrowtriangle.up.fill` |
 | Spreadsheet descending sort | `Spreadsheet.sortDescending` | `arrowtriangle.down.fill` |
@@ -490,7 +497,7 @@ Store Skill credential and config chrome uses `AppIcon` for requirement checks, 
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
-Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
 ---
 

@@ -259,7 +259,11 @@ struct SideBarMarkdown: View, Equatable {
             }
             .bulletedListMarker(.disc)
             .taskListMarker { configuration in
-                Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
+                Image(
+                    appIcon: configuration.isCompleted
+                        ? AppIcon.Markdown.taskCompleted
+                        : AppIcon.Markdown.taskIncomplete
+                )
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .imageScale(.small)
@@ -408,7 +412,7 @@ private struct SideBarYouTubeEmbedBlock: View {
 private struct SideBarSuppressedSVGBlock: View {
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "photo")
+            Image(appIcon: AppIcon.Content.photo)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .appFont(.body)
                 .padding(.top, 1)

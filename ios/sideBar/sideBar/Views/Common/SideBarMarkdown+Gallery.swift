@@ -150,7 +150,7 @@ private struct MarkdownGalleryImageView: View {
                         .scaledToFit()
                         .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
                 case .failure:
-                    Image(systemName: "photo")
+                    Image(appIcon: AppIcon.Content.photo)
                         .appFont(.displayLg)
                         .foregroundStyle(.secondary)
                 case .empty:

@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, and audio player/TikTok fallback controls slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, and files panel category/markdown fallback controls slices completed after the initial catalog work.
 
 Categories:
 
@@ -103,16 +103,23 @@ Categories:
 | `bell.badge.fill` | Notifications permission | Context-specific | `AppIcon.Onboarding.notificationsPermission` | Onboarding and permission recovery |
 | `note.text` | Note document | Canonical | `AppIcon.Content.note` | Note content |
 | `doc.text` | Text document | Canonical | `AppIcon.Content.textDocument` | Text document content |
+| `doc.richtext` | Rich text/PDF document | Context-specific | `AppIcon.Content.richTextDocument` | File rows and file header |
 | `doc` | Generic document | Canonical | `AppIcon.Content.document` | File fallback |
 | `doc.fill` | Filled document | Context-specific | `AppIcon.Content.documentFilled` | Filled document row |
 | `photo` | Image placeholder | Canonical | `AppIcon.Content.photo` | Markdown/image fallback |
+| `tablecells` | Table/spreadsheet document | Context-specific | `AppIcon.Content.table` | File rows and file categories |
+| `chart.line.text.clipboard` | Report document | Context-specific | `AppIcon.Content.report` | File rows and file categories |
+| `rectangle.on.rectangle.angled` | Presentation document | Context-specific | `AppIcon.Content.presentation` | File rows and file categories |
 | `list.bullet.rectangle` | Task project list | Context-specific | `AppIcon.Content.taskList` | New project action |
 | `play.rectangle` | YouTube or video | Canonical | `AppIcon.Media.video` | Video save and YouTube skill |
+| `video` | Video file/category | Context-specific | `AppIcon.Media.videoFile` | File rows and file categories |
 | `play.fill` | Play control | Context-specific | `AppIcon.Media.playControl` | Audio player transport control |
 | `pause.fill` | Pause control | Context-specific | `AppIcon.Media.pauseControl` | Audio player transport control |
 | `play.circle.fill` | Play filled | Context-specific | `AppIcon.Media.playFilled` | Media viewer and TikTok fallback |
 | `waveform` | Audio waveform | Context-specific | `AppIcon.Media.waveform` | Audio skill |
 | `captions.bubble` | Captions/transcript | Context-specific | `AppIcon.Media.captions` | YouTube transcript skill |
+| `checkmark.square.fill` | Completed markdown task marker | Context-specific | `AppIcon.Markdown.taskCompleted` | Markdown task list rendering |
+| `square` | Incomplete markdown task marker | Context-specific | `AppIcon.Markdown.taskIncomplete` | Markdown task list rendering |
 | `line.3.horizontal.decrease.circle` | Spreadsheet row filter | Context-specific | `AppIcon.Spreadsheet.filterRows` | Spreadsheet viewer controls |
 | `arrowtriangle.up.fill` | Spreadsheet ascending sort | Context-specific | `AppIcon.Spreadsheet.sortAscending` | Spreadsheet viewer header |
 | `arrowtriangle.down.fill` | Spreadsheet descending sort | Context-specific | `AppIcon.Spreadsheet.sortDescending` | Spreadsheet viewer header |
@@ -357,11 +364,24 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Audio player transport button | `play.fill`, `pause.fill` | `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl` |
 | TikTok fallback play/loading affordance | `play.circle.fill` | `AppIcon.Media.playFilled` |
 
+## Files Panel Categories And Markdown Fallback Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Files ingestion row failed state | `exclamationmark.triangle.fill` | `AppIcon.State.warningFilled` |
+| Files ingestion row file/category resolver | `doc.text`, `doc.richtext`, `doc`, `photo`, `waveform`, `video`, `tablecells`, `chart.line.text.clipboard`, `rectangle.on.rectangle.angled`, `folder` | `AppIcon.Content.*` and `AppIcon.Media.*` file/category constants |
+| Files panel category headers | category icon strings, `chevron.down`, `chevron.right` | `IngestionViewModel.panelCategoryIcon(_:)`, `AppIcon.Navigation.chevronDown`, `AppIcon.Navigation.chevronRight` |
+| Files header selected-file icon | file/category icon strings | `ContentHeaderRow(icon:)` with `AppIcon` |
+| Markdown remote image/SVG fallbacks | `photo` | `AppIcon.Content.photo` |
+| Markdown task list markers | `checkmark.square.fill`, `square` | `AppIcon.Markdown.taskCompleted`, `AppIcon.Markdown.taskIncomplete` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, and audio player/TikTok fallback controls slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, and files panel category/markdown fallback controls slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

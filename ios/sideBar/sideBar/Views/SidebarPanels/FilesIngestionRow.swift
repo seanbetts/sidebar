@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import SwiftUI
 
 struct FilesIngestionRow: View, Equatable {
@@ -49,11 +50,11 @@ struct FilesIngestionRow: View, Equatable {
                 if isProcessing {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 } else if isFailed {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(appIcon: AppIcon.State.warningFilled)
                         .appFont(SidebarTypography.secondary)
                         .foregroundStyle(DesignTokens.Colors.error)
                 } else {
-                    Image(systemName: iconName)
+                    Image(appIcon: icon)
                         .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
@@ -78,36 +79,36 @@ struct FilesIngestionRow: View, Equatable {
         )
     }
 
-    private var iconName: String {
+    private var icon: AppIcon {
         if item.file.category == "folder" {
-            return folderIconName(for: displayName)
+            return folderIcon(for: displayName)
         }
         if item.file.mimeOriginal.lowercased().contains("video/youtube") {
-            return "video"
+            return AppIcon.Media.videoFile
         }
         if item.file.category == "presentations" {
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         }
         if item.file.category == "reports" {
-            return "chart.line.text.clipboard"
+            return AppIcon.Content.report
         }
         switch item.recommendedViewer {
         case "viewer_pdf":
-            return "doc.richtext"
+            return AppIcon.Content.richTextDocument
         case "viewer_json":
-            return "tablecells"
+            return AppIcon.Content.table
         case "viewer_video":
-            return "video"
+            return AppIcon.Media.videoFile
         case "image_original":
-            return "photo"
+            return AppIcon.Content.photo
         case "audio_original":
-            return "waveform"
+            return AppIcon.Media.waveform
         case "viewer_presentation":
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         case "text_original", "ai_md":
-            return "doc.text"
+            return AppIcon.Content.textDocument
         default:
-            return "doc"
+            return AppIcon.Content.document
         }
     }
 
@@ -143,24 +144,24 @@ struct FilesIngestionRow: View, Equatable {
         return name
     }
 
-    private func folderIconName(for name: String) -> String {
+    private func folderIcon(for name: String) -> AppIcon {
         switch name.lowercased() {
         case "documents":
-            return "doc.text"
+            return AppIcon.Content.textDocument
         case "images":
-            return "photo"
+            return AppIcon.Content.photo
         case "audio":
-            return "waveform"
+            return AppIcon.Media.waveform
         case "video":
-            return "video"
+            return AppIcon.Media.videoFile
         case "spreadsheets":
-            return "tablecells"
+            return AppIcon.Content.table
         case "presentations":
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         case "reports":
-            return "chart.line.text.clipboard"
+            return AppIcon.Content.report
         default:
-            return "folder"
+            return AppIcon.Content.folder
         }
     }
 

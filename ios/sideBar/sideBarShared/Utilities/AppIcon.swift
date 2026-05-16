@@ -102,21 +102,31 @@ public extension AppIcon {
     enum Content {
         public static let note = AppIcon(rawValue: "note.text")
         public static let textDocument = AppIcon(rawValue: "doc.text")
+        public static let richTextDocument = AppIcon(rawValue: "doc.richtext")
         public static let document = AppIcon(rawValue: "doc")
         public static let documentFilled = AppIcon(rawValue: "doc.fill")
         public static let folder = AppIcon(rawValue: "folder")
         public static let photo = AppIcon(rawValue: "photo")
         public static let taskList = AppIcon(rawValue: "list.bullet.rectangle")
         public static let websiteFallback = AppIcon(rawValue: "globe")
+        public static let table = AppIcon(rawValue: "tablecells")
+        public static let report = AppIcon(rawValue: "chart.line.text.clipboard")
+        public static let presentation = AppIcon(rawValue: "rectangle.on.rectangle.angled")
     }
 
     enum Media {
         public static let video = AppIcon(rawValue: "play.rectangle")
+        public static let videoFile = AppIcon(rawValue: "video")
         public static let playControl = AppIcon(rawValue: "play.fill")
         public static let pauseControl = AppIcon(rawValue: "pause.fill")
         public static let playFilled = AppIcon(rawValue: "play.circle.fill")
         public static let waveform = AppIcon(rawValue: "waveform")
         public static let captions = AppIcon(rawValue: "captions.bubble")
+    }
+
+    enum Markdown {
+        public static let taskCompleted = AppIcon(rawValue: "checkmark.square.fill")
+        public static let taskIncomplete = AppIcon(rawValue: "square")
     }
 
     enum Spreadsheet {

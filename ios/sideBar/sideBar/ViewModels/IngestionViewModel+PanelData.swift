@@ -19,24 +19,24 @@ extension IngestionViewModel {
         "documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"
     ]
 
-    func panelCategoryIconName(_ category: String) -> String {
+    func panelCategoryIcon(_ category: String) -> AppIcon {
         switch category {
         case "documents":
-            return "doc.text"
+            return AppIcon.Content.textDocument
         case "images":
-            return "photo"
+            return AppIcon.Content.photo
         case "audio":
-            return "waveform"
+            return AppIcon.Media.waveform
         case "video":
-            return "video"
+            return AppIcon.Media.videoFile
         case "spreadsheets":
-            return "tablecells"
+            return AppIcon.Content.table
         case "reports":
-            return "chart.line.text.clipboard"
+            return AppIcon.Content.report
         case "presentations":
-            return "rectangle.on.rectangle.angled"
+            return AppIcon.Content.presentation
         default:
-            return "folder"
+            return AppIcon.Content.folder
         }
     }
 

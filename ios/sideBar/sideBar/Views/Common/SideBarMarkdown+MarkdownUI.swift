@@ -21,7 +21,7 @@ struct CappedImageProvider: ImageProvider {
             case .failure:
                 HStack {
                     Spacer(minLength: 0)
-                    Image(systemName: "photo")
+                    Image(appIcon: AppIcon.Content.photo)
                         .appFont(.displayLg)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)

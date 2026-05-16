@@ -331,12 +331,16 @@ extension FilesPanelView {
                                     },
                                     content: {
                                         HStack(spacing: 8) {
-                                            Image(systemName: categoryIconName(category))
+                                            Image(appIcon: categoryIcon(category))
                                                 .foregroundStyle(.secondary)
                                                 .frame(width: 20, alignment: .center)
                                             Text(categoryLabels[category] ?? "Files")
                                             Spacer()
-                                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                            Image(
+                                                appIcon: isExpanded
+                                                    ? AppIcon.Navigation.chevronDown
+                                                    : AppIcon.Navigation.chevronRight
+                                            )
                                                 .appFont(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
