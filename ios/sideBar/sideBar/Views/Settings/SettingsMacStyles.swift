@@ -248,14 +248,7 @@ struct SettingsMacSkillRow<Trailing: View>: View {
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .fill(DesignTokens.Colors.settingsFormBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
-        )
+        .glassChrome(Self.chromeKind)
     }
 
     @ViewBuilder
@@ -269,5 +262,9 @@ struct SettingsMacSkillRow<Trailing: View>: View {
                 .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
+    }
+
+    static var chromeKind: GlassChrome.Kind {
+        .card
     }
 }

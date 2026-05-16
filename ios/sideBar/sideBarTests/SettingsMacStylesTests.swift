@@ -12,13 +12,17 @@ final class SettingsMacStylesTests: XCTestCase {
         XCTAssertEqual(SettingsMacPanelCard<EmptyView>.chromeKind, .card)
     }
 
-    func testSettingsMacStylesRoutesOnlyPanelCardsAndStatusBannersThroughGlassChrome() throws {
+    func testSkillRowUsesSharedCardChrome() {
+        XCTAssertEqual(SettingsMacSkillRow<EmptyView>.chromeKind, .card)
+    }
+
+    func testSettingsMacStylesRoutesPanelCardsStatusBannersAndSkillRowsThroughGlassChrome() throws {
         let normalized = try settingsMacStylesSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertEqual(
             normalized.components(separatedBy: ".glassChrome(Self.chromeKind)").count - 1,
-            2
+            3
         )
     }
 }
