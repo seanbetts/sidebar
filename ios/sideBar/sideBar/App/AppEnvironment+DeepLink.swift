@@ -71,13 +71,13 @@ extension AppEnvironment {
             #endif
         } else if url.path == "/new" {
             logger.info("Deep link to new task")
-            pendingNewTaskDeepLink = true
             #if !os(macOS)
             tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
             #endif
             if isTasksFocused {
-                pendingNewTaskDeepLink = false
                 tasksViewModel.startNewTask()
+            } else {
+                pendingSidebarDeepLink = url
             }
         } else if let projectId = taskScopedSelectionID(in: url, prefix: "/project/") {
             let selection = TaskSelection.project(id: projectId)
@@ -110,7 +110,7 @@ extension AppEnvironment {
         let path = url.path
         if path == "/new" {
             logger.info("Deep link to new note")
-            pendingNewNoteDeepLink = true
+            pendingSidebarDeepLink = url
         } else if !path.isEmpty && path != "/" {
             // Path format: /path/to/note.md
             let rawNoteId = String(path.dropFirst())
@@ -179,13 +179,13 @@ extension AppEnvironment {
         logger.info("Deep link to scratchpad")
         // Scratchpad is accessed via the chat section
         routeWorkspaceSelection(to: .chat, source: "deeplink_scratchpad")
-        pendingScratchpadDeepLink = true
+        pendingSidebarDeepLink = URL(string: "sidebar://scratchpad")
     }
 
     private func handleDigestDeepLink(url: URL, logger: Logger) {
         logger.info("Deep link to morning digest")
         guard url.path == "/morning" else { return }
-        pendingMorningDigestDeepLink = true
+        pendingSidebarDeepLink = url
     }
 
     private func deepLinkActionName(for url: URL) -> String {
@@ -238,6 +238,16 @@ extension AppEnvironment {
     private func websiteSaveURL(from deepLink: URL) -> String? {
         let components = URLComponents(url: deepLink, resolvingAgainstBaseURL: false)
         return components?.queryItems?.first(where: { $0.name == "url" })?.value
+    }
+
+    func consumePendingSidebarDeepLink(host: String, path: String? = nil) -> URL? {
+        guard let url = pendingSidebarDeepLink,
+              url.host == host,
+              path == nil || url.path == path else {
+            return nil
+        }
+        pendingSidebarDeepLink = nil
+        return url
     }
 
     func beginPasswordRecovery(from url: URL) async {

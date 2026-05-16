@@ -407,27 +407,10 @@ public final class AppEnvironment: ObservableObject {
         }
     }
 
-    /// Pending deep-link flag indicating a new-task flow should run once routing is ready.
-    public var pendingNewTaskDeepLink: Bool {
-        get { navigation.pendingNewTaskDeepLink }
-        set { navigation.pendingNewTaskDeepLink = newValue }
-    }
-
-    /// Pending deep-link flag indicating a new-note flow should run once routing is ready.
-    public var pendingNewNoteDeepLink: Bool {
-        get { navigation.pendingNewNoteDeepLink }
-        set { navigation.pendingNewNoteDeepLink = newValue }
-    }
-
-    /// Pending deep-link flag indicating scratchpad should open once routing is ready.
-    public var pendingScratchpadDeepLink: Bool {
-        get { navigation.pendingScratchpadDeepLink }
-        set { navigation.pendingScratchpadDeepLink = newValue }
-    }
-
-    public var pendingMorningDigestDeepLink: Bool {
-        get { navigation.pendingMorningDigestDeepLink }
-        set { navigation.pendingMorningDigestDeepLink = newValue }
+    /// Pending protected sidebar route that should run once navigation reaches the owning surface.
+    public var pendingSidebarDeepLink: URL? {
+        get { navigation.pendingSidebarDeepLink }
+        set { navigation.pendingSidebarDeepLink = newValue }
     }
 
     /// Last keyboard shortcut action routed through global shortcut handling.

@@ -63,7 +63,7 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
     }
@@ -75,7 +75,7 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertNil(environment.notesViewModel.selectedNoteId)
         XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
     }
@@ -141,9 +141,7 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.commandSelection = nil
         environment.focusedSection = nil
         environment.isTasksFocused = false
-        environment.pendingNewTaskDeepLink = false
-        environment.pendingNewNoteDeepLink = false
-        environment.pendingScratchpadDeepLink = false
+        environment.pendingSidebarDeepLink = nil
         environment.tasksPhoneDetailRouteId = nil
         environment.queuedProtectedDeepLinks.removeAll()
         environment.tasksViewModel.cancelNewTask()

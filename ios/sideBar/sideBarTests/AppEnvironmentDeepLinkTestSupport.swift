@@ -440,9 +440,7 @@ extension AppEnvironmentDeepLinkTests {
         environment.commandSelection = nil
         environment.focusedSection = nil
         environment.isTasksFocused = false
-        environment.pendingNewTaskDeepLink = false
-        environment.pendingNewNoteDeepLink = false
-        environment.pendingScratchpadDeepLink = false
+        environment.pendingSidebarDeepLink = nil
         environment.tasksPhoneDetailRouteId = nil
         environment.tasksViewModel.cancelNewTask()
         environment.tasksViewModel.reset()

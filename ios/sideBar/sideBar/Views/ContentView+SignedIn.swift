@@ -240,8 +240,8 @@ extension ContentView {
                 )
             }
             // Handle pending scratchpad deep link
-            if newValue == .chat && environment.pendingScratchpadDeepLink {
-                environment.pendingScratchpadDeepLink = false
+            if newValue == .chat,
+               environment.consumePendingSidebarDeepLink(host: "scratchpad") != nil {
                 #if os(macOS)
                 environment.emitShortcutAction(.openScratchpad)
                 #else
@@ -264,14 +264,16 @@ extension ContentView {
             updateActiveSection()
             saveCurrentWorkspaceRestorationSnapshot()
         })
-        content = AnyView(content.onChange(of: environment.pendingMorningDigestDeepLink) { _, isPending in
-            guard isPending else { return }
-            environment.pendingMorningDigestDeepLink = false
+        content = AnyView(content.onChange(of: environment.pendingSidebarDeepLink) { _, _ in
+            guard environment.consumePendingSidebarDeepLink(host: "digest", path: "/morning") != nil else {
+                return
+            }
             isMorningDigestPresented = true
         })
         content = AnyView(content.onAppear {
-            guard environment.pendingMorningDigestDeepLink else { return }
-            environment.pendingMorningDigestDeepLink = false
+            guard environment.consumePendingSidebarDeepLink(host: "digest", path: "/morning") != nil else {
+                return
+            }
             isMorningDigestPresented = true
         })
         content = AnyView(content.onChange(of: isWorkspaceExpanded) { _, newValue in

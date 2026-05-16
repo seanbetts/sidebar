@@ -9,10 +9,7 @@ public final class NavigationCoordinator: ObservableObject {
     @Published public var focusedSection: AppSection?
     @Published public var focusedWorkspacePane: WorkspacePane?
     @Published public var isTasksFocused: Bool = false
-    @Published public var pendingNewTaskDeepLink: Bool = false
-    @Published public var pendingNewNoteDeepLink: Bool = false
-    @Published public var pendingScratchpadDeepLink: Bool = false
-    @Published public var pendingMorningDigestDeepLink: Bool = false
+    @Published public var pendingSidebarDeepLink: URL?
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     @Published public var notesPhoneDetailRouteId: String?
     @Published public var tasksPhoneDetailRouteId: String?
@@ -26,10 +23,7 @@ public final class NavigationCoordinator: ObservableObject {
         focusedSection = nil
         focusedWorkspacePane = nil
         isTasksFocused = false
-        pendingNewTaskDeepLink = false
-        pendingNewNoteDeepLink = false
-        pendingScratchpadDeepLink = false
-        pendingMorningDigestDeepLink = false
+        pendingSidebarDeepLink = nil
         shortcutActionEvent = nil
         notesPhoneDetailRouteId = nil
         tasksPhoneDetailRouteId = nil

@@ -48,7 +48,7 @@ extension TasksPanelView {
             tasksPhoneDetailRouteId: environment.tasksPhoneDetailRouteId
         ) {
             environment.commandSelection = .tasks
-            environment.pendingNewTaskDeepLink = true
+            environment.pendingSidebarDeepLink = URL(string: "sidebar://tasks/new")
             environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         } else {
             viewModel.startNewTask()

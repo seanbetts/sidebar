@@ -469,10 +469,7 @@ extension ContentView {
         guard compactWorkspaceSection == .chat else { return false }
         guard !didEnsureInitialPhoneChatInterface else { return false }
         guard environment.commandSelection == nil else { return false }
-        guard !environment.pendingNewTaskDeepLink,
-              !environment.pendingNewNoteDeepLink,
-              !environment.pendingScratchpadDeepLink,
-              !environment.pendingMorningDigestDeepLink else { return false }
+        guard environment.pendingSidebarDeepLink == nil else { return false }
         return true
     }
 

@@ -79,8 +79,7 @@ struct NotesPanelView: View {
             synchronizeExpandedFolderState()
             consumePendingNewNoteDeepLinkIfNeeded()
         }
-        .onChange(of: environment.pendingNewNoteDeepLink) { _, isPending in
-            guard isPending else { return }
+        .onChange(of: environment.pendingSidebarDeepLink) { _, _ in
             consumePendingNewNoteDeepLinkIfNeeded()
         }
         .onChange(of: viewModel.searchQuery) { _, newValue in
@@ -223,8 +222,7 @@ struct NotesPanelView: View {
     }
 
     private func consumePendingNewNoteDeepLinkIfNeeded() {
-        guard environment.pendingNewNoteDeepLink else { return }
-        environment.pendingNewNoteDeepLink = false
+        guard environment.consumePendingSidebarDeepLink(host: "notes", path: "/new") != nil else { return }
         createBlankNoteFromDeepLink()
     }
 

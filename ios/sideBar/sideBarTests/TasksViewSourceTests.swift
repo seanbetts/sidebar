@@ -8,8 +8,8 @@ final class TasksViewSourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("@Environment(\\.scenePhase)"))
         XCTAssertFalse(normalized.contains("scenePhase==.active"))
         XCTAssertFalse(normalized.contains(".onChange(of:scenePhase)"))
-        XCTAssertFalse(normalized.contains(".task{awaitenvironment.tasksViewModel.load("))
-        XCTAssertTrue(normalized.contains("guardenvironment.pendingNewTaskDeepLinkelse{return}"))
+        XCTAssertFalse(normalized.contains(".task{"))
+        XCTAssertTrue(normalized.contains("guardenvironment.consumePendingSidebarDeepLink(host:\"tasks\",path:\"/new\")!=nilelse{return}"))
         XCTAssertTrue(normalized.contains("awaitenvironment.tasksViewModel.load(selection:.today)"))
         XCTAssertTrue(normalized.contains("environment.tasksViewModel.startNewTask()"))
     }

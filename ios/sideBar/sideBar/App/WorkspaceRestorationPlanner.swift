@@ -141,17 +141,11 @@ enum WorkspaceRestorationPlanner {
     static func shouldSkipRestorationForExternalIntent(
         commandSelection: AppSection?,
         hasQueuedProtectedDeepLinks: Bool,
-        hasPendingNewTaskDeepLink: Bool,
-        hasPendingNewNoteDeepLink: Bool,
-        hasPendingScratchpadDeepLink: Bool,
-        hasPendingMorningDigestDeepLink: Bool
+        hasPendingSidebarDeepLink: Bool
     ) -> Bool {
         commandSelection != nil
             || hasQueuedProtectedDeepLinks
-            || hasPendingNewTaskDeepLink
-            || hasPendingNewNoteDeepLink
-            || hasPendingScratchpadDeepLink
-            || hasPendingMorningDigestDeepLink
+            || hasPendingSidebarDeepLink
     }
 
     static func makeInitialLaunchDestination(

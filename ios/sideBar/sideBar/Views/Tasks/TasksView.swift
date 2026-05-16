@@ -15,8 +15,7 @@ public struct TasksView: View {
             .onDisappear {
                 environment.isTasksFocused = false
             }
-            .onChange(of: environment.pendingNewTaskDeepLink) { _, isPending in
-                guard isPending else { return }
+            .onChange(of: environment.pendingSidebarDeepLink) { _, _ in
                 consumePendingNewTaskDeepLinkIfNeeded()
             }
             #if !os(macOS)
@@ -26,8 +25,7 @@ public struct TasksView: View {
     }
 
     private func consumePendingNewTaskDeepLinkIfNeeded() {
-        guard environment.pendingNewTaskDeepLink else { return }
-        environment.pendingNewTaskDeepLink = false
+        guard environment.consumePendingSidebarDeepLink(host: "tasks", path: "/new") != nil else { return }
         Task {
             await environment.tasksViewModel.load(selection: .today)
             environment.tasksViewModel.startNewTask()

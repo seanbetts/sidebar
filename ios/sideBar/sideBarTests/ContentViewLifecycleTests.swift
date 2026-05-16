@@ -207,10 +207,7 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertTrue(WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
             commandSelection: nil,
             hasQueuedProtectedDeepLinks: true,
-            hasPendingNewTaskDeepLink: false,
-            hasPendingNewNoteDeepLink: false,
-            hasPendingScratchpadDeepLink: false,
-            hasPendingMorningDigestDeepLink: false
+            hasPendingSidebarDeepLink: false
         ))
     }
 

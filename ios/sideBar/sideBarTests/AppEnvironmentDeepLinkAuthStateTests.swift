@@ -13,12 +13,12 @@ extension AppEnvironmentDeepLinkTests {
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
 
         await environment.completeBiometricUnlock()
 
         XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+        XCTAssertEqual(environment.pendingSidebarDeepLink, URL(string: "sidebar://tasks/new")!)
     }
 
     func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() async {
@@ -132,9 +132,7 @@ extension AppEnvironmentDeepLinkTests {
         environment.focusedSection = .files
         environment.shortcutActionEvent = ShortcutActionEvent(action: .openSettings, section: .settings)
         environment.isTasksFocused = true
-        environment.pendingNewTaskDeepLink = true
-        environment.pendingNewNoteDeepLink = true
-        environment.pendingScratchpadDeepLink = true
+        environment.pendingSidebarDeepLink = URL(string: "sidebar://tasks/new")!
         environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         environment.tasksViewModel.updateSearch(query: "follow up")
         environment.tasksViewModel.startNewTask()
@@ -194,9 +192,7 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(environment.tasksViewModel.searchQuery, "")
         XCTAssertNil(environment.tasksPhoneDetailRouteId)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
-        XCTAssertFalse(environment.pendingNewNoteDeepLink)
-        XCTAssertFalse(environment.pendingScratchpadDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
     }
 
     private func assertFeatureStateCleared(_ environment: AppEnvironment) {

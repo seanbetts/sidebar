@@ -10,14 +10,14 @@ extension AppEnvironmentDeepLinkTests {
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
 
         environment.authState = .active
         await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+        XCTAssertEqual(environment.pendingSidebarDeepLink, URL(string: "sidebar://tasks/new")!)
         XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 
@@ -28,14 +28,14 @@ extension AppEnvironmentDeepLinkTests {
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
 
         environment.authState = .active
         await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .notes)
-        XCTAssertTrue(environment.pendingNewNoteDeepLink)
+        XCTAssertEqual(environment.pendingSidebarDeepLink, URL(string: "sidebar://notes/new")!)
         XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 

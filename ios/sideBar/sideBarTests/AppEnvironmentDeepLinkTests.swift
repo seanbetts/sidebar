@@ -58,7 +58,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
 
         XCTAssertEqual(environment.commandSelection, .notes)
-        XCTAssertTrue(environment.pendingNewNoteDeepLink)
+        XCTAssertEqual(environment.pendingSidebarDeepLink, URL(string: "sidebar://notes/new")!)
     }
 
     func testHandleTasksNewDeepLinkWhenNotFocusedSetsPendingFlag() async {
@@ -67,7 +67,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+        XCTAssertEqual(environment.pendingSidebarDeepLink, URL(string: "sidebar://tasks/new")!)
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
     }
 
@@ -79,7 +79,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
     }
 
@@ -99,7 +99,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://notes")!)
 
         XCTAssertEqual(environment.commandSelection, .notes)
-        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertEqual(
             environment.workspaceStore.state.primaryPane.descriptor,
             .builtIn(.notes)
@@ -190,7 +190,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.pendingSidebarDeepLink)
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(
             environment.workspaceStore.state.primaryPane.descriptor,

@@ -154,7 +154,7 @@ extension AppEnvironment {
     private func openSpecialEntity(_ request: WorkspaceEntityOpenRequest) -> Bool {
         switch request.entity.type {
         case "scratchpad":
-            pendingScratchpadDeepLink = true
+            pendingSidebarDeepLink = URL(string: "sidebar://scratchpad")
         case "task_scope":
             openTaskScope(id: request.entity.id, request: request)
         case "task":

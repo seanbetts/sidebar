@@ -154,10 +154,7 @@ extension ContentView {
         WorkspaceRestorationPlanner.shouldSkipRestorationForExternalIntent(
             commandSelection: environment.commandSelection,
             hasQueuedProtectedDeepLinks: !environment.queuedProtectedDeepLinks.isEmpty,
-            hasPendingNewTaskDeepLink: environment.pendingNewTaskDeepLink,
-            hasPendingNewNoteDeepLink: environment.pendingNewNoteDeepLink,
-            hasPendingScratchpadDeepLink: environment.pendingScratchpadDeepLink,
-            hasPendingMorningDigestDeepLink: environment.pendingMorningDigestDeepLink
+            hasPendingSidebarDeepLink: environment.pendingSidebarDeepLink != nil
         )
     }
 
