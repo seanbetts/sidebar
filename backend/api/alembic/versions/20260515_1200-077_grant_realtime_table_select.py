@@ -31,9 +31,14 @@ def upgrade() -> None:
     """Expose Realtime tables to signed-in Supabase clients."""
     op.execute(
         f"""
-        GRANT SELECT ON TABLE
-          {_qualified_table_list()}
-        TO authenticated
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+            GRANT SELECT ON TABLE
+              {_qualified_table_list()}
+            TO authenticated;
+          END IF;
+        END $$;
         """
     )
 
@@ -42,9 +47,14 @@ def downgrade() -> None:
     """Remove explicit signed-in Supabase client access for Realtime tables."""
     op.execute(
         f"""
-        REVOKE SELECT ON TABLE
-          {_qualified_table_list()}
-        FROM authenticated
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+            REVOKE SELECT ON TABLE
+              {_qualified_table_list()}
+            FROM authenticated;
+          END IF;
+        END $$;
         """
     )
 

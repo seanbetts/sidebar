@@ -52,6 +52,9 @@ def test_upgrade_grants_authenticated_select_only_for_realtime_tables() -> None:
 
     grant = _only_statement_containing(executed_sql, "GRANT SELECT ON TABLE")
     normalized_grant = _normalize_sql(grant)
+    assert "IF EXISTS" in normalized_grant
+    assert "FROM pg_roles" in normalized_grant
+    assert "rolname = 'authenticated'" in normalized_grant
     assert "TO authenticated" in normalized_grant
     assert "anon" not in normalized_grant
     assert "INSERT" not in normalized_grant
@@ -76,6 +79,9 @@ def test_downgrade_revokes_authenticated_select_for_realtime_tables() -> None:
 
     revoke = _only_statement_containing(executed_sql, "REVOKE SELECT ON TABLE")
     normalized_revoke = _normalize_sql(revoke)
+    assert "IF EXISTS" in normalized_revoke
+    assert "FROM pg_roles" in normalized_revoke
+    assert "rolname = 'authenticated'" in normalized_revoke
     assert "FROM authenticated" in normalized_revoke
     assert "anon" not in normalized_revoke
     for table in EXPECTED_REALTIME_TABLES:
