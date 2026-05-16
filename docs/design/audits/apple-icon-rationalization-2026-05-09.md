@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, and website header/status quick-action slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, and dynamic icon boundary adapter slices completed after the initial catalog work.
 
 Categories:
 
@@ -443,11 +443,23 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Skills Store install state pill | `checkmark.circle.fill`, `plus.circle.fill` | `AppIcon.State.successFilled`, `AppIcon.Action.addCircleFilled` |
 | Notes save status accessory and toolbar icon | `arrow.triangle.2.circlepath`, `icloud.and.arrow.up`, `exclamationmark.triangle.fill`, `pencil.circle.fill`, `checkmark.circle.fill` through `NoteStatus.iconName` | `NoteStatus.icon` with `AppIcon.State.syncing`, `AppIcon.State.queuedForSync`, `AppIcon.State.warningFilled`, `AppIcon.Notes.unsavedChanges`, and `AppIcon.State.successFilled` |
 
+## Dynamic Icon Boundary Adapter Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Dynamic skill symbol rendering | Resolver-provided `systemName` through `Image(systemName:)` in `SkillSymbolIcon` | `SkillSymbolIcon` stores `AppIcon(rawValue:)` and renders through `Image(appIcon:)` |
+| Settings macOS skill row fallback | Resolver-provided `systemImage` through `Image(systemName:)` | Dynamic string retained, rendered through `Image(appIcon: AppIcon(rawValue: systemImage))` |
+| Agent workspace action payloads | Assistant/action `systemImage` payload through `Image(systemName:)` | Dynamic payload retained, rendered through `Image(appIcon: AppIcon(rawValue: systemImage))` |
+| iOS shortcut menu icons | Shortcut symbol resolver through `UIImage(systemName:)` | Dynamic symbol retained, rendered through `UIImage(appIcon: AppIcon(rawValue: symbolName))` |
+| UIKit note formatting popover | Formatting symbol string through `UIImage(systemName:)` | Dynamic formatting symbol retained, rendered through `UIImage(appIcon: AppIcon(rawValue: symbol))` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, and feature static chrome slices
-- dynamic/external symbol payloads
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, and dynamic icon boundary adapter slices
+- semantic ownership for dynamic/external symbol payload catalogs that still originate as strings
 - the production-wide strict source guard

@@ -258,7 +258,7 @@ struct SettingsMacSkillRow<Trailing: View>: View {
                 .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         } else if let systemImage {
-            Image(systemName: systemImage)
+            Image(appIcon: AppIcon(rawValue: systemImage))
                 .appFont(.subheading)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }

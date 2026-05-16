@@ -234,7 +234,7 @@ extension AgentWorkspaceSurfaceView {
         } label: {
             HStack(spacing: DesignTokens.Spacing.xsPlus) {
                 if let systemImage = action.systemImage {
-                    Image(systemName: systemImage)
+                    Image(appIcon: AppIcon(rawValue: systemImage))
                 }
                 Text(action.title)
             }

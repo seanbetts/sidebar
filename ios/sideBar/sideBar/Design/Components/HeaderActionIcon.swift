@@ -12,6 +12,14 @@ extension Image {
     }
 }
 
+#if os(iOS)
+extension UIImage {
+    convenience init?(appIcon: AppIcon) {
+        self.init(systemName: appIcon.rawValue)
+    }
+}
+#endif
+
 enum HeaderActionControlMetrics {
     private static let baseIconFrameWidth: CGFloat = 28
     private static let baseIconFrameHeight: CGFloat = 20

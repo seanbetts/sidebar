@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 
@@ -380,7 +381,7 @@ private extension UIKitNoteFormattingPopoverView {
 
     func pillButtonConfiguration(symbol: String, enabled: Bool) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.plain()
-        configuration.image = UIImage(systemName: symbol)
+        configuration.image = UIImage(appIcon: AppIcon(rawValue: symbol))
         configuration.baseForegroundColor = enabled ? .label : .secondaryLabel
         configuration.background = .clear()
         return configuration

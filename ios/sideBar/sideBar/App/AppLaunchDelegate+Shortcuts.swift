@@ -1,6 +1,7 @@
 #if os(iOS)
 import UIKit
 import Foundation
+import sideBarShared
 
 extension AppLaunchDelegate {
 
@@ -113,7 +114,7 @@ extension AppLaunchDelegate {
 
     func imageForShortcut(_ shortcut: KeyboardShortcut) -> UIImage? {
         guard let symbolName = symbolName(for: shortcut) else { return nil }
-        return UIImage(systemName: symbolName)
+        return UIImage(appIcon: AppIcon(rawValue: symbolName))
     }
 
     func symbolName(for shortcut: KeyboardShortcut) -> String? {

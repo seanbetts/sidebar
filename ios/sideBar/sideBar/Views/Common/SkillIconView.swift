@@ -2,7 +2,7 @@ import sideBarShared
 import SwiftUI
 
 struct SkillSymbolIcon: View {
-    let systemName: String
+    let icon: AppIcon
     let appFontStyle: AppFontStyle?
     let pointSize: CGFloat?
     let weight: Font.Weight
@@ -14,7 +14,7 @@ struct SkillSymbolIcon: View {
         appFontStyle: AppFontStyle = .subheading,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
-        self.systemName = systemName
+        self.icon = AppIcon(rawValue: systemName)
         self.appFontStyle = appFontStyle
         self.pointSize = nil
         self.weight = .regular
@@ -27,11 +27,12 @@ struct SkillSymbolIcon: View {
         appFontStyle: AppFontStyle = .subheading,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
-        self.init(
-            systemName: appIcon.rawValue,
-            appFontStyle: appFontStyle,
-            foreground: foreground
-        )
+        self.icon = appIcon
+        self.appFontStyle = appFontStyle
+        self.pointSize = nil
+        self.weight = .regular
+        self.design = .default
+        self.foreground = foreground
     }
 
     init(
@@ -41,7 +42,7 @@ struct SkillSymbolIcon: View {
         design: Font.Design = .default,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
-        self.systemName = systemName
+        self.icon = AppIcon(rawValue: systemName)
         self.appFontStyle = nil
         self.pointSize = pointSize
         self.weight = weight
@@ -56,23 +57,22 @@ struct SkillSymbolIcon: View {
         design: Font.Design = .default,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
-        self.init(
-            systemName: appIcon.rawValue,
-            pointSize: pointSize,
-            weight: weight,
-            design: design,
-            foreground: foreground
-        )
+        self.icon = appIcon
+        self.appFontStyle = nil
+        self.pointSize = pointSize
+        self.weight = weight
+        self.design = design
+        self.foreground = foreground
     }
 
     @ViewBuilder
     var body: some View {
         if let appFontStyle {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appFont(appFontStyle)
                 .foregroundStyle(foreground)
         } else {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appScaledFont(
                     size: pointSize ?? AppFontStyle.subheading.pointSize(for: .system),
                     weight: weight,
