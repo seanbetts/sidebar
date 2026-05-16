@@ -355,6 +355,7 @@ def execute_once(
     """Run one scheduler cycle and persist its latest heartbeat state."""
     current_time = now or datetime.now(UTC)
     with SessionLocal() as db:
+        _set_worker_scope(db)
         NotificationSchedulerHeartbeatService.mark_started(
             db,
             started_at=current_time,
@@ -370,6 +371,7 @@ def execute_once(
     except Exception as exc:
         failed_at = datetime.now(UTC)
         with SessionLocal() as db:
+            _set_worker_scope(db)
             NotificationSchedulerHeartbeatService.mark_failed(
                 db,
                 started_at=current_time,
@@ -387,6 +389,7 @@ def execute_once(
 
     completed_at = datetime.now(UTC)
     with SessionLocal() as db:
+        _set_worker_scope(db)
         NotificationSchedulerHeartbeatService.mark_completed(
             db,
             started_at=current_time,

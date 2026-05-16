@@ -413,6 +413,181 @@ def test_process_once_enables_notification_worker_scope(monkeypatch):
     assert stats["task_reminders_due"] == 0
 
 
+def test_execute_once_enables_notification_worker_scope_for_lifecycle_writes(
+    monkeypatch,
+):
+    sessions = []
+    events = []
+
+    class _FakeSession:
+        def __init__(self):
+            self.scope_enabled = False
+            sessions.append(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def commit(self):
+            events.append(("commit", self.scope_enabled))
+
+    def _require_scope(db, event_name, *args, **kwargs):
+        _ = args
+        _ = kwargs
+        assert db.scope_enabled is True
+        events.append((event_name, True))
+
+    monkeypatch.setattr(notification_schedule_worker, "SessionLocal", _FakeSession)
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "set_notification_worker_scope",
+        lambda db, *, enabled: setattr(db, "scope_enabled", enabled),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerHeartbeatService,
+        "mark_started",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "mark_started",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerHeartbeatService,
+        "mark_completed",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "mark_completed",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerRunService,
+        "record_completed",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "record_completed",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "process_once",
+        lambda **kwargs: {
+            "task_reminders_due": 0,
+            "morning_digests_due": 0,
+            "task_reminders_dispatched": 0,
+            "morning_digests_dispatched": 0,
+        },
+    )
+
+    notification_schedule_worker.execute_once(
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert [event[0] for event in events] == [
+        "mark_started",
+        "commit",
+        "mark_completed",
+        "record_completed",
+        "commit",
+    ]
+    assert len(sessions) == 2
+
+
+def test_execute_once_enables_notification_worker_scope_for_failure_lifecycle_writes(
+    monkeypatch,
+):
+    events = []
+
+    class _FakeSession:
+        def __init__(self):
+            self.scope_enabled = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def commit(self):
+            events.append(("commit", self.scope_enabled))
+
+    def _require_scope(db, event_name, *args, **kwargs):
+        _ = args
+        _ = kwargs
+        assert db.scope_enabled is True
+        events.append((event_name, True))
+
+    def _raise_scheduler_error(**kwargs):
+        _ = kwargs
+        raise RuntimeError("scheduler exploded")
+
+    monkeypatch.setattr(notification_schedule_worker, "SessionLocal", _FakeSession)
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "set_notification_worker_scope",
+        lambda db, *, enabled: setattr(db, "scope_enabled", enabled),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerHeartbeatService,
+        "mark_started",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "mark_started",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerHeartbeatService,
+        "mark_failed",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "mark_failed",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.NotificationSchedulerRunService,
+        "record_failed",
+        lambda db, *args, **kwargs: _require_scope(
+            db,
+            "record_failed",
+            *args,
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "process_once",
+        _raise_scheduler_error,
+    )
+
+    try:
+        notification_schedule_worker.execute_once(
+            now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "scheduler exploded"
+    else:
+        raise AssertionError("execute_once should re-raise worker errors")
+
+    assert [event[0] for event in events] == [
+        "mark_started",
+        "commit",
+        "mark_failed",
+        "record_failed",
+        "commit",
+    ]
+
+
 def test_task_dispatch_uses_user_scoped_sessions(monkeypatch):
     recipient = ScheduledNotificationRecipient(
         user_id="user-123",
