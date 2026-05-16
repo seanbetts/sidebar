@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import Combine
+import sideBarShared
 
 public struct AudioPlayerView: View {
     @StateObject private var viewModel: AudioPlayerViewModel
@@ -15,7 +16,7 @@ public struct AudioPlayerView: View {
                 Button(
                     action: { viewModel.togglePlay() },
                     label: {
-                        Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                        Image(appIcon: viewModel.isPlaying ? AppIcon.Media.pauseControl : AppIcon.Media.playControl)
                             .appFont(.body)
                             .frame(width: 36, height: 36)
                     }

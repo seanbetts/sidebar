@@ -112,6 +112,8 @@ public extension AppIcon {
 
     enum Media {
         public static let video = AppIcon(rawValue: "play.rectangle")
+        public static let playControl = AppIcon(rawValue: "play.fill")
+        public static let pauseControl = AppIcon(rawValue: "pause.fill")
         public static let playFilled = AppIcon(rawValue: "play.circle.fill")
         public static let waveform = AppIcon(rawValue: "waveform")
         public static let captions = AppIcon(rawValue: "captions.bubble")

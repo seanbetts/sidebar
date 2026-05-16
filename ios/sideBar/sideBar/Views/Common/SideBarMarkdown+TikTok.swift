@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct SideBarTikTokEmbedBlock: View {
     let embed: MarkdownRendering.MarkdownTikTokEmbed
@@ -63,7 +64,7 @@ private struct TikTokFallbackCard: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Image(systemName: "play.circle.fill")
+                    Image(appIcon: AppIcon.Media.playFilled)
                         .appFont(.titleLg)
                         .foregroundStyle(.white)
                     Text("Loading TikTok…")
