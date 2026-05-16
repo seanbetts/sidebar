@@ -91,7 +91,7 @@ public struct SpreadsheetViewer: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
-            Image(systemName: "line.3.horizontal.decrease.circle")
+            Image(appIcon: AppIcon.Spreadsheet.filterRows)
                 .foregroundStyle(.secondary)
             TextField("Filter rows", text: $filterText)
                 .textFieldStyle(.plain)
@@ -263,7 +263,9 @@ public struct SpreadsheetViewer: View {
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         if sortColumn == columnIndex {
-                            Image(systemName: sortDirection == .ascending ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                            Image(appIcon: sortDirection == .ascending
+                                ? AppIcon.Spreadsheet.sortAscending
+                                : AppIcon.Spreadsheet.sortDescending)
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }

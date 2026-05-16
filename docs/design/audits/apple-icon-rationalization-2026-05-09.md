@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, and PDF controls slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, and files viewer/media/spreadsheet controls slices completed after the initial catalog work.
 
 Categories:
 
@@ -111,6 +111,9 @@ Categories:
 | `play.circle.fill` | Play filled | Context-specific | `AppIcon.Media.playFilled` | Media viewer |
 | `waveform` | Audio waveform | Context-specific | `AppIcon.Media.waveform` | Audio skill |
 | `captions.bubble` | Captions/transcript | Context-specific | `AppIcon.Media.captions` | YouTube transcript skill |
+| `line.3.horizontal.decrease.circle` | Spreadsheet row filter | Context-specific | `AppIcon.Spreadsheet.filterRows` | Spreadsheet viewer controls |
+| `arrowtriangle.up.fill` | Spreadsheet ascending sort | Context-specific | `AppIcon.Spreadsheet.sortAscending` | Spreadsheet viewer header |
+| `arrowtriangle.down.fill` | Spreadsheet descending sort | Context-specific | `AppIcon.Spreadsheet.sortDescending` | Spreadsheet viewer header |
 | `doc.viewfinder` | PDF page fit | Context-specific | `AppIcon.PDF.fitPage` | PDF controls |
 | `plus.magnifyingglass` | Zoom in | Context-specific | `AppIcon.PDF.zoomIn` | PDF controls |
 | `minus.magnifyingglass` | Zoom out | Context-specific | `AppIcon.PDF.zoomOut` | PDF controls |
@@ -332,11 +335,22 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | PDF fit controls | `distribute.horizontal`, `distribute.vertical` | `AppIcon.PDF.fitWidth`, `AppIcon.PDF.fitHeight` |
 | PDF selected fit mode | `checkmark` | `AppIcon.State.success` |
 
+## Files Viewer, Media, And Spreadsheet Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| File viewer external YouTube action | `arrow.up.right.square` | `AppIcon.Action.openExternal` |
+| Video viewer play hint | `play.circle.fill` | `AppIcon.Media.playFilled` |
+| Spreadsheet row filter field | `line.3.horizontal.decrease.circle` | `AppIcon.Spreadsheet.filterRows` |
+| Spreadsheet sort direction indicator | `arrowtriangle.up.fill`, `arrowtriangle.down.fill` | `AppIcon.Spreadsheet.sortAscending`, `AppIcon.Spreadsheet.sortDescending` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, and PDF controls slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, and files viewer/media/spreadsheet controls slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

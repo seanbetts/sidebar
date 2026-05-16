@@ -3,6 +3,7 @@ import PDFKit
 import AVKit
 import AVFoundation
 import Combine
+import sideBarShared
 #if canImport(MarkdownUI)
 import MarkdownUI
 #endif
@@ -42,7 +43,7 @@ public struct FileViewerView: View {
                     Button {
                         openURL(YouTubeURLPolicy.preferredExternalURL(from: embedURL))
                     } label: {
-                        Label("Open in YouTube", systemImage: "arrow.up.right.square")
+                        Label("Open in YouTube", systemImage: AppIcon.Action.openExternal.rawValue)
                             .appFont(.footnote)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)

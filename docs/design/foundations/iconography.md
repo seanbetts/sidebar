@@ -330,6 +330,9 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Play | `Media.playFilled` | `play.circle.fill` |
 | Audio transcription | `Media.waveform` | `waveform` |
 | Captions | `Media.captions` | `captions.bubble` |
+| Spreadsheet row filter | `Spreadsheet.filterRows` | `line.3.horizontal.decrease.circle` |
+| Spreadsheet ascending sort | `Spreadsheet.sortAscending` | `arrowtriangle.up.fill` |
+| Spreadsheet descending sort | `Spreadsheet.sortDescending` | `arrowtriangle.down.fill` |
 | PDF page fit | `PDF.fitPage` | `doc.viewfinder` |
 | Zoom in | `PDF.zoomIn` | `plus.magnifyingglass` |
 | Zoom out | `PDF.zoomOut` | `minus.magnifyingglass` |
@@ -485,7 +488,7 @@ Store Skill credential and config chrome uses `AppIcon` for requirement checks, 
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
-Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
 ---
 

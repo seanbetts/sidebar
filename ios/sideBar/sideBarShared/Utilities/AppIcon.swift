@@ -117,6 +117,12 @@ public extension AppIcon {
         public static let captions = AppIcon(rawValue: "captions.bubble")
     }
 
+    enum Spreadsheet {
+        public static let filterRows = AppIcon(rawValue: "line.3.horizontal.decrease.circle")
+        public static let sortAscending = AppIcon(rawValue: "arrowtriangle.up.fill")
+        public static let sortDescending = AppIcon(rawValue: "arrowtriangle.down.fill")
+    }
+
     enum PDF {
         public static let fitPage = AppIcon(rawValue: "doc.viewfinder")
         public static let zoomIn = AppIcon(rawValue: "plus.magnifyingglass")

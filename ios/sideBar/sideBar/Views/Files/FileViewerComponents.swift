@@ -2,6 +2,7 @@ import AVKit
 import Combine
 import PDFKit
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -76,7 +77,7 @@ struct VideoPlayerContainer: View {
                     Button {
                         playerState.play()
                     } label: {
-                        Image(systemName: "play.circle.fill")
+                        Image(appIcon: AppIcon.Media.playFilled)
                             .font(.system(size: 72, weight: .regular))
                             .foregroundStyle(.white.opacity(0.95))
                             .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
