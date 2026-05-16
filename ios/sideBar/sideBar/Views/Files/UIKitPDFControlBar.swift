@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 
@@ -213,7 +214,7 @@ extension UIKitPDFControlBar {
         var configuration: UIButton.Configuration = .plain()
         if showsVisibleChrome {
             configuration.image = UIImage(
-                systemName: "doc.viewfinder",
+                systemName: AppIcon.PDF.fitPage.rawValue,
                 withConfiguration: UIImage.SymbolConfiguration(
                     pointSize: PDFControlBarChrome.entrySymbolPointSize,
                     weight: .semibold

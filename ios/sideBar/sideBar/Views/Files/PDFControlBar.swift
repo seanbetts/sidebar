@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum PDFControlBarChrome {
     static let entryControlChromeStyle: HeaderActionControlChromeStyle = .glass
@@ -17,7 +18,7 @@ struct PDFControlBar: View {
 
     var body: some View {
         HeaderActionMenuControl(
-            systemName: "doc.viewfinder",
+            icon: AppIcon.PDF.fitPage,
             accessibilityLabel: "PDF controls",
             chromeStyle: PDFControlBarChrome.entryControlChromeStyle
         ) {
@@ -36,14 +37,14 @@ struct PDFControlBarMenuContent: View {
             Button {
                 configuration.onGoToPreviousPage()
             } label: {
-                Label("Previous page", systemImage: "chevron.left")
+                Label("Previous page", systemImage: AppIcon.Navigation.back.rawValue)
             }
             .disabled(!configuration.canGoToPreviousPage)
 
             Button {
                 configuration.onGoToNextPage()
             } label: {
-                Label("Next page", systemImage: "chevron.right")
+                Label("Next page", systemImage: AppIcon.Navigation.forward.rawValue)
             }
             .disabled(!configuration.canGoToNextPage)
         }
@@ -52,21 +53,21 @@ struct PDFControlBarMenuContent: View {
             Button {
                 configuration.onZoomOut()
             } label: {
-                Label("Zoom out", systemImage: "minus.magnifyingglass")
+                Label("Zoom out", systemImage: AppIcon.PDF.zoomOut.rawValue)
             }
 
             Button {
                 configuration.onZoomIn()
             } label: {
-                Label("Zoom in", systemImage: "plus.magnifyingglass")
+                Label("Zoom in", systemImage: AppIcon.PDF.zoomIn.rawValue)
             }
 
             Text("Zoom: \(configuration.zoomLabel)")
         }
 
         Section("Fit") {
-            fitModeButton("Fit to height", systemImage: "distribute.vertical", mode: .height)
-            fitModeButton("Fit to width", systemImage: "distribute.horizontal", mode: .width)
+            fitModeButton("Fit to height", icon: AppIcon.PDF.fitHeight, mode: .height)
+            fitModeButton("Fit to width", icon: AppIcon.PDF.fitWidth, mode: .width)
         }
 
         Section("Status") {
@@ -77,16 +78,16 @@ struct PDFControlBarMenuContent: View {
     @ViewBuilder
     private func fitModeButton(
         _ title: String,
-        systemImage: String,
+        icon: AppIcon,
         mode: PDFViewerController.FitMode
     ) -> some View {
         Button {
             configuration.onSetFitMode(mode)
         } label: {
             if configuration.fitMode == mode {
-                Label(title, systemImage: "checkmark")
+                Label(title, systemImage: AppIcon.State.success.rawValue)
             } else {
-                Label(title, systemImage: systemImage)
+                Label(title, systemImage: icon.rawValue)
             }
         }
     }
@@ -119,7 +120,7 @@ struct PDFControlPopoverContent: View {
     private var pageGroup: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             compactButton(
-                systemName: "chevron.left",
+                icon: AppIcon.Navigation.back,
                 accessibilityLabel: "Previous page",
                 action: perform(configuration.onGoToPreviousPage),
                 isDisabled: !configuration.canGoToPreviousPage
@@ -132,7 +133,7 @@ struct PDFControlPopoverContent: View {
                 .frame(minWidth: 48)
 
             compactButton(
-                systemName: "chevron.right",
+                icon: AppIcon.Navigation.forward,
                 accessibilityLabel: "Next page",
                 action: perform(configuration.onGoToNextPage),
                 isDisabled: !configuration.canGoToNextPage
@@ -143,7 +144,7 @@ struct PDFControlPopoverContent: View {
     private var zoomGroup: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             compactButton(
-                systemName: "minus",
+                icon: AppIcon.PDF.zoomOut,
                 accessibilityLabel: "Zoom out",
                 action: perform(configuration.onZoomOut)
             )
@@ -155,7 +156,7 @@ struct PDFControlPopoverContent: View {
                 .frame(minWidth: 56)
 
             compactButton(
-                systemName: "plus",
+                icon: AppIcon.PDF.zoomIn,
                 accessibilityLabel: "Zoom in",
                 action: perform(configuration.onZoomIn)
             )
@@ -165,12 +166,12 @@ struct PDFControlPopoverContent: View {
     private var fitGroup: some View {
         HStack(spacing: DesignTokens.Spacing.xxs) {
             fitIconButton(
-                systemName: "distribute.horizontal",
+                icon: AppIcon.PDF.fitWidth,
                 accessibilityLabel: "Fit to width",
                 mode: .width
             )
             fitIconButton(
-                systemName: "distribute.vertical",
+                icon: AppIcon.PDF.fitHeight,
                 accessibilityLabel: "Fit to height",
                 mode: .height
             )
@@ -185,7 +186,7 @@ struct PDFControlPopoverContent: View {
     }
 
     private func compactButton(
-        systemName: String,
+        icon: AppIcon,
         accessibilityLabel: String,
         action: @escaping () -> Void,
         isDisabled: Bool = false
@@ -193,14 +194,14 @@ struct PDFControlPopoverContent: View {
         Button {
             action()
         } label: {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appFont(.label)
-            .foregroundStyle(.primary)
-            .frame(
-                width: HeaderActionControlMetrics.iconFrameWidth,
-                height: HeaderActionControlMetrics.iconFrameHeight
-            )
-            .padding(HeaderActionControlMetrics.chromePadding)
+                .foregroundStyle(.primary)
+                .frame(
+                    width: HeaderActionControlMetrics.iconFrameWidth,
+                    height: HeaderActionControlMetrics.iconFrameHeight
+                )
+                .padding(HeaderActionControlMetrics.chromePadding)
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
@@ -208,14 +209,14 @@ struct PDFControlPopoverContent: View {
     }
 
     private func fitIconButton(
-        systemName: String,
+        icon: AppIcon,
         accessibilityLabel: String,
         mode: PDFViewerController.FitMode
     ) -> some View {
         Button {
             configuration.onSetFitMode(mode)
         } label: {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appFont(.label)
                 .foregroundStyle(configuration.fitMode == mode ? .primary : .secondary)
                 .frame(

@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, and global avatar/scratchpad chrome slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, and PDF controls slices completed after the initial catalog work.
 
 Categories:
 
@@ -320,12 +320,23 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Unauthenticated profile avatar fallback | `person.crop.circle` | `AppIcon.Settings.profile` |
 | Global scratchpad entrypoint | `square.and.pencil` | `AppIcon.Action.compose` |
 
+## PDF Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| PDF controls entry button | `doc.viewfinder` | `AppIcon.PDF.fitPage` |
+| PDF previous and next page controls | `chevron.left`, `chevron.right` | `AppIcon.Navigation.back`, `AppIcon.Navigation.forward` |
+| PDF zoom controls | `minus.magnifyingglass`, `plus.magnifyingglass`, compact `minus`, compact `plus` | `AppIcon.PDF.zoomOut`, `AppIcon.PDF.zoomIn` |
+| PDF fit controls | `distribute.horizontal`, `distribute.vertical` | `AppIcon.PDF.fitWidth`, `AppIcon.PDF.fitHeight` |
+| PDF selected fit mode | `checkmark` | `AppIcon.State.success` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- PDF controls
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, and global avatar/scratchpad chrome slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, and PDF controls slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

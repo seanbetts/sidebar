@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import sideBarShared
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -73,7 +74,7 @@ final class AppKitPDFControlBar: NSView {
         menuButton.isEnabled = configuration.isEnabled
         if self.showsVisibleChrome,
            let image = NSImage(
-                systemSymbolName: "doc.viewfinder",
+                systemSymbolName: AppIcon.PDF.fitPage.rawValue,
                 accessibilityDescription: nil
            )?.withSymbolConfiguration(
                 NSImage.SymbolConfiguration(
