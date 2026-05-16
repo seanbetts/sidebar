@@ -1,16 +1,12 @@
 import XCTest
 
 final class TasksPanelSourceTests: XCTestCase {
-    func testTasksPanelGroupChooserUsesVisibleConfirmationDialogWithCancelAction() throws {
+    func testTasksPanelGroupChooserUsesSharedActionConfirmationDialog() throws {
         let normalized = try tasksPanelSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(
-            normalized.contains(
-                ".confirmationDialog(\"Choosegroup\",isPresented:$showProjectGroupDialog,titleVisibility:.visible)"
-            )
-        )
-        XCTAssertTrue(normalized.contains("Button(\"Cancel\",role:.cancel)"))
+        XCTAssertTrue(normalized.contains(".actionConfirmationDialog(title:\"Choosegroup\",isPresented:$showProjectGroupDialog)"))
+        XCTAssertFalse(normalized.contains(".confirmationDialog(\"Choosegroup\""))
     }
 }
 

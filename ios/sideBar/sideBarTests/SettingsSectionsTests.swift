@@ -635,11 +635,12 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(
             normalized.components(
                 separatedBy:
-                ".confirmationDialog(\"ChangeProfilePhoto\",isPresented:$isProfilePhotoSourceDialogPresented,"
-                + "titleVisibility:.visible){profilePhotoSourceDialogActions}"
+                ".actionConfirmationDialog(title:\"ChangeProfilePhoto\","
+                + "isPresented:$isProfilePhotoSourceDialogPresented){profilePhotoSourceDialogActions}"
             ).count - 1,
             2
         )
+        XCTAssertFalse(normalized.contains(".confirmationDialog("))
     }
 
     func testProfileSettingsIOSSourceUsesExplicitBodyFontLabelsForTextRows() throws {

@@ -53,18 +53,20 @@ struct StoreSkillDetailSheet: View {
                     }
                 }
                 #endif
-                .alert("Uninstall skill?", isPresented: $showUninstallPrompt) {
-                    Button("Uninstall", role: .destructive) {
+                .destructiveConfirmationAlert(
+                    title: "Uninstall skill?",
+                    isPresented: $showUninstallPrompt,
+                    message: "This will uninstall \(viewModel.displayName(for: skill)).",
+                    confirmTitle: "Uninstall",
+                    onConfirm: {
                         Task {
                             await onConfirmUninstall()
                         }
-                    }
-                    Button("Cancel", role: .cancel) {
+                    },
+                    onCancel: {
                         showUninstallPrompt = false
                     }
-                } message: {
-                    Text("This will uninstall \(viewModel.displayName(for: skill)).")
-                }
+                )
             }
         }
         .settingsSheetGrabBarVisible()

@@ -89,16 +89,13 @@ struct TasksPanelView: View {
             onConfirm: handleDeleteTarget,
             onCancel: clearDeleteState
         )
-        .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
+        .actionConfirmationDialog(title: "Choose group", isPresented: $showProjectGroupDialog) {
             Button("No group") { handleCreateProject(groupId: nil) }
             let sortedGroups = viewModel.groups.sorted {
                 $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
             }
             ForEach(sortedGroups, id: \.id) { group in
                 Button(group.title) { handleCreateProject(groupId: group.id) }
-            }
-            Button("Cancel", role: .cancel) {
-                showProjectGroupDialog = false
             }
         }
     }

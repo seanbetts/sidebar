@@ -51,4 +51,19 @@ extension View {
             onCancel: onCancel
         )
     }
+
+    func actionConfirmationDialog<Actions: View>(
+        title: String,
+        isPresented: Binding<Bool>,
+        cancelTitle: String = "Cancel",
+        onCancel: @escaping () -> Void = {},
+        @ViewBuilder actions: @escaping () -> Actions
+    ) -> some View {
+        confirmationDialog(title, isPresented: isPresented, titleVisibility: .visible) {
+            actions()
+            Button(cancelTitle, role: .cancel) {
+                onCancel()
+            }
+        }
+    }
 }

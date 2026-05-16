@@ -58,10 +58,9 @@ struct ProfileSettingsView: View {
             .padding(DesignTokens.Spacing.lg)
         }
         .background(DesignTokens.Colors.settingsBackground)
-        .confirmationDialog(
-            "Change Profile Photo",
-            isPresented: $isProfilePhotoSourceDialogPresented,
-            titleVisibility: .visible
+        .actionConfirmationDialog(
+            title: "Change Profile Photo",
+            isPresented: $isProfilePhotoSourceDialogPresented
         ) {
             profilePhotoSourceDialogActions
         }
@@ -117,10 +116,9 @@ struct ProfileSettingsView: View {
             iosProfileDetailsSection
             iosSignOutSection
         }
-        .confirmationDialog(
-            "Change Profile Photo",
-            isPresented: $isProfilePhotoSourceDialogPresented,
-            titleVisibility: .visible
+        .actionConfirmationDialog(
+            title: "Change Profile Photo",
+            isPresented: $isProfilePhotoSourceDialogPresented
         ) {
             profilePhotoSourceDialogActions
         }
@@ -175,8 +173,6 @@ struct ProfileSettingsView: View {
         }
         Button("Choose from Files") {
             isProfileImageImporterPresented = true
-        }
-        Button("Cancel", role: .cancel) {
         }
     }
 
