@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import sideBarShared
 
 struct QueuedChangesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -11,7 +12,7 @@ struct QueuedChangesView: View {
             if queuedChanges.isEmpty {
                 ContentUnavailableView(
                     "No Sync Errors",
-                    systemImage: "checkmark.circle",
+                    systemImage: AppIcon.State.successCircle.rawValue,
                     description: Text("No failed queued changes")
                 )
             } else {
@@ -76,7 +77,7 @@ private struct QueuedChangeRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: iconName)
+                Image(appIcon: appIcon)
                 Text(titleText)
                     .appFont(.label)
                 Spacer()
@@ -103,20 +104,20 @@ private struct QueuedChangeRow: View {
         return "\(operation) \(entity)"
     }
 
-    private var iconName: String {
+    private var appIcon: AppIcon {
         switch queuedChange.entityType {
         case "note":
-            return "note.text"
+            return AppIcon.Content.note
         case "message":
-            return "bubble.left.and.bubble.right"
+            return AppIcon.Content.messageThread
         case "website":
-            return "globe"
+            return AppIcon.Content.websiteFallback
         case "file":
-            return "doc"
+            return AppIcon.Content.document
         case "scratchpad":
-            return "square.and.pencil"
+            return AppIcon.Content.scratchpad
         default:
-            return "arrow.triangle.2.circlepath"
+            return AppIcon.State.syncing
         }
     }
 

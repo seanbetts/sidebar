@@ -1,5 +1,6 @@
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 final class PendingWebsiteRowTests: XCTestCase {
     func testFailedPendingWebsiteRowUsesGenericWebsiteIcon() {
@@ -20,6 +21,6 @@ final class PendingWebsiteRowTests: XCTestCase {
             onRemove: nil
         )
 
-        XCTAssertEqual(row.leadingIconName, "globe")
+        XCTAssertEqual(row.leadingIcon, AppIcon.Content.websiteFallback)
     }
 }

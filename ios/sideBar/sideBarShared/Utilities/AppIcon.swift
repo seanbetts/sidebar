@@ -58,6 +58,7 @@ public extension AppIcon {
         public static let today = AppIcon(rawValue: "calendar")
         public static let upcoming = AppIcon(rawValue: "calendar.badge.clock")
         public static let completed = AppIcon(rawValue: "calendar.badge.checkmark")
+        public static let checklist = AppIcon(rawValue: "checklist")
         public static let group = AppIcon(rawValue: "square.3.layers.3d")
         public static let project = AppIcon(rawValue: "list.bullet")
         public static let recurrence = AppIcon(rawValue: "repeat")
@@ -77,6 +78,7 @@ public extension AppIcon {
     enum State {
         public static let infoFilled = AppIcon(rawValue: "info.circle.fill")
         public static let success = AppIcon(rawValue: "checkmark")
+        public static let selectionCheck = AppIcon(rawValue: "checkmark")
         public static let successCircle = AppIcon(rawValue: "checkmark.circle")
         public static let successFilled = AppIcon(rawValue: "checkmark.circle.fill")
         public static let warning = AppIcon(rawValue: "exclamationmark.triangle")
@@ -109,6 +111,8 @@ public extension AppIcon {
         public static let photo = AppIcon(rawValue: "photo")
         public static let taskList = AppIcon(rawValue: "list.bullet.rectangle")
         public static let websiteFallback = AppIcon(rawValue: "globe")
+        public static let messageThread = AppIcon(rawValue: "bubble.left.and.bubble.right")
+        public static let scratchpad = AppIcon(rawValue: "square.and.pencil")
         public static let table = AppIcon(rawValue: "tablecells")
         public static let report = AppIcon(rawValue: "chart.line.text.clipboard")
         public static let presentation = AppIcon(rawValue: "rectangle.on.rectangle.angled")
@@ -127,6 +131,10 @@ public extension AppIcon {
     enum Markdown {
         public static let taskCompleted = AppIcon(rawValue: "checkmark.square.fill")
         public static let taskIncomplete = AppIcon(rawValue: "square")
+    }
+
+    enum Notes {
+        public static let formatting = AppIcon(rawValue: "textformat")
     }
 
     enum Spreadsheet {

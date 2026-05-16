@@ -38,7 +38,7 @@ public struct ChatView: View {
                                     await environment.chatViewModel.startNewConversation()
                                 }
                             } label: {
-                                Image(systemName: "plus")
+                                Image(appIcon: AppIcon.Action.add)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("New chat")

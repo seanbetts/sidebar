@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -25,7 +26,7 @@ struct NoteFormattingBar: View {
 
     var body: some View {
         HeaderActionMenuControl(
-            systemName: "textformat",
+            icon: AppIcon.Notes.formatting,
             accessibilityLabel: "Formatting",
             chromeStyle: NoteFormattingBarChrome.entryControlChromeStyle
         ) {
@@ -35,7 +36,7 @@ struct NoteFormattingBar: View {
                         configuration.selectTextStyle(style)
                     } label: {
                         if configuration.activeTextStyle == style {
-                            Label(style.displayName, systemImage: "checkmark")
+                            Label(style.displayName, systemImage: AppIcon.State.selectionCheck.rawValue)
                         } else {
                             Text(style.displayName)
                         }
@@ -62,7 +63,7 @@ struct NoteFormattingBar: View {
             configuration.tapHandler(for: formatting)()
         } label: {
             if configuration.isActive(formatting) {
-                Label(title, systemImage: "checkmark")
+                Label(title, systemImage: AppIcon.State.selectionCheck.rawValue)
             } else {
                 Text(title)
             }

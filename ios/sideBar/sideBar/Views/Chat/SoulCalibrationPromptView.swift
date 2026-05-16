@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct SoulCalibrationPromptView: View {
     let state: OnboardingCalibrationState
@@ -97,7 +98,7 @@ struct SoulCalibrationPromptView: View {
 
     private var setupLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: "brain.fill")
+            Image(appIcon: AppIcon.Settings.assistant)
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)

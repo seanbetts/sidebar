@@ -349,7 +349,7 @@ extension WebsitesDetailView {
     private var headerIcon: AnyView {
         guard let website = viewModel.active else {
             return AnyView(
-                Image(systemName: "globe")
+                Image(appIcon: AppIcon.Content.websiteFallback)
                     .appFont(.titleSm)
                     .foregroundStyle(.primary)
             )
@@ -370,7 +370,7 @@ extension WebsitesDetailView {
             return AnyView(faviconView)
         }
         return AnyView(
-            Image(systemName: "globe")
+            Image(appIcon: AppIcon.Content.websiteFallback)
                 .appFont(.titleSm)
                 .foregroundStyle(.primary)
         )

@@ -377,11 +377,30 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Markdown remote image/SVG fallbacks | `photo` | `AppIcon.Content.photo` |
 | Markdown task list markers | `checkmark.square.fill`, `square` | `AppIcon.Markdown.taskCompleted`, `AppIcon.Markdown.taskIncomplete` |
 
+## Chrome, Status, Website, And Notes Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Sidebar picker disclosure | `chevron.up.chevron.down` | `AppIcon.Navigation.pickerDisclosure` |
+| Chat new conversation button | `plus` | `AppIcon.Action.add` |
+| Compact more destination back button | `chevron.left` | `AppIcon.Navigation.back` |
+| Settings and Store Skill sheet close buttons | `xmark` | `AppIcon.Action.close` |
+| Website and favicon fallbacks | `globe` | `AppIcon.Content.websiteFallback` |
+| Pending website failed/retry/remove controls | `globe`, `arrow.counterclockwise.circle`, `xmark.circle` | `AppIcon.Content.websiteFallback`, `AppIcon.State.retry`, `AppIcon.Action.cancel` |
+| Queued changes empty state and entity icons | `checkmark.circle`, `note.text`, `bubble.left.and.bubble.right`, `globe`, `doc`, `square.and.pencil`, `arrow.triangle.2.circlepath` | `AppIcon.State.successCircle`, `AppIcon.Content.note`, `AppIcon.Content.messageThread`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.document`, `AppIcon.Content.scratchpad`, `AppIcon.State.syncing` |
+| Soul calibration prompt | `brain.fill` | `AppIcon.Settings.assistant` |
+| Memories path rows | `bookmark` | `AppIcon.Domain.memories` |
+| Scratchpad error state | `exclamationmark.triangle.fill` | `AppIcon.State.warningFilled` |
+| Morning digest open tasks row | `checklist` | `AppIcon.Tasks.checklist` |
+| Notes formatting entrypoint and selected menu rows | `textformat`, `checkmark` | `AppIcon.Notes.formatting`, `AppIcon.State.selectionCheck` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, and files panel category/markdown fallback controls slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, and chrome/status/website/notes controls slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

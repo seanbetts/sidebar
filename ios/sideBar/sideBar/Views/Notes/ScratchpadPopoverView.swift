@@ -338,7 +338,7 @@ private struct ScratchpadErrorBannerView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(appIcon: AppIcon.State.warningFilled)
                 .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.error)
                 .padding(.top, 1)

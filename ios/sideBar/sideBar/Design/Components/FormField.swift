@@ -238,7 +238,7 @@ struct SidebarSelectionTriggerLabel: View {
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .lineLimit(1)
-            Image(systemName: "chevron.up.chevron.down")
+            Image(appIcon: AppIcon.Navigation.pickerDisclosure)
                 .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }

@@ -73,7 +73,7 @@ struct NoteFolderPickerSheet: View {
                                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     if selection == option.value {
-                                        Image(systemName: "checkmark")
+                                        Image(appIcon: AppIcon.State.selectionCheck)
                                             .appFont(.caption)
                                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                                     }
@@ -125,7 +125,7 @@ struct NoteFolderPickerSheet: View {
                         Text(optionLabel(option))
                         Spacer()
                         if selection == option.value {
-                            Image(systemName: "checkmark")
+                            Image(appIcon: AppIcon.State.selectionCheck)
                                 .foregroundStyle(.accent)
                         }
                     }

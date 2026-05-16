@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct MorningDigestView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -72,7 +73,7 @@ struct MorningDigestView: View {
                     environment.handleDeepLink(url)
                 }
             } label: {
-                Label("Open tasks for today", systemImage: "checklist")
+                Label("Open tasks for today", systemImage: AppIcon.Tasks.checklist.rawValue)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderedProminent)

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -64,7 +65,7 @@ struct FaviconImageView: View {
     }
 
     private var placeholderIcon: some View {
-        Image(systemName: "globe")
+        Image(appIcon: AppIcon.Content.websiteFallback)
             .foregroundStyle(placeholderTint)
     }
 

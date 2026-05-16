@@ -87,7 +87,7 @@ struct SkillsSettingsView: View {
                             Button {
                                 selectedStoreSkill = nil
                             } label: {
-                                Image(systemName: "xmark")
+                                Image(appIcon: AppIcon.Action.close)
                             }
                             .accessibilityLabel("Close skill details")
                             .keyboardShortcut(.cancelAction)

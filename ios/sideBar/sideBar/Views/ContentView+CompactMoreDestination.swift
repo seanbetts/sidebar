@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -86,7 +87,7 @@ private struct CompactPhoneMoreDestinationHeader: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Button(action: onBack) {
-                Image(systemName: "chevron.left")
+                Image(appIcon: AppIcon.Navigation.back)
                     .appFont(.subheading)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .frame(width: 44, height: 44)

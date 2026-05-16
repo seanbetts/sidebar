@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import sideBarShared
 
 struct PendingWebsiteRow: View, Equatable {
     let pending: WebsitesViewModel.PendingWebsiteItem
@@ -11,8 +12,8 @@ struct PendingWebsiteRow: View, Equatable {
         lhs.pending == rhs.pending && lhs.useListStyling == rhs.useListStyling
     }
 
-    var leadingIconName: String? {
-        pending.status == .failed ? "globe" : nil
+    var leadingIcon: AppIcon? {
+        pending.status == .failed ? AppIcon.Content.websiteFallback : nil
     }
 
     var body: some View {
@@ -22,8 +23,8 @@ struct PendingWebsiteRow: View, Equatable {
             useListStyling: useListStyling
         ) {
             HStack(spacing: 8) {
-                if let leadingIconName {
-                    Image(systemName: leadingIconName)
+                if let leadingIcon {
+                    Image(appIcon: leadingIcon)
                         .appFont(.label)
                         .foregroundStyle(secondaryTextColor)
                 } else {
@@ -45,7 +46,7 @@ struct PendingWebsiteRow: View, Equatable {
                         Button {
                             onRetry()
                         } label: {
-                            Image(systemName: "arrow.counterclockwise.circle")
+                            Image(appIcon: AppIcon.State.retry)
                                 .appFont(.label)
                         }
                         .buttonStyle(.plain)
@@ -56,7 +57,7 @@ struct PendingWebsiteRow: View, Equatable {
                         Button {
                             onRemove()
                         } label: {
-                            Image(systemName: "xmark.circle")
+                            Image(appIcon: AppIcon.Action.cancel)
                                 .appFont(.label)
                         }
                         .buttonStyle(.plain)
