@@ -90,12 +90,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         let attachButton = NSButton()
         attachButton.bezelStyle = .regularSquare
         attachButton.isBordered = false
-        attachButton.image = NSImage(
-            systemSymbolName: "paperclip",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
-        )
+        attachButton.image = symbolImage(for: AppIcon.Action.attach)
         attachButton.setAccessibilityLabel("Attach file")
         attachButton.target = context.coordinator
         attachButton.action = #selector(Coordinator.didTapAttach)
@@ -103,12 +98,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         let button = NSButton()
         button.bezelStyle = .regularSquare
         button.isBordered = false
-        button.image = NSImage(
-            systemSymbolName: "arrow.up",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
-        )
+        button.image = symbolImage(for: AppIcon.Action.send)
         button.wantsLayer = true
         button.layer?.cornerRadius = max(0, (sideButtonSize / 2) - cornerRadiusAdjustment)
         button.target = context.coordinator
@@ -394,6 +384,15 @@ struct ChatInputAppKitView: NSViewRepresentable {
         case .small, .medium, .large:
             return NSFont.systemFont(ofSize: AppFontStyle.body.pointSize(for: option))
         }
+    }
+
+    private func symbolImage(for appIcon: AppIcon) -> NSImage? {
+        NSImage(
+            systemSymbolName: appIcon.rawValue,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
+        )
     }
 }
 #endif

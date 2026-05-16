@@ -13,6 +13,7 @@ public extension AppIcon {
         public static let add = AppIcon(rawValue: "plus")
         public static let addCircleFilled = AppIcon(rawValue: "plus.circle.fill")
         public static let close = AppIcon(rawValue: "xmark")
+        public static let cancel = AppIcon(rawValue: "xmark.circle")
         public static let clearFilled = AppIcon(rawValue: "xmark.circle.fill")
         public static let more = AppIcon(rawValue: "ellipsis")
         public static let delete = AppIcon(rawValue: "trash")

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct PendingAttachmentsView: View {
     let attachments: [ChatAttachmentItem]
@@ -10,7 +11,7 @@ struct PendingAttachmentsView: View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(attachments) { attachment in
                 HStack(spacing: 10) {
-                    Image(systemName: "paperclip")
+                    Image(appIcon: AppIcon.Action.attach)
                         .appFont(.label)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
@@ -27,7 +28,7 @@ struct PendingAttachmentsView: View {
                             Button {
                                 onRetry(attachment.id)
                             } label: {
-                                Image(systemName: "arrow.clockwise")
+                                Image(appIcon: AppIcon.State.retry)
                                     .appFont(.label)
                             }
                             .buttonStyle(.plain)
@@ -35,7 +36,7 @@ struct PendingAttachmentsView: View {
                             Button {
                                 onDelete(attachment.id)
                             } label: {
-                                Image(systemName: "trash")
+                                Image(appIcon: AppIcon.Action.delete)
                                     .appFont(.label)
                             }
                             .buttonStyle(.plain)
@@ -47,7 +48,7 @@ struct PendingAttachmentsView: View {
                             Button {
                                 onCancel(attachment.id)
                             } label: {
-                                Image(systemName: "xmark.circle")
+                                Image(appIcon: AppIcon.Action.cancel)
                                     .appFont(.label)
                             }
                             .buttonStyle(.plain)
@@ -95,7 +96,7 @@ struct ReadyAttachmentsView: View {
             HStack(spacing: 8) {
                 ForEach(attachments) { attachment in
                     HStack(spacing: 6) {
-                        Image(systemName: "paperclip")
+                        Image(appIcon: AppIcon.Action.attach)
                             .appFont(.caption)
                         Text(attachment.name)
                             .appFont(.caption)
@@ -103,7 +104,7 @@ struct ReadyAttachmentsView: View {
                         Button {
                             onRemove(attachment.id)
                         } label: {
-                            Image(systemName: "xmark")
+                            Image(appIcon: AppIcon.Action.close)
                                 .appFont(.badge)
                         }
                         .buttonStyle(.plain)

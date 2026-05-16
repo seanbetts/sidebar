@@ -1,5 +1,6 @@
 #if os(iOS)
 import SwiftUI
+import sideBarShared
 import UIKit
 
 extension ChatInputUIKitView {
@@ -62,11 +63,11 @@ extension ChatInputUIKitView {
         return label
     }
 
-    func makeAccessoryButton(systemName: String) -> UIButton {
+    func makeAccessoryButton(appIcon: AppIcon) -> UIButton {
         let button = UIButton(type: .system)
         button.setImage(
             UIImage(
-                systemName: systemName,
+                systemName: appIcon.rawValue,
                 withConfiguration: UIImage.SymbolConfiguration(
                     pointSize: sideButtonSymbolSize,
                     weight: .semibold

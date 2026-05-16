@@ -35,6 +35,7 @@ Categories:
 | `plus` | Add or create | Canonical | `AppIcon.Action.add` | Header add buttons and add menus |
 | `plus.circle.fill` | Add filled circle | Context-specific | `AppIcon.Action.addCircleFilled` | Store Skill install and credential add actions |
 | `xmark` | Close or dismiss | Canonical | `AppIcon.Action.close` | Header close buttons and close menu items |
+| `xmark.circle` | Cancel in-progress item | Context-specific | `AppIcon.Action.cancel` | Attachment upload cancel control |
 | `xmark.circle.fill` | Clear field or filled dismiss | Canonical | `AppIcon.Action.clearFilled` | Search and inline clear controls |
 | `ellipsis` | More options | Canonical | `AppIcon.Action.more` | Header menus and overflow actions |
 | `trash` | Delete | Canonical | `AppIcon.Action.delete` | Destructive action |
@@ -280,13 +281,29 @@ Categories:
 | Agent workspace surface headers | `doc.plaintext`, `tablecells`, `chart.bar.xaxis`, `map`, `list.bullet.clipboard`, `slider.horizontal.3` | `AppIcon.Workspace.*Surface` values through `ContentHeaderRow(icon:)` |
 | Inline workspace action labels | Target-owned `iconName` strings | SwiftUI `Label(..., systemImage: target.appIcon.rawValue)` at the rendering boundary |
 
+## Chat Input And Attachment Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| iOS chat input attach button | `paperclip` through `UIImage(systemName:)` | `AppIcon.Action.attach` through `makeAccessoryButton(appIcon:)` |
+| iOS chat input send button | `arrow.up` through `UIImage(systemName:)` | `AppIcon.Action.send` through `makeAccessoryButton(appIcon:)` |
+| macOS chat input attach button | `paperclip` through `NSImage(systemSymbolName:)` | `AppIcon.Action.attach` through `symbolImage(for:)` |
+| macOS chat input send button | `arrow.up` through `NSImage(systemSymbolName:)` | `AppIcon.Action.send` through `symbolImage(for:)` |
+| Pending attachment row icon | `paperclip` | `AppIcon.Action.attach` |
+| Attachment retry action | `arrow.clockwise` | `AppIcon.State.retry` |
+| Attachment delete action | `trash` | `AppIcon.Action.delete` |
+| Attachment cancel action | `xmark.circle` | `AppIcon.Action.cancel` |
+| Ready attachment chip icon | `paperclip` | `AppIcon.Action.attach` |
+| Ready attachment remove action | `xmark` | `AppIcon.Action.close` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
 - PDF controls
-- chat input UIKit/AppKit icons
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, and dynamic workspace target/parser presentation slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, and chat input plus attachment control slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

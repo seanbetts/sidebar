@@ -222,6 +222,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Add or create | `Action.add` | `plus` |
 | Add filled circle | `Action.addCircleFilled` | `plus.circle.fill` |
 | Close or dismiss | `Action.close` | `xmark` |
+| Cancel in-progress item | `Action.cancel` | `xmark.circle` |
 | Clear field | `Action.clearFilled` | `xmark.circle.fill` |
 | More options | `Action.more` | `ellipsis` |
 | Delete | `Action.delete` | `trash` |
@@ -506,6 +507,7 @@ The web app uses `lucide-svelte`. Lucide does not have parity with SF Symbols, b
 | Copy | `Action.copy` | `doc.on.doc` | `Copy` |
 | Download | `Action.download` | `square.and.arrow.down` | `Download` |
 | Close / Dismiss | `Action.close` | `xmark` | `X` |
+| Cancel in-progress item | `Action.cancel` | `xmark.circle` | `XCircle` |
 | More options | `Action.more` | `ellipsis` | `MoreHorizontal` |
 | Warning / Error | `State.warningFilled` | `exclamationmark.triangle.fill` | `AlertTriangle` |
 | Success / Check | `State.success` | `checkmark` | `Check` / `CheckCircle2` |

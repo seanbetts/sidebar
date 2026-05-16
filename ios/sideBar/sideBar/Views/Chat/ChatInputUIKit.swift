@@ -77,11 +77,11 @@ struct ChatInputUIKitView: UIViewRepresentable {
             font: resolvedFont,
             adjustsForContentSizeCategory: usesSystemTextSize
         )
-        let attachButton = makeAccessoryButton(systemName: "paperclip")
+        let attachButton = makeAccessoryButton(appIcon: AppIcon.Action.attach)
         attachButton.accessibilityLabel = "Attach file"
         attachButton.addTarget(context.coordinator, action: #selector(Coordinator.didTapAttach), for: .touchUpInside)
 
-        let button = makeAccessoryButton(systemName: "arrow.up")
+        let button = makeAccessoryButton(appIcon: AppIcon.Action.send)
         button.layer.cornerRadius = sideButtonSize / 2
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
         button.accessibilityLabel = "Send message"
