@@ -9,7 +9,7 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("staticletsymbolScaleFactor:CGFloat=0.7"))
         XCTAssertTrue(
             normalized.contains(
-                "Image(systemName:\"person.crop.circle\")"
+                "Image(appIcon:AppIcon.Settings.profile)"
                     + ".appScaledFont("
                     + "size:size*GlobalAvatarRegionMetrics.symbolScaleFactor,"
                     + "weight:.regular)"
@@ -17,12 +17,14 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         )
         XCTAssertTrue(
             normalized.contains(
-                "Image(systemName:\"square.and.pencil\")"
+                "Image(appIcon:AppIcon.Action.compose)"
                     + ".appScaledFont("
                     + "size:avatarSize*GlobalAvatarRegionMetrics.symbolScaleFactor,"
                     + "weight:.regular)"
             )
         )
+        XCTAssertFalse(normalized.contains("Image(systemName:\"person.crop.circle\")"))
+        XCTAssertFalse(normalized.contains("Image(systemName:\"square.and.pencil\")"))
         XCTAssertFalse(
             normalized.contains(
                 "Image(systemName:\"square.and.pencil\").appFont(.label)"

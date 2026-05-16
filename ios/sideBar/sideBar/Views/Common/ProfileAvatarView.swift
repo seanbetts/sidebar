@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -20,7 +21,7 @@ struct ProfileAvatarView: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Image(systemName: "person.crop.circle")
+                Image(appIcon: AppIcon.Settings.profile)
                     .appScaledFont(
                         size: size * GlobalAvatarRegionMetrics.symbolScaleFactor,
                         weight: .regular
@@ -101,7 +102,7 @@ struct GlobalAvatarRegionControls: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Button(action: handleScratchpadTap) {
-                Image(systemName: "square.and.pencil")
+                Image(appIcon: AppIcon.Action.compose)
                     .appScaledFont(
                         size: avatarSize * GlobalAvatarRegionMetrics.symbolScaleFactor,
                         weight: .regular
