@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum HeaderStatusRowActionResult: Equatable {
     case resolved
@@ -201,7 +202,7 @@ private struct HeaderStatusRowView: View {
                                 ProgressView()
                                     .controlSize(.mini)
                             } else {
-                                Image(systemName: actionSymbolName(action))
+                                Image(appIcon: actionAppIcon(action))
                                     .appFont(.body)
                             }
                         }
@@ -225,14 +226,14 @@ private struct HeaderStatusRowView: View {
         row.actions.first(where: { $0.role == .default })?.id == action.id
     }
 
-    private func actionSymbolName(_ action: HeaderStatusActionModel) -> String {
+    private func actionAppIcon(_ action: HeaderStatusActionModel) -> AppIcon {
         switch action.role {
         case .default:
-            return "arrow.clockwise"
+            return AppIcon.State.retry
         case .cancel:
-            return "xmark"
+            return AppIcon.Action.close
         case .destructive:
-            return "xmark"
+            return AppIcon.Action.close
         }
     }
 

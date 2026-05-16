@@ -29,6 +29,7 @@ public extension AppIcon {
         public static let compose = AppIcon(rawValue: "square.and.pencil")
         public static let move = AppIcon(rawValue: "arrow.forward.folder")
         public static let reorder = AppIcon(rawValue: "line.3.horizontal")
+        public static let swapPanels = AppIcon(rawValue: "arrow.left.arrow.right")
         public static let pin = AppIcon(rawValue: "pin")
         public static let unpin = AppIcon(rawValue: "pin.slash")
         public static let archive = AppIcon(rawValue: "archivebox")
@@ -91,6 +92,7 @@ public extension AppIcon {
         public static let networkWarning = AppIcon(rawValue: "wifi.exclamationmark")
         public static let syncing = AppIcon(rawValue: "arrow.triangle.2.circlepath")
         public static let retry = AppIcon(rawValue: "arrow.clockwise")
+        public static let weather = AppIcon(rawValue: "cloud.sun")
     }
 
     enum Auth {

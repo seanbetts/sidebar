@@ -90,21 +90,21 @@ struct WebsiteContentQuickActionsPill: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             iconButton(
-                systemName: isPinned ? "pin.slash" : "pin",
+                icon: isPinned ? AppIcon.Action.unpin : AppIcon.Action.pin,
                 accessibilityLabel: isPinned ? "Unpin website" : "Pin website",
                 role: nil,
                 action: onPinToggle
             )
             divider
             iconButton(
-                systemName: isArchived ? "archivebox.fill" : "archivebox",
+                icon: isArchived ? AppIcon.Action.unarchive : AppIcon.Action.archive,
                 accessibilityLabel: isArchived ? "Unarchive website" : "Archive website",
                 role: nil,
                 action: onArchiveToggle
             )
             divider
             iconButton(
-                systemName: "trash",
+                icon: AppIcon.Action.delete,
                 accessibilityLabel: "Delete website",
                 role: .destructive,
                 action: onDelete
@@ -117,13 +117,13 @@ struct WebsiteContentQuickActionsPill: View {
 
     @ViewBuilder
     private func iconButton(
-        systemName: String,
+        icon: AppIcon,
         accessibilityLabel: String,
         role: ButtonRole?,
         action: @escaping () -> Void
     ) -> some View {
         Button(role: role, action: action) {
-            Image(systemName: systemName)
+            Image(appIcon: icon)
                 .appFont(.label)
                 .frame(width: Self.controlIconSize, height: Self.controlIconSize)
                 .frame(width: Self.controlTouchTarget, height: Self.controlTouchTarget)

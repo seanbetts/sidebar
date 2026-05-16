@@ -237,6 +237,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Compose | `Action.compose` | `square.and.pencil` |
 | Move | `Action.move` | `arrow.forward.folder` |
 | Reorder | `Action.reorder` | `line.3.horizontal` |
+| Swap panels | `Action.swapPanels` | `arrow.left.arrow.right` |
 | Pin | `Action.pin` | `pin` |
 | Unpin | `Action.unpin` | `pin.slash` |
 | Archive | `Action.archive` | `archivebox` |
@@ -281,6 +282,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Network degraded | `State.networkWarning` | `wifi.exclamationmark` |
 | Syncing | `State.syncing` | `arrow.triangle.2.circlepath` |
 | Retry | `State.retry` | `arrow.clockwise` |
+| Weather | `State.weather` | `cloud.sun` |
 
 ### Auth
 
@@ -506,7 +508,7 @@ Store Skill credential and config chrome uses `AppIcon` for requirement checks, 
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
-Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Shared bridge helpers now take `AppIcon` directly for content headers, detail placeholders, panel placeholders, sparse rows, and notes panel row/disclosure symbols. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Shared bridge helpers now take `AppIcon` directly for content headers, detail placeholders, panel placeholders, sparse rows, and notes panel row/disclosure symbols. Website header/status quick actions use `AppIcon.Action`, `AppIcon.State`, and `AppIcon.Content.scratchpad` for locally-owned pin/archive/delete, panel swap, weather, scratchpad, retry, and close symbols. Assistant-supplied action `systemImage` payloads remain dynamic/external boundaries.
 
 ---
 
@@ -532,8 +534,10 @@ The web app uses `lucide-svelte`. Lucide does not have parity with SF Symbols, b
 | Close / Dismiss | `Action.close` | `xmark` | `X` |
 | Cancel in-progress item | `Action.cancel` | `xmark.circle` | `XCircle` |
 | More options | `Action.more` | `ellipsis` | `MoreHorizontal` |
+| Swap panels | `Action.swapPanels` | `arrow.left.arrow.right` | `PanelLeftRight` |
 | Warning / Error | `State.warningFilled` | `exclamationmark.triangle.fill` | `AlertTriangle` |
 | Success / Check | `State.success` | `checkmark` | `Check` / `CheckCircle2` |
+| Weather | `State.weather` | `cloud.sun` | `CloudSun` |
 | Profile | `Settings.profile` | `person.crop.circle` | `User` |
 | Memory / Brain | `Domain.memories` / `Settings.assistant` | `bookmark` / `brain.fill` | `Bookmark` / `Brain` |
 | Credentials | `Settings.credentials` | `key.horizontal` | `Key` |

@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, and shared bridge plus notes panel static icon slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, and website header/status quick-action slices completed after the initial catalog work.
 
 Categories:
 
@@ -51,6 +51,7 @@ Categories:
 | `square.and.pencil` | Compose | Canonical | `AppIcon.Action.compose` | Compose affordance |
 | `arrow.forward.folder` | Move | Canonical | `AppIcon.Action.move` | Move to folder actions |
 | `line.3.horizontal` | Reorder | Canonical | `AppIcon.Action.reorder` | Reorder actions |
+| `arrow.left.arrow.right` | Swap panels | Context-specific | `AppIcon.Action.swapPanels` | Website header panel swap action |
 | `pin` | Pin | Canonical | `AppIcon.Action.pin` | Pin actions |
 | `pin.slash` | Unpin | Canonical | `AppIcon.Action.unpin` | Pin inverse |
 | `archivebox` | Archive | Canonical | `AppIcon.Action.archive` | Archive actions and archive row header |
@@ -91,6 +92,7 @@ Categories:
 | `wifi.slash` | Offline | Canonical | `AppIcon.State.offline` | Offline banner and auth status |
 | `wifi.exclamationmark` | Network warning | Canonical | `AppIcon.State.networkWarning` | Degraded network banner |
 | `arrow.triangle.2.circlepath` | Syncing | Canonical | `AppIcon.State.syncing` | Queue/sync state |
+| `cloud.sun` | Weather | Context-specific | `AppIcon.State.weather` | Website header weather status affordance |
 | `envelope` | Auth email field | Canonical | `AppIcon.Auth.email` | Auth credential field chrome |
 | `lock` | Auth password field | Canonical | `AppIcon.Auth.password` | Auth credential field chrome |
 | `lock.fill` | Auth password lockout | Context-specific | `AppIcon.Auth.passwordLocked` | Lockout state |
@@ -408,11 +410,23 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Sidebar sparse state rows | `note.text`, `globe` | `AppIcon.Content.note`, `AppIcon.Content.websiteFallback` |
 | Notes panel tree rows and folder disclosures | `doc.text`, `folder`, `chevron.down`, `chevron.right` | `AppIcon.Content.textDocument`, `AppIcon.Content.folder`, `AppIcon.Navigation.chevronDown`, `AppIcon.Navigation.chevronRight` |
 
+## Website Header And Status Quick-Action Controls Slice
+
+Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Website content quick actions | `pin`, `pin.slash`, `archivebox`, `archivebox.fill`, `trash` | `AppIcon.Action.pin`, `AppIcon.Action.unpin`, `AppIcon.Action.archive`, `AppIcon.Action.unarchive`, `AppIcon.Action.delete` |
+| Site header swap panels button | `arrow.left.arrow.right` | `HeaderActionButton(icon: AppIcon.Action.swapPanels)` |
+| Site header scratchpad button | `square.and.pencil` | `HeaderActionButton(icon: AppIcon.Content.scratchpad)` |
+| Site header weather item | `cloud.sun` | `HeaderInfoItem(icon: AppIcon.State.weather)` |
+| Header status row actions | `arrow.clockwise`, `xmark` | `AppIcon.State.retry`, `AppIcon.Action.close` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
 - widgets and extensions
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, and shared bridge plus notes panel static icon slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, and website header/status quick-action slices
 - dynamic/external symbol payloads
 - the production-wide strict source guard

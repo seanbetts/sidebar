@@ -141,7 +141,7 @@ public struct SiteHeaderBar: View {
                         .offset(x: -8)
                 }
                 VStack(alignment: .trailing, spacing: 4) {
-                    HeaderInfoItem(icon: "cloud.sun", text: weatherText)
+                    HeaderInfoItem(icon: AppIcon.State.weather, text: weatherText)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                     Text(locationText)
@@ -255,7 +255,7 @@ public struct SiteHeaderBar: View {
     private var desktopTrailingActionButtons: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             HeaderActionButton(
-                systemName: "arrow.left.arrow.right",
+                icon: AppIcon.Action.swapPanels,
                 accessibilityLabel: "Swap panels",
                 action: { onSwapContent?() },
                 isDisabled: onSwapContent == nil,
@@ -263,7 +263,7 @@ public struct SiteHeaderBar: View {
             )
 
             HeaderActionButton(
-                systemName: "square.and.pencil",
+                icon: AppIcon.Content.scratchpad,
                 accessibilityLabel: "Scratchpad",
                 action: { isScratchpadPresented.toggle() },
                 chromeStyle: Self.desktopTrailingActionChromeStyle
@@ -379,12 +379,12 @@ public struct SiteHeaderBar: View {
 }
 
 private struct HeaderInfoItem: View {
-    let icon: String
+    let icon: AppIcon
     let text: String
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: icon)
+            Image(appIcon: icon)
             Text(text)
                 .appFont(.subheading)
         }
