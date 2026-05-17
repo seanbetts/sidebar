@@ -68,6 +68,8 @@ public extension AppIcon {
     enum Navigation {
         public static let back = AppIcon(rawValue: "chevron.left")
         public static let forward = AppIcon(rawValue: "chevron.right")
+        public static let previousItem = AppIcon(rawValue: "arrow.up")
+        public static let nextItem = AppIcon(rawValue: "arrow.down")
         public static let chevronRight = AppIcon(rawValue: "chevron.right")
         public static let chevronUp = AppIcon(rawValue: "chevron.up")
         public static let chevronDown = AppIcon(rawValue: "chevron.down")
@@ -139,6 +141,16 @@ public extension AppIcon {
     enum Notes {
         public static let formatting = AppIcon(rawValue: "textformat")
         public static let unsavedChanges = AppIcon(rawValue: "pencil.circle.fill")
+        public static let bold = AppIcon(rawValue: "bold")
+        public static let italic = AppIcon(rawValue: "italic")
+        public static let underline = AppIcon(rawValue: "underline")
+        public static let strikethrough = AppIcon(rawValue: "strikethrough")
+        public static let inlineCode = AppIcon(rawValue: "curlybraces")
+        public static let codeBlock = AppIcon(rawValue: "chevron.left.forwardslash.chevron.right")
+        public static let unorderedList = AppIcon(rawValue: "list.bullet")
+        public static let orderedList = AppIcon(rawValue: "list.number")
+        public static let checklist = AppIcon(rawValue: "checklist")
+        public static let blockquote = AppIcon(rawValue: "text.quote")
     }
 
     enum Spreadsheet {
@@ -202,6 +214,15 @@ public extension AppIcon {
         public static let downloadTrayFilled = AppIcon(rawValue: "tray.and.arrow.down.fill")
         public static let failedBadge = AppIcon(rawValue: "exclamationmark")
         public static let canceledBadge = AppIcon(rawValue: "xmark")
+    }
+
+    enum Shortcut {
+        public static let showShortcuts = AppIcon(rawValue: "command")
+        public static let toggleSidebar = AppIcon(rawValue: "sidebar.left")
+        public static let sendMessage = AppIcon(rawValue: "paperplane")
+        public static let moveTask = AppIcon(rawValue: "arrowshape.turn.up.right")
+        public static let openInBrowser = AppIcon(rawValue: "safari")
+        public static let createFolder = AppIcon(rawValue: "folder.badge.plus")
     }
 
     enum Skills {

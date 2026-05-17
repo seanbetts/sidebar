@@ -68,7 +68,7 @@ final class UIKitNoteFormattingPopoverView: UIView {
 private extension UIKitNoteFormattingPopoverView {
     private struct InlineActionItem {
         let identifier: String
-        let symbol: String
+        let appIcon: AppIcon
         let action: (@MainActor @Sendable () -> Void)?
     }
 
@@ -86,19 +86,19 @@ private extension UIKitNoteFormattingPopoverView {
             (
                 "note-formatting-inline-group",
                 [
-                    InlineActionItem(identifier: "note-formatting-bold", symbol: "bold") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-bold", appIcon: AppIcon.Notes.bold) { [weak self] in
                         self?.currentConfiguration.onBoldTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-italic", symbol: "italic") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-italic", appIcon: AppIcon.Notes.italic) { [weak self] in
                         self?.currentConfiguration.onItalicTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-underline", symbol: "underline") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-underline", appIcon: AppIcon.Notes.underline) { [weak self] in
                         self?.currentConfiguration.onUnderlineTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-strikethrough", symbol: "strikethrough") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-strikethrough", appIcon: AppIcon.Notes.strikethrough) { [weak self] in
                         self?.currentConfiguration.onStrikethroughTap()
                         self?.onDismissRequested()
                     }
@@ -107,13 +107,13 @@ private extension UIKitNoteFormattingPopoverView {
             (
                 "note-formatting-code-group",
                 [
-                    InlineActionItem(identifier: "note-formatting-inline-code", symbol: "curlybraces") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-inline-code", appIcon: AppIcon.Notes.inlineCode) { [weak self] in
                         self?.currentConfiguration.onInlineCodeTap()
                         self?.onDismissRequested()
                     },
                     InlineActionItem(
                         identifier: "note-formatting-code-block",
-                        symbol: "chevron.left.forwardslash.chevron.right",
+                        appIcon: AppIcon.Notes.codeBlock,
                         action: codeBlockAction
                     )
                 ]
@@ -168,17 +168,17 @@ private extension UIKitNoteFormattingPopoverView {
                 [
                     InlineActionItem(
                         identifier: "note-formatting-unordered-list",
-                        symbol: "list.bullet",
+                        appIcon: AppIcon.Notes.unorderedList,
                         action: unorderedListAction
                     ),
                     InlineActionItem(
                         identifier: "note-formatting-ordered-list",
-                        symbol: "list.number",
+                        appIcon: AppIcon.Notes.orderedList,
                         action: orderedListAction
                     ),
                     InlineActionItem(
                         identifier: "note-formatting-checklist",
-                        symbol: "checklist",
+                        appIcon: AppIcon.Notes.checklist,
                         action: checklistAction
                     )
                 ]
@@ -188,7 +188,7 @@ private extension UIKitNoteFormattingPopoverView {
                 [
                     InlineActionItem(
                         identifier: "note-formatting-blockquote",
-                        symbol: "text.quote",
+                        appIcon: AppIcon.Notes.blockquote,
                         action: blockquoteAction
                     )
                 ]
@@ -369,7 +369,7 @@ private extension UIKitNoteFormattingPopoverView {
         let button = UIButton(type: .system)
         button.accessibilityIdentifier = item.identifier
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.configuration = pillButtonConfiguration(symbol: item.symbol, enabled: item.action != nil)
+        button.configuration = pillButtonConfiguration(appIcon: item.appIcon, enabled: item.action != nil)
         button.isEnabled = item.action != nil
         if let action = item.action {
             button.addAction(UIAction { _ in action() }, for: .touchUpInside)
@@ -379,9 +379,9 @@ private extension UIKitNoteFormattingPopoverView {
         return button
     }
 
-    func pillButtonConfiguration(symbol: String, enabled: Bool) -> UIButton.Configuration {
+    func pillButtonConfiguration(appIcon: AppIcon, enabled: Bool) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.plain()
-        configuration.image = UIImage(appIcon: AppIcon(rawValue: symbol))
+        configuration.image = UIImage(appIcon: appIcon)
         configuration.baseForegroundColor = enabled ? .label : .secondaryLabel
         configuration.background = .clear()
         return configuration
@@ -395,51 +395,61 @@ private extension UIKitNoteFormattingPopoverView {
 
     func updateInlineButtons() {
         let buttonStates = [
-            ("note-formatting-bold", currentConfiguration.isBoldActive, currentConfiguration.isEnabled, "bold"),
-            ("note-formatting-italic", currentConfiguration.isItalicActive, currentConfiguration.isEnabled, "italic"),
-            ("note-formatting-underline", currentConfiguration.isUnderlineActive, currentConfiguration.isEnabled, "underline"),
-            ("note-formatting-strikethrough", currentConfiguration.isStrikethroughActive, currentConfiguration.isEnabled, "strikethrough"),
-            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive, currentConfiguration.isEnabled, "curlybraces"),
+            ("note-formatting-bold", currentConfiguration.isBoldActive, currentConfiguration.isEnabled, AppIcon.Notes.bold),
+            ("note-formatting-italic", currentConfiguration.isItalicActive, currentConfiguration.isEnabled, AppIcon.Notes.italic),
+            ("note-formatting-underline", currentConfiguration.isUnderlineActive, currentConfiguration.isEnabled, AppIcon.Notes.underline),
+            (
+                "note-formatting-strikethrough",
+                currentConfiguration.isStrikethroughActive,
+                currentConfiguration.isEnabled,
+                AppIcon.Notes.strikethrough
+            ),
+            (
+                "note-formatting-inline-code",
+                currentConfiguration.isInlineCodeActive,
+                currentConfiguration.isEnabled,
+                AppIcon.Notes.inlineCode
+            ),
             (
                 "note-formatting-code-block",
                 currentConfiguration.isCodeBlockActive,
                 currentConfiguration.isCodeBlockEnabled,
-                "chevron.left.forwardslash.chevron.right"
+                AppIcon.Notes.codeBlock
             ),
             (
                 "note-formatting-unordered-list",
                 currentConfiguration.isUnorderedListActive,
                 currentConfiguration.isUnorderedListEnabled,
-                "list.bullet"
+                AppIcon.Notes.unorderedList
             ),
             (
                 "note-formatting-ordered-list",
                 currentConfiguration.isOrderedListActive,
                 currentConfiguration.isOrderedListEnabled,
-                "list.number"
+                AppIcon.Notes.orderedList
             ),
             (
                 "note-formatting-checklist",
                 currentConfiguration.isChecklistActive,
                 currentConfiguration.isChecklistEnabled,
-                "checklist"
+                AppIcon.Notes.checklist
             ),
             (
                 "note-formatting-blockquote",
                 currentConfiguration.isBlockquoteActive,
                 currentConfiguration.isBlockquoteEnabled,
-                "text.quote"
+                AppIcon.Notes.blockquote
             )
         ]
 
-        for (identifier, isActive, isEnabled, symbol) in buttonStates {
-            updateButton(identifier: identifier, active: isActive, enabled: isEnabled, symbol: symbol)
+        for (identifier, isActive, isEnabled, appIcon) in buttonStates {
+            updateButton(identifier: identifier, active: isActive, enabled: isEnabled, appIcon: appIcon)
         }
     }
 
-    func updateButton(identifier: String, active: Bool, enabled: Bool, symbol: String) {
+    func updateButton(identifier: String, active: Bool, enabled: Bool, appIcon: AppIcon) {
         guard let button = findDescendantButton(in: self, accessibilityIdentifier: identifier) else { return }
-        var configuration = pillButtonConfiguration(symbol: symbol, enabled: enabled)
+        var configuration = pillButtonConfiguration(appIcon: appIcon, enabled: enabled)
         if active {
             configuration.background = selectedButtonBackground()
         }

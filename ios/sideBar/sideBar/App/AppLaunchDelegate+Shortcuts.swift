@@ -113,18 +113,18 @@ extension AppLaunchDelegate {
     }
 
     func imageForShortcut(_ shortcut: KeyboardShortcut) -> UIImage? {
-        guard let symbolName = symbolName(for: shortcut) else { return nil }
-        return UIImage(appIcon: AppIcon(rawValue: symbolName))
+        guard let appIcon = appIcon(for: shortcut) else { return nil }
+        return UIImage(appIcon: appIcon)
     }
 
-    func symbolName(for shortcut: KeyboardShortcut) -> String? {
+    func appIcon(for shortcut: KeyboardShortcut) -> AppIcon? {
         switch shortcut.action {
         case .navigate(let section):
-            return Self.sectionSymbolNames[section]
+            return Self.sectionIcons[section]
         case .navigateList(let direction):
-            return Self.listDirectionSymbols[direction]
+            return Self.listDirectionIcons[direction]
         default:
-            return Self.actionSymbolNames[shortcut.action]
+            return Self.actionIcons[shortcut.action]
         }
     }
 
@@ -165,45 +165,45 @@ extension AppLaunchDelegate {
         }
     }
 
-    static let sectionSymbolNames: [AppSection: String] = [
-        .notes: "text.document",
-        .tasks: "checkmark.square",
-        .websites: "globe",
-        .files: "folder",
-        .skillsStore: "command.circle",
-        .chat: "bubble",
-        .settings: "gearshape"
+    static let sectionIcons: [AppSection: AppIcon] = [
+        .notes: AppIcon.Domain.notes,
+        .tasks: AppIcon.Domain.tasks,
+        .websites: AppIcon.Domain.websites,
+        .files: AppIcon.Domain.files,
+        .skillsStore: AppIcon.Domain.skillsStore,
+        .chat: AppIcon.Domain.chat,
+        .settings: AppIcon.Settings.appPreferences
     ]
 
-    static let listDirectionSymbols: [ShortcutListDirection: String] = [
-        .next: "arrow.down",
-        .previous: "arrow.up"
+    static let listDirectionIcons: [ShortcutListDirection: AppIcon] = [
+        .next: AppIcon.Navigation.nextItem,
+        .previous: AppIcon.Navigation.previousItem
     ]
 
-    static let actionSymbolNames: [ShortcutAction: String] = [
-        .openSettings: "gearshape",
-        .newItem: "plus",
-        .closeItem: "xmark",
-        .focusSearch: "magnifyingglass",
-        .refreshSection: "arrow.clockwise",
-        .showShortcuts: "command",
-        .openScratchpad: "square.and.pencil",
-        .toggleSidebar: "sidebar.left",
-        .sendMessage: "paperplane",
-        .attachFile: "paperclip",
-        .completeTask: "checkmark.circle",
-        .editTaskNotes: "note.text",
-        .moveTask: "arrowshape.turn.up.right",
-        .setTaskDueDate: "calendar",
-        .setTaskRepeat: "repeat",
-        .renameItem: "pencil",
-        .deleteItem: "trash",
-        .pinItem: "pin",
-        .archiveItem: "archivebox",
-        .openInBrowser: "safari",
-        .createFolder: "folder.badge.plus",
-        .openInDefaultApp: "arrow.up.right.square",
-        .quickLook: "eye"
+    static let actionIcons: [ShortcutAction: AppIcon] = [
+        .openSettings: AppIcon.Settings.appPreferences,
+        .newItem: AppIcon.Action.add,
+        .closeItem: AppIcon.Action.close,
+        .focusSearch: AppIcon.Action.search,
+        .refreshSection: AppIcon.Action.refresh,
+        .showShortcuts: AppIcon.Shortcut.showShortcuts,
+        .openScratchpad: AppIcon.Content.scratchpad,
+        .toggleSidebar: AppIcon.Shortcut.toggleSidebar,
+        .sendMessage: AppIcon.Shortcut.sendMessage,
+        .attachFile: AppIcon.Action.attach,
+        .completeTask: AppIcon.State.successCircle,
+        .editTaskNotes: AppIcon.Content.note,
+        .moveTask: AppIcon.Shortcut.moveTask,
+        .setTaskDueDate: AppIcon.Tasks.today,
+        .setTaskRepeat: AppIcon.Tasks.recurrence,
+        .renameItem: AppIcon.Action.rename,
+        .deleteItem: AppIcon.Action.delete,
+        .pinItem: AppIcon.Action.pin,
+        .archiveItem: AppIcon.Action.archive,
+        .openInBrowser: AppIcon.Shortcut.openInBrowser,
+        .createFolder: AppIcon.Shortcut.createFolder,
+        .openInDefaultApp: AppIcon.Action.openExternal,
+        .quickLook: AppIcon.Skills.promptPreview
     ]
 
     static let commandTypeMap: [ShortcutAction: ShortcutCommandType] = [

@@ -574,8 +574,16 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 | `sidebarListSwipeActions` delete action default | `trailingDeleteSystemImage: String = "trash"` | `trailingDeleteIcon: AppIcon = AppIcon.Action.delete` |
 | Production swipe-action callers | No caller-owned raw swipe symbols found | Existing text-only leading actions stay text-only; callers do not pass raw `leadingSystemImage` or `trailingDeleteSystemImage` parameters |
 
-## Explicit Later Boundaries
+## External And Dynamic Boundary Closure Slice
 
-The following boundary remains tracked under `RES-MP-13` for later slices:
+Completed on `2026-05-17` as the final `RES-MP-13` slice.
 
-- remaining semantic ownership for external/dynamic symbol payload catalogs that still originate as strings
+| Surface | Prior ownership | Final ownership |
+|---|---|---|
+| iOS shortcut menu images | `symbolName(for:)` plus `sectionSymbolNames`, `listDirectionSymbols`, and `actionSymbolNames` raw string catalogs | `appIcon(for:)` plus `sectionIcons`, `listDirectionIcons`, and `actionIcons` `AppIcon` catalogs rendered through `UIImage(appIcon:)` |
+| UIKit note-formatting popover actions | `InlineActionItem.symbol: String` rendered through `UIImage(appIcon: AppIcon(rawValue: symbol))` | `InlineActionItem.appIcon: AppIcon` rendered through `UIImage(appIcon:)` |
+| AppKit note-formatting popover actions | `InlineActionItem.symbol: String` rendered through `NSImage(systemSymbolName:)` | `InlineActionItem.appIcon: AppIcon` rendered through `NSImage(appIcon:)` |
+| Workspace action payload buttons | External `system_image` / `systemImage` strings | Approved external wire payload, converted to `AgentWorkspaceActionItem.appIcon` at the payload/model boundary before rendering |
+| Skill and tool-call metadata | External `SkillItem.id`, `SkillItem.iconKey`, `ToolCall.skillId`, and `ToolCall.iconKey` identifiers | Approved external metadata identifiers, resolved only through `SkillIconResolver` to known `AppIcon` values with fallback behavior |
+
+No explicit later boundaries remain for `RES-MP-13`.

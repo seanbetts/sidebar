@@ -157,6 +157,14 @@ Label("Profile", systemImage: AppIcon.Settings.profile.rawValue)
 
 **Rule**: Keep semantic decisions close to the domain. Keep raw symbol values in `AppIcon`.
 
+### Approved Dynamic Boundaries
+
+| Boundary | Why it remains string-shaped | Required conversion |
+|---|---|---|
+| `ActionItemPayload.systemImage` | Assistant/backend workspace action payloads use `system_image` / `systemImage` wire keys for compatibility | Convert to `AgentWorkspaceActionItem.appIcon` at the payload/model boundary and render through `Image(appIcon:)` |
+| `SkillItem.id` / `SkillItem.iconKey` | Skill metadata is external identity metadata, not raw SF Symbol ownership | Resolve known values through `SkillIconResolver` to `AppIcon`, with the standard fallback for unknown values |
+| `ToolCall.skillId` / `ToolCall.iconKey` | Tool-call metadata is external identity metadata, not raw SF Symbol ownership | Resolve known values through `SkillIconResolver` to `AppIcon`, with the standard fallback for unknown values |
+
 ---
 
 ## Rationalization
@@ -257,6 +265,8 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 |---|---|---|
 | Back | `Navigation.back` | `chevron.left` |
 | Forward | `Navigation.forward` | `chevron.right` |
+| Previous list item | `Navigation.previousItem` | `arrow.up` |
+| Next list item | `Navigation.nextItem` | `arrow.down` |
 | Disclosure right | `Navigation.chevronRight` | `chevron.right` |
 | Disclosure up | `Navigation.chevronUp` | `chevron.up` |
 | Disclosure down | `Navigation.chevronDown` | `chevron.down` |
@@ -347,6 +357,17 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Completed markdown task | `Markdown.taskCompleted` | `checkmark.square.fill` |
 | Incomplete markdown task | `Markdown.taskIncomplete` | `square` |
 | Notes formatting | `Notes.formatting` | `textformat` |
+| Unsaved note changes | `Notes.unsavedChanges` | `pencil.circle.fill` |
+| Bold formatting | `Notes.bold` | `bold` |
+| Italic formatting | `Notes.italic` | `italic` |
+| Underline formatting | `Notes.underline` | `underline` |
+| Strikethrough formatting | `Notes.strikethrough` | `strikethrough` |
+| Inline code formatting | `Notes.inlineCode` | `curlybraces` |
+| Code block formatting | `Notes.codeBlock` | `chevron.left.forwardslash.chevron.right` |
+| Unordered list formatting | `Notes.unorderedList` | `list.bullet` |
+| Ordered list formatting | `Notes.orderedList` | `list.number` |
+| Checklist formatting | `Notes.checklist` | `checklist` |
+| Blockquote formatting | `Notes.blockquote` | `text.quote` |
 | Spreadsheet row filter | `Spreadsheet.filterRows` | `line.3.horizontal.decrease.circle` |
 | Spreadsheet ascending sort | `Spreadsheet.sortAscending` | `arrowtriangle.up.fill` |
 | Spreadsheet descending sort | `Spreadsheet.sortDescending` | `arrowtriangle.down.fill` |
@@ -392,6 +413,17 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Finalizing download | `Widget.downloadTrayFilled` | `tray.and.arrow.down.fill` |
 | Compact failure badge | `Widget.failedBadge` | `exclamationmark` |
 | Compact cancellation badge | `Widget.canceledBadge` | `xmark` |
+
+### Keyboard shortcuts
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Show keyboard shortcuts | `Shortcut.showShortcuts` | `command` |
+| Toggle sidebar | `Shortcut.toggleSidebar` | `sidebar.left` |
+| Send message shortcut | `Shortcut.sendMessage` | `paperplane` |
+| Move task shortcut | `Shortcut.moveTask` | `arrowshape.turn.up.right` |
+| Open in browser shortcut | `Shortcut.openInBrowser` | `safari` |
+| Create folder shortcut | `Shortcut.createFolder` | `folder.badge.plus` |
 
 ---
 

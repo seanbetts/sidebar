@@ -39,16 +39,37 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
     func testUIKitDynamicIconBoundariesRenderThroughAppIconAdapters() throws {
         let headerActionIcon = try normalizedSource(at: ["sideBar", "Design", "Components", "HeaderActionIcon.swift"])
         let shortcuts = try normalizedSource(at: ["sideBar", "App", "AppLaunchDelegate+Shortcuts.swift"])
-        let formattingPopover = try normalizedSource(
+        let uiKitFormattingPopover = try normalizedSource(
             at: ["sideBar", "Views", "Notes", "UIKitNoteFormattingPopoverView.swift"]
+        )
+        let appKitFormattingPopover = try normalizedSource(
+            at: ["sideBar", "Views", "Notes", "AppKitNoteFormattingPopoverView.swift"]
         )
 
         XCTAssertTrue(headerActionIcon.contains("convenienceinit?(appIcon:AppIcon)"))
         XCTAssertTrue(headerActionIcon.contains("self.init(systemName:appIcon.rawValue)"))
-        XCTAssertTrue(shortcuts.contains("UIImage(appIcon:AppIcon(rawValue:symbolName))"))
-        XCTAssertTrue(formattingPopover.contains("UIImage(appIcon:AppIcon(rawValue:symbol))"))
+        XCTAssertTrue(shortcuts.contains("guardletappIcon=appIcon(for:shortcut)else{returnnil}"))
+        XCTAssertTrue(shortcuts.contains("returnUIImage(appIcon:appIcon)"))
+        XCTAssertTrue(shortcuts.contains("funcappIcon(forshortcut:KeyboardShortcut)->AppIcon?"))
+        XCTAssertTrue(shortcuts.contains("staticletsectionIcons:[AppSection:AppIcon]"))
+        XCTAssertTrue(shortcuts.contains("staticletlistDirectionIcons:[ShortcutListDirection:AppIcon]"))
+        XCTAssertTrue(shortcuts.contains("staticletactionIcons:[ShortcutAction:AppIcon]"))
+        XCTAssertTrue(uiKitFormattingPopover.contains("letappIcon:AppIcon"))
+        XCTAssertTrue(uiKitFormattingPopover.contains("pillButtonConfiguration(appIcon:item.appIcon"))
+        XCTAssertTrue(uiKitFormattingPopover.contains("UIImage(appIcon:appIcon)"))
+        XCTAssertTrue(appKitFormattingPopover.contains("letappIcon:AppIcon"))
+        XCTAssertTrue(appKitFormattingPopover.contains("NSImage(appIcon:item.appIcon"))
+        XCTAssertFalse(shortcuts.contains("symbolName(forshortcut:KeyboardShortcut)"))
+        XCTAssertFalse(shortcuts.contains("sectionSymbolNames:[AppSection:String]"))
+        XCTAssertFalse(shortcuts.contains("listDirectionSymbols:[ShortcutListDirection:String]"))
+        XCTAssertFalse(shortcuts.contains("actionSymbolNames:[ShortcutAction:String]"))
+        XCTAssertFalse(shortcuts.contains("UIImage(appIcon:AppIcon(rawValue:symbolName))"))
         XCTAssertFalse(shortcuts.contains("UIImage(systemName:symbolName)"))
-        XCTAssertFalse(formattingPopover.contains("UIImage(systemName:symbol)"))
+        XCTAssertFalse(uiKitFormattingPopover.contains("letsymbol:String"))
+        XCTAssertFalse(uiKitFormattingPopover.contains("UIImage(appIcon:AppIcon(rawValue:symbol))"))
+        XCTAssertFalse(uiKitFormattingPopover.contains("UIImage(systemName:symbol)"))
+        XCTAssertFalse(appKitFormattingPopover.contains("letsymbol:String"))
+        XCTAssertFalse(appKitFormattingPopover.contains("systemSymbolName:item.symbol"))
     }
 
     func testProductionIconRenderingHasNoDirectImageSystemNameBoundaries() throws {
@@ -74,11 +95,28 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
             ),
             (
                 ["sideBar", "App", "AppLaunchDelegate+Shortcuts.swift"],
-                ["UIImage(systemName:symbolName)"]
+                [
+                    "UIImage(systemName:symbolName)",
+                    "UIImage(appIcon:AppIcon(rawValue:symbolName))",
+                    "sectionSymbolNames:[AppSection:String]",
+                    "listDirectionSymbols:[ShortcutListDirection:String]",
+                    "actionSymbolNames:[ShortcutAction:String]"
+                ]
             ),
             (
                 ["sideBar", "Views", "Notes", "UIKitNoteFormattingPopoverView.swift"],
-                ["UIImage(systemName:symbol)"]
+                [
+                    "UIImage(systemName:symbol)",
+                    "UIImage(appIcon:AppIcon(rawValue:symbol))",
+                    "letsymbol:String"
+                ]
+            ),
+            (
+                ["sideBar", "Views", "Notes", "AppKitNoteFormattingPopoverView.swift"],
+                [
+                    "systemSymbolName:item.symbol",
+                    "letsymbol:String"
+                ]
             )
         ]
 

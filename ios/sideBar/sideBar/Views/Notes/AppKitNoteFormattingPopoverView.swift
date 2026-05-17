@@ -1,13 +1,14 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import sideBarShared
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class AppKitNoteFormattingPopoverView: NSView {
     private struct InlineActionItem {
         let identifier: String
-        let symbol: String
+        let appIcon: AppIcon
         let action: (@MainActor @Sendable () -> Void)?
     }
 
@@ -153,19 +154,19 @@ private extension AppKitNoteFormattingPopoverView {
             (
                 "note-formatting-inline-group",
                 [
-                    InlineActionItem(identifier: "note-formatting-bold", symbol: "bold") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-bold", appIcon: AppIcon.Notes.bold) { [weak self] in
                         self?.currentConfiguration.onBoldTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-italic", symbol: "italic") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-italic", appIcon: AppIcon.Notes.italic) { [weak self] in
                         self?.currentConfiguration.onItalicTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-underline", symbol: "underline") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-underline", appIcon: AppIcon.Notes.underline) { [weak self] in
                         self?.currentConfiguration.onUnderlineTap()
                         self?.onDismissRequested()
                     },
-                    InlineActionItem(identifier: "note-formatting-strikethrough", symbol: "strikethrough") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-strikethrough", appIcon: AppIcon.Notes.strikethrough) { [weak self] in
                         self?.currentConfiguration.onStrikethroughTap()
                         self?.onDismissRequested()
                     }
@@ -174,13 +175,13 @@ private extension AppKitNoteFormattingPopoverView {
             (
                 "note-formatting-code-group",
                 [
-                    InlineActionItem(identifier: "note-formatting-inline-code", symbol: "curlybraces") { [weak self] in
+                    InlineActionItem(identifier: "note-formatting-inline-code", appIcon: AppIcon.Notes.inlineCode) { [weak self] in
                         self?.currentConfiguration.onInlineCodeTap()
                         self?.onDismissRequested()
                     },
                     InlineActionItem(
                         identifier: "note-formatting-code-block",
-                        symbol: "chevron.left.forwardslash.chevron.right",
+                        appIcon: AppIcon.Notes.codeBlock,
                         action: codeBlockAction
                     )
                 ]
@@ -206,24 +207,24 @@ private extension AppKitNoteFormattingPopoverView {
             ("note-formatting-future-list-group", [
                 InlineActionItem(
                     identifier: "note-formatting-unordered-list",
-                    symbol: "list.bullet",
+                    appIcon: AppIcon.Notes.unorderedList,
                     action: unorderedListAction
                 ),
                 InlineActionItem(
                     identifier: "note-formatting-ordered-list",
-                    symbol: "list.number",
+                    appIcon: AppIcon.Notes.orderedList,
                     action: orderedListAction
                 ),
                 InlineActionItem(
                     identifier: "note-formatting-checklist",
-                    symbol: "checklist",
+                    appIcon: AppIcon.Notes.checklist,
                     action: checklistAction
                 )
             ]),
             ("note-formatting-future-blockquote-group", [
                 InlineActionItem(
                     identifier: "note-formatting-blockquote",
-                    symbol: "text.quote",
+                    appIcon: AppIcon.Notes.blockquote,
                     action: blockquoteAction
                 )
             ])
@@ -428,10 +429,7 @@ private extension AppKitNoteFormattingPopoverView {
     private func makeButton(for item: InlineActionItem) -> ActionButton {
         let button = ActionButton()
         button.identifier = NSUserInterfaceItemIdentifier(item.identifier)
-        button.image = NSImage(
-            systemSymbolName: item.symbol,
-            accessibilityDescription: nil
-        )
+        button.image = NSImage(appIcon: item.appIcon, accessibilityDescription: nil)
         button.imageScaling = .scaleProportionallyDown
         button.contentTintColor = item.action == nil ? .secondaryLabelColor : .labelColor
         button.isEnabled = item.action != nil
