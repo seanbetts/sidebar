@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension icon, note bridge plus chat header static icon, sidebar swipe-action helper, and workspace action payload ownership slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension icon, note bridge plus chat header static icon, sidebar swipe-action helper, workspace action payload ownership, and SkillIconResolver Store/Settings UI ownership slices completed after the initial catalog work.
 
 Categories:
 
@@ -475,6 +475,18 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 | Agent workspace action item model | Assistant-supplied `system_image` / `systemImage` strings stored as `AgentWorkspaceActionItem.systemImage` | `ActionItemPayload` keeps the external payload keys and converts to `AgentWorkspaceActionItem.appIcon` |
 | Agent workspace action button renderer | `Image(appIcon: AppIcon(rawValue: systemImage))` in the SwiftUI button body | `Image(appIcon: appIcon)` from the action model |
 
+## Skill Icon Resolver Ownership Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Skill resolver UI APIs | `iconName(for:)`, `settingsIconName(for:)`, and `iconName(skillId:iconKey:)` returned raw SF Symbol strings | `SkillIconResolver.appIcon(for:)`, `SkillIconResolver.settingsAppIcon(for:)`, and `SkillIconResolver.appIcon(skillId:iconKey:)` return `AppIcon` |
+| Skill app icon wrapper | `SkillAppIcon(systemName: String)` | `SkillAppIcon(appIcon: AppIcon)` |
+| Skill symbol renderer | `SkillSymbolIcon(systemName:)` overloads bridged strings into rendering | `SkillSymbolIcon(appIcon:)` only for app-owned skill icon UI |
+| macOS settings skill rows | `SettingsMacSkillRow(systemImage:)` string bridge for skill rows | `SettingsMacSkillRow(icon: AppIcon)` |
+| Skills Store card and detail surfaces | `skillIconName: String` from `SkillsStoreLogic.iconName(for:)` | `skillIcon: AppIcon` from `SkillsStoreLogic.appIcon(for:)` and `SkillIconResolver.appIcon(for:)` |
+
 ## Widget And Share Extension Icon Slice
 
 Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
@@ -514,6 +526,6 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, and workspace action payload ownership slices
-- remaining semantic ownership for skill/external symbol payload catalogs that still originate as strings, including skill resolver string API callers
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, workspace action payload ownership, and SkillIconResolver Store/Settings UI ownership slices
+- remaining semantic ownership for external/dynamic symbol payload catalogs that still originate as strings
 - the production-wide strict source guard

@@ -132,7 +132,7 @@ enum SkillsStoreLogic {
         }
     }
 
-    static func iconName(for skill: SkillItem) -> String {
-        SkillIconResolver.iconName(for: skill)
+    static func appIcon(for skill: SkillItem) -> AppIcon {
+        SkillIconResolver.appIcon(for: skill)
     }
 }

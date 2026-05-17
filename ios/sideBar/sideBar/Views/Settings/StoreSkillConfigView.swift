@@ -93,7 +93,7 @@ struct StoreSkillConfigView: View {
                         message: "Install the skill here or review its current availability in your workspace."
                     ) {
                         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                            SkillAppIcon(systemName: SkillIconResolver.settingsIconName(for: skill))
+                            SkillAppIcon(appIcon: SkillIconResolver.settingsAppIcon(for: skill))
                             Spacer()
                             if hasStoreInstallAction {
                                 installActionButton
@@ -207,7 +207,7 @@ struct StoreSkillConfigView: View {
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                SkillAppIcon(systemName: SkillIconResolver.settingsIconName(for: skill))
+                SkillAppIcon(appIcon: SkillIconResolver.settingsAppIcon(for: skill))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.displayName(for: skill))

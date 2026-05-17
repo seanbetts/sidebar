@@ -1,5 +1,6 @@
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 final class SkillsStoreLogicTests: XCTestCase {
     func testStoreSkillsFiltersAndSortsVisibleStoreSkills() {
@@ -205,12 +206,12 @@ final class SkillsStoreLogicTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["briefs", "planner"])
     }
 
-    func testIconNameUsesKnownMappingsAndFallback() {
+    func testAppIconUsesKnownMappingsAndFallback() {
         let mapped = makeSkill(id: "audio-transcribe", name: "Audio", tier: .store)
-        XCTAssertEqual(SkillsStoreLogic.iconName(for: mapped), "waveform")
+        XCTAssertEqual(SkillsStoreLogic.appIcon(for: mapped), AppIcon.Media.waveform)
 
         let unknown = makeSkill(id: "unknown-skill", name: "Unknown", tier: .store)
-        XCTAssertEqual(SkillsStoreLogic.iconName(for: unknown), "puzzlepiece.extension")
+        XCTAssertEqual(SkillsStoreLogic.appIcon(for: unknown), AppIcon.Skills.fallback)
     }
 
     private func makeSkill(

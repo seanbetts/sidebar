@@ -1,8 +1,9 @@
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 final class SkillIconResolverTests: XCTestCase {
-    func testIconNameUsesKnownSkillMappings() {
+    func testAppIconUsesKnownSkillMappings() {
         let skill = SkillItem(
             id: "audio-transcribe",
             name: "Audio",
@@ -11,13 +12,13 @@ final class SkillIconResolverTests: XCTestCase {
             tier: .store
         )
 
-        XCTAssertEqual(SkillIconResolver.iconName(for: skill), "waveform")
+        XCTAssertEqual(SkillIconResolver.appIcon(for: skill), AppIcon.Media.waveform)
     }
 
-    func testIconNameFallsBackForUnknownSkill() {
+    func testAppIconFallsBackForUnknownSkill() {
         XCTAssertEqual(
-            SkillIconResolver.iconName(skillId: "unknown-skill", iconKey: nil),
-            "puzzlepiece.extension"
+            SkillIconResolver.appIcon(skillId: "unknown-skill", iconKey: nil),
+            AppIcon.Skills.fallback
         )
     }
 
@@ -31,7 +32,7 @@ final class SkillIconResolverTests: XCTestCase {
             iconKey: "notes"
         )
 
-        XCTAssertEqual(SkillIconResolver.iconName(for: toolCall), "note.text")
+        XCTAssertEqual(SkillIconResolver.appIcon(for: toolCall), AppIcon.Content.note)
     }
 
     func testToolCallIconFallsBackToToolNameMapping() {
@@ -42,7 +43,7 @@ final class SkillIconResolverTests: XCTestCase {
             status: .success
         )
 
-        XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
+        XCTAssertEqual(SkillIconResolver.appIcon(for: legacyToolCall), AppIcon.Content.note)
     }
 
     func testEditNoteToolCallFallsBackToNotesIcon() {
@@ -53,7 +54,7 @@ final class SkillIconResolverTests: XCTestCase {
             status: .success
         )
 
-        XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
+        XCTAssertEqual(SkillIconResolver.appIcon(for: legacyToolCall), AppIcon.Content.note)
     }
 
     func testConversationsSkillUsesConversationIcon() {
@@ -64,7 +65,7 @@ final class SkillIconResolverTests: XCTestCase {
             category: "Productivity"
         )
 
-        XCTAssertEqual(SkillIconResolver.iconName(for: skill), "bubble.left.and.bubble.right")
+        XCTAssertEqual(SkillIconResolver.appIcon(for: skill), AppIcon.Skills.conversations)
     }
 
     func testSettingsIconsUseSidebarRailIconsForSectionSkills() {
@@ -93,9 +94,9 @@ final class SkillIconResolverTests: XCTestCase {
             category: "Productivity"
         )
 
-        XCTAssertEqual(SkillIconResolver.settingsIconName(for: conversations), AppSection.chat.iconName)
-        XCTAssertEqual(SkillIconResolver.settingsIconName(for: notes), AppSection.notes.iconName)
-        XCTAssertEqual(SkillIconResolver.settingsIconName(for: files), AppSection.files.iconName)
-        XCTAssertEqual(SkillIconResolver.settingsIconName(for: websites), AppSection.websites.iconName)
+        XCTAssertEqual(SkillIconResolver.settingsAppIcon(for: conversations), AppSection.chat.appIcon)
+        XCTAssertEqual(SkillIconResolver.settingsAppIcon(for: notes), AppSection.notes.appIcon)
+        XCTAssertEqual(SkillIconResolver.settingsAppIcon(for: files), AppSection.files.appIcon)
+        XCTAssertEqual(SkillIconResolver.settingsAppIcon(for: websites), AppSection.websites.appIcon)
     }
 }

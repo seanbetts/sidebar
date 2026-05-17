@@ -215,7 +215,7 @@ public struct SkillsStoreView: View {
         let installed = isInstalled(skill)
 
         return SkillsStoreCard(
-            skillIconName: SkillIconResolver.iconName(for: skill),
+            skillIcon: SkillIconResolver.appIcon(for: skill),
             typeTitle: formattedSkillType(skill.category),
             displayName: viewModel.displayName(for: skill),
             displayDescription: viewModel.displayDescription(for: skill),

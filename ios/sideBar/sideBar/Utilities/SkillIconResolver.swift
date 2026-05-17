@@ -101,31 +101,23 @@ enum SkillIconResolver {
         "write file": "files"
     ]
 
-    static func iconName(for skill: SkillItem) -> String {
-        iconName(skillId: skill.id, iconKey: skill.iconKey)
+    static func appIcon(for skill: SkillItem) -> AppIcon {
+        appIcon(skillId: skill.id, iconKey: skill.iconKey)
     }
 
-    static func iconName(for toolCall: ToolCall) -> String {
-        appIcon(for: toolCall).rawValue
-    }
-
-    static func settingsIconName(for skill: SkillItem) -> String {
+    static func settingsAppIcon(for skill: SkillItem) -> AppIcon {
         switch normalized(skill.id) {
         case "conversations":
-            return AppSection.chat.iconName
+            return AppSection.chat.appIcon
         case "notes":
-            return AppSection.notes.iconName
+            return AppSection.notes.appIcon
         case "files":
-            return AppSection.files.iconName
+            return AppSection.files.appIcon
         case "web-save", "websites":
-            return AppSection.websites.iconName
+            return AppSection.websites.appIcon
         default:
-            return iconName(for: skill)
+            return appIcon(for: skill)
         }
-    }
-
-    static func iconName(skillId: String?, iconKey: String?) -> String {
-        return appIcon(skillId: skillId, iconKey: iconKey).rawValue
     }
 
     static func appIcon(skillId: String?, iconKey: String?) -> AppIcon {

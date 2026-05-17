@@ -11,11 +11,18 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
         )
 
         XCTAssertTrue(skillIconView.contains("leticon:AppIcon"))
-        XCTAssertTrue(skillIconView.contains("self.icon=AppIcon(rawValue:systemName)"))
+        XCTAssertTrue(skillIconView.contains("letappIcon:AppIcon"))
         XCTAssertTrue(skillIconView.contains("Image(appIcon:icon)"))
+        XCTAssertTrue(skillIconView.contains("SkillSymbolIcon(appIcon:appIcon"))
+        XCTAssertFalse(skillIconView.contains("systemName:String"))
+        XCTAssertFalse(skillIconView.contains("self.icon=AppIcon(rawValue:systemName)"))
+        XCTAssertFalse(skillIconView.contains("SkillSymbolIcon(systemName:"))
         XCTAssertFalse(skillIconView.contains("Image(systemName:systemName)"))
 
-        XCTAssertTrue(settingsMac.contains("Image(appIcon:AppIcon(rawValue:systemImage))"))
+        XCTAssertTrue(settingsMac.contains("leticon:AppIcon"))
+        XCTAssertTrue(settingsMac.contains("Image(appIcon:icon)"))
+        XCTAssertFalse(settingsMac.contains("letsystemImage:String?"))
+        XCTAssertFalse(settingsMac.contains("Image(appIcon:AppIcon(rawValue:systemImage))"))
         XCTAssertFalse(settingsMac.contains("Image(systemName:systemImage)"))
 
         XCTAssertTrue(workspaceModels.contains("publicletappIcon:AppIcon?"))
@@ -48,11 +55,18 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
         let forbiddenByFile: [([String], [String])] = [
             (
                 ["sideBar", "Views", "Common", "SkillIconView.swift"],
-                ["Image(systemName:systemName)"]
+                [
+                    "Image(systemName:systemName)",
+                    "self.icon=AppIcon(rawValue:systemName)",
+                    "SkillSymbolIcon(systemName:"
+                ]
             ),
             (
                 ["sideBar", "Views", "Settings", "SettingsMacStyles.swift"],
-                ["Image(systemName:systemImage)"]
+                [
+                    "Image(systemName:systemImage)",
+                    "Image(appIcon:AppIcon(rawValue:systemImage))"
+                ]
             ),
             (
                 ["sideBar", "Views", "AgentWorkspace", "AgentWorkspaceSurfaceView+Helpers.swift"],

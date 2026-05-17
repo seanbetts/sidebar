@@ -178,25 +178,9 @@ struct SettingsMacPanelCard<Content: View>: View {
 struct SettingsMacSkillRow<Trailing: View>: View {
     let title: String
     let subtitle: String
-    let systemImage: String?
-    let icon: AppIcon?
+    let icon: AppIcon
     let action: (() -> Void)?
     private let trailing: Trailing
-
-    init(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        action: (() -> Void)? = nil,
-        @ViewBuilder trailing: () -> Trailing
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.icon = nil
-        self.action = action
-        self.trailing = trailing()
-    }
 
     init(
         title: String,
@@ -207,7 +191,6 @@ struct SettingsMacSkillRow<Trailing: View>: View {
     ) {
         self.title = title
         self.subtitle = subtitle
-        self.systemImage = nil
         self.icon = icon
         self.action = action
         self.trailing = trailing()
@@ -253,15 +236,9 @@ struct SettingsMacSkillRow<Trailing: View>: View {
 
     @ViewBuilder
     private var rowIcon: some View {
-        if let icon {
-            Image(appIcon: icon)
-                .appFont(.subheading)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-        } else if let systemImage {
-            Image(appIcon: AppIcon(rawValue: systemImage))
-                .appFont(.subheading)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-        }
+        Image(appIcon: icon)
+            .appFont(.subheading)
+            .foregroundStyle(DesignTokens.Colors.textSecondary)
     }
 
     static var chromeKind: GlassChrome.Kind {

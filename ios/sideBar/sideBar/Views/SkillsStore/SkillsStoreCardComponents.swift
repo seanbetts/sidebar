@@ -71,7 +71,7 @@ struct SkillsStoreFilterChip: View {
 }
 
 struct SkillsStoreCard: View {
-    let skillIconName: String
+    let skillIcon: AppIcon
     let typeTitle: String
     let displayName: String
     let displayDescription: String
@@ -90,7 +90,7 @@ struct SkillsStoreCard: View {
             Button(action: onCardTap) {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                        SkillAppIcon(systemName: skillIconName)
+                        SkillAppIcon(appIcon: skillIcon)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(typeTitle.uppercased())

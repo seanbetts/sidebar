@@ -267,11 +267,53 @@ final class Task15AppIconSourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("privatestaticletfallbackIcon=AppIcon.Skills.fallback"))
         XCTAssertTrue(normalized.contains("privatestaticletskillIcons:[String:AppIcon]"))
+        XCTAssertTrue(normalized.contains("staticfuncappIcon(forskill:SkillItem)->AppIcon"))
         XCTAssertTrue(normalized.contains("staticfuncappIcon(skillId:String?,iconKey:String?)->AppIcon"))
-        XCTAssertTrue(normalized.contains("returnappIcon(skillId:skillId,iconKey:iconKey).rawValue"))
+        XCTAssertTrue(normalized.contains("staticfuncsettingsAppIcon(forskill:SkillItem)->AppIcon"))
         XCTAssertTrue(normalized.contains("\"audio-transcribe\":AppIcon.Media.waveform"))
+        XCTAssertFalse(normalized.contains("staticfunciconName("))
+        XCTAssertFalse(normalized.contains("staticfuncsettingsIconName("))
         XCTAssertFalse(normalized.contains("fallbackSystemName"))
         XCTAssertFalse(normalized.contains("skillSymbols:[String:String]"))
+    }
+
+    func testSkillIconUiSurfacesConsumeAppIconValues() throws {
+        let skillIconView = try source(at: ["sideBar", "Views", "Common", "SkillIconView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let skillsStoreCard = try source(at: ["sideBar", "Views", "SkillsStore", "SkillsStoreCardComponents.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let skillsStoreDetail = try source(at: ["sideBar", "Views", "SkillsStore", "SkillsStoreDetailView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let skillsStoreLogic = try source(at: ["sideBar", "Views", "SkillsStore", "SkillsStoreLogic.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let settingsAdditional = try source(at: ["sideBar", "Views", "Settings", "SettingsSections+Additional.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let storeSkillConfig = try source(at: ["sideBar", "Views", "Settings", "StoreSkillConfigView.swift"])
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(skillIconView.contains("letappIcon:AppIcon"))
+        XCTAssertTrue(skillIconView.contains("SkillSymbolIcon(appIcon:appIcon"))
+        XCTAssertFalse(skillIconView.contains("letsystemName:String"))
+        XCTAssertFalse(skillIconView.contains("SkillAppIcon(systemName:"))
+        XCTAssertFalse(skillIconView.contains("SkillSymbolIcon(systemName:"))
+
+        XCTAssertTrue(skillsStoreCard.contains("letskillIcon:AppIcon"))
+        XCTAssertTrue(skillsStoreCard.contains("SkillAppIcon(appIcon:skillIcon)"))
+        XCTAssertFalse(skillsStoreCard.contains("letskillIconName:String"))
+        XCTAssertFalse(skillsStoreCard.contains("SkillAppIcon(systemName:skillIconName)"))
+
+        XCTAssertTrue(skillsStoreDetail.contains("skillIcon:SkillIconResolver.appIcon(for:skill)"))
+        XCTAssertFalse(skillsStoreDetail.contains("skillIconName:SkillIconResolver.iconName(for:skill)"))
+
+        XCTAssertTrue(skillsStoreLogic.contains("staticfuncappIcon(forskill:SkillItem)->AppIcon"))
+        XCTAssertFalse(skillsStoreLogic.contains("staticfunciconName(forskill:SkillItem)->String"))
+
+        XCTAssertTrue(settingsAdditional.contains("SkillSymbolIcon(appIcon:SkillIconResolver.settingsAppIcon(for:skill)"))
+        XCTAssertTrue(settingsAdditional.contains("icon:SkillIconResolver.settingsAppIcon(for:skill)"))
+        XCTAssertFalse(settingsAdditional.contains("SkillIconResolver.settingsIconName(for:skill)"))
+
+        XCTAssertTrue(storeSkillConfig.contains("SkillAppIcon(appIcon:SkillIconResolver.settingsAppIcon(for:skill))"))
+        XCTAssertFalse(storeSkillConfig.contains("SkillAppIcon(systemName:SkillIconResolver.settingsIconName(for:skill))"))
     }
 
     func testSharedEmptySearchStatusComponentsUseAppIconVocabulary() throws {

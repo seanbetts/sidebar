@@ -10,19 +10,6 @@ struct SkillSymbolIcon: View {
     let foreground: Color
 
     init(
-        systemName: String,
-        appFontStyle: AppFontStyle = .subheading,
-        foreground: Color = DesignTokens.Colors.textSecondary
-    ) {
-        self.icon = AppIcon(rawValue: systemName)
-        self.appFontStyle = appFontStyle
-        self.pointSize = nil
-        self.weight = .regular
-        self.design = .default
-        self.foreground = foreground
-    }
-
-    init(
         appIcon: AppIcon,
         appFontStyle: AppFontStyle = .subheading,
         foreground: Color = DesignTokens.Colors.textSecondary
@@ -32,21 +19,6 @@ struct SkillSymbolIcon: View {
         self.pointSize = nil
         self.weight = .regular
         self.design = .default
-        self.foreground = foreground
-    }
-
-    init(
-        systemName: String,
-        pointSize: CGFloat,
-        weight: Font.Weight = .regular,
-        design: Font.Design = .default,
-        foreground: Color = DesignTokens.Colors.textSecondary
-    ) {
-        self.icon = AppIcon(rawValue: systemName)
-        self.appFontStyle = nil
-        self.pointSize = pointSize
-        self.weight = weight
-        self.design = design
         self.foreground = foreground
     }
 
@@ -84,7 +56,7 @@ struct SkillSymbolIcon: View {
 }
 
 struct SkillAppIcon: View {
-    let systemName: String
+    let appIcon: AppIcon
     var size: CGFloat = 62
     var cornerRadius: CGFloat = 16
     var iconSize: CGFloat = 28
@@ -94,7 +66,7 @@ struct SkillAppIcon: View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.white)
             SkillSymbolIcon(
-                systemName: systemName,
+                appIcon: appIcon,
                 pointSize: iconSize,
                 weight: .medium,
                 foreground: Color.black.opacity(0.75)
