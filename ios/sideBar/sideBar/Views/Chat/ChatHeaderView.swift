@@ -160,7 +160,7 @@ struct ChatHeaderView: View {
                         }
                         if showNewChatButton {
                             HeaderActionButton(
-                                systemName: "plus",
+                                icon: AppIcon.Action.add,
                                 accessibilityLabel: "New chat",
                                 action: {
                                     Task {
@@ -172,7 +172,7 @@ struct ChatHeaderView: View {
                         }
                         if showCloseButton {
                             HeaderActionButton(
-                                systemName: "xmark",
+                                icon: AppIcon.Action.close,
                                 accessibilityLabel: "Close chat",
                                 action: {
                                     Task {

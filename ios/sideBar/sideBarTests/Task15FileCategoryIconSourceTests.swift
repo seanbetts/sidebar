@@ -21,6 +21,9 @@ final class Task15FileCategoryIconSourceTests: XCTestCase {
             at: ["sideBar", "Views", "Common", "SideBarMarkdown+Gallery.swift"]
         )
         let markdown = try normalizedSource(at: ["sideBar", "Views", "Common", "SideBarMarkdown.swift"])
+        let selectableNoteRead = try normalizedSource(
+            at: ["sideBar", "Views", "Notes", "SelectableNoteReadView.swift"]
+        )
 
         XCTAssertTrue(appIcon.contains("publicstaticletrichTextDocument=AppIcon(rawValue:\"doc.richtext\")"))
         XCTAssertTrue(appIcon.contains("publicstaticlettable=AppIcon(rawValue:\"tablecells\")"))
@@ -67,6 +70,15 @@ final class Task15FileCategoryIconSourceTests: XCTestCase {
         XCTAssertFalse(markdown.contains("Image(systemName:\"photo\")"))
         XCTAssertFalse(markdown.contains("\"checkmark.square.fill\""))
         XCTAssertFalse(markdown.contains("Image(systemName:configuration.isCompleted?"))
+        XCTAssertTrue(
+            selectableNoteRead.contains(
+                "letappIcon:AppIcon=isChecked?AppIcon.Markdown.taskCompleted:AppIcon.Markdown.taskIncomplete"
+            )
+        )
+        XCTAssertTrue(selectableNoteRead.contains("UIImage(appIcon:appIcon)"))
+        XCTAssertTrue(selectableNoteRead.contains("NSImage(appIcon:appIcon"))
+        XCTAssertFalse(selectableNoteRead.contains("\"checkmark.square.fill\""))
+        XCTAssertFalse(selectableNoteRead.contains("systemSymbolName:isChecked?"))
     }
 
     private func normalizedSource(

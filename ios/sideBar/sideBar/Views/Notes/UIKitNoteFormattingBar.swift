@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 
@@ -218,13 +219,13 @@ extension UIKitNoteFormattingBar {
     static func buttonConfiguration(showsVisibleChrome: Bool = true) -> UIButton.Configuration {
         var configuration: UIButton.Configuration = .plain()
         if showsVisibleChrome {
-            configuration.image = UIImage(
-                systemName: "textformat",
-                withConfiguration: UIImage.SymbolConfiguration(
-                    pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
-                    weight: .semibold
+            configuration.image = UIImage(appIcon: AppIcon.Notes.formatting)?
+                .withConfiguration(
+                    UIImage.SymbolConfiguration(
+                        pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
+                        weight: .semibold
+                    )
                 )
-            )
         } else {
             configuration.image = nil
         }

@@ -68,6 +68,13 @@ final class Task15ChromeStatusIconSourceTests: XCTestCase {
             at: ["sideBar", "Views", "MorningDigest", "MorningDigestView.swift"]
         )
         let formattingBar = try normalizedSource(at: ["sideBar", "Views", "Notes", "NoteFormattingBar.swift"])
+        let uiKitFormattingBar = try normalizedSource(
+            at: ["sideBar", "Views", "Notes", "UIKitNoteFormattingBar.swift"]
+        )
+        let appKitFormattingBar = try normalizedSource(
+            at: ["sideBar", "Views", "Notes", "AppKitNoteFormattingBar.swift"]
+        )
+        let chatHeader = try normalizedSource(at: ["sideBar", "Views", "Chat", "ChatHeaderView.swift"])
         let notesComponents = try normalizedSource(at: ["sideBar", "Views", "Notes", "NotesViewComponents.swift"])
 
         XCTAssertTrue(queuedChanges.contains("systemImage:AppIcon.State.successCircle.rawValue"))
@@ -98,6 +105,15 @@ final class Task15ChromeStatusIconSourceTests: XCTestCase {
         XCTAssertTrue(formattingBar.contains("systemImage:AppIcon.State.selectionCheck.rawValue"))
         XCTAssertFalse(formattingBar.contains("systemName:\"textformat\""))
         XCTAssertFalse(formattingBar.contains("systemImage:\"checkmark\""))
+        XCTAssertTrue(uiKitFormattingBar.contains("UIImage(appIcon:AppIcon.Notes.formatting)"))
+        XCTAssertFalse(uiKitFormattingBar.contains("systemName:\"textformat\""))
+        XCTAssertTrue(appKitFormattingBar.contains("NSImage(appIcon:AppIcon.Notes.formatting"))
+        XCTAssertFalse(appKitFormattingBar.contains("systemSymbolName:\"textformat\""))
+
+        XCTAssertTrue(chatHeader.contains("HeaderActionButton(icon:AppIcon.Action.add"))
+        XCTAssertTrue(chatHeader.contains("HeaderActionButton(icon:AppIcon.Action.close"))
+        XCTAssertFalse(chatHeader.contains("HeaderActionButton(systemName:\"plus\""))
+        XCTAssertFalse(chatHeader.contains("HeaderActionButton(systemName:\"xmark\""))
 
         XCTAssertTrue(notesComponents.contains("Image(appIcon:AppIcon.State.selectionCheck)"))
         XCTAssertFalse(notesComponents.contains("Image(systemName:\"checkmark\")"))

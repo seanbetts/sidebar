@@ -18,6 +18,12 @@ extension UIImage {
         self.init(systemName: appIcon.rawValue)
     }
 }
+#elseif os(macOS)
+extension NSImage {
+    convenience init?(appIcon: AppIcon, accessibilityDescription: String? = nil) {
+        self.init(systemSymbolName: appIcon.rawValue, accessibilityDescription: accessibilityDescription)
+    }
+}
 #endif
 
 enum HeaderActionControlMetrics {

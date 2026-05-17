@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import sideBarShared
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -80,10 +81,8 @@ final class AppKitNoteFormattingBar: NSView {
 
         menuButton.isEnabled = configuration.isEnabled
         if self.showsVisibleChrome,
-           let image = NSImage(
-                systemSymbolName: "textformat",
-                accessibilityDescription: nil
-           )?.withSymbolConfiguration(
+           let image = NSImage(appIcon: AppIcon.Notes.formatting)?
+            .withSymbolConfiguration(
                 NSImage.SymbolConfiguration(
                     pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
                     weight: .semibold

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -329,10 +330,10 @@ struct SelectableNoteReadView: View {
             pointSize: pointSize * 0.95,
             weight: .regular
         )
-        return UIImage(
-            systemName: isChecked ? "checkmark.square.fill" : "square",
-            withConfiguration: configuration
-        )?.withTintColor(color, renderingMode: .alwaysOriginal) ?? UIImage()
+        let appIcon: AppIcon = isChecked ? AppIcon.Markdown.taskCompleted : AppIcon.Markdown.taskIncomplete
+        return UIImage(appIcon: appIcon)?
+            .withConfiguration(configuration)
+            .withTintColor(color, renderingMode: .alwaysOriginal) ?? UIImage()
     }
     #elseif os(macOS)
     private static func checklistMarkerImage(
@@ -344,10 +345,9 @@ struct SelectableNoteReadView: View {
             pointSize: pointSize * 0.95,
             weight: .regular
         )
-        guard let symbol = NSImage(
-            systemSymbolName: isChecked ? "checkmark.square.fill" : "square",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(configuration) else {
+        let appIcon: AppIcon = isChecked ? AppIcon.Markdown.taskCompleted : AppIcon.Markdown.taskIncomplete
+        guard let symbol = NSImage(appIcon: appIcon)?
+            .withSymbolConfiguration(configuration) else {
             return NSImage()
         }
         return tintedChecklistMarkerImage(symbol, color: color)

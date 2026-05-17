@@ -480,11 +480,21 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 | Ingestion Live Activity | Progress and badge strings such as `arrow.up.circle.fill`, `clock.fill`, `gearshape.fill`, `pencil.line`, `tray.and.arrow.down.fill`, `exclamationmark`, `xmark` | `AppIcon.Widget.*`, `AppIcon.State.*`, and `AppIcon.Action.clearFilled` |
 | Share extension success/error state images | `UIImage(systemName: "checkmark")`, `UIImage(systemName: "xmark.circle.fill")`, `NSImage(systemSymbolName: ...)` | Share-extension-local `UIImage(appIcon:)` and `NSImage(appIcon:)` adapters using `AppIcon.State.success` and `AppIcon.Action.clearFilled` |
 
+## Note Bridge And Header Static Icon Cleanup Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Safari extension targets | No direct app-owned SF Symbol rendering found in audited Safari extension Swift paths | No migration needed |
+| UIKit and AppKit note formatting entry buttons | `textformat` through `UIImage(systemName:)` and `NSImage(systemSymbolName:)` | `AppIcon.Notes.formatting` through platform `UIImage(appIcon:)` and `NSImage(appIcon:)` adapters |
+| Selectable note read-mode checklist markers | `checkmark.square.fill`, `square` through platform image constructors | `AppIcon.Markdown.taskCompleted` and `AppIcon.Markdown.taskIncomplete` |
+| Chat header add and close controls | `plus`, `xmark` through `HeaderActionButton(systemName:)` | `HeaderActionButton(icon:)` with `AppIcon.Action.add` and `AppIcon.Action.close` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, and dynamic icon boundary adapter slices
-- Safari extension or other extension symbol surfaces outside the widget/share-extension paths audited in this slice
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, and note bridge plus chat header static slices
 - semantic ownership for dynamic/external symbol payload catalogs that still originate as strings
 - the production-wide strict source guard
