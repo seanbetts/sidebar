@@ -1,6 +1,7 @@
 import SwiftUI
 import XCTest
 @testable import sideBar
+import sideBarShared
 
 @MainActor
 final class SidebarMenuItemTests: XCTestCase {
@@ -24,7 +25,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Copy Transcript")
-        XCTAssertEqual(item.systemImage, "doc.on.doc")
+        XCTAssertEqual(item.icon, AppIcon.Action.copy)
         XCTAssertNil(item.role)
 
         item.handler()
@@ -38,7 +39,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Copy Text")
-        XCTAssertEqual(item.systemImage, "doc.on.doc")
+        XCTAssertEqual(item.icon, AppIcon.Action.copy)
         XCTAssertNil(item.role)
 
         item.handler()
@@ -52,7 +53,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Copy Title")
-        XCTAssertEqual(item.systemImage, "textformat")
+        XCTAssertEqual(item.icon, AppIcon.Action.copyTitle)
         XCTAssertNil(item.role)
 
         item.handler()
@@ -66,7 +67,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Copy URL")
-        XCTAssertEqual(item.systemImage, "link")
+        XCTAssertEqual(item.icon, AppIcon.Action.copyURL)
         XCTAssertNil(item.role)
 
         item.handler()
@@ -80,7 +81,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Share URL")
-        XCTAssertEqual(item.systemImage, "square.and.arrow.up.on.square")
+        XCTAssertEqual(item.icon, AppIcon.Action.shareOnSquare)
         XCTAssertNil(item.role)
 
         item.handler()
@@ -94,7 +95,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Share Text")
-        XCTAssertEqual(item.systemImage, "square.and.arrow.up.on.square")
+        XCTAssertEqual(item.icon, AppIcon.Action.shareOnSquare)
         XCTAssertNil(item.role)
 
         item.handler()

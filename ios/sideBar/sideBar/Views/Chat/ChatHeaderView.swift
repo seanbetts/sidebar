@@ -233,15 +233,15 @@ struct ChatHeaderView: View {
 
     private var expandButton: some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandChatView,
             chromeStyle: Self.actionControlChromeStyle
         )
     }
 
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    private var expandButtonIcon: AppIcon {
+        isWorkspaceExpanded ? AppIcon.Navigation.expandWorkspace : AppIcon.Navigation.collapseWorkspace
     }
 
     private var expandButtonLabel: String {

@@ -8,22 +8,11 @@ struct SidebarMenuItem: Identifiable {
     let role: ButtonRole?
     let handler: () -> Void
 
-    var systemImage: String? { icon?.rawValue }
-
     init(title: String, icon: AppIcon?, role: ButtonRole?, handler: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.role = role
         self.handler = handler
-    }
-
-    init(title: String, systemImage: String?, role: ButtonRole?, handler: @escaping () -> Void) {
-        self.init(
-            title: title,
-            icon: systemImage.map(AppIcon.init(rawValue:)),
-            role: role,
-            handler: handler
-        )
     }
 }
 
@@ -150,8 +139,8 @@ func sidebarMenuItemsView(_ items: [SidebarMenuItem]) -> some View {
         Button(role: item.role) {
             item.handler()
         } label: {
-            if let systemImage = item.systemImage {
-                Label(item.title, systemImage: systemImage)
+            if let icon = item.icon {
+                Label(item.title, systemImage: icon.rawValue)
             } else {
                 Text(item.title)
             }

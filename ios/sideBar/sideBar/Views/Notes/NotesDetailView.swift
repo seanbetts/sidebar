@@ -472,7 +472,7 @@ extension NotesDetailView {
 
     private func expandButton(chromeStyle: HeaderActionControlChromeStyle) -> some View {
         HeaderActionButton(
-            systemName: expandButtonIconName,
+            icon: expandButtonIcon,
             accessibilityLabel: expandButtonLabel,
             action: expandNoteView,
             isDisabled: viewModel.activeNote == nil,
@@ -480,8 +480,8 @@ extension NotesDetailView {
         )
     }
 
-    private var expandButtonIconName: String {
-        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    private var expandButtonIcon: AppIcon {
+        isWorkspaceExpanded ? AppIcon.Navigation.expandWorkspace : AppIcon.Navigation.collapseWorkspace
     }
     private var expandButtonLabel: String { isWorkspaceExpanded ? "Exit expanded mode" : "Expand note" }
 

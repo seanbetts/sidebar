@@ -90,10 +90,6 @@ struct HeaderActionIcon: View {
         self.icon = icon
     }
 
-    init(systemName: String) {
-        self.init(icon: AppIcon(rawValue: systemName))
-    }
-
     var body: some View {
         Image(appIcon: icon)
             .appFont(.label)
@@ -127,22 +123,6 @@ struct HeaderActionButton: View {
         self.chromeStyle = chromeStyle
     }
 
-    init(
-        systemName: String,
-        accessibilityLabel: String,
-        action: @escaping () -> Void,
-        isDisabled: Bool = false,
-        chromeStyle: HeaderActionControlChromeStyle = .plain
-    ) {
-        self.init(
-            icon: AppIcon(rawValue: systemName),
-            accessibilityLabel: accessibilityLabel,
-            action: action,
-            isDisabled: isDisabled,
-            chromeStyle: chromeStyle
-        )
-    }
-
     var body: some View {
         Button(action: action) {
             HeaderActionIcon(icon: icon)
@@ -172,20 +152,6 @@ struct HeaderActionMenuControl<MenuContent: View>: View {
         self.accessibilityLabel = accessibilityLabel
         self.chromeStyle = chromeStyle
         self.menuContent = menuContent()
-    }
-
-    init(
-        systemName: String,
-        accessibilityLabel: String,
-        chromeStyle: HeaderActionControlChromeStyle = .plain,
-        @ViewBuilder menuContent: () -> MenuContent
-    ) {
-        self.init(
-            icon: AppIcon(rawValue: systemName),
-            accessibilityLabel: accessibilityLabel,
-            chromeStyle: chromeStyle,
-            menuContent: menuContent
-        )
     }
 
     var body: some View {
@@ -281,8 +247,6 @@ struct HeaderActionMenuButton: View {
     let isCompact: Bool
     var chromeStyle: HeaderActionControlChromeStyle = .plain
 
-    var systemImage: String { icon.rawValue }
-
     init(
         icon: AppIcon,
         accessibilityLabel: String,
@@ -297,25 +261,9 @@ struct HeaderActionMenuButton: View {
         self.chromeStyle = chromeStyle
     }
 
-    init(
-        systemImage: String,
-        accessibilityLabel: String,
-        items: [SidebarMenuItem],
-        isCompact: Bool,
-        chromeStyle: HeaderActionControlChromeStyle = .plain
-    ) {
-        self.init(
-            icon: AppIcon(rawValue: systemImage),
-            accessibilityLabel: accessibilityLabel,
-            items: items,
-            isCompact: isCompact,
-            chromeStyle: chromeStyle
-        )
-    }
-
     var body: some View {
         let menuSignature = items
-            .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
+            .map { "\($0.title)|\($0.icon?.rawValue ?? "")|\(roleSignature($0.role))" }
             .joined(separator: ";")
         HeaderActionMenuControl(
             icon: icon,

@@ -42,11 +42,12 @@ final class Task15AppIconSourceTests: XCTestCase {
         let normalized = try source(at: ["sideBar", "Design", "Components", "HeaderActionIcon.swift"])
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("init(appIcon:AppIcon){self.init(systemName:appIcon.rawValue)}"))
         XCTAssertTrue(normalized.contains("leticon:AppIcon"))
         XCTAssertTrue(normalized.contains("HeaderActionIcon(icon:icon)"))
         XCTAssertTrue(normalized.contains("Image(appIcon:icon)"))
-        XCTAssertFalse(normalized.contains("HeaderActionIcon(systemName:systemName)"))
+        XCTAssertFalse(normalized.contains("init(systemName:String)"))
+        XCTAssertFalse(normalized.contains("init(systemImage:String)"))
+        XCTAssertFalse(normalized.contains("varsystemImage:String"))
     }
 
     func testSidebarMenuItemFactoriesUseAppIcon() throws {
@@ -54,10 +55,11 @@ final class Task15AppIconSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("leticon:AppIcon?"))
-        XCTAssertTrue(normalized.contains("varsystemImage:String?{icon?.rawValue}"))
         XCTAssertTrue(normalized.contains("icon:isPinned?AppIcon.Action.unpin:AppIcon.Action.pin"))
         XCTAssertTrue(normalized.contains("AppIcon.Action.archive"))
         XCTAssertTrue(normalized.contains("icon:AppIcon.Action.delete"))
+        XCTAssertFalse(normalized.contains("init(title:String,systemImage:String?"))
+        XCTAssertFalse(normalized.contains("varsystemImage:String?"))
         XCTAssertFalse(normalized.contains("systemImage:\"trash\""))
         XCTAssertFalse(normalized.contains("systemImage:\"doc.on.doc\""))
     }
