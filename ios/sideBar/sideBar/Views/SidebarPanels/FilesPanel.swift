@@ -189,7 +189,7 @@ extension FilesPanelView {
                 EmptyStateView(
                     title: emptyState.title,
                     subtitle: emptyState.subtitle,
-                    systemImage: emptyState.systemImage
+                    icon: emptyState.icon
                 )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .empty:
@@ -201,7 +201,7 @@ extension FilesPanelView {
                 EmptyStateView(
                     title: emptyState.title,
                     subtitle: emptyState.subtitle,
-                    systemImage: emptyState.systemImage
+                    icon: emptyState.icon
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .content:

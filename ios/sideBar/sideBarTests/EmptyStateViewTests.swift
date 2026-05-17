@@ -13,7 +13,6 @@ final class EmptyStateViewTests: XCTestCase {
         XCTAssertEqual(view.title, "No conversations")
         XCTAssertEqual(view.subtitle, "Start a new chat to begin.")
         XCTAssertEqual(view.icon, AppIcon.Skills.conversations)
-        XCTAssertEqual(view.systemImage, "bubble.left.and.bubble.right")
     }
 
     func testWelcomeEmptyViewDoesNotShowSubtitle() throws {

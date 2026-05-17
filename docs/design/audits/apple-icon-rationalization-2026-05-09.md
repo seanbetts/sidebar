@@ -183,7 +183,7 @@ Categories:
 | Surface | Former direct symbols | Target |
 |---|---|---|
 | Empty-state content defaults | `magnifyingglass`, `checkmark.circle` | `EmptyStateContent.icon` using `AppIcon.Action.search` and `AppIcon.State.successCircle` |
-| Empty-state view rendering | Dynamic `systemImage` boundary | `EmptyStateView.icon` with a string bridge for remaining feature-level call sites |
+| Empty-state view rendering | Dynamic `systemImage` boundary | `EmptyStateView.icon` |
 | Search field | `magnifyingglass`, `xmark.circle.fill` | `AppIcon.Action.search`, `AppIcon.Action.clearFilled` |
 | Offline banner | `wifi.slash`, `wifi.exclamationmark` | `AppIcon.State.offline`, `AppIcon.State.networkWarning` |
 | Status pill | `info.circle.fill`, `checkmark.circle.fill`, `exclamationmark.triangle.fill` | `AppIcon.State.infoFilled`, `AppIcon.State.successFilled`, `AppIcon.State.warningFilled` |
@@ -202,6 +202,16 @@ Categories:
 | Scratchpad empty state | `square.and.pencil` | `EmptyStateView(icon: AppIcon.Action.compose)` |
 | Task selection and completed empty states | `checkmark.circle` | `EmptyStateContent.noSelection(icon: AppIcon.State.successCircle)` and `EmptyStateContent.noContentYet(icon: AppIcon.State.successCircle)` |
 | Task upcoming empty state | `calendar` | `EmptyStateContent.noContentYet(icon: AppIcon.Tasks.today)` |
+
+## Empty-State Compatibility Bridge Cleanup Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| `EmptyStateContent` compatibility API | `systemImage` property plus `systemImage:` initializers and factories | `icon: AppIcon?` only |
+| `EmptyStateView` compatibility API | `systemImage` property and `systemImage:` initializer | `icon: AppIcon?` only |
+| Core sidebar panel empty and search states | `emptyState.systemImage` passed back into `EmptyStateView(systemImage:)` | `EmptyStateView(icon: emptyState.icon)` |
 
 ## Task Row, Detail, And Modal Action/Status Slice
 
@@ -526,6 +536,6 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, workspace action payload ownership, and SkillIconResolver Store/Settings UI ownership slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, workspace action payload ownership, SkillIconResolver Store/Settings UI ownership, and empty-state compatibility bridge cleanup slices
 - remaining semantic ownership for external/dynamic symbol payload catalogs that still originate as strings
 - the production-wide strict source guard

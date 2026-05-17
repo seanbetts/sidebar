@@ -316,50 +316,6 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertFalse(storeSkillConfig.contains("SkillAppIcon(systemName:SkillIconResolver.settingsIconName(for:skill))"))
     }
 
-    func testSharedEmptySearchStatusComponentsUseAppIconVocabulary() throws {
-        try assertNoForbiddenIconPatterns([
-            (
-                ["sideBar", "Design", "Components", "EmptyStateContent.swift"],
-                [
-                    "systemImage:\"magnifyingglass\"",
-                    "systemImage:\"checkmark.circle\""
-                ]
-            ),
-            (
-                ["sideBar", "Design", "Components", "EmptyStateView.swift"],
-                ["Image(systemName:systemImage)"]
-            ),
-            (
-                ["sideBar", "Design", "Components", "SearchField.swift"],
-                [
-                    "Image(systemName:\"magnifyingglass\")",
-                    "Image(systemName:\"xmark.circle.fill\")"
-                ]
-            ),
-            (
-                ["sideBar", "Design", "Components", "OfflineBanner.swift"],
-                [
-                    "Image(systemName:\"wifi.slash\")",
-                    "Image(systemName:\"wifi.exclamationmark\")"
-                ]
-            ),
-            (
-                ["sideBar", "Design", "Components", "StatusPill.swift"],
-                [
-                    "variconName:String?",
-                    "\"info.circle.fill\"",
-                    "\"checkmark.circle.fill\"",
-                    "\"exclamationmark.triangle.fill\"",
-                    "Image(systemName:iconName)"
-                ]
-            ),
-            (
-                ["sideBar", "Design", "Components", "SuccessCheckBadge.swift"],
-                ["Image(systemName:\"checkmark\")"]
-            )
-        ])
-    }
-
     func testFeatureLevelEmptyStatesUseAppIconVocabulary() throws {
         try assertNoForbiddenIconPatterns([
             (

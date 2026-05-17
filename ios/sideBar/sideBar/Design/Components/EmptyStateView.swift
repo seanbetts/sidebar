@@ -6,18 +6,10 @@ struct EmptyStateView: View {
     let subtitle: String?
     let icon: AppIcon?
 
-    var systemImage: String? {
-        icon?.rawValue
-    }
-
     init(title: String, subtitle: String? = nil, icon: AppIcon? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
-    }
-
-    init(title: String, subtitle: String? = nil, systemImage: String?) {
-        self.init(title: title, subtitle: subtitle, icon: systemImage.map(AppIcon.init(rawValue:)))
     }
 
     var body: some View {

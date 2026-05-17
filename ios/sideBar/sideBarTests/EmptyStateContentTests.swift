@@ -8,7 +8,6 @@ final class EmptyStateContentTests: XCTestCase {
 
         XCTAssertEqual(content.title, "All tasks completed")
         XCTAssertEqual(content.icon, AppIcon.State.successCircle)
-        XCTAssertEqual(content.systemImage, "checkmark.circle")
     }
 
     func testNoResultsUsesSharedSearchCopy() {
@@ -16,19 +15,17 @@ final class EmptyStateContentTests: XCTestCase {
 
         XCTAssertEqual(content.title, "No results")
         XCTAssertEqual(content.icon, AppIcon.Action.search)
-        XCTAssertEqual(content.systemImage, "magnifyingglass")
     }
 
-    func testNoContentYetKeepsExplicitTitleAndSubtitle() {
+    func testNoContentYetKeepsExplicitTitleSubtitleAndIcon() {
         let content = EmptyStateContent.noContentYet(
             title: "No files yet",
             subtitle: "Upload or create a file to get started.",
-            systemImage: "folder"
+            icon: AppIcon.Domain.files
         )
 
         XCTAssertEqual(content.title, "No files yet")
         XCTAssertEqual(content.subtitle, "Upload or create a file to get started.")
-        XCTAssertEqual(content.icon, AppIcon.Content.folder)
-        XCTAssertEqual(content.systemImage, "folder")
+        XCTAssertEqual(content.icon, AppIcon.Domain.files)
     }
 }

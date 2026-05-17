@@ -6,18 +6,10 @@ struct EmptyStateContent: Equatable {
     let subtitle: String?
     let icon: AppIcon?
 
-    var systemImage: String? {
-        icon?.rawValue
-    }
-
     init(title: String, subtitle: String? = nil, icon: AppIcon? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
-    }
-
-    init(title: String, subtitle: String? = nil, systemImage: String) {
-        self.init(title: title, subtitle: subtitle, icon: AppIcon(rawValue: systemImage))
     }
 
     static func noContentYet(
@@ -26,14 +18,6 @@ struct EmptyStateContent: Equatable {
         icon: AppIcon? = nil
     ) -> EmptyStateContent {
         EmptyStateContent(title: title, subtitle: subtitle, icon: icon)
-    }
-
-    static func noContentYet(
-        title: String,
-        subtitle: String? = nil,
-        systemImage: String
-    ) -> EmptyStateContent {
-        EmptyStateContent(title: title, subtitle: subtitle, systemImage: systemImage)
     }
 
     static func noResults(subtitle: String? = nil) -> EmptyStateContent {
@@ -50,14 +34,6 @@ struct EmptyStateContent: Equatable {
         icon: AppIcon? = nil
     ) -> EmptyStateContent {
         EmptyStateContent(title: title, subtitle: subtitle, icon: icon)
-    }
-
-    static func noSelection(
-        title: String,
-        subtitle: String? = nil,
-        systemImage: String
-    ) -> EmptyStateContent {
-        EmptyStateContent(title: title, subtitle: subtitle, systemImage: systemImage)
     }
 
     static func allTasksCompleted(subtitle: String? = nil) -> EmptyStateContent {
