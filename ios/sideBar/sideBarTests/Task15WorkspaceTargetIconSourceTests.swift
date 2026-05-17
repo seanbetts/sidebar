@@ -26,7 +26,7 @@ final class Task15WorkspaceTargetIconSourceTests: XCTestCase {
         XCTAssertTrue(appIconSource.contains("publicstaticletactionPanelSurface=AppIcon(rawValue:\"slider.horizontal.3\")"))
 
         XCTAssertTrue(parserSource.contains("letappIcon:AppIcon"))
-        XCTAssertTrue(parserSource.contains("variconName:String{appIcon.rawValue}"))
+        XCTAssertFalse(parserSource.contains("variconName:String"))
         XCTAssertTrue(parserSource.contains("SkillIconResolver.appIcon(for:toolCall)"))
         XCTAssertTrue(parserSource.contains("appIcon:AppIcon.Workspace.surface"))
         XCTAssertTrue(parserSource.contains("returnAppIcon.Content.textDocument"))

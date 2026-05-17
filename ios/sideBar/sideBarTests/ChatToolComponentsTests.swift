@@ -27,7 +27,7 @@ final class ChatToolComponentsTests: XCTestCase {
         let presentation = ChatToolSummaryPresentation.from(toolCalls: toolCalls)
 
         XCTAssertEqual(presentation.text, "Create Note")
-        XCTAssertEqual(presentation.iconName, "note.text")
+        XCTAssertEqual(presentation.icon, AppIcon.Content.note)
         XCTAssertFalse(presentation.hasError)
     }
 
@@ -40,7 +40,7 @@ final class ChatToolComponentsTests: XCTestCase {
         let presentation = ChatToolSummaryPresentation.from(toolCalls: toolCalls)
 
         XCTAssertEqual(presentation.text, "2 skills used")
-        XCTAssertEqual(presentation.iconName, "exclamationmark.circle")
+        XCTAssertEqual(presentation.icon, AppIcon.State.error)
         XCTAssertTrue(presentation.hasError)
     }
 

@@ -7,10 +7,6 @@ struct ChatToolSummaryPresentation: Equatable {
     let icon: AppIcon
     let hasError: Bool
 
-    var iconName: String {
-        icon.rawValue
-    }
-
     static func from(toolCalls: [ToolCall]) -> ChatToolSummaryPresentation {
         let visibleToolCalls = ChatToolPresentation.visibleToolCalls(from: toolCalls)
         let presentedToolCalls = visibleToolCalls.isEmpty ? toolCalls : visibleToolCalls

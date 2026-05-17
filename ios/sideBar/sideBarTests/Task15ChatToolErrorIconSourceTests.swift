@@ -66,6 +66,7 @@ final class Task15ChatToolErrorIconSourceTests: XCTestCase {
         XCTAssertTrue(toolComponents.contains("SkillIconResolver.appIcon(for:toolCall)"))
         XCTAssertTrue(toolComponents.contains("SkillSymbolIcon(appIcon:summaryIcon"))
         XCTAssertTrue(toolComponents.contains("Image(appIcon:AppIcon.State.successFilled)"))
+        XCTAssertFalse(toolComponents.contains("variconName:String"))
         XCTAssertFalse(toolComponents.contains("iconName=hasError?\"exclamationmark.circle\""))
         XCTAssertFalse(toolComponents.contains("\"square.stack.3d.up\""))
         XCTAssertFalse(toolComponents.contains("Image(systemName:\"checkmark.circle.fill\")"))

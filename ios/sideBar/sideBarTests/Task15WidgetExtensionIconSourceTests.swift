@@ -125,21 +125,17 @@ final class Task15WidgetExtensionIconSourceTests: XCTestCase {
     }
 
     func testWidgetAppShortcutsUseAppIconVocabulary() throws {
-        let taskIntents = try source(at: ["sideBarWidgets", "Intents", "TaskIntents.swift"])
+        let taskIntents = try normalizedSource(at: ["sideBarWidgets", "Intents", "TaskIntents.swift"])
 
-        XCTAssertEqual(
-            try shortcutSystemImageNames(in: taskIntents),
-            [
-                AppIcon.Tasks.checklist.rawValue,
-                AppIcon.Widget.addTaskShortcut.rawValue,
-                AppIcon.Content.textDocument.rawValue,
-                AppIcon.Widget.createNoteShortcut.rawValue,
-                AppIcon.Domain.websites.rawValue,
-                AppIcon.Content.document.rawValue,
-                AppIcon.Content.note.rawValue,
-                AppIcon.Content.messageThread.rawValue
-            ]
-        )
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Tasks.checklist.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Widget.addTaskShortcut.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.textDocument.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Widget.createNoteShortcut.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Domain.websites.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.document.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.note.rawValue"))
+        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.messageThread.rawValue"))
+        XCTAssertFalse(taskIntents.contains("systemImageName:\""))
     }
 
     private func normalizedSource(
@@ -192,13 +188,4 @@ final class Task15WidgetExtensionIconSourceTests: XCTestCase {
         URL(fileURLWithPath: "\(file)").deletingLastPathComponent().deletingLastPathComponent()
     }
 
-    private func shortcutSystemImageNames(in source: String) throws -> [String] {
-        let regex = try NSRegularExpression(pattern: #"systemImageName:\s*"([^"]+)""#)
-        let range = NSRange(source.startIndex..., in: source)
-
-        return regex.matches(in: source, range: range).compactMap { match in
-            guard let captureRange = Range(match.range(at: 1), in: source) else { return nil }
-            return String(source[captureRange])
-        }
-    }
 }

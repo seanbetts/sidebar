@@ -31,7 +31,6 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.surface.surfaceId, "surface-chart-1")
         XCTAssertEqual(targets.first?.label, "Show Revenue")
         XCTAssertEqual(targets.first?.appIcon, AppIcon.Workspace.surface)
-        XCTAssertEqual(targets.first?.iconName, "rectangle.on.rectangle")
     }
 
     func testParseIgnoresInvalidWorkspacePatchPayloads() {
@@ -101,7 +100,6 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
         XCTAssertEqual(targets.first?.label, "Show System Prompt Preview")
         XCTAssertEqual(targets.first?.appIcon, AppIcon.Skills.promptPreview)
-        XCTAssertEqual(targets.first?.iconName, "eye")
     }
 
     func testParseToolCallAssignsOriginatingSkillIconToWorkspacePatchTargets() {
@@ -136,7 +134,6 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
 
         XCTAssertEqual(targets.count, 1)
         XCTAssertEqual(targets.first?.appIcon, AppIcon.Skills.promptPreview)
-        XCTAssertEqual(targets.first?.iconName, "eye")
     }
 
     func testParseToolCallsDeduplicatesPromptPreviewTargetsAcrossCalls() {
@@ -195,7 +192,6 @@ final class ToolResultWorkspaceOpenEntityParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.id, "primary:note:note-123")
         XCTAssertEqual(targets.first?.label, "Open Orion — Project Brief")
         XCTAssertEqual(targets.first?.appIcon, AppIcon.Content.textDocument)
-        XCTAssertEqual(targets.first?.iconName, "doc.text")
         XCTAssertEqual(targets.first?.request.entity.type, "note")
         XCTAssertEqual(targets.first?.request.routeURL?.absoluteString, "sidebar://notes/note-123")
     }
@@ -230,31 +226,25 @@ final class ToolResultWorkspaceOpenEntityParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.id, "primary:website:site-1")
         XCTAssertEqual(targets.first?.label, "Open Research")
         XCTAssertEqual(targets.first?.appIcon, AppIcon.Domain.websites)
-        XCTAssertEqual(targets.first?.iconName, "globe")
     }
 
     func testParseMapsKnownEntityTypesToAppIcons() {
         struct IconCase {
             let type: String
             let expectedIcon: AppIcon
-            let expectedIconName: String
         }
 
         let cases: [IconCase] = [
-            IconCase(type: "note", expectedIcon: AppIcon.Content.textDocument, expectedIconName: "doc.text"),
-            IconCase(type: "website", expectedIcon: AppIcon.Domain.websites, expectedIconName: "globe"),
-            IconCase(type: "file", expectedIcon: AppIcon.Domain.files, expectedIconName: "folder"),
-            IconCase(type: "conversation", expectedIcon: AppIcon.Domain.chat, expectedIconName: "bubble"),
-            IconCase(type: "scratchpad", expectedIcon: AppIcon.Action.compose, expectedIconName: "square.and.pencil"),
-            IconCase(type: "task", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
-            IconCase(type: "task_scope", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
-            IconCase(type: "task_project", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
-            IconCase(type: "task_group", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
-            IconCase(
-                type: "unknown_entity",
-                expectedIcon: AppIcon.Workspace.openEntityFallback,
-                expectedIconName: "arrow.up.forward.app"
-            )
+            IconCase(type: "note", expectedIcon: AppIcon.Content.textDocument),
+            IconCase(type: "website", expectedIcon: AppIcon.Domain.websites),
+            IconCase(type: "file", expectedIcon: AppIcon.Domain.files),
+            IconCase(type: "conversation", expectedIcon: AppIcon.Domain.chat),
+            IconCase(type: "scratchpad", expectedIcon: AppIcon.Action.compose),
+            IconCase(type: "task", expectedIcon: AppIcon.Domain.tasks),
+            IconCase(type: "task_scope", expectedIcon: AppIcon.Domain.tasks),
+            IconCase(type: "task_project", expectedIcon: AppIcon.Domain.tasks),
+            IconCase(type: "task_group", expectedIcon: AppIcon.Domain.tasks),
+            IconCase(type: "unknown_entity", expectedIcon: AppIcon.Workspace.openEntityFallback)
         ]
 
         for testCase in cases {
@@ -277,7 +267,6 @@ final class ToolResultWorkspaceOpenEntityParserTests: XCTestCase {
             let target = ToolResultWorkspaceOpenEntityParser.parse(result).first
 
             XCTAssertEqual(target?.appIcon, testCase.expectedIcon, "Unexpected AppIcon for \(testCase.type)")
-            XCTAssertEqual(target?.iconName, testCase.expectedIconName, "Unexpected icon name for \(testCase.type)")
         }
     }
 }

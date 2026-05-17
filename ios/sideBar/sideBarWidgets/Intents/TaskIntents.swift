@@ -419,7 +419,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "What do I have to do today in \(.applicationName)"
             ],
             shortTitle: "Today's Tasks",
-            systemImageName: "checklist"
+            systemImageName: AppIcon.Tasks.checklist.rawValue
         )
         AppShortcut(
             intent: AddTaskIntent(),
@@ -429,7 +429,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "New task in \(.applicationName)"
             ],
             shortTitle: "Add Task",
-            systemImageName: "plus.circle"
+            systemImageName: AppIcon.Widget.addTaskShortcut.rawValue
         )
         // Note shortcuts
         AppShortcut(
@@ -440,7 +440,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "View my notes in \(.applicationName)"
             ],
             shortTitle: "My Notes",
-            systemImageName: "doc.text"
+            systemImageName: AppIcon.Content.textDocument.rawValue
         )
         AppShortcut(
             intent: CreateNoteIntent(),
@@ -450,7 +450,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "Add a note in \(.applicationName)"
             ],
             shortTitle: "Create Note",
-            systemImageName: "doc.badge.plus"
+            systemImageName: AppIcon.Widget.createNoteShortcut.rawValue
         )
         // Website shortcuts
         AppShortcut(
@@ -461,7 +461,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "View my bookmarks in \(.applicationName)"
             ],
             shortTitle: "Saved Websites",
-            systemImageName: "globe"
+            systemImageName: AppIcon.Domain.websites.rawValue
         )
         // File shortcuts
         AppShortcut(
@@ -472,7 +472,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "View my documents in \(.applicationName)"
             ],
             shortTitle: "My Files",
-            systemImageName: "doc"
+            systemImageName: AppIcon.Content.document.rawValue
         )
         // General shortcuts
         AppShortcut(
@@ -483,7 +483,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "Scratch pad in \(.applicationName)"
             ],
             shortTitle: "Scratchpad",
-            systemImageName: "note.text"
+            systemImageName: AppIcon.Content.note.rawValue
         )
         AppShortcut(
             intent: StartChatIntent(),
@@ -493,7 +493,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
                 "Chat with \(.applicationName)"
             ],
             shortTitle: "Start Chat",
-            systemImageName: "bubble.left.and.bubble.right"
+            systemImageName: AppIcon.Content.messageThread.rawValue
         )
     }
 }

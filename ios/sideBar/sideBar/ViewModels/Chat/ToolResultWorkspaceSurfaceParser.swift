@@ -7,8 +7,6 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
     let label: String
     let appIcon: AppIcon
 
-    var iconName: String { appIcon.rawValue }
-
     var id: String {
         "\(pane.rawValue):\(surface.surfaceId)"
     }
@@ -18,8 +16,6 @@ struct ToolResultWorkspaceOpenEntityTarget: Equatable, Identifiable {
     let request: WorkspaceEntityOpenRequest
     let label: String
     let appIcon: AppIcon
-
-    var iconName: String { appIcon.rawValue }
 
     var id: String {
         "\(request.pane.rawValue):\(request.entity.type):\(request.entity.id)"
