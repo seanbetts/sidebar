@@ -2330,6 +2330,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = x86_64;
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.logic-host";
 				PRODUCT_MODULE_NAME = sideBar;
 				PRODUCT_NAME = sideBarLogicHost;
