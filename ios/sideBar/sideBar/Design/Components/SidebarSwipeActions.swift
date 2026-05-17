@@ -1,13 +1,14 @@
 import SwiftUI
+import sideBarShared
 
 extension View {
     @ViewBuilder
     func sidebarListSwipeActions(
         leadingTitle: String? = nil,
-        leadingSystemImage: String? = nil,
+        leadingIcon: AppIcon? = nil,
         onLeading: (() -> Void)? = nil,
         trailingDeleteTitle: String = "Delete",
-        trailingDeleteSystemImage: String = "trash",
+        trailingDeleteIcon: AppIcon = AppIcon.Action.delete,
         onDelete: (() -> Void)? = nil
     ) -> some View {
         #if os(iOS)
@@ -17,8 +18,8 @@ extension View {
                     Button {
                         onLeading()
                     } label: {
-                        if let leadingSystemImage {
-                            Label(leadingTitle, systemImage: leadingSystemImage)
+                        if let leadingIcon {
+                            Label(leadingTitle, systemImage: leadingIcon.rawValue)
                         } else {
                             Text(leadingTitle)
                         }
@@ -32,7 +33,7 @@ extension View {
                         Haptics.notification(.error)
                         onDelete()
                     } label: {
-                        Label(trailingDeleteTitle, systemImage: trailingDeleteSystemImage)
+                        Label(trailingDeleteTitle, systemImage: trailingDeleteIcon.rawValue)
                     }
                     .tint(DesignTokens.Colors.actionDestructive)
                 }

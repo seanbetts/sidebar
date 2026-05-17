@@ -119,6 +119,40 @@ final class Task15ChromeStatusIconSourceTests: XCTestCase {
         XCTAssertFalse(notesComponents.contains("Image(systemName:\"checkmark\")"))
     }
 
+    func testSidebarSwipeActionsRouteIconsThroughAppIcon() throws {
+        let sidebarSwipeActions = try normalizedSource(
+            at: ["sideBar", "Design", "Components", "SidebarSwipeActions.swift"]
+        )
+        let conversations = try normalizedSource(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        )
+        let filesIngestionRow = try normalizedSource(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesIngestionRow.swift"]
+        )
+        let notesPanelComponents = try normalizedSource(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanelComponents.swift"]
+        )
+        let tasksPanelRows = try normalizedSource(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanelRows.swift"]
+        )
+
+        XCTAssertTrue(sidebarSwipeActions.contains("leadingIcon:AppIcon?=nil"))
+        XCTAssertTrue(sidebarSwipeActions.contains("trailingDeleteIcon:AppIcon=AppIcon.Action.delete"))
+        XCTAssertTrue(sidebarSwipeActions.contains("Label(leadingTitle,systemImage:leadingIcon.rawValue)"))
+        XCTAssertTrue(sidebarSwipeActions.contains("Label(trailingDeleteTitle,systemImage:trailingDeleteIcon.rawValue)"))
+        XCTAssertFalse(sidebarSwipeActions.contains("leadingSystemImage:String?=nil"))
+        XCTAssertFalse(sidebarSwipeActions.contains("trailingDeleteSystemImage:String=\"trash\""))
+        XCTAssertFalse(sidebarSwipeActions.contains("systemImage:leadingSystemImage"))
+        XCTAssertFalse(sidebarSwipeActions.contains("systemImage:trailingDeleteSystemImage"))
+
+        for caller in [conversations, filesIngestionRow, notesPanelComponents, tasksPanelRows] {
+            XCTAssertTrue(caller.contains(".sidebarListSwipeActions("))
+            XCTAssertFalse(caller.contains("leadingIcon:"))
+            XCTAssertFalse(caller.contains("leadingSystemImage:"))
+            XCTAssertFalse(caller.contains("trailingDeleteSystemImage:"))
+        }
+    }
+
     private func normalizedSource(
         at pathComponents: [String],
         file: StaticString = #filePath,

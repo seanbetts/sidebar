@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, and widget/share-extension icon slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension icon, note bridge plus chat header static icon, and sidebar swipe-action helper slices completed after the initial catalog work.
 
 Categories:
 
@@ -491,10 +491,20 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 | Selectable note read-mode checklist markers | `checkmark.square.fill`, `square` through platform image constructors | `AppIcon.Markdown.taskCompleted` and `AppIcon.Markdown.taskIncomplete` |
 | Chat header add and close controls | `plus`, `xmark` through `HeaderActionButton(systemName:)` | `HeaderActionButton(icon:)` with `AppIcon.Action.add` and `AppIcon.Action.close` |
 
+## Sidebar Swipe Action Helper Boundary Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| `sidebarListSwipeActions` optional leading action API | `leadingSystemImage: String?` rendered through `Label(..., systemImage:)` | `leadingIcon: AppIcon?` rendered through `leadingIcon.rawValue` at the SwiftUI `Label` boundary |
+| `sidebarListSwipeActions` delete action default | `trailingDeleteSystemImage: String = "trash"` | `trailingDeleteIcon: AppIcon = AppIcon.Action.delete` |
+| Production swipe-action callers | No caller-owned raw swipe symbols found | Existing text-only leading actions stay text-only; callers do not pass raw `leadingSystemImage` or `trailingDeleteSystemImage` parameters |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, and note bridge plus chat header static slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, and sidebar swipe-action helper slices
 - semantic ownership for dynamic/external symbol payload catalogs that still originate as strings
 - the production-wide strict source guard
