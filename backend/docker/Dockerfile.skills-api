@@ -36,6 +36,7 @@ RUN pip install --no-cache-dir \
     --trusted-host pypi.org \
     --trusted-host pypi.python.org \
     --trusted-host files.pythonhosted.org \
+    -c constraints.txt \
     -e . && \
     pip install --no-cache-dir \
     --timeout=600 \

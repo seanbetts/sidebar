@@ -1,6 +1,7 @@
 """Guardrails for the skills API Docker image."""
 
 from pathlib import Path
+import re
 import tomllib
 
 
@@ -8,6 +9,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DOCKERFILE = REPO_ROOT / "backend" / "docker" / "Dockerfile.skills-api"
 PYPROJECT = REPO_ROOT / "backend" / "pyproject.toml"
 REQUIREMENTS = REPO_ROOT / "backend" / "api" / "requirements.txt"
+CONSTRAINTS = REPO_ROOT / "backend" / "api" / "constraints.txt"
+UV_LOCK = REPO_ROOT / "backend" / "uv.lock"
 
 
 def test_skills_api_image_installs_ffmpeg() -> None:
@@ -56,3 +59,44 @@ def test_apns_runtime_dependencies_include_http2_support() -> None:
     )
     assert "COPY api/requirements.txt ./requirements.txt" in dockerfile_contents
     assert "-r requirements.txt" in dockerfile_contents
+
+
+def test_skills_api_mcp_runtime_dependencies_match_locked_stack() -> None:
+    """The Fly image must not downgrade FastMCP below the locked runtime stack."""
+    requirements = _dependency_map(REQUIREMENTS.read_text(encoding="utf-8"))
+    constraints = _dependency_map(CONSTRAINTS.read_text(encoding="utf-8"))
+    locked = _locked_versions(
+        "authlib",
+        "fastmcp",
+        "mcp",
+        "pydantic",
+        "pydantic-core",
+    )
+
+    assert requirements["fastmcp"] == f">={locked['fastmcp']}"
+    assert requirements["mcp"] == ">=1.24.0"
+    assert constraints["authlib"] == f"=={locked['authlib']}"
+    assert constraints["fastmcp"] == f"=={locked['fastmcp']}"
+    assert constraints["mcp"] == f"=={locked['mcp']}"
+    assert constraints["pydantic"] == f"=={locked['pydantic']}"
+    assert constraints["pydantic-core"] == f"=={locked['pydantic-core']}"
+    dockerfile_contents = DOCKERFILE.read_text(encoding="utf-8")
+    editable_install = dockerfile_contents.split("-e .", maxsplit=1)[0]
+    assert "-c constraints.txt" in editable_install
+
+
+def _dependency_map(contents: str) -> dict[str, str]:
+    dependencies: dict[str, str] = {}
+    for line in contents.splitlines():
+        if not line or line.startswith(("#", "-")):
+            continue
+        match = re.match(r"([A-Za-z0-9_.-]+)(.*)", line)
+        assert match is not None
+        dependencies[match.group(1).lower()] = match.group(2)
+    return dependencies
+
+
+def _locked_versions(*names: str) -> dict[str, str]:
+    lock = tomllib.loads(UV_LOCK.read_text(encoding="utf-8"))
+    versions = {package["name"]: package["version"] for package in lock["package"]}
+    return {name: versions[name] for name in names}
