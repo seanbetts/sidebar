@@ -2,6 +2,12 @@ import SwiftUI
 import WidgetKit
 import sideBarShared
 
+extension Image {
+    init(appIcon: AppIcon) {
+        self.init(systemName: appIcon.rawValue)
+    }
+}
+
 struct WidgetHeaderView: View {
     let title: String
     let totalCount: Int
@@ -117,7 +123,7 @@ struct HomeWidgetSignedOutView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: "person.crop.circle.badge.exclamationmark")
+            Image(appIcon: AppIcon.Settings.profileWarning)
                 .font(.system(size: 32))
                 .foregroundStyle(colorScheme == .dark ? .white : .black)
             Text("Sign in to sideBar")
@@ -132,7 +138,7 @@ struct HomeWidgetSignedOutView: View {
 }
 
 struct HomeWidgetEmptyStateView: View {
-    let iconSystemName: String
+    let icon: AppIcon
     let title: String
     let subtitle: String
     let destination: URL
@@ -143,13 +149,13 @@ struct HomeWidgetEmptyStateView: View {
     init(
         title: String,
         subtitle: String,
-        iconSystemName: String,
+        icon: AppIcon,
         destination: URL,
         accentIcon: Bool = true
     ) {
         self.title = title
         self.subtitle = subtitle
-        self.iconSystemName = iconSystemName
+        self.icon = icon
         self.destination = destination
         self.accentIcon = accentIcon
         self.trailingAccessory = nil
@@ -158,14 +164,14 @@ struct HomeWidgetEmptyStateView: View {
     init<TrailingAccessory: View>(
         title: String,
         subtitle: String,
-        iconSystemName: String,
+        icon: AppIcon,
         destination: URL,
         accentIcon: Bool = true,
         @ViewBuilder trailingAccessory: () -> TrailingAccessory? = { nil }
     ) {
         self.title = title
         self.subtitle = subtitle
-        self.iconSystemName = iconSystemName
+        self.icon = icon
         self.destination = destination
         self.accentIcon = accentIcon
         self.trailingAccessory = trailingAccessory().map { AnyView($0) }
@@ -175,7 +181,7 @@ struct HomeWidgetEmptyStateView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 14) {
-                icon
+                iconView
                 VStack(spacing: 4) {
                     Text(title)
                         .font(.headline)
@@ -200,8 +206,8 @@ struct HomeWidgetEmptyStateView: View {
     }
 
     @ViewBuilder
-    private var icon: some View {
-        let image = Image(systemName: iconSystemName)
+    private var iconView: some View {
+        let image = Image(appIcon: icon)
             .font(.system(size: 32))
 
         if accentIcon {
@@ -217,11 +223,11 @@ struct HomeWidgetEmptyStateView: View {
 
 #if os(iOS)
 struct LockScreenSignedOutRow: View {
-    let iconSystemName: String
+    let icon: AppIcon
 
     var body: some View {
         HStack {
-            Image(systemName: iconSystemName)
+            Image(appIcon: icon)
             Text("Sign in to sideBar")
                 .font(.caption)
         }

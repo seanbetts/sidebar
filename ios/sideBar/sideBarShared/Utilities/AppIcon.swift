@@ -159,6 +159,7 @@ public extension AppIcon {
         public static let profile = AppIcon(rawValue: "person.crop.circle")
         public static let profileFilled = AppIcon(rawValue: "person.crop.circle.fill")
         public static let profileAdd = AppIcon(rawValue: "person.crop.circle.badge.plus")
+        public static let profileWarning = AppIcon(rawValue: "person.crop.circle.badge.exclamationmark")
         public static let user = AppIcon(rawValue: "person.line.dotted.person")
         public static let assistant = AppIcon(rawValue: "brain.fill")
         public static let skills = AppIcon(rawValue: "command.circle")
@@ -187,6 +188,20 @@ public extension AppIcon {
         public static let mapSurface = AppIcon(rawValue: "map")
         public static let formSurface = AppIcon(rawValue: "list.bullet.clipboard")
         public static let actionPanelSurface = AppIcon(rawValue: "slider.horizontal.3")
+    }
+
+    enum Widget {
+        public static let taskStack = AppIcon(rawValue: "square.stack.3d.up")
+        public static let pinnedNote = AppIcon(rawValue: "pin.fill")
+        public static let addTaskShortcut = AppIcon(rawValue: "plus.circle")
+        public static let createNoteShortcut = AppIcon(rawValue: "doc.badge.plus")
+        public static let uploadFilled = AppIcon(rawValue: "arrow.up.circle.fill")
+        public static let clockFilled = AppIcon(rawValue: "clock.fill")
+        public static let processingFilled = AppIcon(rawValue: "gearshape.fill")
+        public static let writing = AppIcon(rawValue: "pencil.line")
+        public static let downloadTrayFilled = AppIcon(rawValue: "tray.and.arrow.down.fill")
+        public static let failedBadge = AppIcon(rawValue: "exclamationmark")
+        public static let canceledBadge = AppIcon(rawValue: "xmark")
     }
 
     enum Skills {

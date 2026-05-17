@@ -40,7 +40,7 @@ struct LockScreenTaskCountView: View {
         } else {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "checklist")
+                Image(appIcon: AppIcon.Tasks.checklist)
             }
         }
     }
@@ -67,10 +67,10 @@ struct LockScreenTaskPreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            LockScreenSignedOutRow(iconSystemName: "checklist")
+            LockScreenSignedOutRow(icon: AppIcon.Tasks.checklist)
         } else if visibleTasks.isEmpty {
             HStack {
-                Image(systemName: entry.selection.emptyStateSystemImage)
+                Image(appIcon: entry.selection.emptyStateAppIcon)
                 Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
@@ -79,7 +79,7 @@ struct LockScreenTaskPreviewView: View {
                 ForEach(visibleTasks.prefix(2)) { task in
                     Button(intent: CompleteTaskIntent(taskId: task.id, selectionKey: entry.selection.cacheKey)) {
                         HStack(spacing: 4) {
-                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                            Image(appIcon: task.isCompleted ? AppIcon.State.successFilled : AppIcon.State.emptyCircle)
                                 .font(.system(size: 8))
                             Text(task.title)
                                 .font(.caption)
@@ -129,15 +129,15 @@ struct LockScreenInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateAppIcon.rawValue)
             } else {
                 Label(
                     "\(entry.data.totalCount) task\(entry.data.totalCount == 1 ? "" : "s")",
-                    systemImage: "checklist"
+                    systemImage: AppIcon.Tasks.checklist.rawValue
                 )
             }
         } else {
-            Label("sideBar", systemImage: "checklist")
+            Label("sideBar", systemImage: AppIcon.Tasks.checklist.rawValue)
         }
     }
 }

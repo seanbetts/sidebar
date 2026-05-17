@@ -46,7 +46,7 @@ struct WidgetWebsiteFaviconView: View {
     }
 
     private var placeholder: some View {
-        Image(systemName: "globe")
+        Image(appIcon: AppIcon.Content.websiteFallback)
             .font(.system(size: max(6, size * 0.8)))
             .foregroundStyle(.secondary)
     }

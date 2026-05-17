@@ -1,19 +1,20 @@
 import Foundation
+import sideBarShared
 
 struct WidgetEmptyStateContent: Equatable {
     let title: String
     let subtitle: String?
-    let systemImage: String
+    let appIcon: AppIcon
     let lockScreenLabel: String
 
     static func allTasksCompleted(
         subtitle: String,
-        systemImage: String
+        appIcon: AppIcon
     ) -> WidgetEmptyStateContent {
         WidgetEmptyStateContent(
             title: "All tasks completed",
             subtitle: subtitle,
-            systemImage: systemImage,
+            appIcon: appIcon,
             lockScreenLabel: "All tasks completed"
         )
     }
@@ -22,7 +23,7 @@ struct WidgetEmptyStateContent: Equatable {
         WidgetEmptyStateContent(
             title: "No pinned notes",
             subtitle: "Pin a note to see it here",
-            systemImage: "pin",
+            appIcon: AppIcon.Action.pin,
             lockScreenLabel: "No pinned notes"
         )
     }
@@ -31,7 +32,7 @@ struct WidgetEmptyStateContent: Equatable {
         WidgetEmptyStateContent(
             title: "No notes in \(title)",
             subtitle: "This folder is empty",
-            systemImage: "folder",
+            appIcon: AppIcon.Content.folder,
             lockScreenLabel: "No notes"
         )
     }
@@ -40,7 +41,7 @@ struct WidgetEmptyStateContent: Equatable {
         WidgetEmptyStateContent(
             title: "No pinned files",
             subtitle: "Pin a file to see it here",
-            systemImage: "pin",
+            appIcon: AppIcon.Action.pin,
             lockScreenLabel: "No pinned files"
         )
     }
@@ -49,7 +50,7 @@ struct WidgetEmptyStateContent: Equatable {
         WidgetEmptyStateContent(
             title: "No saved websites",
             subtitle: "Save a website to see it here",
-            systemImage: "globe",
+            appIcon: AppIcon.Domain.websites,
             lockScreenLabel: "No saved websites"
         )
     }

@@ -32,7 +32,11 @@ enum WebsiteWidgetSelection: Equatable, Sendable {
     }
 
     var emptyStateSystemImage: String {
-        emptyStateContent.systemImage
+        emptyStateAppIcon.rawValue
+    }
+
+    var emptyStateAppIcon: AppIcon {
+        emptyStateContent.appIcon
     }
 
     var lockScreenEmptyLabel: String {

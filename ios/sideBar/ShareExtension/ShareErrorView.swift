@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import sideBarShared
 
 final class ShareErrorView: ShareStateView {
     private enum Layout {
@@ -8,7 +9,7 @@ final class ShareErrorView: ShareStateView {
 
     init(message: String) {
         let iconImageView = UIImageView()
-        iconImageView.image = UIImage(systemName: "xmark.circle.fill")
+        iconImageView.image = UIImage(appIcon: AppIcon.Action.clearFilled)
         iconImageView.tintColor = .systemRed
         iconImageView.contentMode = .scaleAspectFit
         iconImageView.translatesAutoresizingMaskIntoConstraints = false

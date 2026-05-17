@@ -39,7 +39,7 @@ struct LockScreenNoteCountView: View {
         } else {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "pin")
+                Image(appIcon: AppIcon.Action.pin)
             }
         }
     }
@@ -66,10 +66,10 @@ struct LockScreenNotePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            LockScreenSignedOutRow(iconSystemName: "pin")
+            LockScreenSignedOutRow(icon: AppIcon.Action.pin)
         } else if entry.data.notes.isEmpty {
             HStack {
-                Image(systemName: entry.selection.emptyStateSystemImage)
+                Image(appIcon: entry.selection.emptyStateAppIcon)
                 Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
@@ -77,7 +77,7 @@ struct LockScreenNotePreviewView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(entry.data.notes.prefix(2)) { note in
                     HStack(spacing: 4) {
-                        Image(systemName: entry.selection == .all ? "pin.fill" : "doc.text")
+                        Image(appIcon: entry.selection == .all ? AppIcon.Widget.pinnedNote : AppIcon.Content.textDocument)
                             .font(.system(size: 8))
                         Text(note.name)
                             .font(.caption)
@@ -118,15 +118,15 @@ struct LockScreenNotesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateAppIcon.rawValue)
             } else {
                 Label(
                     entry.selection == .all ? "\(entry.data.totalCount) pinned" : "\(entry.data.totalCount) notes",
-                    systemImage: entry.selection == .all ? "pin.fill" : "folder"
+                    systemImage: entry.selection == .all ? AppIcon.Widget.pinnedNote.rawValue : AppIcon.Content.folder.rawValue
                 )
             }
         } else {
-            Label("sideBar", systemImage: "pin")
+            Label("sideBar", systemImage: AppIcon.Action.pin.rawValue)
         }
     }
 }

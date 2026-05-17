@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import sideBarShared
 
 class ShareStateView: NSView {
     enum Style {
@@ -189,7 +190,7 @@ final class ShareErrorView: ShareStateView {
 
     init(message: String) {
         let iconImageView = NSImageView()
-        iconImageView.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
+        iconImageView.image = NSImage(appIcon: AppIcon.Action.clearFilled)
         iconImageView.contentTintColor = .systemRed
         iconImageView.imageScaling = .scaleProportionallyUpOrDown
         iconImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -226,7 +227,7 @@ final class ShareSuccessView: ShareStateView {
 
         let symbolConfig = NSImage.SymbolConfiguration(pointSize: Layout.checkmarkSize, weight: .bold)
         let checkmarkImageView = NSImageView()
-        let checkmark = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
+        let checkmark = NSImage(appIcon: AppIcon.State.success)?
             .withSymbolConfiguration(symbolConfig)
         checkmarkImageView.image = checkmark
         checkmarkImageView.contentTintColor = .textBackgroundColor

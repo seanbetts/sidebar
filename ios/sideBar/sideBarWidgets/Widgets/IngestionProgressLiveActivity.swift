@@ -114,8 +114,8 @@ private struct IngestionActivityBrandMark: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
 
-            if let badgeSymbol {
-                Image(systemName: badgeSymbol)
+            if let badgeIcon {
+                Image(appIcon: badgeIcon)
                     .font(.system(size: badgeFontSize, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(badgePadding)
@@ -125,12 +125,12 @@ private struct IngestionActivityBrandMark: View {
         }
     }
 
-    private var badgeSymbol: String? {
+    private var badgeIcon: AppIcon? {
         switch status {
         case "failed":
-            return "exclamationmark"
+            return AppIcon.Widget.failedBadge
         case "canceled":
-            return "xmark"
+            return AppIcon.Widget.canceledBadge
         default:
             return nil
         }
@@ -164,8 +164,8 @@ private struct IngestionActivityStatusGlyph: View {
     let status: String
 
     var body: some View {
-        if let symbolName = symbolName {
-            Image(systemName: symbolName)
+        if let appIcon {
+            Image(appIcon: appIcon)
                 .foregroundStyle(symbolColor)
         } else {
             Image("AppLogo")
@@ -176,24 +176,24 @@ private struct IngestionActivityStatusGlyph: View {
         }
     }
 
-    private var symbolName: String? {
+    private var appIcon: AppIcon? {
         switch status {
         case "uploading":
-            return "arrow.up.circle.fill"
+            return AppIcon.Widget.uploadFilled
         case "queued":
-            return "clock.fill"
+            return AppIcon.Widget.clockFilled
         case "validating", "converting", "extracting":
-            return "gearshape.fill"
+            return AppIcon.Widget.processingFilled
         case "ai_md", "transcribing":
-            return "pencil.line"
+            return AppIcon.Widget.writing
         case "thumb", "finalizing":
-            return "tray.and.arrow.down.fill"
+            return AppIcon.Widget.downloadTrayFilled
         case "ready":
-            return "checkmark.circle.fill"
+            return AppIcon.State.successFilled
         case "failed":
-            return "exclamationmark.triangle.fill"
+            return AppIcon.State.warningFilled
         case "canceled":
-            return "xmark.circle.fill"
+            return AppIcon.Action.clearFilled
         default:
             return nil
         }

@@ -131,13 +131,13 @@ struct PinnedNotesWidgetView: View {
         switch renderingMode {
         case .fullColor:
             if colorScheme == .dark {
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .foregroundStyle(.black)
                     .frame(width: buttonSize, height: buttonSize)
                     .background(Circle().fill(.white))
             } else {
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: buttonSize, height: buttonSize)
@@ -148,12 +148,12 @@ struct PinnedNotesWidgetView: View {
                 Circle()
                     .fill(.fill.tertiary)
                     .frame(width: buttonSize, height: buttonSize)
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .widgetAccentable()
             }
         default:
-            Image(systemName: "plus")
+            Image(appIcon: AppIcon.Action.add)
                 .font(.system(size: buttonSize * 0.5, weight: .bold))
                 .frame(width: buttonSize, height: buttonSize)
                 .background(Circle().fill(.fill.tertiary))
@@ -166,7 +166,7 @@ struct PinnedNotesWidgetView: View {
         HomeWidgetEmptyStateView(
             title: entry.selection.emptyStateTitle,
             subtitle: entry.selection.emptyStateSubtitle,
-            iconSystemName: entry.selection.emptyStateSystemImage,
+            icon: entry.selection.emptyStateAppIcon,
             destination: URL(string: "sidebar://notes")!
         ) {
             createNoteButton
@@ -194,7 +194,7 @@ struct NoteRowView: View {
     var body: some View {
         Link(destination: noteURL) {
             HStack(spacing: 8) {
-                Image(systemName: "doc.text")
+                Image(appIcon: AppIcon.Content.textDocument)
                     .font(.system(size: compact ? 16 : 18))
                     .foregroundStyle(.secondary)
 

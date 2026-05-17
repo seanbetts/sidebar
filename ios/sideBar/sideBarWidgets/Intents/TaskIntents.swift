@@ -29,17 +29,17 @@ enum TaskWidgetSelection: Equatable, Sendable {
         case .today:
             return .allTasksCompleted(
                 subtitle: "No tasks for today",
-                systemImage: "checkmark.circle"
+                appIcon: AppIcon.State.successCircle
             )
         case .project:
             return .allTasksCompleted(
                 subtitle: "No open tasks in this project",
-                systemImage: "list.bullet"
+                appIcon: AppIcon.Tasks.project
             )
         case .group:
             return .allTasksCompleted(
                 subtitle: "No open tasks in this group",
-                systemImage: "square.stack.3d.up"
+                appIcon: AppIcon.Widget.taskStack
             )
         }
     }
@@ -51,7 +51,10 @@ enum TaskWidgetSelection: Equatable, Sendable {
         emptyStateContent.subtitle ?? ""
     }
     var emptyStateSystemImage: String {
-        emptyStateContent.systemImage
+        emptyStateAppIcon.rawValue
+    }
+    var emptyStateAppIcon: AppIcon {
+        emptyStateContent.appIcon
     }
     var lockScreenEmptyLabel: String {
         emptyStateContent.lockScreenLabel

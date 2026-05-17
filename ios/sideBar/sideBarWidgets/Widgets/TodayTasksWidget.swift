@@ -192,14 +192,14 @@ struct TodayTasksWidgetView: View {
             // Default/Dark mode: contrasting colors
             if colorScheme == .dark {
                 // Dark mode: black + on white background
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .foregroundStyle(.black)
                     .frame(width: buttonSize, height: buttonSize)
                     .background(Circle().fill(.white))
             } else {
                 // Light mode: white + on black background
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: buttonSize, height: buttonSize)
@@ -211,13 +211,13 @@ struct TodayTasksWidgetView: View {
                 Circle()
                     .fill(.fill.tertiary)
                     .frame(width: buttonSize, height: buttonSize)
-                Image(systemName: "plus")
+                Image(appIcon: AppIcon.Action.add)
                     .font(.system(size: buttonSize * 0.5, weight: .bold))
                     .widgetAccentable()
             }
         default:
             // Fallback (vibrant mode, etc.)
-            Image(systemName: "plus")
+            Image(appIcon: AppIcon.Action.add)
                 .font(.system(size: buttonSize * 0.5, weight: .bold))
                 .frame(width: buttonSize, height: buttonSize)
                 .background(Circle().fill(.fill.tertiary))
@@ -234,7 +234,7 @@ struct TodayTasksWidgetView: View {
                 HomeWidgetEmptyStateView(
                     title: entry.selection.emptyStateTitle,
                     subtitle: entry.selection.emptyStateSubtitle,
-                    iconSystemName: entry.selection.emptyStateSystemImage,
+                    icon: entry.selection.emptyStateAppIcon,
                     destination: entry.selection.deepLinkURL
                 ) {
                     addTaskButton
@@ -246,7 +246,7 @@ struct TodayTasksWidgetView: View {
     private var standByEmptyStateView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Image(systemName: entry.selection.emptyStateSystemImage)
+                Image(appIcon: entry.selection.emptyStateAppIcon)
                     .font(.system(size: 18, weight: .semibold))
                 Text(entry.selection.emptyStateTitle)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -305,7 +305,7 @@ struct TaskRowView: View {
 
             Spacer(minLength: 0)
             if WidgetTasksUtils.isOverdue(task) {
-                Image(systemName: "exclamationmark.circle.fill")
+                Image(appIcon: AppIcon.State.errorFilled)
                     .font(.caption2)
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(.secondary)
@@ -321,13 +321,13 @@ struct TaskRowView: View {
             ZStack {
                 Circle()
                     .fill(colorScheme == .dark ? Color.white : Color.black)
-                Image(systemName: "checkmark")
+                Image(appIcon: AppIcon.State.success)
                     .font(.system(size: iconSize * 0.55, weight: .bold))
                     .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
             }
             .frame(width: iconSize, height: iconSize)
         } else {
-            Image(systemName: "circle")
+            Image(appIcon: AppIcon.State.emptyCircle)
                 .font(.system(size: iconSize))
                 .foregroundStyle(.secondary)
         }

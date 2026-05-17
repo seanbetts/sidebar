@@ -362,6 +362,7 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Profile | `Settings.profile` | `person.crop.circle` |
 | Profile filled | `Settings.profileFilled` | `person.crop.circle.fill` |
 | Add profile image | `Settings.profileAdd` | `person.crop.circle.badge.plus` |
+| Profile warning | `Settings.profileWarning` | `person.crop.circle.badge.exclamationmark` |
 | User settings | `Settings.user` | `person.line.dotted.person` |
 | Assistant | `Settings.assistant` | `brain.fill` |
 | Settings skills tab | `Settings.skills` | `command.circle` |
@@ -374,6 +375,22 @@ Do collapse local variation when the symbol does not carry different meaning. Co
 | Skill category fallback | `Skills.categoryFallback` | `tag.fill` |
 | Skill tools | `Skills.tools` | `hammer` |
 | Multiple skills | `Skills.multiple` | `square.stack.3d.up` |
+
+### Widgets and extensions
+
+| Concept | `AppIcon` | SF Symbol |
+|---|---|---|
+| Widget task stack | `Widget.taskStack` | `square.stack.3d.up` |
+| Pinned note widget | `Widget.pinnedNote` | `pin.fill` |
+| Add task shortcut | `Widget.addTaskShortcut` | `plus.circle` |
+| Create note shortcut | `Widget.createNoteShortcut` | `doc.badge.plus` |
+| Uploading | `Widget.uploadFilled` | `arrow.up.circle.fill` |
+| Queued | `Widget.clockFilled` | `clock.fill` |
+| Processing | `Widget.processingFilled` | `gearshape.fill` |
+| Writing | `Widget.writing` | `pencil.line` |
+| Finalizing download | `Widget.downloadTrayFilled` | `tray.and.arrow.down.fill` |
+| Compact failure badge | `Widget.failedBadge` | `exclamationmark` |
+| Compact cancellation badge | `Widget.canceledBadge` | `xmark` |
 
 ---
 
@@ -508,7 +525,7 @@ Store Skill credential and config chrome uses `AppIcon` for requirement checks, 
 
 Auth and onboarding chrome uses `AppIcon` for migrated validation, credential, visibility, permission, profile, progress, navigation, feature-discovery, static discovery carousel, and add-key banner symbols.
 
-Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Shared bridge helpers now take `AppIcon` directly for content headers, detail placeholders, panel placeholders, sparse rows, and notes panel row/disclosure symbols. Website header/status quick actions use `AppIcon.Action`, `AppIcon.State`, and `AppIcon.Content.scratchpad` for locally-owned pin/archive/delete, panel swap, weather, scratchpad, retry, and close symbols. Core navigation bridges use `AppSection.appIcon` directly for `SidebarRail` and compact phone tabs and More rows. Feature static chrome uses `AppIcon` for Skills Store category filter/install affordances and Notes save status icons. Dynamic boundary adapters wrap resolver and external strings in `AppIcon(rawValue:)` before rendering through `Image(appIcon:)` or `UIImage(appIcon:)`; the string origin remains dynamic.
+Agent workspace surface headers and chat workspace handoff targets use `AppIcon.Workspace` or existing domain/content/action icons for locally-owned fallback mappings. Global avatar and scratchpad chrome uses `AppIcon.Settings.profile` and `AppIcon.Action.compose`. PDF controls use `AppIcon.PDF.*`, existing navigation icons, and `AppIcon.State.success` at the SwiftUI, UIKit, and AppKit rendering boundaries. Files viewer/media/spreadsheet controls use `AppIcon.Action.openExternal`, `AppIcon.Media.playFilled`, and `AppIcon.Spreadsheet.*` for locally-owned file preview affordances. Audio player and TikTok fallback controls use `AppIcon.Media.playControl`, `AppIcon.Media.pauseControl`, and `AppIcon.Media.playFilled`. Files panel category and markdown fallback controls use `AppIcon.Content.*`, `AppIcon.Media.videoFile`, `AppIcon.Media.waveform`, `AppIcon.Markdown.*`, `AppIcon.State.warningFilled`, and existing navigation icons. Chrome/status/website/notes controls use `AppIcon.Navigation`, `AppIcon.Action`, `AppIcon.State`, `AppIcon.Content.websiteFallback`, `AppIcon.Content.messageThread`, `AppIcon.Content.scratchpad`, `AppIcon.Settings.assistant`, `AppIcon.Tasks.checklist`, and `AppIcon.Notes.formatting` for locally-owned symbols. Shared bridge helpers now take `AppIcon` directly for content headers, detail placeholders, panel placeholders, sparse rows, and notes panel row/disclosure symbols. Website header/status quick actions use `AppIcon.Action`, `AppIcon.State`, and `AppIcon.Content.scratchpad` for locally-owned pin/archive/delete, panel swap, weather, scratchpad, retry, and close symbols. Core navigation bridges use `AppSection.appIcon` directly for `SidebarRail` and compact phone tabs and More rows. Feature static chrome uses `AppIcon` for Skills Store category filter/install affordances and Notes save status icons. Widget and share extension surfaces use target-local `Image(appIcon:)`, `UIImage(appIcon:)`, and `NSImage(appIcon:)` adapters for app-owned signed-out, empty-state, row, Live Activity, and success/error symbols. App Shortcuts remain a narrow exception because AppIntents requires compile-time `systemImageName` literals; source checks compare those literals against `AppIcon`. Dynamic boundary adapters wrap resolver and external strings in `AppIcon(rawValue:)` before rendering through `Image(appIcon:)` or `UIImage(appIcon:)`; the string origin remains dynamic.
 
 ---
 

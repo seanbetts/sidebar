@@ -39,7 +39,7 @@ struct LockScreenFileCountView: View {
         } else {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "doc")
+                Image(appIcon: AppIcon.Content.document)
             }
         }
     }
@@ -66,10 +66,10 @@ struct LockScreenFilePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            LockScreenSignedOutRow(iconSystemName: "doc")
+            LockScreenSignedOutRow(icon: AppIcon.Content.document)
         } else if entry.data.files.isEmpty {
             HStack {
-                Image(systemName: entry.selection.emptyStateSystemImage)
+                Image(appIcon: entry.selection.emptyStateAppIcon)
                 Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
@@ -77,7 +77,7 @@ struct LockScreenFilePreviewView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(entry.data.files.prefix(2)) { file in
                     HStack(spacing: 4) {
-                        Image(systemName: "doc.fill")
+                        Image(appIcon: AppIcon.Content.documentFilled)
                             .font(.system(size: 8))
                         Text(displayName(for: file))
                             .font(.caption)
@@ -124,15 +124,15 @@ struct LockScreenFilesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateAppIcon.rawValue)
             } else {
                 Label(
                     "\(entry.data.totalCount) pinned file\(entry.data.totalCount == 1 ? "" : "s")",
-                    systemImage: "doc.fill"
+                    systemImage: AppIcon.Content.documentFilled.rawValue
                 )
             }
         } else {
-            Label("sideBar", systemImage: "doc")
+            Label("sideBar", systemImage: AppIcon.Content.document.rawValue)
         }
     }
 }

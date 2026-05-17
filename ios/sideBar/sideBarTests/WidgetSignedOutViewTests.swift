@@ -5,12 +5,13 @@ final class WidgetSignedOutViewTests: XCTestCase {
         let normalized = try widgetListLayoutSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let expectedIconStyle =
-            "Image(systemName:\"person.crop.circle.badge.exclamationmark\")"
+            "Image(appIcon:AppIcon.Settings.profileWarning)"
             + ".font(.system(size:32))"
             + ".foregroundStyle(colorScheme==.dark?.white:.black)"
 
         XCTAssertTrue(normalized.contains("@Environment(\\.colorScheme)privatevarcolorScheme"))
         XCTAssertTrue(normalized.contains(expectedIconStyle))
+        XCTAssertFalse(normalized.contains("Image(systemName:\"person.crop.circle.badge.exclamationmark\")"))
     }
 }
 

@@ -596,7 +596,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 
         XCTAssertTrue(tasksSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
         XCTAssertTrue(tasksSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
-        XCTAssertTrue(tasksSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
+        XCTAssertTrue(tasksSource.contains("icon:entry.selection.emptyStateAppIcon"))
         XCTAssertFalse(tasksSource.contains("accentIcon:false"))
         XCTAssertTrue(taskCountSource.contains("Text(entry.selection.emptyStateTitle)"))
 
@@ -605,30 +605,30 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 
         XCTAssertTrue(filesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
         XCTAssertTrue(filesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
-        XCTAssertTrue(filesSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
+        XCTAssertTrue(filesSource.contains("icon:entry.selection.emptyStateAppIcon"))
 
         XCTAssertTrue(websitesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
         XCTAssertTrue(websitesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
-        XCTAssertTrue(websitesSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
+        XCTAssertTrue(websitesSource.contains("icon:entry.selection.emptyStateAppIcon"))
 
         XCTAssertTrue(lockScreenTasksSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
         XCTAssertTrue(
             lockScreenTasksSource.contains(
-                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateAppIcon.rawValue)"
             )
         )
 
         XCTAssertTrue(lockScreenFilesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
         XCTAssertTrue(
             lockScreenFilesSource.contains(
-                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateAppIcon.rawValue)"
             )
         )
 
         XCTAssertTrue(lockScreenSitesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
         XCTAssertTrue(
             lockScreenSitesSource.contains(
-                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"
+                "Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateAppIcon.rawValue)"
             )
         )
     }

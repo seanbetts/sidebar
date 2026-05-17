@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, and dynamic icon boundary adapter slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, and widget/share-extension icon slices completed after the initial catalog work.
 
 Categories:
 
@@ -33,6 +33,7 @@ Categories:
 | `bookmark` | Memories | Canonical | `AppIcon.Domain.memories` | Settings memory surfaces |
 | `bookmark.fill` | Selected memory | Context-specific | `AppIcon.Domain.memoriesFilled` | Selected Memories row chrome |
 | `plus` | Add or create | Canonical | `AppIcon.Action.add` | Header add buttons and add menus |
+| `plus.circle` | Add task App Shortcut | Context-specific | `AppIcon.Widget.addTaskShortcut` | App Shortcuts use the unfilled circle variant |
 | `plus.circle.fill` | Add filled circle | Context-specific | `AppIcon.Action.addCircleFilled` | Store Skill install and credential add actions |
 | `xmark` | Close or dismiss | Canonical | `AppIcon.Action.close` | Header close buttons and close menu items |
 | `xmark.circle` | Cancel in-progress item | Context-specific | `AppIcon.Action.cancel` | Attachment upload cancel control |
@@ -53,6 +54,7 @@ Categories:
 | `line.3.horizontal` | Reorder | Canonical | `AppIcon.Action.reorder` | Reorder actions |
 | `arrow.left.arrow.right` | Swap panels | Context-specific | `AppIcon.Action.swapPanels` | Website header panel swap action |
 | `pin` | Pin | Canonical | `AppIcon.Action.pin` | Pin actions |
+| `pin.fill` | Pinned widget note | Context-specific | `AppIcon.Widget.pinnedNote` | Lock screen note widget uses the filled variant |
 | `pin.slash` | Unpin | Canonical | `AppIcon.Action.unpin` | Pin inverse |
 | `archivebox` | Archive | Canonical | `AppIcon.Action.archive` | Archive actions and archive row header |
 | `archivebox.fill` | Unarchive | Canonical | `AppIcon.Action.unarchive` | Archive inverse |
@@ -105,6 +107,7 @@ Categories:
 | `bell.badge.fill` | Notifications permission | Context-specific | `AppIcon.Onboarding.notificationsPermission` | Onboarding and permission recovery |
 | `note.text` | Note document | Canonical | `AppIcon.Content.note` | Note content |
 | `doc.text` | Text document | Canonical | `AppIcon.Content.textDocument` | Text document content |
+| `doc.badge.plus` | Create note App Shortcut | Context-specific | `AppIcon.Widget.createNoteShortcut` | App Shortcuts note creation affordance |
 | `doc.richtext` | Rich text/PDF document | Context-specific | `AppIcon.Content.richTextDocument` | File rows and file header |
 | `doc` | Generic document | Canonical | `AppIcon.Content.document` | File fallback |
 | `doc.fill` | Filled document | Context-specific | `AppIcon.Content.documentFilled` | Filled document row |
@@ -133,6 +136,7 @@ Categories:
 | `person.crop.circle` | Profile | Canonical | `AppIcon.Settings.profile` | Profile/account |
 | `person.crop.circle.fill` | Filled profile | Context-specific | `AppIcon.Settings.profileFilled` | Profile display |
 | `person.crop.circle.badge.plus` | Add profile image | Context-specific | `AppIcon.Settings.profileAdd` | Onboarding profile |
+| `person.crop.circle.badge.exclamationmark` | Widget signed-out warning | Context-specific | `AppIcon.Settings.profileWarning` | Widget unauthenticated state |
 | `person.line.dotted.person` | User settings | Context-specific | `AppIcon.Settings.user` | Settings tab |
 | `brain.fill` | Assistant | Canonical | `AppIcon.Settings.assistant` | Settings and calibration |
 | `key.horizontal` | Credentials | Context-specific | `AppIcon.Settings.credentials` | Provider key |
@@ -144,6 +148,13 @@ Categories:
 | `tag.fill` | Skill category fallback | Context-specific | `AppIcon.Skills.categoryFallback` | Unknown skill category |
 | `hammer` | Skill tools | Context-specific | `AppIcon.Skills.tools` | Tool category |
 | `square.stack.3d.up` | Multiple tool or skill summary | Context-specific | `AppIcon.Skills.multiple` | Chat tool summary fallback |
+| `arrow.up.circle.fill` | Widget upload progress | Context-specific | `AppIcon.Widget.uploadFilled` | Ingestion Live Activity uploading state |
+| `clock.fill` | Widget queued progress | Context-specific | `AppIcon.Widget.clockFilled` | Ingestion Live Activity queued state |
+| `gearshape.fill` | Widget processing progress | Context-specific | `AppIcon.Widget.processingFilled` | Ingestion Live Activity processing states |
+| `pencil.line` | Widget writing progress | Context-specific | `AppIcon.Widget.writing` | AI markdown and transcription states |
+| `tray.and.arrow.down.fill` | Widget finalizing progress | Context-specific | `AppIcon.Widget.downloadTrayFilled` | Thumbnail and finalization states |
+| `exclamationmark` | Compact widget failure badge | Context-specific | `AppIcon.Widget.failedBadge` | Live Activity badge only |
+| `xmark` | Compact widget cancellation badge | Context-specific | `AppIcon.Widget.canceledBadge` | Live Activity badge only |
 | `person.crop.circle.badge.checkmark` | Assistant identity skill | Context-specific | `AppIcon.Skills.assistantIdentity` | Skill resolver |
 | `sparkles` | Assistant soul skill | Context-specific | `AppIcon.Skills.assistantSoul` | Skill resolver |
 | `bubble.left.and.bubble.right` | Conversations skill | Context-specific | `AppIcon.Skills.conversations` | Skill resolver |
@@ -455,11 +466,25 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | iOS shortcut menu icons | Shortcut symbol resolver through `UIImage(systemName:)` | Dynamic symbol retained, rendered through `UIImage(appIcon: AppIcon(rawValue: symbolName))` |
 | UIKit note formatting popover | Formatting symbol string through `UIImage(systemName:)` | Dynamic formatting symbol retained, rendered through `UIImage(appIcon: AppIcon(rawValue: symbol))` |
 
+## Widget And Share Extension Icon Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| Widget signed-out and empty states | `person.crop.circle.badge.exclamationmark`, `pin`, `folder`, `globe`, task selection icons | `HomeWidgetSignedOutView` and `HomeWidgetEmptyStateView` take `AppIcon`; widget selection models expose `emptyStateAppIcon` |
+| Widget task controls and rows | `plus`, `exclamationmark.circle.fill`, `checkmark`, `circle` | `AppIcon.Action.add`, `AppIcon.State.errorFilled`, `AppIcon.State.success`, `AppIcon.State.emptyCircle` |
+| Pinned notes and files widgets | `doc.text`, file-type raw strings, `globe` favicon fallback | `AppIcon.Content.*`, `AppIcon.Media.*`, and `AppIcon.Content.websiteFallback` values rendered through widget `Image(appIcon:)` |
+| Lock screen widgets | `checklist`, `doc`, `doc.fill`, `pin`, `folder`, `globe`, selection empty-state strings | Existing `AppIcon.Tasks`, `AppIcon.Content`, `AppIcon.Widget`, `AppIcon.Action`, and `AppIcon.Domain` values at `Image` and `Label` boundaries |
+| Widget App Shortcuts | `checklist`, `plus.circle`, `doc.text`, `doc.badge.plus`, `globe`, `doc`, `note.text`, `bubble.left.and.bubble.right` | AppIntents requires compile-time `systemImageName` literals, so the literals remain but source checks compare them to existing `AppIcon.Tasks`, `AppIcon.Widget`, `AppIcon.Content`, and `AppIcon.Domain` values |
+| Ingestion Live Activity | Progress and badge strings such as `arrow.up.circle.fill`, `clock.fill`, `gearshape.fill`, `pencil.line`, `tray.and.arrow.down.fill`, `exclamationmark`, `xmark` | `AppIcon.Widget.*`, `AppIcon.State.*`, and `AppIcon.Action.clearFilled` |
+| Share extension success/error state images | `UIImage(systemName: "checkmark")`, `UIImage(systemName: "xmark.circle.fill")`, `NSImage(systemSymbolName: ...)` | Share-extension-local `UIImage(appIcon:)` and `NSImage(appIcon:)` adapters using `AppIcon.State.success` and `AppIcon.Action.clearFilled` |
+
 ## Explicit Later Boundaries
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- widgets and extensions
 - non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, and dynamic icon boundary adapter slices
+- Safari extension or other extension symbol surfaces outside the widget/share-extension paths audited in this slice
 - semantic ownership for dynamic/external symbol payload catalogs that still originate as strings
 - the production-wide strict source guard

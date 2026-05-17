@@ -39,7 +39,7 @@ struct LockScreenSiteCountView: View {
         } else {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "globe")
+                Image(appIcon: AppIcon.Domain.websites)
             }
         }
     }
@@ -66,10 +66,10 @@ struct LockScreenSitePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            LockScreenSignedOutRow(iconSystemName: "globe")
+            LockScreenSignedOutRow(icon: AppIcon.Domain.websites)
         } else if entry.data.websites.isEmpty {
             HStack {
-                Image(systemName: entry.selection.emptyStateSystemImage)
+                Image(appIcon: entry.selection.emptyStateAppIcon)
                 Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
@@ -121,15 +121,15 @@ struct LockScreenSitesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateAppIcon.rawValue)
             } else {
                 Label(
                     "\(entry.data.totalCount) saved website\(entry.data.totalCount == 1 ? "" : "s")",
-                    systemImage: "globe"
+                    systemImage: AppIcon.Domain.websites.rawValue
                 )
             }
         } else {
-            Label("sideBar", systemImage: "globe")
+            Label("sideBar", systemImage: AppIcon.Domain.websites.rawValue)
         }
     }
 }

@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import sideBarShared
 
 final class ShareSuccessView: ShareStateView {
     private enum Layout {
@@ -18,7 +19,7 @@ final class ShareSuccessView: ShareStateView {
 
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: Layout.checkmarkSize, weight: .bold)
         let checkmarkImageView = UIImageView()
-        checkmarkImageView.image = UIImage(systemName: "checkmark", withConfiguration: symbolConfig)
+        checkmarkImageView.image = UIImage(appIcon: AppIcon.State.success)?.withConfiguration(symbolConfig)
         checkmarkImageView.tintColor = Self.successCheckForegroundColor
         checkmarkImageView.contentMode = .scaleAspectFit
         checkmarkImageView.accessibilityIdentifier = "share-success-icon"

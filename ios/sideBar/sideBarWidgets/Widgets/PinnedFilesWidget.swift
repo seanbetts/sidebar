@@ -110,7 +110,7 @@ struct PinnedFilesWidgetView: View {
         HomeWidgetEmptyStateView(
             title: entry.selection.emptyStateTitle,
             subtitle: entry.selection.emptyStateSubtitle,
-            iconSystemName: entry.selection.emptyStateSystemImage,
+            icon: entry.selection.emptyStateAppIcon,
             destination: entry.selection.deepLinkURL
         )
     }
@@ -132,26 +132,26 @@ struct FileRowView: View {
         URL(string: "sidebar://files/\(file.id)") ?? URL(string: "sidebar://files")!
     }
 
-    private var iconName: String {
+    private var appIcon: AppIcon {
         // Check for YouTube videos
         if let mimeType = file.mimeType?.lowercased(), mimeType.contains("video/youtube") {
-            return "play.rectangle"
+            return AppIcon.Media.video
         }
         // Check category-specific icons
         if let category = file.category?.lowercased() {
-            if category == "presentations" { return "rectangle.on.rectangle.angled" }
-            if category == "reports" { return "chart.line.text.clipboard" }
+            if category == "presentations" { return AppIcon.Content.presentation }
+            if category == "reports" { return AppIcon.Content.report }
         }
         // Use recommendedViewer for specific file type icons
         switch file.recommendedViewer {
-        case "viewer_pdf": return "doc.richtext"
-        case "viewer_json": return "tablecells"
-        case "viewer_video": return "video"
-        case "image_original": return "photo"
-        case "audio_original": return "waveform"
-        case "viewer_presentation": return "rectangle.on.rectangle.angled"
-        case "text_original", "ai_md": return "doc.text"
-        default: return "doc"
+        case "viewer_pdf": return AppIcon.Content.richTextDocument
+        case "viewer_json": return AppIcon.Content.table
+        case "viewer_video": return AppIcon.Media.videoFile
+        case "image_original": return AppIcon.Content.photo
+        case "audio_original": return AppIcon.Media.waveform
+        case "viewer_presentation": return AppIcon.Content.presentation
+        case "text_original", "ai_md": return AppIcon.Content.textDocument
+        default: return AppIcon.Content.document
         }
     }
 
@@ -164,7 +164,7 @@ struct FileRowView: View {
     var body: some View {
         Link(destination: fileURL) {
             HStack(spacing: 8) {
-                Image(systemName: iconName)
+                Image(appIcon: appIcon)
                     .font(.system(size: compact ? 14 : 16))
                     .foregroundStyle(.secondary)
 

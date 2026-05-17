@@ -123,7 +123,7 @@ struct SavedSitesWidgetView: View {
         HomeWidgetEmptyStateView(
             title: entry.selection.emptyStateTitle,
             subtitle: entry.selection.emptyStateSubtitle,
-            iconSystemName: entry.selection.emptyStateSystemImage,
+            icon: entry.selection.emptyStateAppIcon,
             destination: entry.selection.deepLinkURL
         )
     }
