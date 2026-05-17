@@ -404,7 +404,10 @@ final class Task15AppIconSourceTests: XCTestCase {
         XCTAssertFalse(skillsStoreSource.contains("iconName:\"magnifyingglass\""))
     }
 
-    private func assertNoForbiddenIconPatterns(
+}
+
+private extension Task15AppIconSourceTests {
+    func assertNoForbiddenIconPatterns(
         _ forbiddenByFile: [([String], [String])],
         file: StaticString = #filePath,
         line: UInt = #line
@@ -423,7 +426,7 @@ final class Task15AppIconSourceTests: XCTestCase {
         }
     }
 
-    private func source(
+    func source(
         at pathComponents: [String],
         file: StaticString = #filePath,
         line: UInt = #line

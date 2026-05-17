@@ -234,17 +234,27 @@ final class ToolResultWorkspaceOpenEntityParserTests: XCTestCase {
     }
 
     func testParseMapsKnownEntityTypesToAppIcons() {
-        let cases: [(type: String, expectedIcon: AppIcon, expectedIconName: String)] = [
-            ("note", AppIcon.Content.textDocument, "doc.text"),
-            ("website", AppIcon.Domain.websites, "globe"),
-            ("file", AppIcon.Domain.files, "folder"),
-            ("conversation", AppIcon.Domain.chat, "bubble"),
-            ("scratchpad", AppIcon.Action.compose, "square.and.pencil"),
-            ("task", AppIcon.Domain.tasks, "checkmark.square"),
-            ("task_scope", AppIcon.Domain.tasks, "checkmark.square"),
-            ("task_project", AppIcon.Domain.tasks, "checkmark.square"),
-            ("task_group", AppIcon.Domain.tasks, "checkmark.square"),
-            ("unknown_entity", AppIcon.Workspace.openEntityFallback, "arrow.up.forward.app")
+        struct IconCase {
+            let type: String
+            let expectedIcon: AppIcon
+            let expectedIconName: String
+        }
+
+        let cases: [IconCase] = [
+            IconCase(type: "note", expectedIcon: AppIcon.Content.textDocument, expectedIconName: "doc.text"),
+            IconCase(type: "website", expectedIcon: AppIcon.Domain.websites, expectedIconName: "globe"),
+            IconCase(type: "file", expectedIcon: AppIcon.Domain.files, expectedIconName: "folder"),
+            IconCase(type: "conversation", expectedIcon: AppIcon.Domain.chat, expectedIconName: "bubble"),
+            IconCase(type: "scratchpad", expectedIcon: AppIcon.Action.compose, expectedIconName: "square.and.pencil"),
+            IconCase(type: "task", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
+            IconCase(type: "task_scope", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
+            IconCase(type: "task_project", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
+            IconCase(type: "task_group", expectedIcon: AppIcon.Domain.tasks, expectedIconName: "checkmark.square"),
+            IconCase(
+                type: "unknown_entity",
+                expectedIcon: AppIcon.Workspace.openEntityFallback,
+                expectedIconName: "arrow.up.forward.app"
+            )
         ]
 
         for testCase in cases {

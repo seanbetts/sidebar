@@ -81,7 +81,8 @@ final class ChatStreamParserTests: XCTestCase {
     func testIngestParsesToolConfirmationRequestedEvent() {
         var parser = ChatStreamParser()
         let chunk = "event: tool_confirmation_requested\n" +
-            "data: {\"confirmation_id\":\"confirm-1\",\"tool_name\":\"Delete Note\",\"summary\":\"Delete note?\",\"undo_supported\":true}\n\n"
+            "data: {\"confirmation_id\":\"confirm-1\",\"tool_name\":\"Delete Note\"," +
+            "\"summary\":\"Delete note?\",\"undo_supported\":true}\n\n"
 
         let events = parser.ingest(Data(chunk.utf8))
 
