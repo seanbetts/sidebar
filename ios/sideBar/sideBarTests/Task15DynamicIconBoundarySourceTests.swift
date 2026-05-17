@@ -4,6 +4,8 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
     func testDynamicSwiftUIIconBoundariesRenderThroughAppIconAdapters() throws {
         let skillIconView = try normalizedSource(at: ["sideBar", "Views", "Common", "SkillIconView.swift"])
         let settingsMac = try normalizedSource(at: ["sideBar", "Views", "Settings", "SettingsMacStyles.swift"])
+        let workspaceModels = try normalizedSource(at: ["sideBar", "App", "WorkspaceModels.swift"])
+        let workspacePayloadModels = try normalizedSource(at: ["sideBar", "App", "WorkspaceSurfacePayloadModels.swift"])
         let agentWorkspace = try normalizedSource(
             at: ["sideBar", "Views", "AgentWorkspace", "AgentWorkspaceSurfaceView+Helpers.swift"]
         )
@@ -16,7 +18,14 @@ final class Task15DynamicIconBoundarySourceTests: XCTestCase {
         XCTAssertTrue(settingsMac.contains("Image(appIcon:AppIcon(rawValue:systemImage))"))
         XCTAssertFalse(settingsMac.contains("Image(systemName:systemImage)"))
 
-        XCTAssertTrue(agentWorkspace.contains("Image(appIcon:AppIcon(rawValue:systemImage))"))
+        XCTAssertTrue(workspaceModels.contains("publicletappIcon:AppIcon?"))
+        XCTAssertTrue(workspaceModels.contains("appIcon:AppIcon?=nil"))
+        XCTAssertFalse(workspaceModels.contains("publicletsystemImage:String?"))
+        XCTAssertTrue(workspacePayloadModels.contains("appIcon:systemImage.map(AppIcon.init(rawValue:))"))
+
+        XCTAssertTrue(agentWorkspace.contains("ifletappIcon=action.appIcon"))
+        XCTAssertTrue(agentWorkspace.contains("Image(appIcon:appIcon)"))
+        XCTAssertFalse(agentWorkspace.contains("Image(appIcon:AppIcon(rawValue:systemImage))"))
         XCTAssertFalse(agentWorkspace.contains("Image(systemName:systemImage)"))
     }
 

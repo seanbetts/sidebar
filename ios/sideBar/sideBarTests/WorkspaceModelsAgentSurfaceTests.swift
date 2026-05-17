@@ -197,6 +197,48 @@ final class WorkspaceModelsAgentSurfaceTests: XCTestCase {
         )
     }
 
+    func testStructuredActionItemsConvertExternalSystemImagesToAppIcons() {
+        let descriptor = AgentWorkspaceSurfaceDescriptor(
+            type: .actionPanel,
+            surfaceId: "surface-actions-2",
+            payload: [
+                "actions": """
+                [
+                  {
+                    "id": "open_note",
+                    "title": "Open note",
+                    "system_image": "doc.text",
+                    "style": "primary"
+                  },
+                  {
+                    "label": "Dismiss",
+                    "systemImage": "xmark",
+                    "variant": "secondary"
+                  }
+                ]
+                """
+            ]
+        )
+
+        XCTAssertEqual(
+            descriptor.actionItems,
+            [
+                AgentWorkspaceActionItem(
+                    id: "open_note",
+                    title: "Open note",
+                    appIcon: AppIcon.Content.textDocument,
+                    style: .primary
+                ),
+                AgentWorkspaceActionItem(
+                    id: "dismiss",
+                    title: "Dismiss",
+                    appIcon: AppIcon.Action.close,
+                    style: .secondary
+                )
+            ]
+        )
+    }
+
     func testOnlyInteractiveBlockSurfacesAllowEphemeralInteractionInV1() {
         let display = AgentWorkspaceSurfaceDescriptor(
             type: .form,

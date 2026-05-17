@@ -233,8 +233,8 @@ extension AgentWorkspaceSurfaceView {
             environment.toastCenter.show(message: "\(action.title) captured locally.", style: .success)
         } label: {
             HStack(spacing: DesignTokens.Spacing.xsPlus) {
-                if let systemImage = action.systemImage {
-                    Image(appIcon: AppIcon(rawValue: systemImage))
+                if let appIcon = action.appIcon {
+                    Image(appIcon: appIcon)
                 }
                 Text(action.title)
             }

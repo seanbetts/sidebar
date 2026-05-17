@@ -92,7 +92,7 @@ struct ActionItemPayload: Decodable {
         return AgentWorkspaceActionItem(
             id: id?.trimmedOrNil ?? resolvedTitle.lowercased().replacingOccurrences(of: " ", with: "_"),
             title: resolvedTitle,
-            systemImage: systemImage?.trimmedOrNil,
+            appIcon: systemImage.map(AppIcon.init(rawValue:)),
             style: resolvedStyle
         )
     }
