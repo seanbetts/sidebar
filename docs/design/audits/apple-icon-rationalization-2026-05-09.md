@@ -4,7 +4,7 @@ Date: 2026-05-09
 
 Purpose: implementation-facing mapping from current native SF Symbol usage to the target `AppIcon` vocabulary for `RES-MP-13`.
 
-This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, empty-state compatibility bridge cleanup, header/sidebar menu compatibility shim removal, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension icon, note bridge plus chat header static icon, sidebar swipe-action helper, workspace action payload ownership, and SkillIconResolver Store/Settings UI ownership slices completed after the initial catalog work.
+This table does not mean native icon centralization is complete. It records the canonical vocabulary used by the current `AppIcon` catalog and the sidebar, panel, menu action, shared empty/search/status component, feature-level empty-state, empty-state compatibility bridge cleanup, header/sidebar menu compatibility shim removal, AppSection iconName compatibility shim removal, task row/detail/modal action/status, task taxonomy/recurrence, compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension icon, note bridge plus chat header static icon, sidebar swipe-action helper, workspace action payload ownership, and SkillIconResolver Store/Settings UI ownership slices completed after the initial catalog work.
 
 Categories:
 
@@ -468,6 +468,15 @@ Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
 | Compact phone regular tab sections | `phoneIconName(for:)` through `Image(systemName:)` | `Image(appIcon: section.appIcon)` |
 | Compact phone More root rows | `phoneIconName(for:)` through `Label(..., systemImage:)` | `Label` view-builder icon with `Image(appIcon: section.appIcon)` |
 
+## AppSection IconName Compatibility Shim Removal Slice
+
+Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
+
+| Surface | Prior direct symbol use | Canonical target |
+|---|---|---|
+| `AppSection` app-owned icon API | `iconName: String` compatibility shim returning `appIcon.rawValue` | `appIcon: AppIcon` as the only section icon API |
+| Section rendering at Apple API boundaries | Callers could depend on `section.iconName` strings | Callers use `Image(appIcon: section.appIcon)` or, where Apple APIs require a string, `section.appIcon.rawValue` at the rendering boundary |
+
 ## Feature Static Chrome Slice
 
 Completed on `2026-05-16` as a bounded `RES-MP-13` slice.
@@ -550,6 +559,6 @@ Completed on `2026-05-17` as a bounded `RES-MP-13` slice.
 
 The following direct symbol areas remain tracked under `RES-MP-13` for later slices:
 
-- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, workspace action payload ownership, SkillIconResolver Store/Settings UI ownership, empty-state compatibility bridge cleanup, and header/sidebar menu compatibility shim removal slices
+- non-menu feature view icons outside the completed compact phone search/action dock, feature search plus Memories/Skills Store chrome, settings/profile chrome, Store Skill credential/config chrome, auth/onboarding chrome, bounded chat/tool/error presentation, dynamic workspace target/parser presentation, chat input plus attachment control, static discovery carousel, global avatar/scratchpad chrome, PDF controls, files viewer/media/spreadsheet controls, audio player/TikTok fallback controls, files panel category/markdown fallback controls, chrome/status/website/notes controls, shared bridge plus notes panel static icon, website header/status quick-action, core navigation icon bridge, feature static chrome, dynamic icon boundary adapter, widget/share-extension, note bridge plus chat header static, sidebar swipe-action helper, workspace action payload ownership, SkillIconResolver Store/Settings UI ownership, empty-state compatibility bridge cleanup, header/sidebar menu compatibility shim removal, and AppSection iconName compatibility shim removal slices
 - remaining semantic ownership for external/dynamic symbol payload catalogs that still originate as strings
 - the production-wide strict source guard

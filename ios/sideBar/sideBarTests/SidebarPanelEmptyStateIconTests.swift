@@ -9,11 +9,11 @@ final class SidebarPanelEmptyStateIconTests: XCTestCase {
         let notes = try sidebarPanelsSource("NotesPanel+Helpers.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertEqual(AppSection.chat.iconName, "bubble")
         XCTAssertEqual(AppSection.chat.appIcon, AppIcon.Domain.chat)
+        XCTAssertEqual(AppSection.chat.appIcon.rawValue, "bubble")
         XCTAssertTrue(conversations.contains("icon:AppIcon.Domain.chat"))
-        XCTAssertEqual(AppSection.notes.iconName, "text.document")
         XCTAssertEqual(AppSection.notes.appIcon, AppIcon.Domain.notes)
+        XCTAssertEqual(AppSection.notes.appIcon.rawValue, "text.document")
         XCTAssertTrue(notes.contains("icon:AppIcon.Domain.notes"))
     }
 }

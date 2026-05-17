@@ -30,10 +30,10 @@ final class Task15AppIconSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("publicvarappIcon:AppIcon{"))
-        XCTAssertTrue(normalized.contains("publicvariconName:String{appIcon.rawValue}"))
         XCTAssertTrue(normalized.contains("returnAppIcon.Domain.chat"))
         XCTAssertTrue(normalized.contains("returnAppIcon.Domain.notes"))
         XCTAssertTrue(normalized.contains("returnAppIcon.Domain.tasks"))
+        XCTAssertFalse(normalized.contains("publicvariconName:String"))
         XCTAssertFalse(normalized.contains("return\"bubble\""))
         XCTAssertFalse(normalized.contains("return\"checkmark.square\""))
     }

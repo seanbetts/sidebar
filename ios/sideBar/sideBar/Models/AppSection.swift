@@ -39,8 +39,6 @@ public enum AppSection: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    public var iconName: String { appIcon.rawValue }
-
     public static let primaryNavigationSections: [AppSection] = [
         .chat,
         .notes,
