@@ -166,7 +166,7 @@ A glass-effect toolbar container for iPhone compact layout. Contains multiple in
 | Component | Role |
 |---|---|
 | `PhoneFloatingActionDock` | Glass capsule container. Accepts `@ViewBuilder` content. |
-| `PhoneFloatingActionButton` | 44pt icon button. Requires `systemName` and `accessibilityLabel`. |
+| `PhoneFloatingActionButton` | 44pt icon button. Requires `icon: AppIcon` and `accessibilityLabel`. |
 | `PhoneFloatingActionDivider` | 1px vertical separator using `DesignTokens.Colors.border`. |
 
 ### Dock types
