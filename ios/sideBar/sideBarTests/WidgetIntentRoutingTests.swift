@@ -198,15 +198,24 @@ final class WidgetIntentRoutingTests: XCTestCase {
 
     func testIngestionLiveActivityUsesApprovedCompactStateSymbols() throws {
         let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
+        let appIconSource = try normalizedAppIconSource()
 
-        XCTAssertTrue(source.contains("case\"uploading\":return\"arrow.up.circle.fill\""))
-        XCTAssertTrue(source.contains("case\"queued\":return\"clock.fill\""))
-        XCTAssertTrue(source.contains("case\"validating\",\"converting\",\"extracting\":return\"gearshape.fill\""))
-        XCTAssertTrue(source.contains("case\"ai_md\",\"transcribing\":return\"pencil.line\""))
-        XCTAssertTrue(source.contains("case\"thumb\",\"finalizing\":return\"tray.and.arrow.down.fill\""))
-        XCTAssertTrue(source.contains("case\"ready\":return\"checkmark.circle.fill\""))
-        XCTAssertTrue(source.contains("case\"failed\":return\"exclamationmark.triangle.fill\""))
-        XCTAssertTrue(source.contains("case\"canceled\":return\"xmark.circle.fill\""))
+        XCTAssertTrue(source.contains("case\"uploading\":returnAppIcon.Widget.uploadFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletuploadFilled=AppIcon(rawValue:\"arrow.up.circle.fill\")"))
+        XCTAssertTrue(source.contains("case\"queued\":returnAppIcon.Widget.clockFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletclockFilled=AppIcon(rawValue:\"clock.fill\")"))
+        XCTAssertTrue(source.contains("case\"validating\",\"converting\",\"extracting\":returnAppIcon.Widget.processingFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletprocessingFilled=AppIcon(rawValue:\"gearshape.fill\")"))
+        XCTAssertTrue(source.contains("case\"ai_md\",\"transcribing\":returnAppIcon.Widget.writing"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletwriting=AppIcon(rawValue:\"pencil.line\")"))
+        XCTAssertTrue(source.contains("case\"thumb\",\"finalizing\":returnAppIcon.Widget.downloadTrayFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletdownloadTrayFilled=AppIcon(rawValue:\"tray.and.arrow.down.fill\")"))
+        XCTAssertTrue(source.contains("case\"ready\":returnAppIcon.State.successFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletsuccessFilled=AppIcon(rawValue:\"checkmark.circle.fill\")"))
+        XCTAssertTrue(source.contains("case\"failed\":returnAppIcon.State.warningFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletwarningFilled=AppIcon(rawValue:\"exclamationmark.triangle.fill\")"))
+        XCTAssertTrue(source.contains("case\"canceled\":returnAppIcon.Action.clearFilled"))
+        XCTAssertTrue(appIconSource.contains("publicstaticletclearFilled=AppIcon(rawValue:\"xmark.circle.fill\")"))
     }
 }
 
@@ -266,6 +275,18 @@ private func normalizedSideBarAppSource(
 ) throws -> String {
     try widgetSource(
         at: ["sideBar", "sideBarApp.swift"],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func normalizedAppIconSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBarShared", "Utilities", "AppIcon.swift"],
         file: file,
         line: line
     )
