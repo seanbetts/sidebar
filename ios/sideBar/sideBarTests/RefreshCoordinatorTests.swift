@@ -125,14 +125,65 @@ final class RefreshCoordinatorTests: XCTestCase {
             policy: RefreshPolicy(),
             registry: RefreshRegistry(adapters: [adapter])
         )
+        let change = realtimeChange(id: "w1")
+        let context = realtimeContext()
+
+        let first = Task { await coordinator.scheduleRealtimeInvalidation(change, context: context) }
+        let second = Task { await coordinator.scheduleRealtimeInvalidation(change, context: context) }
+
+        await fulfillment(of: [adapter.started], timeout: 1.0)
+        XCTAssertEqual(adapter.refreshCount, 1)
+        XCTAssertEqual(adapter.clearedTransientChanges, [])
+
+        adapter.resume()
+        _ = await first.value
+        _ = await second.value
+
+        XCTAssertEqual(adapter.refreshCount, 1)
+        XCTAssertEqual(adapter.clearedTransientChanges, [change, change])
+    }
+
+    func testCoordinatorClearsDistinctCoalescedRealtimeInvalidationsAfterRefreshCompletes() async {
+        let adapter = BlockingRefreshAdapter(section: .websites)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
+        let firstChange = realtimeChange(id: "w1")
+        let secondChange = realtimeChange(id: "w2")
+        let context = realtimeContext()
+
+        let first = Task { await coordinator.scheduleRealtimeInvalidation(firstChange, context: context) }
+        let second = Task { await coordinator.scheduleRealtimeInvalidation(secondChange, context: context) }
+
+        await fulfillment(of: [adapter.started], timeout: 1.0)
+        XCTAssertEqual(adapter.refreshCount, 1)
+        XCTAssertEqual(adapter.clearedTransientChanges, [])
+
+        adapter.resume()
+        _ = await first.value
+        _ = await second.value
+
+        XCTAssertEqual(adapter.refreshCount, 1)
+        XCTAssertEqual(adapter.clearedTransientChanges.count, 2)
+        XCTAssertTrue(adapter.clearedTransientChanges.contains(firstChange))
+        XCTAssertTrue(adapter.clearedTransientChanges.contains(secondChange))
+    }
+
+    func testCoordinatorAppliesRealtimeMetadataPatchWithoutSchedulingEmptyRefresh() async {
+        let adapter = PreparingRefreshAdapter(section: .websites, metadataPatchResult: true)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
         let change = DomainSyncChange(
             section: .websites,
-            entityId: "w1",
-            kind: .detailRefresh,
-            updatedAt: nil,
-            requiresListRefresh: true,
-            requiresDetailRefresh: true,
-            canPatchMetadata: false
+            entityId: "website-1",
+            kind: .metadataPatch,
+            updatedAt: Date(timeIntervalSince1970: 1_000),
+            requiresListRefresh: false,
+            requiresDetailRefresh: false,
+            canPatchMetadata: true
         )
         let context = RefreshContext(
             visibleSection: .websites,
@@ -143,21 +194,42 @@ final class RefreshCoordinatorTests: XCTestCase {
             canAttemptServerRead: true
         )
 
-        let first = Task {
-            await coordinator.scheduleRealtimeInvalidation(change, context: context)
-        }
-        let second = Task {
-            await coordinator.scheduleRealtimeInvalidation(change, context: context)
-        }
+        await coordinator.scheduleRealtimeInvalidation(change, context: context)
 
-        await fulfillment(of: [adapter.started], timeout: 1.0)
-        XCTAssertEqual(adapter.refreshCount, 1)
+        XCTAssertEqual(adapter.metadataPatchChanges, [change])
+        XCTAssertEqual(adapter.refreshPlans, [])
+        XCTAssertEqual(adapter.clearedTransientChanges, [change])
+    }
 
-        adapter.resume()
-        _ = await first.value
-        _ = await second.value
+    func testCoordinatorSkipsRealtimeRefreshWhenMetadataPatchDeclinesWithoutRefreshTargets() async {
+        let adapter = PreparingRefreshAdapter(section: .websites, metadataPatchResult: false)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
+        let change = DomainSyncChange(
+            section: .websites,
+            entityId: "website-1",
+            kind: .metadataPatch,
+            updatedAt: Date(timeIntervalSince1970: 1_000),
+            requiresListRefresh: false,
+            requiresDetailRefresh: false,
+            canPatchMetadata: true
+        )
+        let context = RefreshContext(
+            visibleSection: .websites,
+            hasVisibleDetail: true,
+            pinnedSections: [],
+            lastOpenedSection: nil,
+            staleTargets: [],
+            canAttemptServerRead: true
+        )
 
-        XCTAssertEqual(adapter.refreshCount, 1)
+        await coordinator.scheduleRealtimeInvalidation(change, context: context)
+
+        XCTAssertEqual(adapter.metadataPatchChanges, [change])
+        XCTAssertEqual(adapter.refreshPlans, [])
+        XCTAssertEqual(adapter.clearedTransientChanges, [])
     }
 
     func testRegistryPreparesOnlyTheVisibleContentDomain() async {
@@ -334,6 +406,16 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(hydrateCount, 1)
         XCTAssertEqual(blockedReadLoadCount, 1)
     }
+
+    private func realtimeChange(id: String) -> DomainSyncChange {
+        DomainSyncChange(section: .websites, entityId: id, kind: .detailRefresh, updatedAt: nil,
+                         requiresListRefresh: true, requiresDetailRefresh: true, canPatchMetadata: false)
+    }
+
+    private func realtimeContext() -> RefreshContext {
+        RefreshContext(visibleSection: .websites, hasVisibleDetail: true, pinnedSections: [],
+                       lastOpenedSection: nil, staleTargets: [], canAttemptServerRead: true)
+    }
 }
 
 @MainActor
@@ -341,11 +423,10 @@ private final class BlockingRefreshAdapter: DomainRefreshAdapter {
     let section: AppSection
     let started = XCTestExpectation(description: "refresh adapter started")
     private(set) var refreshCount = 0
+    private(set) var clearedTransientChanges: [DomainSyncChange] = []
     private var continuation: CheckedContinuation<Void, Never>?
 
-    init(section: AppSection) {
-        self.section = section
-    }
+    init(section: AppSection) { self.section = section }
 
     func refresh(plan: RefreshPlan) async {
         refreshCount += 1
@@ -355,10 +436,9 @@ private final class BlockingRefreshAdapter: DomainRefreshAdapter {
         }
     }
 
-    func resume() {
-        continuation?.resume()
-        continuation = nil
-    }
+    func resume() { continuation?.resume(); continuation = nil }
+
+    func clearTransientState(after change: DomainSyncChange) async { clearedTransientChanges.append(change) }
 }
 
 @MainActor
@@ -380,21 +460,27 @@ private final class PreparingRefreshAdapter: DomainRefreshAdapter {
     let section: AppSection
     let hasVisibleDetail: Bool
     let hasPinnedMetadata: Bool
+    let metadataPatchResult: Bool
     private(set) var prepareCalls: [Bool] = []
+    private(set) var refreshPlans: [RefreshPlan] = []
     private(set) var metadataPatchChanges: [DomainSyncChange] = []
     private(set) var clearedTransientChanges: [DomainSyncChange] = []
 
     init(
         section: AppSection,
         hasVisibleDetail: Bool = false,
-        hasPinnedMetadata: Bool = false
+        hasPinnedMetadata: Bool = false,
+        metadataPatchResult: Bool = true
     ) {
         self.section = section
         self.hasVisibleDetail = hasVisibleDetail
         self.hasPinnedMetadata = hasPinnedMetadata
+        self.metadataPatchResult = metadataPatchResult
     }
 
-    func refresh(plan: RefreshPlan) async {}
+    func refresh(plan: RefreshPlan) async {
+        refreshPlans.append(plan)
+    }
 
     func prepareForPresentation(canAttemptServerRead: Bool) async {
         prepareCalls.append(canAttemptServerRead)
@@ -402,7 +488,7 @@ private final class PreparingRefreshAdapter: DomainRefreshAdapter {
 
     func applyMetadataPatch(for change: DomainSyncChange) async -> Bool {
         metadataPatchChanges.append(change)
-        return true
+        return metadataPatchResult
     }
 
     func clearTransientState(after change: DomainSyncChange) async {

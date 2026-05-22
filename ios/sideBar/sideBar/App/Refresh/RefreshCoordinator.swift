@@ -13,6 +13,9 @@ protocol RefreshCoordinatorType: AnyObject {
     func hasVisibleDetail(for section: AppSection?) -> Bool
     func pinnedSections() -> [AppSection]
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async
+    func scheduleRealtimeInvalidation(_ change: DomainSyncChange, context: RefreshContext) async
+    func scheduleDecodeFailureRefresh(section: AppSection, context: RefreshContext) async
+    func scheduleJobTerminalRefresh(_ change: DomainSyncChange, context: RefreshContext) async
     func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async
 }
 
@@ -21,7 +24,7 @@ final class RefreshCoordinator: RefreshCoordinatorType {
     private let policy: RefreshPolicy
     private let registry: RefreshRegistry
     private let now: () -> Date
-    private var inFlightPlans = Set<RefreshPlan>()
+    private var inFlightRefreshes: [RefreshPlan: Task<Void, Never>] = [:]
     private var lastVisibleSection: AppSection?
 
     init(
@@ -77,14 +80,80 @@ final class RefreshCoordinator: RefreshCoordinatorType {
         await refresh(trigger: .visibleSectionChanged, context: context)
     }
 
-    func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
+    func scheduleRealtimeInvalidation(_ change: DomainSyncChange, context: RefreshContext) async {
         guard context.canAttemptServerRead else { return }
+        if change.canPatchMetadata {
+            let didApplyPatch = await registry.applyMetadataPatch(for: change)
+            if didApplyPatch, change.refreshTargets.isEmpty {
+                await registry.clearTransientState(after: change)
+                return
+            }
+        }
+
+        guard !change.refreshTargets.isEmpty else { return }
+        let didRefresh = await performRefresh(
+            trigger: .realtimeInvalidation,
+            context: context.with(staleTargets: change.refreshTargets)
+        )
+        if didRefresh {
+            await registry.clearTransientState(after: change)
+        }
+    }
+
+    func scheduleDecodeFailureRefresh(section: AppSection, context: RefreshContext) async {
+        await refresh(
+            trigger: .decodeFailure,
+            context: context.with(staleTargets: decodeFailureTargets(for: section))
+        )
+    }
+
+    func scheduleJobTerminalRefresh(_ change: DomainSyncChange, context: RefreshContext) async {
+        await refresh(
+            trigger: .jobTerminalState,
+            context: context.with(staleTargets: change.refreshTargets)
+        )
+    }
+
+    func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
+        await performRefresh(trigger: trigger, context: context)
+    }
+
+    @discardableResult
+    private func performRefresh(trigger: RefreshTrigger, context: RefreshContext) async -> Bool {
+        guard context.canAttemptServerRead else { return false }
         let plan = policy.makePlan(trigger: trigger, context: context)
-        guard !plan.targets.isEmpty else { return }
-        guard inFlightPlans.insert(plan).inserted else { return }
-        defer { inFlightPlans.remove(plan) }
-        policy.metadataStore?.markAttempt(for: plan.targets, at: now())
-        await registry.refresh(plan: plan)
-        policy.metadataStore?.markSuccess(for: plan.targets, at: now())
+        guard !plan.targets.isEmpty else { return false }
+
+        if let inFlightRefresh = inFlightRefreshes[plan] {
+            await inFlightRefresh.value
+            return true
+        }
+
+        let task = Task { @MainActor in
+            policy.metadataStore?.markAttempt(for: plan.targets, at: now())
+            await registry.refresh(plan: plan)
+            policy.metadataStore?.markSuccess(for: plan.targets, at: now())
+        }
+        inFlightRefreshes[plan] = task
+        await task.value
+        inFlightRefreshes.removeValue(forKey: plan)
+        return true
+    }
+
+    private func decodeFailureTargets(for section: AppSection) -> [RefreshTarget] {
+        [.sectionList(section), .visibleDetail(section)]
+    }
+}
+
+private extension RefreshContext {
+    func with(staleTargets: [RefreshTarget]) -> RefreshContext {
+        RefreshContext(
+            visibleSection: visibleSection,
+            hasVisibleDetail: hasVisibleDetail,
+            pinnedSections: pinnedSections,
+            lastOpenedSection: lastOpenedSection,
+            staleTargets: staleTargets,
+            canAttemptServerRead: canAttemptServerRead
+        )
     }
 }

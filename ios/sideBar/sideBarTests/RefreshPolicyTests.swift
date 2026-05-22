@@ -185,6 +185,75 @@ final class RefreshPolicyTests: XCTestCase {
         XCTAssertFalse(plan.targets.contains(.archiveList(.websites)))
     }
 
+    func testRealtimeInvalidationPlanUsesExplicitStaleTargets() {
+        let policy = RefreshPolicy()
+        let plan = policy.makePlan(
+            trigger: .realtimeInvalidation,
+            context: RefreshContext(
+                visibleSection: .websites,
+                hasVisibleDetail: true,
+                pinnedSections: [.websites],
+                lastOpenedSection: nil,
+                staleTargets: [
+                    .visibleDetail(.websites),
+                    .sectionList(.websites),
+                    .visibleDetail(.websites)
+                ],
+                canAttemptServerRead: true
+            )
+        )
+
+        XCTAssertEqual(plan.trigger, .realtimeInvalidation)
+        XCTAssertEqual(plan.targets, [.visibleDetail(.websites), .sectionList(.websites)])
+        XCTAssertFalse(plan.requiresQueueReplayFirst)
+    }
+
+    func testJobTerminalStatePlanUsesExplicitStaleTargets() {
+        let policy = RefreshPolicy()
+        let plan = policy.makePlan(
+            trigger: .jobTerminalState,
+            context: RefreshContext(
+                visibleSection: .tasks,
+                hasVisibleDetail: true,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [
+                    .taskCounts,
+                    .sectionList(.tasks),
+                    .taskCounts
+                ],
+                canAttemptServerRead: true
+            )
+        )
+
+        XCTAssertEqual(plan.trigger, .jobTerminalState)
+        XCTAssertEqual(plan.targets, [.taskCounts, .sectionList(.tasks)])
+        XCTAssertFalse(plan.requiresQueueReplayFirst)
+    }
+
+    func testDecodeFailurePlanUsesExplicitStaleTargets() {
+        let policy = RefreshPolicy()
+        let plan = policy.makePlan(
+            trigger: .decodeFailure,
+            context: RefreshContext(
+                visibleSection: .files,
+                hasVisibleDetail: true,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [
+                    .sectionList(.files),
+                    .visibleDetail(.files),
+                    .sectionList(.files)
+                ],
+                canAttemptServerRead: true
+            )
+        )
+
+        XCTAssertEqual(plan.trigger, .decodeFailure)
+        XCTAssertEqual(plan.targets, [.sectionList(.files), .visibleDetail(.files)])
+        XCTAssertFalse(plan.requiresQueueReplayFirst)
+    }
+
     func testRefreshPlanCentralizesTargetMatchingForAdapters() {
         let plan = RefreshPlan(
             trigger: .coldLaunch,

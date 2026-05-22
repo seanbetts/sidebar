@@ -6,6 +6,9 @@ enum RefreshTrigger: String, Equatable {
     case reconnect
     case visibleSectionChanged
     case manualRefresh
+    case realtimeInvalidation
+    case jobTerminalState
+    case decodeFailure
 }
 
 enum RefreshTarget: Hashable, Equatable {

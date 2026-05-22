@@ -180,6 +180,21 @@ private final class NoopRefreshCoordinator: RefreshCoordinatorType {
         _ = context
     }
 
+    func scheduleRealtimeInvalidation(_ change: DomainSyncChange, context: RefreshContext) async {
+        _ = change
+        _ = context
+    }
+
+    func scheduleDecodeFailureRefresh(section: AppSection, context: RefreshContext) async {
+        _ = section
+        _ = context
+    }
+
+    func scheduleJobTerminalRefresh(_ change: DomainSyncChange, context: RefreshContext) async {
+        _ = change
+        _ = context
+    }
+
     func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async {
         _ = section
         _ = context
@@ -215,6 +230,21 @@ private final class RecordingRefreshCoordinator: RefreshCoordinatorType {
 
     func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
         _ = trigger
+        _ = context
+    }
+
+    func scheduleRealtimeInvalidation(_ change: DomainSyncChange, context: RefreshContext) async {
+        _ = change
+        _ = context
+    }
+
+    func scheduleDecodeFailureRefresh(section: AppSection, context: RefreshContext) async {
+        _ = section
+        _ = context
+    }
+
+    func scheduleJobTerminalRefresh(_ change: DomainSyncChange, context: RefreshContext) async {
+        _ = change
         _ = context
     }
 

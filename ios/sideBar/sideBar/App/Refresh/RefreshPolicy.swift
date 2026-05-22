@@ -55,6 +55,12 @@ struct RefreshPolicy {
                 ),
                 requiresQueueReplayFirst: false
             )
+        case .realtimeInvalidation, .jobTerminalState, .decodeFailure:
+            return RefreshPlan(
+                trigger: trigger,
+                targets: dedupedTargets(context.staleTargets),
+                requiresQueueReplayFirst: false
+            )
         }
     }
 
@@ -139,7 +145,7 @@ struct RefreshPolicy {
             return warmForegroundWindow(for: target)
         case .visibleSectionChanged:
             return visibleSectionWindow(for: target)
-        case .manualRefresh:
+        case .manualRefresh, .realtimeInvalidation, .jobTerminalState, .decodeFailure:
             return 0
         case .coldLaunch, .reconnect:
             return 0
