@@ -31,6 +31,20 @@ final class RefreshRegistry {
         }
     }
 
+    func applyMetadataPatch(for change: DomainSyncChange) async -> Bool {
+        guard let adapter = adapters.first(where: { $0.section == change.section }) else {
+            return false
+        }
+        return await adapter.applyMetadataPatch(for: change)
+    }
+
+    func clearTransientState(after change: DomainSyncChange) async {
+        guard let adapter = adapters.first(where: { $0.section == change.section }) else {
+            return
+        }
+        await adapter.clearTransientState(after: change)
+    }
+
     private func shouldRefresh(adapter: DomainRefreshAdapter, for plan: RefreshPlan) -> Bool {
         plan.containsRefreshWork(for: adapter.section)
     }

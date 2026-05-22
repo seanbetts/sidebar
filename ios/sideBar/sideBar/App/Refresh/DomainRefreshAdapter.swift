@@ -7,6 +7,8 @@ protocol DomainRefreshAdapter: AnyObject {
     var hasPinnedMetadata: Bool { get }
     func prepareForPresentation(canAttemptServerRead: Bool) async
     func refresh(plan: RefreshPlan) async
+    func applyMetadataPatch(for change: DomainSyncChange) async -> Bool
+    func clearTransientState(after change: DomainSyncChange) async
 }
 
 extension DomainRefreshAdapter {
@@ -14,6 +16,13 @@ extension DomainRefreshAdapter {
     var hasPinnedMetadata: Bool { false }
 
     func prepareForPresentation(canAttemptServerRead: Bool) async {}
+    func applyMetadataPatch(for change: DomainSyncChange) async -> Bool {
+        _ = change
+        return false
+    }
+    func clearTransientState(after change: DomainSyncChange) async {
+        _ = change
+    }
 }
 
 @MainActor
@@ -26,6 +35,8 @@ class SectionRefreshAdapter: DomainRefreshAdapter {
     private let refreshesListHandler: @MainActor (RefreshPlan, AppSection) -> Bool
     private let refreshListHandler: @MainActor () async -> Void
     private let refreshVisibleDetailHandler: @MainActor () async -> Void
+    private let applyMetadataPatchHandler: @MainActor (DomainSyncChange) async -> Bool
+    private let clearTransientStateHandler: @MainActor (DomainSyncChange) async -> Void
 
     var hasVisibleDetail: Bool {
         hasVisibleDetailHandler()
@@ -44,7 +55,9 @@ class SectionRefreshAdapter: DomainRefreshAdapter {
             plan.containsListOrPinnedMetadata(for: section)
         },
         refreshList: @escaping @MainActor () async -> Void,
-        refreshVisibleDetail: @escaping @MainActor () async -> Void = {}
+        refreshVisibleDetail: @escaping @MainActor () async -> Void = {},
+        applyMetadataPatch: @escaping @MainActor (DomainSyncChange) async -> Bool = { _ in false },
+        clearTransientState: @escaping @MainActor (DomainSyncChange) async -> Void = { _ in }
     ) {
         self.section = section
         self.hasVisibleDetailHandler = hasVisibleDetail
@@ -53,10 +66,20 @@ class SectionRefreshAdapter: DomainRefreshAdapter {
         self.refreshesListHandler = refreshesListWhen
         self.refreshListHandler = refreshList
         self.refreshVisibleDetailHandler = refreshVisibleDetail
+        self.applyMetadataPatchHandler = applyMetadataPatch
+        self.clearTransientStateHandler = clearTransientState
     }
 
     func prepareForPresentation(canAttemptServerRead: Bool) async {
         await prepareForPresentationHandler(canAttemptServerRead)
+    }
+
+    func applyMetadataPatch(for change: DomainSyncChange) async -> Bool {
+        await applyMetadataPatchHandler(change)
+    }
+
+    func clearTransientState(after change: DomainSyncChange) async {
+        await clearTransientStateHandler(change)
     }
 
     static func protectedListPreparation(

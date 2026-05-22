@@ -190,6 +190,81 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(registry.pinnedSections(), [.notes, .websites])
     }
 
+    func testRegistryRoutesMetadataPatchAndTransientClearingByDomain() async {
+        let notes = PreparingRefreshAdapter(section: .notes)
+        let websites = PreparingRefreshAdapter(section: .websites)
+        let registry = RefreshRegistry(adapters: [notes, websites])
+        let change = DomainSyncChange(
+            section: .websites,
+            entityId: "website-1",
+            kind: .metadataPatch,
+            updatedAt: Date(timeIntervalSince1970: 1_000),
+            requiresListRefresh: false,
+            requiresDetailRefresh: false,
+            canPatchMetadata: true
+        )
+
+        let didApplyPatch = await registry.applyMetadataPatch(for: change)
+        await registry.clearTransientState(after: change)
+
+        XCTAssertTrue(didApplyPatch)
+        XCTAssertEqual(notes.metadataPatchChanges, [])
+        XCTAssertEqual(notes.clearedTransientChanges, [])
+        XCTAssertEqual(websites.metadataPatchChanges, [change])
+        XCTAssertEqual(websites.clearedTransientChanges, [change])
+    }
+
+    func testRegistryReturnsFalseWhenMetadataPatchHasNoAdapter() async {
+        let registry = RefreshRegistry(adapters: [])
+        let change = DomainSyncChange(
+            section: .files,
+            entityId: "file-1",
+            kind: .metadataPatch,
+            updatedAt: nil,
+            requiresListRefresh: false,
+            requiresDetailRefresh: false,
+            canPatchMetadata: true
+        )
+
+        let didApplyPatch = await registry.applyMetadataPatch(for: change)
+        await registry.clearTransientState(after: change)
+
+        XCTAssertFalse(didApplyPatch)
+    }
+
+    func testRegistryRoutesSectionRefreshAdapterMetadataHooksThroughExistential() async {
+        var patchedChanges: [DomainSyncChange] = []
+        var clearedChanges: [DomainSyncChange] = []
+        let adapter = SectionRefreshAdapter(
+            section: .files,
+            refreshList: {},
+            applyMetadataPatch: { change in
+                patchedChanges.append(change)
+                return true
+            },
+            clearTransientState: { change in
+                clearedChanges.append(change)
+            }
+        )
+        let registry = RefreshRegistry(adapters: [adapter])
+        let change = DomainSyncChange(
+            section: .files,
+            entityId: "file-1",
+            kind: .metadataPatch,
+            updatedAt: nil,
+            requiresListRefresh: false,
+            requiresDetailRefresh: false,
+            canPatchMetadata: true
+        )
+
+        let didApplyPatch = await registry.applyMetadataPatch(for: change)
+        await registry.clearTransientState(after: change)
+
+        XCTAssertTrue(didApplyPatch)
+        XCTAssertEqual(patchedChanges, [change])
+        XCTAssertEqual(clearedChanges, [change])
+    }
+
     func testSectionRefreshAdapterCentralizesListAndDetailRefreshChecks() async {
         var prepareCalls: [Bool] = []
         var listRefreshCount = 0
@@ -306,6 +381,8 @@ private final class PreparingRefreshAdapter: DomainRefreshAdapter {
     let hasVisibleDetail: Bool
     let hasPinnedMetadata: Bool
     private(set) var prepareCalls: [Bool] = []
+    private(set) var metadataPatchChanges: [DomainSyncChange] = []
+    private(set) var clearedTransientChanges: [DomainSyncChange] = []
 
     init(
         section: AppSection,
@@ -321,5 +398,14 @@ private final class PreparingRefreshAdapter: DomainRefreshAdapter {
 
     func prepareForPresentation(canAttemptServerRead: Bool) async {
         prepareCalls.append(canAttemptServerRead)
+    }
+
+    func applyMetadataPatch(for change: DomainSyncChange) async -> Bool {
+        metadataPatchChanges.append(change)
+        return true
+    }
+
+    func clearTransientState(after change: DomainSyncChange) async {
+        clearedTransientChanges.append(change)
     }
 }
