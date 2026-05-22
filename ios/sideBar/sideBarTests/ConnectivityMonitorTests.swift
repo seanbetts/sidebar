@@ -140,6 +140,80 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+    func testLifecycleFailureRecordingRespectsAppForegroundState() async {
+        struct Scenario {
+            let signal: RequestLifecycleSignal
+            let isActive: Bool
+            let expectedSignals: [RequestLifecycleSignal]
+            let expectedServerReachable: Bool
+        }
+        let readFailure = RequestLifecycleSignal(
+            operation: "get.files",
+            requestKind: .foregroundRead,
+            stage: .failed,
+            errorCategory: .timeout
+        )
+        let backgroundMutation = RequestLifecycleSignal(
+            operation: "patch.tasks",
+            requestKind: .foregroundMutation,
+            stage: .failed,
+            errorCategory: .timeout
+        )
+        let scenarios = [
+            Scenario(
+                signal: readFailure,
+                isActive: false,
+                expectedSignals: [],
+                expectedServerReachable: true
+            ),
+            Scenario(
+                signal: readFailure,
+                isActive: true,
+                expectedSignals: [readFailure],
+                expectedServerReachable: false
+            ),
+            Scenario(
+                signal: backgroundMutation,
+                isActive: false,
+                expectedSignals: [backgroundMutation],
+                expectedServerReachable: false
+            )
+        ]
+
+        for scenario in scenarios {
+            let notificationCenter = NotificationCenter()
+            var recordedSignals: [RequestLifecycleSignal] = []
+            var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+                baseUrl: URL(string: "http://localhost")!,
+                startMonitoring: false,
+                notificationCenter: notificationCenter,
+                isAppForegroundActive: { scenario.isActive },
+                requestLifecycleFailureRecorder: { recordedSignals.append($0) }
+            )
+            guard let strongMonitor = monitor else {
+                XCTFail("Expected monitor")
+                return
+            }
+
+            notificationCenter.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["signal": scenario.signal]
+            )
+            await waitForMainQueueDrain()
+            notificationCenter.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["signal": scenario.signal]
+            )
+            await waitForMainQueueDrain()
+
+            XCTAssertEqual(recordedSignals, scenario.expectedSignals + scenario.expectedSignals)
+            XCTAssertEqual(strongMonitor.isServerReachable, scenario.expectedServerReachable)
+            monitor = nil
+        }
+    }
+
     func testNotConnectedToInternetMarksOfflineAfterThreshold() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,

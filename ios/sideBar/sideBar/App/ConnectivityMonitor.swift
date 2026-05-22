@@ -2,6 +2,11 @@ import Combine
 import Foundation
 import Network
 import sideBarShared
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 @MainActor
 final class ConnectivityMonitor: ObservableObject {
@@ -16,6 +21,8 @@ final class ConnectivityMonitor: ObservableObject {
     private let session: URLSession
     private let notificationCenter: NotificationCenter
     private let allowsHealthProbes: Bool
+    private let isAppForegroundActive: @MainActor () -> Bool
+    private let requestLifecycleFailureRecorder: @MainActor (RequestLifecycleSignal) -> Void
     private var probeTask: Task<Void, Never>?
     private var schedulerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -36,13 +43,19 @@ final class ConnectivityMonitor: ObservableObject {
         startMonitoring: Bool = !EnvironmentConfig.isRunningTestsOrPreviews(),
         session: URLSession = .shared,
         notificationCenter: NotificationCenter = .default,
-        internetProbeUrl: URL = URL(string: "https://www.apple.com/library/test/success.html")!
+        internetProbeUrl: URL = URL(string: "https://www.apple.com/library/test/success.html")!,
+        isAppForegroundActive: @escaping @MainActor () -> Bool = ConnectivityMonitor.defaultIsAppForegroundActive,
+        requestLifecycleFailureRecorder: @escaping @MainActor (RequestLifecycleSignal) -> Void = {
+            AppSentry.recordRequestLifecycleFailure($0)
+        }
     ) {
         self.baseUrl = baseUrl
         self.session = session
         self.notificationCenter = notificationCenter
         self.internetProbeUrl = internetProbeUrl
         self.allowsHealthProbes = startMonitoring
+        self.isAppForegroundActive = isAppForegroundActive
+        self.requestLifecycleFailureRecorder = requestLifecycleFailureRecorder
         self.monitor = NWPathMonitor()
         if startMonitoring {
             monitor.pathUpdateHandler = { [weak self] path in
@@ -137,7 +150,10 @@ final class ConnectivityMonitor: ObservableObject {
         guard signal.stage == .failed, let category = signal.errorCategory else {
             return
         }
-        AppSentry.recordRequestLifecycleFailure(signal)
+        guard shouldHandleLifecycleFailure(signal) else {
+            return
+        }
+        requestLifecycleFailureRecorder(signal)
 
         switch category {
         case .offline:
@@ -155,6 +171,43 @@ final class ConnectivityMonitor: ObservableObject {
              .unknown:
             break
         }
+    }
+
+    private func shouldHandleLifecycleFailure(_ signal: RequestLifecycleSignal) -> Bool {
+        guard !isAppForegroundActive() else {
+            return true
+        }
+        guard signal.requestKind == .foregroundRead else {
+            return true
+        }
+
+        switch signal.errorCategory {
+        case .offline, .serverUnreachable, .timeout, .secureConnection, .cancelled:
+            return false
+        case .authentication,
+             .permission,
+             .serverBusy,
+             .rateLimited,
+             .requestRejected,
+             .payloadTooLarge,
+             .decoding,
+             .unknown,
+             nil:
+            return true
+        }
+    }
+
+    private static func defaultIsAppForegroundActive() -> Bool {
+        guard !EnvironmentConfig.isRunningTestsOrPreviews() else {
+            return true
+        }
+        #if os(iOS)
+        return UIApplication.shared.applicationState == .active
+        #elseif os(macOS)
+        return NSApplication.shared.isActive
+        #else
+        return true
+        #endif
     }
 
     private func scheduleProbe(immediate: Bool) {
