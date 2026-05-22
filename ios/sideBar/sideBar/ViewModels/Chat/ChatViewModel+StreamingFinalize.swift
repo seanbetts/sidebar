@@ -15,6 +15,7 @@ extension ChatViewModel {
         var finalizedStreamError = streamError
         var finalizedErrorDetails = errorDetails
         let trimmedAssistantExplanation = assistantExplanation?.trimmedOrNil
+        let reconciliationConversationId = streamingConversationId ?? selectedConversationId
         guard let messageId = activeStreamingMessageId else {
             clearTypingRevealState(flushDisplayedContent: false)
             didReceiveTerminalStreamEvent = false
@@ -56,6 +57,10 @@ extension ChatViewModel {
         if shouldSuppressCurrentStreamErrors && finalizedStatus == .error {
             clearRetryState()
             discardAssistantMessage(id: messageId)
+            schedulePostFinalizeRefresh(
+                conversationId: reconciliationConversationId,
+                finalizedStatus: finalizedStatus
+            )
             return
         }
         typingRevealTargetsByMessageId[messageId] = nil
@@ -91,6 +96,10 @@ extension ChatViewModel {
                     errorMessage = "Assistant returned an empty response. Please try again."
                 }
                 discardAssistantMessage(id: messageId)
+                schedulePostFinalizeRefresh(
+                    conversationId: reconciliationConversationId,
+                    finalizedStatus: .error
+                )
                 return
             }
         }
@@ -102,11 +111,11 @@ extension ChatViewModel {
             errorDetails: finalizedErrorDetails
         )
         syncMessagesToStore(
-            conversationId: streamingConversationId ?? selectedConversationId,
+            conversationId: reconciliationConversationId,
             persist: true
         )
         schedulePostFinalizeRefresh(
-            conversationId: streamingConversationId ?? selectedConversationId,
+            conversationId: reconciliationConversationId,
             finalizedStatus: finalizedStatus
         )
         if finalizedStatus == .complete {
@@ -151,15 +160,15 @@ extension ChatViewModel {
         conversationId: String?,
         finalizedStatus: MessageStatus
     ) {
-        guard let conversationId else {
-            return
-        }
         Task { [weak self] in
             if finalizedStatus == .complete {
+                guard let conversationId else {
+                    self?.scheduleTerminalConversationReconciliation(conversationId: nil)
+                    return
+                }
                 await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
             }
-            await self?.refreshConversations(silent: true)
-            await self?.refreshActiveConversation(silent: true)
+            self?.scheduleTerminalConversationReconciliation(conversationId: conversationId)
         }
     }
 

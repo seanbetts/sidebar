@@ -280,6 +280,9 @@ public final class AppEnvironment: ObservableObject {
         }
         self.authState = container.authSession.authState
         self.isBiometricUnlocked = (authState == .active || authState == .staleRecoverable) && !isBiometricUnlockEnabled
+        self.chatViewModel.configureRefreshCoordinator(resolvedRefreshCoordinator) { [weak self] in
+            self?.currentRefreshContext()
+        }
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         hydratePushDiagnosticsStateFromStorage()

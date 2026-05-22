@@ -77,19 +77,10 @@ extension ChatViewModel {
         await loadConversation(id: id, force: true, silent: silent)
     }
 
-    public func startAutoRefresh(intervalSeconds: TimeInterval = 30) {
-        refreshTask?.cancel()
-        let task = PollingTask(interval: intervalSeconds)
-        refreshTask = task
-        task.start { [weak self] in
-            await self?.refreshConversations(silent: true)
-            await self?.refreshActiveConversation(silent: true)
-        }
+    public func startAutoRefresh() {
     }
 
     public func stopAutoRefresh() {
-        refreshTask?.cancel()
-        refreshTask = nil
     }
 
     public func sendMessage(text: String, clearDraftOnDispatch: Bool = false) async {

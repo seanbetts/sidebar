@@ -105,11 +105,18 @@ extension ChatViewModel {
         guard payload.entityType == ChatStreamEntityType.conversation.rawValue else {
             return false
         }
+        let updatedAt = payload.patch?["updatedAt"]?.value as? String
+        defer {
+            scheduleConversationChangeFromStream(
+                conversationId: payload.entityId,
+                updatedAt: updatedAt,
+                affectsSelectedConversation: selectedConversationId == payload.entityId
+            )
+        }
         guard let title = payload.patch?["title"]?.value as? String else {
             return true
         }
         let titleGenerated = payload.patch?["titleGenerated"]?.value as? Bool ?? false
-        let updatedAt = payload.patch?["updatedAt"]?.value as? String
         if let existingConversation = chatStore.conversations.first(where: { $0.id == payload.entityId }) {
             chatStore.upsertConversation(
                 Conversation(
@@ -239,7 +246,7 @@ extension ChatViewModel {
         }
 
         for target in payload.targets {
-            handleCollectionInvalidationTarget(target)
+            handleCollectionInvalidationTarget(target, conversationId: payload.conversationId)
         }
         if payload.targets.contains(ChatStreamEntityType.profile.rawValue)
             || payload.targets.contains(ChatStreamEntityType.preferences.rawValue)
@@ -256,7 +263,11 @@ extension ChatViewModel {
         }
     }
 
-    private func handleCollectionInvalidationTarget(_ target: String) {
+    private func handleCollectionInvalidationTarget(_ target: String, conversationId: String?) {
+        if handleConversationInvalidationTarget(target, conversationId: conversationId) {
+            return
+        }
+
         switch target {
         case ChatStreamEntityType.scratchpad.rawValue:
             refreshScratchpad()
@@ -275,6 +286,38 @@ extension ChatViewModel {
         default:
             break
         }
+    }
+
+    private func handleConversationInvalidationTarget(_ target: String, conversationId: String?) -> Bool {
+        switch target {
+        case "conversations":
+            scheduleConversationChangeFromStream(
+                conversationId: nil,
+                updatedAt: nil,
+                affectsSelectedConversation: false
+            )
+        case let target where target.hasPrefix("conversation:"):
+            let conversationId = String(target.dropFirst("conversation:".count))
+            scheduleConversationChangeFromStream(
+                conversationId: conversationId,
+                updatedAt: nil,
+                affectsSelectedConversation: conversationInvalidationAffectsCurrentStream(conversationId)
+            )
+        case ChatStreamEntityType.conversation.rawValue:
+            scheduleConversationChangeFromStream(
+                conversationId: conversationId,
+                updatedAt: nil,
+                affectsSelectedConversation: conversationId.map(conversationInvalidationAffectsCurrentStream) ?? false
+            )
+            return true
+        default:
+            return false
+        }
+        return true
+    }
+
+    private func conversationInvalidationAffectsCurrentStream(_ conversationId: String) -> Bool {
+        conversationId == selectedConversationId || conversationId == streamingConversationId
     }
 
     private func handleToolStatus(_ event: ChatStreamEvent) {

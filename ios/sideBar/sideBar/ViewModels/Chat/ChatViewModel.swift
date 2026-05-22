@@ -9,7 +9,6 @@ private final class ChatViewModelTeardownBag {
     private var assistantInitiatedStreamTask: Task<Void, Never>?
     private var clearActiveToolTask: Task<Void, Never>?
     private var typingRevealTask: Task<Void, Never>?
-    private var refreshTask: PollingTask?
     private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
     func setStreamClient(_ streamClient: any ChatStreamClient) {
@@ -36,12 +35,6 @@ private final class ChatViewModelTeardownBag {
         lock.unlock()
     }
 
-    func setRefreshTask(_ task: PollingTask?) {
-        lock.lock()
-        refreshTask = task
-        lock.unlock()
-    }
-
     func setAttachmentPollTasks(_ tasks: [String: Task<Void, Never>]) {
         lock.lock()
         attachmentPollTasks = tasks
@@ -54,7 +47,6 @@ private final class ChatViewModelTeardownBag {
         let assistantInitiatedStreamTask = assistantInitiatedStreamTask
         let clearActiveToolTask = clearActiveToolTask
         let typingRevealTask = typingRevealTask
-        let refreshTask = refreshTask
         let attachmentPollTasks = attachmentPollTasks
         lock.unlock()
 
@@ -62,7 +54,6 @@ private final class ChatViewModelTeardownBag {
         assistantInitiatedStreamTask?.cancel()
         clearActiveToolTask?.cancel()
         typingRevealTask?.cancel()
-        refreshTask?.cancel()
         attachmentPollTasks.values.forEach { $0.cancel() }
     }
 }
@@ -179,6 +170,8 @@ private final class ChatViewModelTeardownBag {
     var onCloseNoteRequested: ((String) -> Bool)? { ui.onCloseNoteRequested }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
     var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?
+    weak var refreshCoordinator: RefreshCoordinatorType?
+    var currentRefreshContextProvider: (() -> RefreshContext?)?
     var soulCalibrationRetryBackoffNanoseconds: UInt64 { ui.soulCalibrationRetryBackoffNanoseconds }
     private let teardownBag = ChatViewModelTeardownBag()
 
@@ -209,11 +202,6 @@ private final class ChatViewModelTeardownBag {
     var typingRevealTask: Task<Void, Never>? {
         didSet {
             teardownBag.setTypingRevealTask(typingRevealTask)
-        }
-    }
-    var refreshTask: PollingTask? {
-        didSet {
-            teardownBag.setRefreshTask(refreshTask)
         }
     }
     var generatingTitleIds = Set<String>()
@@ -273,6 +261,14 @@ private final class ChatViewModelTeardownBag {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    func configureRefreshCoordinator(
+        _ coordinator: RefreshCoordinatorType,
+        currentRefreshContext: @escaping () -> RefreshContext?
+    ) {
+        refreshCoordinator = coordinator
+        currentRefreshContextProvider = currentRefreshContext
     }
 
     public var groupedConversations: [ConversationGroup] {

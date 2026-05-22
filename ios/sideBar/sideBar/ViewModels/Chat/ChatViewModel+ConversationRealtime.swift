@@ -47,5 +47,52 @@ extension ChatViewModel {
         if let updatedAt, let parsed = DateParsing.parseISO8601(updatedAt) {
             conversationUpdatedAtDates[id] = parsed
         }
+        scheduleConversationChangeFromStream(
+            conversationId: id,
+            updatedAt: updatedAt,
+            affectsSelectedConversation: selectedConversationId == id
+        )
+    }
+
+    func scheduleConversationChangeFromStream(
+        conversationId: String?,
+        updatedAt: String?,
+        affectsSelectedConversation: Bool
+    ) {
+        scheduleChatRealtimeInvalidation(
+            ChatRefreshAdapter.classifyConversationChange(
+                conversationId: conversationId,
+                updatedAt: updatedAt.flatMap(DateParsing.parseISO8601),
+                affectsSelectedConversation: affectsSelectedConversation
+            )
+        )
+    }
+
+    func scheduleTerminalConversationReconciliation(conversationId: String?) {
+        let change = DomainSyncChange(
+            section: .chat,
+            entityId: conversationId,
+            kind: .detailRefresh,
+            updatedAt: nil,
+            requiresListRefresh: true,
+            requiresDetailRefresh: conversationId != nil,
+            canPatchMetadata: false
+        )
+        scheduleChatRealtimeInvalidation(change)
+    }
+
+    func scheduleChatRealtimeInvalidation(_ change: DomainSyncChange) {
+        Task { [weak self] in
+            guard let self else { return }
+            guard let refreshCoordinator,
+                  let context = currentRefreshContextProvider?() else {
+                await refreshConversations(silent: true)
+                if change.requiresDetailRefresh {
+                    await refreshActiveConversation(silent: true)
+                }
+                return
+            }
+            await refreshCoordinator.scheduleRealtimeInvalidation(change, context: context)
+        }
     }
 }
