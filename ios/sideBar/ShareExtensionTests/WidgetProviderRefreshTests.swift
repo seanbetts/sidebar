@@ -848,7 +848,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertTrue(export.contains("category=offline"))
         XCTAssertTrue(export.contains("has_cached_snapshot=true"))
         XCTAssertTrue(export.contains("operation=widget.websites.refresh"))
-        XCTAssertTrue(export.contains("request_kind=foregroundRead"))
+        XCTAssertTrue(export.contains("request_kind=widgetRefresh"))
         XCTAssertTrue(export.contains("retryability=allowsOfflineHandoff"))
         XCTAssertFalse(export.contains("error="))
     }
@@ -950,7 +950,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertTrue(export.contains("category=authentication"))
         XCTAssertTrue(export.contains("status_code=401"))
         XCTAssertTrue(export.contains("operation=widget.files.refresh"))
-        XCTAssertTrue(export.contains("request_kind=foregroundRead"))
+        XCTAssertTrue(export.contains("request_kind=widgetRefresh"))
         XCTAssertFalse(export.contains("error="))
     }
 
