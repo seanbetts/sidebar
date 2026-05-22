@@ -124,18 +124,28 @@ final class Task15WidgetExtensionIconSourceTests: XCTestCase {
         }
     }
 
-    func testWidgetAppShortcutsUseAppIconVocabulary() throws {
+    func testWidgetAppShortcutsUseCompileTimeLiteralIconVocabulary() throws {
+        let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let taskIntents = try normalizedSource(at: ["sideBarWidgets", "Intents", "TaskIntents.swift"])
+        let shortcutSymbols = [
+            ("publicstaticletchecklist=AppIcon(rawValue:\"checklist\")", "checklist"),
+            ("publicstaticletaddTaskShortcut=AppIcon(rawValue:\"plus.circle\")", "plus.circle"),
+            ("publicstaticlettextDocument=AppIcon(rawValue:\"doc.text\")", "doc.text"),
+            ("publicstaticletcreateNoteShortcut=AppIcon(rawValue:\"doc.badge.plus\")", "doc.badge.plus"),
+            ("publicstaticletwebsites=AppIcon(rawValue:\"globe\")", "globe"),
+            ("publicstaticletdocument=AppIcon(rawValue:\"doc\")", "doc"),
+            ("publicstaticletnote=AppIcon(rawValue:\"note.text\")", "note.text"),
+            (
+                "publicstaticletmessageThread=AppIcon(rawValue:\"bubble.left.and.bubble.right\")",
+                "bubble.left.and.bubble.right"
+            )
+        ]
 
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Tasks.checklist.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Widget.addTaskShortcut.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.textDocument.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Widget.createNoteShortcut.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Domain.websites.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.document.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.note.rawValue"))
-        XCTAssertTrue(taskIntents.contains("systemImageName:AppIcon.Content.messageThread.rawValue"))
-        XCTAssertFalse(taskIntents.contains("systemImageName:\""))
+        for (appIconDefinition, shortcutLiteral) in shortcutSymbols {
+            XCTAssertTrue(appIcon.contains(appIconDefinition))
+            XCTAssertTrue(taskIntents.contains("systemImageName:\"\(shortcutLiteral)\""))
+        }
+        XCTAssertFalse(taskIntents.contains("systemImageName:AppIcon."))
     }
 
     private func normalizedSource(

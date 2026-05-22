@@ -79,7 +79,14 @@ final class AppIconSourceGuardTests: XCTestCase {
         ]
         let relativePath = file.path.replacingOccurrences(of: root.path + "/", with: "")
         return patterns.flatMap { pattern in
-            source.ranges(matchingRegularExpression: pattern).map { match in
+            source.ranges(matchingRegularExpression: pattern).compactMap { match in
+                guard !isAllowedCompileTimeShortcutSystemImageName(
+                    match,
+                    in: source,
+                    relativePath: relativePath
+                ) else {
+                    return nil
+                }
                 let lineNumber = source.lineNumber(at: match.lowerBound)
                 let preview = String(source[match])
                     .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
@@ -87,6 +94,41 @@ final class AppIconSourceGuardTests: XCTestCase {
                 return "\(relativePath):\(lineNumber): \(preview)"
             }
         }
+    }
+
+    private func isAllowedCompileTimeShortcutSystemImageName(
+        _ match: Range<String.Index>,
+        in source: String,
+        relativePath: String
+    ) -> Bool {
+        guard relativePath == "sideBarWidgets/Intents/TaskIntents.swift" else {
+            return false
+        }
+
+        let lineStart = source[..<match.lowerBound].lastIndex(of: "\n")
+            .map { source.index(after: $0) } ?? source.startIndex
+        let lineEnd = source[match.lowerBound...].firstIndex(of: "\n") ?? source.endIndex
+        let line = String(source[lineStart..<lineEnd])
+        let approvedShortcutSymbols = [
+            "checklist",
+            "plus.circle",
+            "doc.text",
+            "doc.badge.plus",
+            "globe",
+            "doc",
+            "note.text",
+            "bubble.left.and.bubble.right"
+        ]
+        let approvedSymbols = approvedShortcutSymbols
+            .map(NSRegularExpression.escapedPattern(for:))
+            .joined(separator: "|")
+        let approvedSystemImageNamePattern = #"systemImageName\s*:\s*""#
+            + "(\(approvedSymbols))"
+            + #"""#
+        return line.range(
+            of: approvedSystemImageNamePattern,
+            options: .regularExpression
+        ) != nil
     }
 }
 
