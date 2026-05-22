@@ -52,6 +52,7 @@ extension IngestionViewModel {
             cancelJobPolling(fileId: fileId)
             return
         }
+        guard allowsFallbackPolling(.files, true) else { return }
         guard jobPollingTasks[fileId] == nil else { return }
         let token = UUID()
         jobPollingTaskTokens[fileId] = token
@@ -101,6 +102,9 @@ extension IngestionViewModel {
                 guard self.selectedFileId == fileId else {
                     return
                 }
+                guard self.allowsFallbackPolling(.files, true) else {
+                    return
+                }
                 do {
                     let terminal = try await self.pollJobStatus(fileId: fileId)
                     if terminal {
@@ -120,6 +124,9 @@ extension IngestionViewModel {
     }
 
     private func pollJobStatus(fileId: String) async throws -> Bool {
+        guard allowsFallbackPolling(.files, true) else {
+            return true
+        }
         try await store.loadMeta(fileId: fileId, force: true)
         guard let meta = activeMeta, meta.file.id == fileId else {
             return false
@@ -146,6 +153,10 @@ extension IngestionViewModel {
     }
 
     func updateListPollingState(items: [IngestionListItem]) {
+        guard allowsFallbackPolling(.files, false) else {
+            stopListPolling()
+            return
+        }
         if hasActiveServerBackedItems(items) {
             startListPolling()
         } else {

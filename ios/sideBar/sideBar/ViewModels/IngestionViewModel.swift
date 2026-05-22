@@ -109,6 +109,7 @@ public final class IngestionViewModel: ObservableObject {
     let jobPollingMaxConsecutiveFailures: Int
     let jobPollingJitterWindow: TimeInterval
     let jobPollingSleep: JobPollingSleep
+    var allowsFallbackPolling: @MainActor (AppSection, Bool) -> Bool = { _, _ in true }
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:] {

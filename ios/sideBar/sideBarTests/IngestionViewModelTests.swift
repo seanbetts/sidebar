@@ -1226,6 +1226,115 @@ final class IngestionViewModelTests: XCTestCase {
         vm.stopListPolling()
     }
 
+    func testListPollingDoesNotStartWhenFallbackPollingPolicyDenies() async {
+        let vm = makeViewModelForYouTubeParsing()
+        let serverID = UUID().uuidString
+        let activeServerItem = makeListItem(id: serverID, status: "processing", stage: "extracting")
+        vm.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .files)
+            XCTAssertFalse(hasActiveJob)
+            return false
+        }
+
+        vm.updateListPollingState(items: [activeServerItem])
+
+        XCTAssertNil(vm.listPollingTask)
+    }
+
+    func testJobPollingDoesNotStartWhenFallbackPollingPolicyDenies() async {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+        vm.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .files)
+            XCTAssertTrue(hasActiveJob)
+            return false
+        }
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+
+        XCTAssertTrue(vm.jobPollingTasks.isEmpty)
+        XCTAssertTrue(vm.jobPollingTaskTokens.isEmpty)
+    }
+
+    func testListPollingTickSkipsServerReadWhenFallbackPolicyBecomesDenied() async {
+        let api = CountingIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let vm = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+        var allowsPolling = true
+        vm.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .files)
+            XCTAssertFalse(hasActiveJob)
+            return allowsPolling
+        }
+
+        vm.updateListPollingState(items: [makeListItem(id: UUID().uuidString, status: "processing", stage: "extracting")])
+        XCTAssertNotNil(vm.listPollingTask)
+
+        allowsPolling = false
+        await vm.runListPollingTick()
+
+        XCTAssertEqual(api.listCallCount, 0)
+        XCTAssertNil(vm.listPollingTask)
+    }
+
+    func testJobPollingTaskSkipsMetaReadWhenFallbackPolicyBecomesDenied() async {
+        let fileId = "file-\(UUID().uuidString)"
+        let activeMeta = IngestionMetaResponse(
+            file: makeFile(id: fileId),
+            job: makeJob(status: "processing"),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let readyMeta = IngestionMetaResponse(
+            file: makeFile(id: fileId),
+            job: makeJob(status: "ready"),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let api = CountingIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .success(readyMeta)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let vm = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            jobPollingBaseInterval: 0.1,
+            jobPollingMaxInterval: 0.1,
+            jobPollingJitterWindow: 0,
+            jobPollingSleep: { _ in }
+        )
+        vm.selectedFileId = fileId
+        vm.activeMeta = activeMeta
+        var allowsPolling = true
+        vm.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .files)
+            guard hasActiveJob else { return false }
+            return allowsPolling
+        }
+
+        vm.startJobPollingIfNeeded(fileId: fileId)
+        XCTAssertNotNil(vm.jobPollingTasks[fileId])
+
+        allowsPolling = false
+        await waitUntilPolling {
+            vm.jobPollingTasks[fileId] == nil
+        }
+
+        XCTAssertEqual(api.metaCallCount, 0)
+    }
+
     private func makePollingViewModel(fileId: String, jobStatus: String) -> IngestionViewModel {
         let meta = IngestionMetaResponse(
             file: makeFile(id: fileId),
@@ -1681,6 +1790,87 @@ private struct MockIngestionAPI: IngestionProviding {
     func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
         _ = payload
         return IngestionSyncResponse(applied: [], files: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+    }
+}
+
+private final class CountingIngestionAPI: IngestionProviding {
+    let listResult: Result<IngestionListResponse, Error>
+    let metaResult: Result<IngestionMetaResponse, Error>
+    private(set) var listCallCount = 0
+    private(set) var metaCallCount = 0
+
+    init(
+        listResult: Result<IngestionListResponse, Error>,
+        metaResult: Result<IngestionMetaResponse, Error>
+    ) {
+        self.listResult = listResult
+        self.metaResult = metaResult
+    }
+
+    func list() async throws -> IngestionListResponse {
+        listCallCount += 1
+        return try listResult.get()
+    }
+
+    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
+        _ = fileId
+        metaCallCount += 1
+        return try metaResult.get()
+    }
+
+    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
+        _ = fileId
+        _ = kind
+        _ = range
+        throw MockError.forced
+    }
+
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw MockError.forced
+    }
+
+    func cancel(fileId: String) async throws {
+        _ = fileId
+        throw MockError.forced
+    }
+
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = pinned
+        _ = clientUpdatedAt
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+        throw MockError.forced
+    }
+
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = clientUpdatedAt
+        throw MockError.forced
+    }
+
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = filename
+        _ = clientUpdatedAt
+        throw MockError.forced
+    }
+
+    func ingestYouTube(url: String) async throws -> String {
+        _ = url
+        throw MockError.forced
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
+        throw MockError.forced
     }
 }
 

@@ -1,6 +1,23 @@
 import Foundation
 
 extension AppEnvironment: RealtimeEventHandler {
+    var currentSyncHealth: SyncHealthState {
+        SyncHealthModel.evaluate(
+            canAttemptServerRead: connectivityMonitor.canAttemptServerRead &&
+                protectedContentReadiness.canAttemptServerRead,
+            realtimeConnected: (realtimeClient as? SupabaseRealtimeAdapter)?.isRealtimeConnected ?? false,
+            hasPendingReconnectRefresh: syncCoordinator.hasPendingReconnectRefresh,
+            lastRefreshSucceeded: syncCoordinator.lastReconnectRefreshSucceeded
+        )
+    }
+
+    func allowsFallbackPolling(section: AppSection, hasActiveJob: Bool = false) -> Bool {
+        guard currentSyncHealth.allowsFallbackPolling else {
+            return false
+        }
+        return currentRefreshContext().visibleSection == section || hasActiveJob
+    }
+
     public func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) {
         let title = payload.record?.title ?? payload.oldRecord?.title
         if title == ScratchpadConstants.title {

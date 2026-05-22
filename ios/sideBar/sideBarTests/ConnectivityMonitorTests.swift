@@ -283,6 +283,36 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+    func testServerReachabilityControlsServerReadAvailability() async {
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        XCTAssertTrue(strongMonitor.canAttemptServerRead)
+
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.timedOut)]
+        )
+        await waitForMainQueueDrain()
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.timedOut)]
+        )
+        await waitForMainQueueDrain()
+
+        XCTAssertFalse(strongMonitor.canAttemptServerRead)
+
+        monitor = nil
+    }
+
     func testTwoRequestSuccessesRecoverNetworkAndServerState() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,

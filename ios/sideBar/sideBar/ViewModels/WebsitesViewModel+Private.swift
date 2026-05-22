@@ -137,22 +137,18 @@ extension WebsitesViewModel {
 
         if let jobId = pending.jobId {
             jobPollingTasks[jobId]?.cancel()
-            jobPollingTasks.removeValue(forKey: jobId)
+            clearWebsiteJobPolling(jobId: jobId)
         }
 
         do {
             let response = try await api.save(url: normalized.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalized)
-            let jobId = response.jobId
-            let url = normalized
-            jobPollingTasks[jobId] = Task { [weak self] in
-                await self?.pollJobUntilComplete(
-                    jobId: jobId,
-                    pendingURL: url,
-                    previousSelectedId: previousSelectedId,
-                    shouldSelectOnCompletion: true
-                )
-            }
+            startWebsiteJobPollingIfAllowed(
+                jobId: response.jobId,
+                pendingURL: normalized,
+                previousSelectedId: previousSelectedId,
+                shouldSelectOnCompletion: true
+            )
             return true
         } catch {
             endWebsiteSave()
@@ -336,6 +332,10 @@ extension WebsitesViewModel {
 
     func startTranscriptPollingIfNeeded(websiteId: String, videoId: String) {
         let key = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
+        guard allowsFallbackPolling(.websites, true) else {
+            stopTranscriptPolling(key: key)
+            return
+        }
         guard transcriptPollingTasks[key] == nil else { return }
         transcriptPollingTasks[key] = Task { [weak self] in
             var consecutiveFailures = 0
@@ -383,6 +383,10 @@ extension WebsitesViewModel {
         }
         guard networkStatus.isOffline == false else {
             return .retryableFailure
+        }
+        guard allowsFallbackPolling(.websites, true) else {
+            stopTranscriptPolling(key: key)
+            return .completed
         }
         do {
             try await store.loadDetail(id: websiteId, force: true)

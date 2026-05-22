@@ -78,6 +78,7 @@ struct RealtimeSubscriptionPlan: Equatable {
 
 struct RealtimeSubscriptionSlot {
     var channel: RealtimeChannelV2?
+    var subscribedSession: RealtimeSubscriptionSession?
     var subscriptions: [ObservationToken] = []
 }
 
@@ -93,25 +94,31 @@ extension SupabaseRealtimeAdapter {
             await stopInternal()
             return
         }
-        await tokenStore.set(nextSession.accessToken)
-        await client.realtimeV2.setAuth(nextSession.accessToken)
+        let currentSession = RealtimeSubscriptionSession(
+            userId: currentUserId,
+            accessToken: currentAccessToken
+        )
         let plan = Self.makeSubscriptionPlan(
-            currentSession: RealtimeSubscriptionSession(
-                userId: currentUserId,
-                accessToken: currentAccessToken
-            ),
+            currentSession: currentSession,
             nextSession: nextSession
         ) { [weak self] domain in
             self?.channel(for: domain) != nil
         }
+        if Self.shouldClearRealtimeHealthBeforeAuthUpdate(plan: plan) {
+            setRealtimeConnected(false)
+        }
+        await tokenStore.set(nextSession.accessToken)
+        await client.realtimeV2.setAuth(nextSession.accessToken)
         currentUserId = nextSession.userId
         currentAccessToken = nextSession.accessToken
         for domain in plan.domains {
-            await subscribe(to: domain, userId: nextSession.userId)
+            await subscribe(to: domain, session: nextSession)
         }
+        updateRealtimeConnectionState()
     }
 
     func stopInternal() async {
+        setRealtimeConnected(false)
         let channels = RealtimeSubscriptionDomain.allCases.compactMap { channel(for: $0) }
         for domain in RealtimeSubscriptionDomain.allCases {
             clearSubscriptions(for: domain)
@@ -152,6 +159,10 @@ extension SupabaseRealtimeAdapter {
         }
         return RealtimeSubscriptionPlan(domains: domains)
     }
+
+    static func shouldClearRealtimeHealthBeforeAuthUpdate(plan: RealtimeSubscriptionPlan) -> Bool {
+        !plan.domains.isEmpty
+    }
 }
 
 extension SupabaseRealtimeAdapter {
@@ -159,28 +170,38 @@ extension SupabaseRealtimeAdapter {
         "user_id=eq.\(userId)"
     }
 
-    func subscribe(to domain: RealtimeSubscriptionDomain, userId: String) async {
+    func subscribe(to domain: RealtimeSubscriptionDomain, session: RealtimeSubscriptionSession) async {
         if let existingChannel = channel(for: domain) {
             await client.realtimeV2.removeChannel(existingChannel)
         }
         clearSubscriptions(for: domain)
         let channel = client.realtimeV2.channel("public:\(domain.table)")
         setSubscriptions(
-            registerSubscriptions(for: domain, channel: channel, filter: domain.filter(userId: userId)),
+            registerSubscriptions(for: domain, channel: channel, filter: domain.filter(userId: session.userId)),
             for: domain
         )
-        setChannel(channel, for: domain)
+        setChannel(channel, for: domain, subscribedSession: nil)
         do {
             try await channel.subscribeWithError()
         } catch is CancellationError {
             // Expected during auth transitions
+            markRealtimeSubscriptionFailed(for: domain)
+            return
         } catch {
-            clearSubscriptions(for: domain)
-            setChannel(nil, for: domain)
+            markRealtimeSubscriptionFailed(for: domain)
             logger.error(
                 "\(domain.logLabel, privacy: .public) subscription failed: \(error.localizedDescription, privacy: .public)"
             )
+            return
         }
+        setChannel(channel, for: domain, subscribedSession: session)
+        updateRealtimeConnectionState()
+    }
+
+    func markRealtimeSubscriptionFailed(for domain: RealtimeSubscriptionDomain) {
+        clearSubscriptions(for: domain)
+        setChannel(nil, for: domain)
+        setRealtimeConnected(false)
     }
 
     func channel(for domain: RealtimeSubscriptionDomain) -> RealtimeChannelV2? {
@@ -188,8 +209,24 @@ extension SupabaseRealtimeAdapter {
     }
 
     func setChannel(_ channel: RealtimeChannelV2?, for domain: RealtimeSubscriptionDomain) {
+        setChannel(
+            channel,
+            for: domain,
+            subscribedSession: RealtimeSubscriptionSession(
+                userId: currentUserId,
+                accessToken: currentAccessToken
+            )
+        )
+    }
+
+    func setChannel(
+        _ channel: RealtimeChannelV2?,
+        for domain: RealtimeSubscriptionDomain,
+        subscribedSession: RealtimeSubscriptionSession?
+    ) {
         var slot = subscriptionSlots[domain] ?? RealtimeSubscriptionSlot()
         slot.channel = channel
+        slot.subscribedSession = channel == nil ? nil : subscribedSession
         subscriptionSlots[domain] = slot
     }
 

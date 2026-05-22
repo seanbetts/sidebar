@@ -269,6 +269,12 @@ public final class AppEnvironment: ObservableObject {
             },
             scheduleBackgroundWriteQueueFlush: Self.scheduleBackgroundWriteQueueFlush
         )
+        self.ingestionViewModel.allowsFallbackPolling = { [weak self] section, hasActiveJob in
+            self?.allowsFallbackPolling(section: section, hasActiveJob: hasActiveJob) ?? false
+        }
+        self.websitesViewModel.allowsFallbackPolling = { [weak self] section, hasActiveJob in
+            self?.allowsFallbackPolling(section: section, hasActiveJob: hasActiveJob) ?? false
+        }
         self.chatViewModel.workspaceActionDispatcher = { [weak self] action in
             self?.dispatchChatWorkspaceAction(action)
         }

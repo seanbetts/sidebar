@@ -24,6 +24,9 @@ extension AppEnvironment {
         }
 
         await consumePendingShares()
+        guard allowsFallbackPolling(section: .websites, hasActiveJob: true) else {
+            return false
+        }
         let completed = await websitesViewModel.continuePendingWebsiteJobsInBackground(
             maxDuration: maxDuration
         )
@@ -328,6 +331,9 @@ extension AppEnvironment {
         jobId: String,
         url: String
     ) async -> PendingShareItem? {
+        guard allowsFallbackPolling(section: .websites, hasActiveJob: true) else {
+            return item
+        }
         guard let pendingURL = URL(string: url) else {
             return nil
         }

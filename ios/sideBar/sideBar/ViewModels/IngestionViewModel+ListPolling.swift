@@ -8,6 +8,10 @@ extension IngestionViewModel {
     }
 
     func runListPollingTick() async {
+        guard allowsFallbackPolling(.files, false) else {
+            stopListPolling()
+            return
+        }
         if isListPollRequestInFlight {
             return
         }

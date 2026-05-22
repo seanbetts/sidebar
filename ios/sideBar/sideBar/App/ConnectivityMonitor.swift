@@ -392,6 +392,10 @@ final class ConnectivityMonitor: ObservableObject {
 }
 
 extension ConnectivityMonitor {
+    var canAttemptServerRead: Bool {
+        offlineCapabilityPolicy.canAttemptServerRead
+    }
+
     var offlineCapabilityPolicyPublisher: AnyPublisher<OfflineCapabilityPolicy, Never> {
         Publishers.CombineLatest3($isOffline, $isNetworkAvailable, $isServerReachable)
             .map { isOffline, isNetworkAvailable, isServerReachable in

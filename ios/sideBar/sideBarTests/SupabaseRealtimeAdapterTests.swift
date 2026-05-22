@@ -198,23 +198,40 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
 
         for index in 0..<10 {
             adapter.currentUserId = "user-\(index)"
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:notes-\(index)"), for: .notes)
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:websites-\(index)"), for: .websites)
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:files-\(index)"), for: .ingestedFiles)
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:file-jobs-\(index)"), for: .fileJobs)
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:tasks-\(index)"), for: .tasks)
-            adapter.setChannel(
-                adapter.client.realtimeV2.channel("public:task-projects-\(index)"),
-                for: .taskProjects
-            )
-            adapter.setChannel(adapter.client.realtimeV2.channel("public:task-groups-\(index)"), for: .taskGroups)
+            adapter.currentAccessToken = "token-\(index)"
+            for domain in RealtimeSubscriptionDomain.allCases {
+                adapter.setChannel(adapter.client.realtimeV2.channel("public:\(domain.table)-\(index)"), for: domain)
+            }
+            adapter.updateRealtimeConnectionState()
+            XCTAssertTrue(adapter.isRealtimeConnected)
             await adapter.stopInternal()
             XCTAssertNil(adapter.currentUserId)
+            XCTAssertNil(adapter.currentAccessToken)
             for domain in RealtimeSubscriptionDomain.allCases {
                 XCTAssertNil(adapter.channel(for: domain))
                 XCTAssertTrue(adapter.subscriptions(for: domain).isEmpty)
             }
+            XCTAssertFalse(adapter.isRealtimeConnected)
         }
+    }
+
+    func testRealtimeConnectionHealthRequiresAllDomainsAndClearsFailures() {
+        let adapter = retain(SupabaseRealtimeAdapter(config: .fallbackForTesting()))
+        adapter.currentUserId = "user-1"
+        adapter.currentAccessToken = "token"
+        for domain in RealtimeSubscriptionDomain.allCases where domain != .taskGroups {
+            adapter.setChannel(adapter.client.realtimeV2.channel("public:\(domain.table)"), for: domain)
+        }
+        adapter.updateRealtimeConnectionState()
+        XCTAssertFalse(adapter.isRealtimeConnected)
+
+        adapter.setChannel(adapter.client.realtimeV2.channel("public:task_groups"), for: .taskGroups)
+        adapter.updateRealtimeConnectionState()
+        XCTAssertTrue(adapter.isRealtimeConnected)
+
+        adapter.markRealtimeSubscriptionFailed(for: .websites)
+        XCTAssertNil(adapter.channel(for: .websites))
+        XCTAssertFalse(adapter.isRealtimeConnected)
     }
 
     func testSubscribeToFileJobsScopesCallbacksToCurrentUser() async {

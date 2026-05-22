@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import sideBarShared
 import OSLog
@@ -22,6 +23,7 @@ public protocol RealtimeEventHandler: AnyObject {
 /// to prevent data races between `start()` and `stop()`.
 @MainActor public final class SupabaseRealtimeAdapter: RealtimeClient {
     public weak var handler: RealtimeEventHandler?
+    @Published private(set) var isRealtimeConnected: Bool = false
     let tokenStore: AccessTokenStore
     let client: SupabaseClient
     let logger = Logger(subsystem: "sideBar", category: "Realtime")
@@ -66,6 +68,24 @@ public protocol RealtimeEventHandler: AnyObject {
         hasChannel: Bool
     ) -> Bool {
         !hasChannel || currentSession != nextSession
+    }
+
+    func setRealtimeConnected(_ isConnected: Bool) {
+        isRealtimeConnected = isConnected
+    }
+
+    func updateRealtimeConnectionState() {
+        guard let currentSession = RealtimeSubscriptionSession(
+            userId: currentUserId,
+            accessToken: currentAccessToken
+        ) else {
+            isRealtimeConnected = false
+            return
+        }
+        isRealtimeConnected = RealtimeSubscriptionDomain.allCases.allSatisfy { domain in
+            guard let slot = subscriptionSlots[domain] else { return false }
+            return slot.channel != nil && slot.subscribedSession == currentSession
+        }
     }
 }
 

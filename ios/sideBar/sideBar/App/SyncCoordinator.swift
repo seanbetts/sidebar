@@ -9,6 +9,8 @@ final class SyncCoordinator {
     private let isSyncAllowed: () -> Bool
     private let scheduleBackgroundWriteQueueFlush: () -> Void
     private var cancellables = Set<AnyCancellable>()
+    @Published private(set) var hasPendingReconnectRefresh = false
+    @Published private(set) var lastReconnectRefreshSucceeded = true
 
     init(
         connectivityMonitor: ConnectivityMonitor,
@@ -45,6 +47,9 @@ final class SyncCoordinator {
         if await writeQueue.hasPendingWritesNeedingFlush() {
             scheduleBackgroundWriteQueueFlush()
         }
+        hasPendingReconnectRefresh = true
         await onReconnectRefresh()
+        lastReconnectRefreshSucceeded = true
+        hasPendingReconnectRefresh = false
     }
 }

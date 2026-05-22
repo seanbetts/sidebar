@@ -74,6 +74,8 @@ public final class WebsitesViewModel: ObservableObject {
     var pendingTranscriptJobs: [String: Set<String>] = [:]
     var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    var jobPollingTaskTokens: [String: UUID] = [:]
+    var allowsFallbackPolling: @MainActor (AppSection, Bool) -> Bool = { _, _ in true }
     var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -238,16 +240,12 @@ public final class WebsitesViewModel: ObservableObject {
         do {
             let response = try await api.save(url: normalized.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalized)
-            let jobId = response.jobId
-            let url = normalized
-            jobPollingTasks[jobId] = Task { [weak self] in
-                await self?.pollJobUntilComplete(
-                    jobId: jobId,
-                    pendingURL: url,
-                    previousSelectedId: previousSelectedId,
-                    shouldSelectOnCompletion: true
-                )
-            }
+            startWebsiteJobPollingIfAllowed(
+                jobId: response.jobId,
+                pendingURL: normalized,
+                previousSelectedId: previousSelectedId,
+                shouldSelectOnCompletion: true
+            )
             return true
         } catch {
             endWebsiteSave()
@@ -261,9 +259,15 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     func continuePendingWebsiteJobsInBackground(maxDuration: TimeInterval = 25) async -> Bool {
+        guard allowsFallbackPolling(.websites, true) else {
+            return false
+        }
         let deadline = Date().addingTimeInterval(max(1, maxDuration))
 
         while Date() < deadline {
+            guard allowsFallbackPolling(.websites, true) else {
+                return false
+            }
             let pendingJobs = pendingWebsites.compactMap { pending -> PendingWebsiteItem? in
                 pending.jobId != nil ? pending : nil
             }
@@ -306,16 +310,12 @@ public final class WebsitesViewModel: ObservableObject {
         do {
             let response = try await api.save(url: normalizedURL.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalizedURL)
-            let jobId = response.jobId
-            let url = normalizedURL
-            jobPollingTasks[jobId] = Task { [weak self] in
-                await self?.pollJobUntilComplete(
-                    jobId: jobId,
-                    pendingURL: url,
-                    previousSelectedId: nil,
-                    shouldSelectOnCompletion: false
-                )
-            }
+            startWebsiteJobPollingIfAllowed(
+                jobId: response.jobId,
+                pendingURL: normalizedURL,
+                previousSelectedId: nil,
+                shouldSelectOnCompletion: false
+            )
             return true
         } catch {
             updatePendingWebsiteStatus(for: normalizedURL.absoluteString, status: .failed)

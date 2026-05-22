@@ -630,6 +630,136 @@ final class WebsitesViewModelTests: XCTestCase {
         viewModel.jobPollingTasks.removeValue(forKey: "job-1")
     }
 
+    func testSaveWebsiteDoesNotStartJobPollingWhenFallbackPollingPolicyDenies() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        viewModel.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .websites)
+            XCTAssertTrue(hasActiveJob)
+            return false
+        }
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
+    }
+
+    func testWebsiteJobRefreshSkipsAPIWhenFallbackPolicyBecomesDeniedAfterStart() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "queued",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        var allowsPolling = true
+        viewModel.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .websites)
+            XCTAssertTrue(hasActiveJob)
+            return allowsPolling
+        }
+
+        viewModel.startWebsiteJobPollingIfAllowed(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        XCTAssertNotNil(viewModel.jobPollingTasks["job-1"])
+
+        allowsPolling = false
+        let isTerminal = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+
+        XCTAssertFalse(isTerminal)
+        XCTAssertTrue(api.jobStatusCallIds.isEmpty)
+        viewModel.jobPollingTasks["job-1"]?.cancel()
+        viewModel.jobPollingTasks.removeValue(forKey: "job-1")
+    }
+
+    func testWebsiteJobPollingCleansUpTaskWhenFallbackPolicyBecomesDeniedAfterStart() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "queued",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        var allowsPolling = true
+        viewModel.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .websites)
+            XCTAssertTrue(hasActiveJob)
+            return allowsPolling
+        }
+        let pendingURL = URL(string: "https://example.com")!
+
+        viewModel.startWebsiteJobPollingIfAllowed(
+            jobId: "job-1",
+            pendingURL: pendingURL,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        XCTAssertNotNil(viewModel.jobPollingTasks["job-1"])
+
+        allowsPolling = false
+        let stopped = await waitForCondition(timeoutNanoseconds: 3_500_000_000) {
+            viewModel.jobPollingTasks["job-1"] == nil
+        }
+
+        XCTAssertTrue(stopped)
+        XCTAssertTrue(api.jobStatusCallIds.isEmpty)
+
+        allowsPolling = true
+        viewModel.startWebsiteJobPollingIfAllowed(
+            jobId: "job-1",
+            pendingURL: pendingURL,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        XCTAssertNotNil(viewModel.jobPollingTasks["job-1"])
+        viewModel.jobPollingTasks["job-1"]?.cancel()
+        viewModel.clearWebsiteJobPolling(jobId: "job-1")
+    }
+
     func testVisiblePendingWebsitesHideSavedDuplicateUntilPollingCompletes() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -1827,6 +1957,86 @@ final class WebsitesViewModelTests: XCTestCase {
         )
     }
 
+    func testTranscriptPollingDoesNotStartWhenFallbackPollingPolicyDenies() async {
+        let videoId = "dQw4w9WgXcQ"
+        let detail = makeDetail(
+            id: "site-1",
+            youtubeTranscripts: [
+                videoId: WebsiteTranscriptEntry(
+                    status: "queued",
+                    fileId: "file-1",
+                    updatedAt: "2026-02-07T10:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(getResult: .success(detail))
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        viewModel.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .websites)
+            XCTAssertTrue(hasActiveJob)
+            return false
+        }
+
+        viewModel.syncTranscriptPolling(for: detail)
+
+        XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
+    }
+
+    func testTranscriptPollingSkipsDetailReadWhenFallbackPolicyBecomesDeniedAfterStart() async {
+        let videoId = "dQw4w9WgXcQ"
+        let detail = makeDetail(
+            id: "site-1",
+            youtubeTranscripts: [
+                videoId: WebsiteTranscriptEntry(
+                    status: "queued",
+                    fileId: "file-1",
+                    updatedAt: "2026-02-07T10:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(getResult: .success(detail))
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            transcriptPollInterval: 0,
+            transcriptPollMaxInterval: 0,
+            transcriptPollJitterWindow: 0,
+            transcriptPollMinimumInterval: 0
+        )
+        var allowsPolling = true
+        viewModel.allowsFallbackPolling = { section, hasActiveJob in
+            XCTAssertEqual(section, .websites)
+            XCTAssertTrue(hasActiveJob)
+            return allowsPolling
+        }
+        viewModel.selectedWebsiteId = "site-1"
+        viewModel.active = detail
+
+        viewModel.startTranscriptPollingIfNeeded(websiteId: "site-1", videoId: videoId)
+        XCTAssertFalse(viewModel.transcriptPollingTasks.isEmpty)
+
+        allowsPolling = false
+        let stopped = await waitForCondition {
+            viewModel.transcriptPollingTasks.isEmpty
+        }
+
+        XCTAssertTrue(stopped)
+        XCTAssertEqual(api.getCallCount, 0)
+    }
+
     func testRequestYouTubeTranscriptPollsAndLoadsReadyTranscriptContent() async {
         let videoId = "dQw4w9WgXcQ"
         let queuedDetail = makeDetail(
@@ -2060,6 +2270,8 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let syncResult: Result<WebsiteSyncResponse, Error>
     let transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)?
     private(set) var lastSavedUrl: String?
+    private(set) var getCallCount = 0
+    private(set) var jobStatusCallIds: [String] = []
     private(set) var canceledJobIds: [String] = []
     private(set) var updatedPinnedOrderIDs: [[String]] = []
     private(set) var updatePinnedOrderCallCount = 0
@@ -2114,6 +2326,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func get(id: String) async throws -> WebsiteDetail {
         _ = id
+        getCallCount += 1
         if !queuedGetResults.isEmpty {
             return try queuedGetResults.removeFirst().get()
         }
@@ -2126,7 +2339,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     }
 
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
-        _ = id
+        jobStatusCallIds.append(id)
         return try jobStatusResult.get()
     }
 

@@ -9,12 +9,37 @@ extension WebsitesViewModel {
     private static let jobPollIntervals: [TimeInterval] = [2, 3, 5, 8, 13, 20, 30, 30]
     private static let jobPollMaxDuration: TimeInterval = 300
 
+    func startWebsiteJobPollingIfAllowed(
+        jobId: String,
+        pendingURL: URL,
+        previousSelectedId: String?,
+        shouldSelectOnCompletion: Bool
+    ) {
+        guard allowsFallbackPolling(.websites, true) else { return }
+        jobPollingTasks[jobId]?.cancel()
+        let token = UUID()
+        jobPollingTaskTokens[jobId] = token
+        jobPollingTasks[jobId] = Task { [weak self] in
+            await self?.pollJobUntilComplete(
+                jobId: jobId,
+                pendingURL: pendingURL,
+                previousSelectedId: previousSelectedId,
+                shouldSelectOnCompletion: shouldSelectOnCompletion,
+                token: token
+            )
+        }
+    }
+
     func pollJobUntilComplete(
         jobId: String,
         pendingURL: URL,
         previousSelectedId: String?,
-        shouldSelectOnCompletion: Bool = true
+        shouldSelectOnCompletion: Bool = true,
+        token: UUID
     ) async {
+        defer {
+            finishWebsiteJobPolling(jobId: jobId, token: token)
+        }
         let startTime = Date()
         var attemptIndex = 0
         while Date().timeIntervalSince(startTime) < Self.jobPollMaxDuration {
@@ -24,6 +49,7 @@ extension WebsitesViewModel {
             try? await Task.sleep(for: .seconds(interval))
             attemptIndex += 1
             guard !Task.isCancelled else { return }
+            guard allowsFallbackPolling(.websites, true) else { return }
             let isTerminal = await refreshWebsiteJobStatus(
                 jobId: jobId,
                 pendingURL: pendingURL,
@@ -40,7 +66,7 @@ extension WebsitesViewModel {
             pendingURL: pendingURL,
             message: "Save timed out"
         )
-        jobPollingTasks.removeValue(forKey: jobId)
+        clearWebsiteJobPolling(jobId: jobId)
     }
 
     @discardableResult
@@ -50,6 +76,9 @@ extension WebsitesViewModel {
         previousSelectedId: String?,
         shouldSelectOnCompletion: Bool
     ) async -> Bool {
+        guard allowsFallbackPolling(.websites, true) else {
+            return false
+        }
         do {
             let response = try await api.jobStatus(id: jobId)
             switch response.status {
@@ -64,12 +93,12 @@ extension WebsitesViewModel {
                     removePendingWebsite(for: pendingURL.absoluteString)
                 }
                 endWebsiteSave()
-                jobPollingTasks.removeValue(forKey: jobId)
+                clearWebsiteJobPolling(jobId: jobId)
                 return true
             case "canceled":
                 endWebsiteSave()
                 removePendingWebsite(for: pendingURL.absoluteString)
-                jobPollingTasks.removeValue(forKey: jobId)
+                clearWebsiteJobPolling(jobId: jobId)
                 return true
             case "failed", "stalled":
                 let message = response.error?.message ?? "Save failed"
@@ -79,7 +108,7 @@ extension WebsitesViewModel {
                     pendingURL: pendingURL,
                     message: message
                 )
-                jobPollingTasks.removeValue(forKey: jobId)
+                clearWebsiteJobPolling(jobId: jobId)
                 return true
             case "processing":
                 updatePendingWebsiteStatus(for: pendingURL.absoluteString, status: .reading)
@@ -96,5 +125,15 @@ extension WebsitesViewModel {
         } catch {
             return false
         }
+    }
+
+    func clearWebsiteJobPolling(jobId: String) {
+        jobPollingTasks.removeValue(forKey: jobId)
+        jobPollingTaskTokens.removeValue(forKey: jobId)
+    }
+
+    private func finishWebsiteJobPolling(jobId: String, token: UUID) {
+        guard jobPollingTaskTokens[jobId] == token else { return }
+        clearWebsiteJobPolling(jobId: jobId)
     }
 }

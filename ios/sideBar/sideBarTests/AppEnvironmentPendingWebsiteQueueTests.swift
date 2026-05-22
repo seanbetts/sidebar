@@ -112,7 +112,7 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
                 WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
             )
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI, hasAuthToken: false)
         let environment = requireEnvironment()
         storage.userDefaults.set(true, forKey: AppStorageKeys.biometricUnlockEnabled)
         environment.authState = .active
@@ -489,7 +489,11 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
                 )
             )
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        environment = makeEnvironment(
+            storage: storage,
+            websitesAPI: websitesAPI,
+            authSessionState: .active
+        )
         let environment = requireEnvironment()
         environment.authState = .active
 
@@ -559,7 +563,11 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
                 )
             )
         )
-        environment = makeEnvironment(storage: storage, websitesAPI: resumedAPI)
+        environment = makeEnvironment(
+            storage: storage,
+            websitesAPI: resumedAPI,
+            authSessionState: .active
+        )
         let resumedEnvironment = requireEnvironment()
         resumedEnvironment.authState = .active
 
@@ -571,6 +579,40 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
         XCTAssertTrue(resumedEnvironment.websitesViewModel.pendingWebsites.isEmpty)
         XCTAssertEqual(resumedEnvironment.websitesViewModel.items.first?.id, "saved-after-relaunch")
+    }
+
+    func testBackgroundWebsiteContinuationSkipsPersistedJobWhenFallbackPolicyDenies() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentPendingWebsiteQueueTests", code: 5)),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-persisted",
+                    status: "completed",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI, hasAuthToken: false)
+        let environment = requireEnvironment()
+        environment.authState = .active
+        storage.pendingShareStore.replaceAll([
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: Date(),
+                url: url,
+                websiteJobId: "job-persisted"
+            )
+        ])
+
+        let completed = await environment.performBackgroundWebsiteContinuation(maxDuration: 2)
+
+        XCTAssertFalse(completed)
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertTrue(websitesAPI.jobStatusCallIds.isEmpty)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().first?.websiteJobId, "job-persisted")
     }
 
     func testRefreshAuthStateDelegatesRunnableWebsiteReplayToCoordinator() async {
@@ -640,9 +682,15 @@ extension AppEnvironmentPendingWebsiteQueueTests {
 
     func makeEnvironment(
         storage: AppEnvironmentStorage,
-        websitesAPI: (any WebsitesProviding)? = nil
+        websitesAPI: (any WebsitesProviding)? = nil,
+        hasAuthToken: Bool = true,
+        authSessionState: AuthState = .signedOut
     ) -> AppEnvironment {
-        let authSession = PlaceholderAuthSession(authState: .signedOut)
+        let authSession = PlaceholderAuthSession(
+            accessToken: hasAuthToken ? "access-token" : nil,
+            userId: hasAuthToken ? "user-1" : nil,
+            authState: authSessionState
+        )
         let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),
