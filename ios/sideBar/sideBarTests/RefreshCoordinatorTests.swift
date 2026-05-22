@@ -119,6 +119,47 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(adapter.refreshCount, 0)
     }
 
+    func testCoordinatorSchedulesRealtimeInvalidationAsCoalescedRefresh() async {
+        let adapter = BlockingRefreshAdapter(section: .websites)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
+        let change = DomainSyncChange(
+            section: .websites,
+            entityId: "w1",
+            kind: .detailRefresh,
+            updatedAt: nil,
+            requiresListRefresh: true,
+            requiresDetailRefresh: true,
+            canPatchMetadata: false
+        )
+        let context = RefreshContext(
+            visibleSection: .websites,
+            hasVisibleDetail: true,
+            pinnedSections: [],
+            lastOpenedSection: nil,
+            staleTargets: [],
+            canAttemptServerRead: true
+        )
+
+        let first = Task {
+            await coordinator.scheduleRealtimeInvalidation(change, context: context)
+        }
+        let second = Task {
+            await coordinator.scheduleRealtimeInvalidation(change, context: context)
+        }
+
+        await fulfillment(of: [adapter.started], timeout: 1.0)
+        XCTAssertEqual(adapter.refreshCount, 1)
+
+        adapter.resume()
+        _ = await first.value
+        _ = await second.value
+
+        XCTAssertEqual(adapter.refreshCount, 1)
+    }
+
     func testRegistryPreparesOnlyTheVisibleContentDomain() async {
         let notes = PreparingRefreshAdapter(section: .notes)
         let websites = PreparingRefreshAdapter(section: .websites)
