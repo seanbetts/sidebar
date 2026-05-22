@@ -43,7 +43,7 @@ public final class NotesViewModel: ObservableObject {
     @Published public private(set) var isSearching: Bool = false
     @Published public private(set) var isLoadingArchived: Bool = false
     @Published public private(set) var treeLoadState: ContentListLoadState = .idle
-    @Published public private(set) var errorMessage: String?
+    @Published public internal(set) var errorMessage: String?
 
     let api: any NotesProviding
     let store: NotesStore
@@ -53,8 +53,27 @@ public final class NotesViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     var treeMirrorTask: Task<Void, Never>?, archivedTreeMirrorTask: Task<Void, Never>?
     var activeNoteMirrorTask: Task<Void, Never>?
-    private var pendingNoteId: String?
+    var pendingNoteId: String?
+    var protectedRealtimeDetailRefresh: RealtimeDetailRefreshProtection?
+    var realtimeProtectedQueuedDraftIdentifiers = Set<String>()
     var searchDebounceDelay: TimeInterval = 0.3
+
+    struct RealtimeDetailRefreshProtection: Equatable {
+        let id = UUID()
+        let identifiers: Set<String>
+        var expectedDetailNote: NotePayload?
+        var acceptedSaveAcknowledgement: NotePayload?
+        static func == (lhs: RealtimeDetailRefreshProtection, rhs: RealtimeDetailRefreshProtection) -> Bool {
+            lhs.id == rhs.id
+        }
+    }
+
+    struct RealtimeNoteLoadResult { let didLoad: Bool; let didPublishActiveNote: Bool }
+
+    enum RealtimeDetailRefreshUpdateProtection: Equatable {
+        case none, acceptedSaveAcknowledgement
+        case protectedRealtimeDetail(suppressRegardlessOfQueue: Bool)
+    }
 
     public init(
         api: any NotesProviding,
@@ -151,7 +170,7 @@ public final class NotesViewModel: ObservableObject {
     public func loadNote(id: String, force: Bool = false) async {
         errorMessage = nil
         selectedNoteId = id
-        if activeNote?.id != id {
+        if let activeNote, activeNote.id != id, activeNote.path != id {
             store.clearActiveNote()
         }
         if !notesOfflineCapabilityPolicy.canAttemptServerRead, !store.hasCachedNote(id: id) {

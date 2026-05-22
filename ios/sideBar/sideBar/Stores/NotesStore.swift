@@ -176,6 +176,62 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         applyNoteUpdate(note, persist: true, activeNoteMode: .force)
     }
 
+    func applyRealtimeMetadataPatch(noteId: String, updatedAt: Date?) -> Bool {
+        guard activeNote?.id != noteId, activeNote?.path != noteId, let updatedAt else {
+            return false
+        }
+        let modified = updatedAt.timeIntervalSince1970
+        let cachedNote = notePayload(forPath: noteId) ?? notePayload(forId: noteId)
+        var candidatePaths = [noteId]
+        if let cachedPath = cachedNote?.path, cachedPath != noteId {
+            candidatePaths.append(cachedPath)
+        }
+        var didPatch = false
+
+        for path in candidatePaths {
+            didPatch = patchRealtimeMetadata(
+                in: tree,
+                cacheKey: CacheKeys.notesTree,
+                entityType: "notesTree",
+                notePath: path,
+                modified: modified
+            ) { [weak self] updated in
+                self?.tree = updated
+                self?.updateWidgetData(from: updated)
+            } || didPatch
+            didPatch = patchRealtimeMetadata(
+                in: archivedTree,
+                cacheKey: CacheKeys.notesArchivedTree,
+                entityType: "notesArchivedTree",
+                notePath: path,
+                modified: modified
+            ) { [weak self] updated in
+                self?.archivedTree = updated
+            } || didPatch
+        }
+
+        if let cachedNote, cachedNote.modified != modified {
+            let patchedNote = NotePayload(
+                id: cachedNote.id,
+                name: cachedNote.name,
+                document: cachedNote.document,
+                documentVersion: cachedNote.documentVersion,
+                plainText: cachedNote.plainText,
+                path: cachedNote.path,
+                modified: modified,
+                created: cachedNote.created
+            )
+            if shouldPersistNote(patchedNote) {
+                persistNote(patchedNote)
+            } else {
+                clearCachedNote(patchedNote)
+            }
+            didPatch = true
+        }
+
+        return didPatch
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete {
@@ -302,5 +358,33 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             indexNotesFromTree(merged)
         }
         updateWidgetData(from: merged)
+    }
+
+    private func patchRealtimeMetadata(
+        in sourceTree: FileTree?,
+        cacheKey: String,
+        entityType: String,
+        notePath: String,
+        modified: Double,
+        apply: (FileTree) -> Void
+    ) -> Bool {
+        guard let sourceTree,
+              let updated = updatedTree(in: sourceTree, notePath: notePath, transform: { node in
+                  guard node.modified != modified else { return node }
+                  return copyNode(node, modified: modified)
+              }),
+              FileTreeSignature.make(sourceTree) != FileTreeSignature.make(updated) else {
+            return false
+        }
+        apply(updated)
+        cache.set(key: cacheKey, value: updated, ttlSeconds: cacheTTL)
+        let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey) ?? Date()
+        offlineStore?.set(
+            key: cacheKey,
+            entityType: entityType,
+            value: updated,
+            lastSyncAt: lastSyncAt
+        )
+        return true
     }
 }

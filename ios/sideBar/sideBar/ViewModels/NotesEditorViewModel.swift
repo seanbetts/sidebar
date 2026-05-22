@@ -109,7 +109,6 @@ public final class NotesEditorViewModel: ObservableObject {
         pendingEditEntryPresentationHoldTask?.cancel()
         pendingExitEditPresentationTask?.cancel()
     }
-    // swiftlint:disable:next cyclomatic_complexity
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
@@ -117,6 +116,13 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
         let isSameNote = previousNoteId == note.id
+        let realtimeProtection = notesViewModel.realtimeDetailRefreshUpdateProtection(for: note)
+        if isSameNote {
+            if case .protectedRealtimeDetail(let suppressRegardlessOfQueue) = realtimeProtection,
+               isQueuedForSync || suppressRegardlessOfQueue {
+                return
+            }
+        }
         if isSameNote, isSaving {
             // Avoid clobbering pending local edits while an in-flight save publishes
             // the same note back through NotesStore.
@@ -133,25 +139,12 @@ public final class NotesEditorViewModel: ObservableObject {
         if isSameNote,
            normalized.plainText == content,
            normalized.content == canonicalContent {
-            if consumePendingOptimisticQueuedNoteEcho(noteId: note.id, normalized: normalized) {
-                isReadOnly = detectedUnsupportedContent != nil
-                if detectedUnsupportedContent != nil {
-                    presentationMode = .read
-                    clearEditSessionState()
-                }
-                return
-            }
-            if isQueuedForSync {
-                try? draftStorage.markSynced(entityType: "note", entityId: note.id)
-                lastSavedAt = Date()
-                saveErrorMessage = nil
-            }
-            isReadOnly = detectedUnsupportedContent != nil
-            isQueuedForSync = false
-            if detectedUnsupportedContent != nil {
-                presentationMode = .read
-                clearEditSessionState()
-            }
+            handleSameNoteUnchangedContent(
+                note,
+                normalized: normalized,
+                realtimeProtection: realtimeProtection,
+                unsupportedContent: detectedUnsupportedContent
+            )
             return
         }
         content = normalized.plainText
@@ -171,6 +164,7 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         isReadOnly = detectedUnsupportedContent != nil
         isQueuedForSync = false
+        notesViewModel.clearNoteQueuedForSync(note)
         if !isSameNote || detectedUnsupportedContent != nil {
             presentationMode = .read
             clearEditSessionState()
@@ -191,6 +185,7 @@ public final class NotesEditorViewModel: ObservableObject {
             if draft.canonicalContent == normalized.content {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
+                notesViewModel.clearNoteQueuedForSync(note)
                 return
             }
             content = draft.content
@@ -201,6 +196,7 @@ public final class NotesEditorViewModel: ObservableObject {
             )
             isDirty = true
             isQueuedForSync = true
+            notesViewModel.markNoteQueuedForSync(noteId: note.id)
         } catch {
             saveErrorMessage = "Failed to load draft"
         }
@@ -287,6 +283,7 @@ public final class NotesEditorViewModel: ObservableObject {
             isDirty = false
             lastSavedAt = nil
             isQueuedForSync = true
+            notesViewModel.markNoteQueuedForSync(noteId: noteId)
         }
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
@@ -359,6 +356,27 @@ public final class NotesEditorViewModel: ObservableObject {
         return true
     }
 
+    private func applyAcceptedSaveAcknowledgementState(
+        _ note: NotePayload,
+        unsupportedContent: NotesUnsupportedContent?
+    ) {
+        pendingOptimisticQueuedNoteEcho = nil
+        if isQueuedForSync {
+            try? draftStorage.markSynced(entityType: "note", entityId: note.id)
+            lastSavedAt = Date()
+            saveErrorMessage = nil
+        }
+        isDirty = false
+        isSaving = false
+        isQueuedForSync = false
+        notesViewModel.clearNoteQueuedForSync(note)
+        isReadOnly = unsupportedContent != nil
+        if unsupportedContent != nil {
+            presentationMode = .read
+            clearEditSessionState()
+        }
+    }
+
     @available(iOS 26.0, macOS 26.0, *)
     private func syncFromNativeEditorIfRequested(_ nativeViewModel: NativeNoteEditorViewModel) async {
         guard syncRequestedWhileSaving else { return }
@@ -394,6 +412,38 @@ public final class NotesEditorViewModel: ObservableObject {
 
 }
 extension NotesEditorViewModel {
+    fileprivate func handleSameNoteUnchangedContent(
+        _ note: NotePayload,
+        normalized: (content: String, plainText: String),
+        realtimeProtection: NotesViewModel.RealtimeDetailRefreshUpdateProtection,
+        unsupportedContent: NotesUnsupportedContent?
+    ) {
+        if realtimeProtection == .acceptedSaveAcknowledgement {
+            applyAcceptedSaveAcknowledgementState(note, unsupportedContent: unsupportedContent)
+            return
+        }
+        if consumePendingOptimisticQueuedNoteEcho(noteId: note.id, normalized: normalized) {
+            isReadOnly = unsupportedContent != nil
+            if unsupportedContent != nil {
+                presentationMode = .read
+                clearEditSessionState()
+            }
+            return
+        }
+        if isQueuedForSync {
+            try? draftStorage.markSynced(entityType: "note", entityId: note.id)
+            lastSavedAt = Date()
+            saveErrorMessage = nil
+        }
+        isReadOnly = unsupportedContent != nil
+        isQueuedForSync = false
+        notesViewModel.clearNoteQueuedForSync(note)
+        if unsupportedContent != nil {
+            presentationMode = .read
+            clearEditSessionState()
+        }
+    }
+
     var shouldAutofocusEditorSurface: Bool {
         presentationMode == .edit
             && isTransitioningEditExitToRead == false
@@ -608,6 +658,7 @@ extension NotesEditorViewModel {
             isDirty = false
             lastSavedAt = nil
             isQueuedForSync = true
+            notesViewModel.markNoteQueuedForSync(noteId: noteId)
         }
     }
 }

@@ -24,8 +24,24 @@ extension AppEnvironment: RealtimeEventHandler {
             scratchpadStore.bump()
             return
         }
+        guard let noteId = payload.record?.id ?? payload.oldRecord?.id else {
+            Task {
+                await refreshCoordinator.scheduleDecodeFailureRefresh(
+                    section: .notes,
+                    context: currentRefreshContext()
+                )
+            }
+            return
+        }
+        let updatedAt = DateParsing.parseISO8601(payload.record?.updatedAt ?? payload.oldRecord?.updatedAt)
+        let isDeleted = payload.eventType == .delete || payload.record?.deletedAt != nil
+        let change = NotesRefreshAdapter(viewModel: notesViewModel).classifyNoteRealtime(
+            noteId: noteId,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted
+        )
         Task {
-            await notesViewModel.applyRealtimeEvent(payload)
+            await refreshCoordinator.scheduleRealtimeInvalidation(change, context: currentRefreshContext())
         }
     }
 

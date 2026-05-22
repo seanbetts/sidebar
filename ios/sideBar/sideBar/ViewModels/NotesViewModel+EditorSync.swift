@@ -27,6 +27,7 @@ extension NotesViewModel {
             modified: serverNote.modified,
             created: serverNote.created
         )
+        markAcceptedSaveAcknowledgementForRealtimeProtection(acknowledged)
         store.applyEditorUpdate(acknowledged)
     }
 
