@@ -249,3 +249,155 @@ def test_aggregate_run_summary_orders_windows_and_sums_metrics() -> None:
     assert summary["repetition_warning"] is False
     assert summary["word_count"] == 2
     assert summary["stitched_transcript"] == "hello\n\nworld"
+
+
+def test_aggregate_run_summary_preserves_modality_tokens_for_audio_costing() -> None:
+    video = BenchmarkVideo(
+        video_id="abc123",
+        url="https://youtu.be/abc123",
+        title="Demo",
+        duration_seconds=300,
+    )
+    combination = BenchmarkCombination(window_seconds=150, overlap_seconds=0)
+    calls = [
+        CallResult(
+            window=BenchmarkWindow(start_seconds=0, end_seconds=150),
+            elapsed_seconds=1.0,
+            transcript_text="hello",
+            token_usage=TokenUsage(
+                input_tokens=40_000,
+                output_tokens=4_000,
+                total_tokens=44_000,
+                video_input_tokens=30_000,
+                audio_input_tokens=10_000,
+            ),
+        ),
+        CallResult(
+            window=BenchmarkWindow(start_seconds=150, end_seconds=300),
+            elapsed_seconds=1.5,
+            transcript_text="world",
+            token_usage=TokenUsage(
+                input_tokens=60_000,
+                output_tokens=6_000,
+                total_tokens=66_000,
+                video_input_tokens=50_000,
+                audio_input_tokens=10_000,
+            ),
+        ),
+    ]
+
+    summary = aggregate_run_summary(
+        video=video,
+        combination=combination,
+        model="gemini-3.1-flash-lite",
+        prompt_variant="plain_transcript_v1",
+        media_resolution="LOW",
+        output_cap_tokens=900,
+        concurrency=2,
+        run_number=1,
+        wall_clock_seconds=2.0,
+        calls=calls,
+        pricing=PricingProfile.for_model("gemini-3.1-flash-lite"),
+    )
+
+    assert summary["video_input_tokens"] == 80_000
+    assert summary["audio_input_tokens"] == 20_000
+    assert summary["input_cost_usd"] == 0.03
+    assert summary["output_cost_usd"] == 0.015
+    assert summary["estimated_cost_usd"] == 0.045
+    assert summary["audio_costing_available"] is True
+
+
+def test_aggregate_run_summary_scores_anchors_only_against_overlapping_windows() -> None:
+    video = BenchmarkVideo(
+        video_id="abc123",
+        url="https://youtu.be/abc123",
+        title="Demo",
+        duration_seconds=200,
+        anchor_regions=(
+            AnchorRegion(
+                name="opening",
+                start_seconds=0,
+                end_seconds=100,
+                anchors=("target phrase",),
+            ),
+        ),
+    )
+    combination = BenchmarkCombination(window_seconds=100, overlap_seconds=0)
+    calls = [
+        CallResult(
+            window=BenchmarkWindow(start_seconds=0, end_seconds=100),
+            elapsed_seconds=1.0,
+            transcript_text="intro without the anchor",
+            token_usage=TokenUsage(input_tokens=100, output_tokens=10, total_tokens=110),
+        ),
+        CallResult(
+            window=BenchmarkWindow(start_seconds=100, end_seconds=200),
+            elapsed_seconds=1.0,
+            transcript_text="target phrase appears later",
+            token_usage=TokenUsage(input_tokens=100, output_tokens=10, total_tokens=110),
+        ),
+    ]
+
+    summary = aggregate_run_summary(
+        video=video,
+        combination=combination,
+        model="gemini-3.1-flash-lite",
+        prompt_variant="plain_transcript_v1",
+        media_resolution="LOW",
+        output_cap_tokens=900,
+        concurrency=1,
+        run_number=1,
+        wall_clock_seconds=2.0,
+        calls=calls,
+        pricing=PricingProfile.for_model("gemini-3.1-flash-lite"),
+    )
+
+    assert summary["anchor_score"] == "0/1"
+    assert summary["anchor_results"] == [
+        {
+            "region": "opening",
+            "hits": 0,
+            "total": 1,
+            "found": {"target phrase": False},
+        }
+    ]
+
+
+def test_aggregate_run_summary_includes_cost_breakdown_fields() -> None:
+    video = BenchmarkVideo(
+        video_id="abc123",
+        url="https://youtu.be/abc123",
+        title="Demo",
+        duration_seconds=120,
+    )
+
+    summary = aggregate_run_summary(
+        video=video,
+        combination=BenchmarkCombination(window_seconds=120, overlap_seconds=0),
+        model="gemini-3.1-flash-lite",
+        prompt_variant="plain_transcript_v1",
+        media_resolution="LOW",
+        output_cap_tokens=900,
+        concurrency=1,
+        run_number=1,
+        wall_clock_seconds=1.0,
+        calls=[
+            CallResult(
+                window=BenchmarkWindow(start_seconds=0, end_seconds=120),
+                elapsed_seconds=1.0,
+                transcript_text="hello",
+                token_usage=TokenUsage(
+                    input_tokens=100_000,
+                    output_tokens=10_000,
+                    total_tokens=110_000,
+                ),
+            ),
+        ],
+        pricing=PricingProfile.for_model("gemini-3.1-flash-lite"),
+    )
+
+    assert summary["input_cost_usd"] == 0.025
+    assert summary["output_cost_usd"] == 0.015
+    assert summary["estimated_cost_usd"] == 0.04
+    assert summary["audio_costing_available"] is False

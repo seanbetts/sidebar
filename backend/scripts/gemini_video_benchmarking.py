@@ -351,12 +351,28 @@ def aggregate_run_summary(
         output_tokens=sum(call.token_usage.output_tokens for call in ordered_calls),
         total_tokens=sum(call.token_usage.total_tokens for call in ordered_calls),
         cached_tokens=sum(call.token_usage.cached_tokens for call in ordered_calls),
+        video_input_tokens=(
+            sum(call.token_usage.video_input_tokens or 0 for call in ordered_calls)
+            if any(call.token_usage.video_input_tokens is not None for call in ordered_calls)
+            else None
+        ),
+        audio_input_tokens=(
+            sum(call.token_usage.audio_input_tokens or 0 for call in ordered_calls)
+            if any(call.token_usage.audio_input_tokens is not None for call in ordered_calls)
+            else None
+        ),
     )
     cost = calculate_cost(usage, pricing)
     anchor_results = [
         score_anchor_region(
             region_name=region.name,
-            transcript_text=stitched,
+            transcript_text="\n\n".join(
+                call.transcript_text.strip()
+                for call in ordered_calls
+                if call.window.start_seconds < region.end_seconds
+                and call.window.end_seconds > region.start_seconds
+                and call.transcript_text.strip()
+            ),
             anchors=region.anchors,
         )
         for region in video.anchor_regions
@@ -388,7 +404,12 @@ def aggregate_run_summary(
         "input_tokens": usage.input_tokens,
         "output_tokens": usage.output_tokens,
         "total_tokens": usage.total_tokens,
+        "video_input_tokens": usage.video_input_tokens,
+        "audio_input_tokens": usage.audio_input_tokens,
+        "input_cost_usd": cost.input_cost_usd,
+        "output_cost_usd": cost.output_cost_usd,
         "estimated_cost_usd": cost.total_cost_usd,
+        "audio_costing_available": cost.audio_costing_available,
         "anchor_score": f"{anchor_hits}/{anchor_total}",
         "anchor_results": anchor_results,
         "repetition_warning": repetition.has_warning,
