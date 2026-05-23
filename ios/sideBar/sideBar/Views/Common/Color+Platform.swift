@@ -155,7 +155,7 @@ extension Color {
 
     /// Outer chrome/wrapper background for settings panels.
     static var appSettingsBackground: Color {
-        AppPalette.background.color
+        AppPalette.muted.color
     }
 
     /// Inner form/list background for settings panels.

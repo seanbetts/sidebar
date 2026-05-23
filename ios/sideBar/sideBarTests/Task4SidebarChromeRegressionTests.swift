@@ -303,13 +303,13 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(systemMac.contains(".pickerStyle(.menu)"))
     }
 
-    func testMacSettingsSelectorTriggerUsesControlSizedTypography() throws {
+    func testMacSettingsSelectorTriggerUsesBodyTypography() throws {
         let normalized = try source(
             at: ["sideBar", "Design", "Components", "FormField.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheading)"))
-        XCTAssertFalse(normalized.contains("Text(title).appFont(.body)"))
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.body)"))
+        XCTAssertFalse(normalized.contains("Text(title).appFont(.subheading)"))
     }
 
     func testMacDateOfBirthUsesPopoverTriggerInsteadOfWrappedInlineDatePicker() throws {

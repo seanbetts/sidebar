@@ -787,9 +787,25 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("Spacer(minLength:DesignTokens.Spacing.xs)"))
-        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheading)"))
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.body)"))
         XCTAssertTrue(normalized.contains(".multilineTextAlignment(.trailing)"))
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.trailing)"))
+    }
+
+    func testSettingsBackgroundUsesMutedPanelChrome() throws {
+        let normalized = try colorPlatformSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("staticvarappSettingsBackground:Color{AppPalette.muted.color}"))
+    }
+
+    func testSettingsSheetPresentationBackgroundUsesSettingsBackground() throws {
+        let normalized = try platformViewModifiersSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("funcsettingsSheetGrabBarVisible()->someView{"))
+        XCTAssertTrue(normalized.contains(".presentationDragIndicator(.visible)"))
+        XCTAssertTrue(normalized.contains(".presentationBackground(DesignTokens.Colors.settingsBackground)"))
     }
 
     func testUserSettingsMacSourceUsesTransparentEditors() throws {
@@ -835,6 +851,22 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("@AppStorage(AppStorageKeys.settingsSelectedTab)privatevarselectedTabRaw=Tab.profile.rawValue"))
         XCTAssertTrue(normalized.contains("TabView(selection:$selectedTabRaw)"))
         XCTAssertTrue(normalized.contains(".tag(Tab.agent.rawValue)"))
+    }
+
+    func testSettingsTabsIOSDoesNotAddNestedPanelChromeAroundTabView() throws {
+        let normalized = try settingsTabsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,maxHeight:.infinity)"))
+        XCTAssertFalse(normalized.contains(".padding(DesignTokens.Spacing.md).background(DesignTokens.Colors.settingsBackground)"))
+    }
+
+    func testProfileSettingsIOSFormOwnsSettingsBackground() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatevariosProfileForm:someView{Form{"))
+        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden).background(DesignTokens.Colors.settingsBackground)"))
     }
 
     func testStoreSkillCredentialsSourceUsesSharedDestructiveConfirmationAlert() throws {
@@ -952,6 +984,19 @@ final class SettingsSectionsTests: XCTestCase {
             listSection.contains("memorySearchField"),
             "memoryListContent should render the search UI even when filteredItems is empty"
         )
+    }
+
+    func testMemoriesSettingsSearchFieldsUseBodyTypography() throws {
+        let normalized = try memoriesSettingsDetailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertEqual(
+            normalized.components(
+                separatedBy: "TextField(\"Searchmemories\",text:$searchQuery).textFieldStyle(.plain).appFont(.body)"
+            ).count - 1,
+            2
+        )
+        XCTAssertFalse(normalized.contains(".appFont(.subheading).background("))
     }
 
     func testMemoriesSettingsDetailSourceUsesIconedEmptyStates() throws {
@@ -1185,6 +1230,46 @@ private func formFieldSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read FormField.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func colorPlatformSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Common")
+        .appendingPathComponent("Color+Platform.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read Color+Platform.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func platformViewModifiersSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Common")
+        .appendingPathComponent("PlatformViewModifiers.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read PlatformViewModifiers.swift: \(error)", file: file, line: line)
         throw error
     }
 }

@@ -116,6 +116,8 @@ struct ProfileSettingsView: View {
             iosProfileDetailsSection
             iosSignOutSection
         }
+        .scrollContentBackground(.hidden)
+        .background(DesignTokens.Colors.settingsBackground)
         .actionConfirmationDialog(
             title: "Change Profile Photo",
             isPresented: $isProfilePhotoSourceDialogPresented

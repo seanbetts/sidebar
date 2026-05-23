@@ -104,7 +104,7 @@ struct FormField<Content: View, Trailing: View>: View {
                 trailing
             }
         }
-        .appFont(.subheading)
+        .appFont(.body)
         .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
         .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
         .sidebarTextEntrySurface()
@@ -229,7 +229,7 @@ struct SidebarSelectionTriggerLabel: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Spacer(minLength: DesignTokens.Spacing.xs)
             Text(title)
-                .appFont(.subheading)
+                .appFont(.body)
                 .foregroundStyle(
                     isPlaceholder
                         ? DesignTokens.Colors.textSecondary

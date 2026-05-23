@@ -95,8 +95,8 @@ public struct SpreadsheetViewer: View {
                 .foregroundStyle(.secondary)
             TextField("Filter rows", text: $filterText)
                 .textFieldStyle(.plain)
+                .appFont(.body)
         }
-        .appFont(.subheading)
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xs)
         .background(

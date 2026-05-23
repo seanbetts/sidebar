@@ -51,8 +51,7 @@ struct SettingsTabsView: View {
                     Label("More", systemImage: AppIcon.Settings.more.rawValue)
                 }
         }
-        .padding(DesignTokens.Spacing.md)
-        .background(DesignTokens.Colors.settingsBackground)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true

@@ -146,6 +146,7 @@ struct MemoriesSettingsDetailView: View {
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             TextField("Search memories", text: $searchQuery)
                 .textFieldStyle(.plain)
+                .appFont(.body)
             if !searchQuery.isEmpty {
                 Button {
                     searchQuery = ""
@@ -199,6 +200,7 @@ struct MemoriesSettingsDetailView: View {
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                 TextField("Search memories", text: $searchQuery)
                     .textFieldStyle(.plain)
+                    .appFont(.body)
                 if !searchQuery.isEmpty {
                     Button {
                         searchQuery = ""
@@ -212,7 +214,6 @@ struct MemoriesSettingsDetailView: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
-            .appFont(.subheading)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(DesignTokens.Colors.input)

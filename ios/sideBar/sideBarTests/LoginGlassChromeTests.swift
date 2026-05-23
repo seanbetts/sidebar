@@ -62,6 +62,18 @@ final class LoginGlassChromeTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".font(.system(size:LoginFieldChromeMetrics.trailingSymbolPointSize))"))
     }
 
+    func testUnifiedFormFieldUsesBodyTypographyForEditableAuthValues() throws {
+        let normalized = try formFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(".appFont(.body).padding(.vertical,LoginFieldChromeMetrics.fieldVerticalPadding)")
+        )
+        XCTAssertFalse(
+            normalized.contains(".appFont(.subheading).padding(.vertical,LoginFieldChromeMetrics.fieldVerticalPadding)")
+        )
+    }
+
 }
 
 private func combinedLoginChromeSource(

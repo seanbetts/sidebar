@@ -38,6 +38,15 @@ final class Task15FilesViewerIconSourceTests: XCTestCase {
         XCTAssertFalse(spreadsheetViewer.contains("\"arrowtriangle.down.fill\""))
     }
 
+    func testSpreadsheetFilterFieldUsesBodyTypography() throws {
+        let spreadsheetViewer = try normalizedSource(at: ["sideBar", "Views", "Files", "SpreadsheetViewer.swift"])
+
+        XCTAssertTrue(
+            spreadsheetViewer.contains("TextField(\"Filterrows\",text:$filterText).textFieldStyle(.plain).appFont(.body)")
+        )
+        XCTAssertFalse(spreadsheetViewer.contains(".appFont(.subheading).padding(.horizontal,DesignTokens.Spacing.sm)"))
+    }
+
     private func normalizedSource(
         at pathComponents: [String],
         file: StaticString = #filePath,
