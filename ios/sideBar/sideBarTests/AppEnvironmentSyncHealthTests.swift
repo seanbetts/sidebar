@@ -6,19 +6,23 @@ import sideBarShared
 final class AppEnvironmentSyncHealthTests: XCTestCase {
     private var retainedEnvironments: [AppEnvironment] = []
 
-    func testCurrentSyncHealthIsReconnectingWhileReconnectRefreshIsPending() async {
+    func testCurrentSyncHealthIsReconnectingWhileReconnectRefreshIsPending() async throws {
         let refreshCoordinator = BlockingRefreshCoordinator()
         let environment = makeEnvironment(refreshCoordinator: refreshCoordinator)
+        try await requireConnectivityReachable(in: environment)
+
         let refreshTask = Task { @MainActor in
             await environment.syncCoordinator.refreshAll()
         }
 
         await refreshCoordinator.waitForRefreshStart()
 
+        try await requireConnectivityReachable(in: environment)
         XCTAssertEqual(environment.currentSyncHealth, .reconnecting)
 
         refreshCoordinator.finishRefresh()
         await refreshTask.value
+        try await requireConnectivityReachable(in: environment)
         XCTAssertEqual(environment.currentSyncHealth, .degraded)
     }
 
@@ -37,7 +41,27 @@ final class AppEnvironmentSyncHealthTests: XCTestCase {
         retainedEnvironments.append(environment)
         return environment
     }
+
+    private func requireConnectivityReachable(
+        in environment: AppEnvironment,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        for _ in 0..<2 {
+            NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        }
+        for _ in 0..<20 where !environment.connectivityMonitor.canAttemptServerRead {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard environment.connectivityMonitor.canAttemptServerRead else {
+            XCTFail("Connectivity precondition could not be established", file: file, line: line)
+            throw TestPreconditionFailure()
+        }
+    }
 }
+
+private struct TestPreconditionFailure: Error {}
 
 @MainActor
 private final class BlockingRefreshCoordinator: RefreshCoordinatorType {
