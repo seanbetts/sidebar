@@ -60,6 +60,8 @@ Feature code should not decide these rules ad hoc. The request type determines t
 | **Upload / download** | File upload, profile image upload, website download | Progress-aware, cancellable, background-capable where needed |
 | **Background refresh** | Widget refresh, cached revalidation, session refresh | Silent retry allowed within a bounded budget |
 | **Offline queued write** | Note edit, task mutation, website mutation while offline | Persist locally, retry later with queue backoff policy |
+| **Degraded sync fallback** | Visible list/detail recovery while realtime is unhealthy | Bounded polling, cancelled after realtime recovery or successful reconciliation |
+| **Async job progress** | Website save, transcript extraction, file processing | Prefer realtime, poll only when realtime cannot cover the active job |
 
 ---
 

@@ -226,6 +226,15 @@ AI generation is not fetching. Do not use the same visual language for a streame
 
 ## Long-running operations
 
+### Async job progress
+
+Website save, transcript extraction, and file processing states are row/detail overlays until the server returns canonical state.
+
+- queued, reading, processing, retrying, failed, and ready states belong in row or detail progress surfaces
+- terminal server state replaces the overlay after reconciliation
+- local progress text must not be written into canonical website or file payloads
+- retry actions operate on the job or queued mutation, not on locally fabricated terminal state
+
 ### Website saving
 
 Website saving is a long-running server-side operation that cannot be made optimistic — the server must fetch and process the page. The pattern has two entry points:

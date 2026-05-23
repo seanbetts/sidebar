@@ -176,6 +176,12 @@ On iPad and Mac, workspace surfaces can be expanded to full-pane width via an ex
 
 The assistant surfaces interactive elements in the message area for three distinct purposes: navigating to produced content, confirming destructive actions before execution, and reversing completed actions. All three use the same shared card component with visual variants that communicate their intent. Cards are never modals — they appear as part of the conversation flow.
 
+### Canonical and transient action state
+
+Chat transcripts are backend-canonical. Confirmation, decline, undo, retry, and local failure affordances are native transient overlays keyed by stable message, tool call, or confirmation identifiers.
+
+Server refresh may replace message content and persisted tool-call fields. It must not resurrect resolved local action affordances, and native code must not append local status text into canonical message content.
+
 ### Shared anatomy
 
 Every inline action card contains:

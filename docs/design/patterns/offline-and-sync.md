@@ -59,6 +59,16 @@ Rules:
 
 This keeps the UI stable while still allowing the cache to converge with newer server state from another device.
 
+## Realtime and reconciliation
+
+Realtime is the primary freshness path, but lifecycle reconciliation is the correctness path.
+
+- realtime payloads are classified into domain sync changes before they mutate native state
+- safe metadata patches may apply immediately
+- list and detail correctness settles through `RefreshCoordinator`
+- cold launch, warm foreground, reconnect, visible-section changes, manual refresh, decode failure, and terminal job states all reconcile through the same refresh coordinator
+- fallback polling is allowed only for degraded sync or active job progress
+
 ### Detail availability states
 
 Every selected detail surface must resolve into one of:
