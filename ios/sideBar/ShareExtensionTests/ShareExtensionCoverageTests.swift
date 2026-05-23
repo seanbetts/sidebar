@@ -65,19 +65,50 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
 
         let iconContentsURL = repositoryRoot.appendingPathComponent(
-            "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset/Contents.json"
+            "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset/Contents.json"
         )
         let iconContentsData = try Data(contentsOf: iconContentsURL)
-        let iconContents = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: iconContentsData) as? [String: Any]
+        let iconContents = try JSONDecoder().decode(AppIconSetContents.self, from: iconContentsData)
+        let iconDirectoryURL = iconContentsURL.deletingLastPathComponent()
+        let macImagesByKey = Dictionary(
+            uniqueKeysWithValues: iconContents.images
+                .filter { $0.idiom == "mac" }
+                .map { ($0.launchServicesKey, $0) }
         )
-        let images = try XCTUnwrap(iconContents["images"] as? [[String: Any]])
+        let requiredMacIconKeys = Set([
+            "16x16@1x",
+            "16x16@2x",
+            "32x32@1x",
+            "32x32@2x",
+            "128x128@1x",
+            "128x128@2x",
+            "256x256@1x",
+            "256x256@2x",
+            "512x512@1x",
+            "512x512@2x"
+        ])
 
-        XCTAssertTrue(
-            images.contains {
-                ($0["idiom"] as? String) == "mac"
-            }
-        )
+        XCTAssertEqual(Set(macImagesByKey.keys), requiredMacIconKeys)
+
+        for iconKey in requiredMacIconKeys {
+            let image = try XCTUnwrap(macImagesByKey[iconKey], iconKey)
+            let filename = try XCTUnwrap(image.filename, iconKey)
+            let fileURL = iconDirectoryURL.appendingPathComponent(filename)
+
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: fileURL.path),
+                "Missing ShareExtension AppIcon file \(filename)"
+            )
+        }
+
+        let iosImages = iconContents.images.filter {
+            $0.idiom == "universal" && $0.platform == "ios" && $0.size == "1024x1024"
+        }
+        XCTAssertEqual(Set(iosImages.compactMap(\.filename)), Set([
+            "icon-1024.png",
+            "icon-1024-dark.png",
+            "icon-1024-tinted.png"
+        ]))
     }
 
     func testShareExtensionTargetDoesNotExcludeSharedAssetCatalog() throws {
@@ -495,5 +526,21 @@ private extension UIView {
             }
         }
         return nil
+    }
+}
+
+private struct AppIconSetContents: Decodable {
+    let images: [AppIconSetImage]
+}
+
+private struct AppIconSetImage: Decodable {
+    let filename: String?
+    let idiom: String
+    let platform: String?
+    let scale: String?
+    let size: String
+
+    var launchServicesKey: String {
+        "\(size)@\(scale ?? "1x")"
     }
 }
