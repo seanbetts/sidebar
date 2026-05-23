@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,61 @@ class RepetitionResult:
     repeat_count: int = 0
 
 
+@dataclass(frozen=True)
+class TokenUsage:
+    """Token usage returned by Gemini."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cached_tokens: int = 0
+    video_input_tokens: int | None = None
+    audio_input_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class PricingProfile:
+    """Per-million-token pricing for one model."""
+
+    model: str
+    text_image_video_input_per_million: float
+    audio_input_per_million: float
+    output_per_million: float
+
+    @classmethod
+    def for_model(cls, model: str) -> "PricingProfile":
+        """Return built-in pricing for a supported model."""
+        if model != "gemini-3.1-flash-lite":
+            raise ValueError(f"Unsupported pricing profile: {model}")
+        return cls(
+            model=model,
+            text_image_video_input_per_million=0.25,
+            audio_input_per_million=0.50,
+            output_per_million=1.50,
+        )
+
+
+@dataclass(frozen=True)
+class CostBreakdown:
+    """Estimated cost for one token usage payload."""
+
+    input_cost_usd: float
+    output_cost_usd: float
+    total_cost_usd: float
+    audio_costing_available: bool
+
+
+@dataclass(frozen=True)
+class CallResult:
+    """Result from one benchmark window call."""
+
+    window: BenchmarkWindow
+    elapsed_seconds: float
+    transcript_text: str
+    token_usage: TokenUsage
+    error: str | None = None
+
+
 def parse_duration_seconds(value: str | int) -> int:
     """Parse a duration from seconds, MM:SS, or HH:MM:SS."""
     if isinstance(value, int):
@@ -136,7 +192,7 @@ def score_anchor_region(
     region_name: str,
     transcript_text: str,
     anchors: tuple[str, ...],
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Score one named anchor region against transcript text."""
     normalized_text = normalize_anchor_text(transcript_text)
     found = {}
@@ -207,6 +263,40 @@ def detect_repetition(transcript_text: str) -> RepetitionResult:
     return RepetitionResult(has_warning=False)
 
 
+def _cost(tokens: int, per_million: float) -> float:
+    return round((tokens / 1_000_000) * per_million, 6)
+
+
+def calculate_cost(usage: TokenUsage, pricing: PricingProfile) -> CostBreakdown:
+    """Calculate estimated Gemini API cost from token usage."""
+    if usage.video_input_tokens is not None or usage.audio_input_tokens is not None:
+        video_tokens = usage.video_input_tokens or 0
+        audio_tokens = usage.audio_input_tokens or 0
+        remaining_tokens = max(usage.input_tokens - video_tokens - audio_tokens, 0)
+        input_cost = (
+            _cost(
+                video_tokens + remaining_tokens,
+                pricing.text_image_video_input_per_million,
+            )
+            + _cost(audio_tokens, pricing.audio_input_per_million)
+        )
+        audio_available = True
+    else:
+        input_cost = _cost(
+            usage.input_tokens,
+            pricing.text_image_video_input_per_million,
+        )
+        audio_available = False
+
+    output_cost = _cost(usage.output_tokens, pricing.output_per_million)
+    return CostBreakdown(
+        input_cost_usd=round(input_cost, 6),
+        output_cost_usd=output_cost,
+        total_cost_usd=round(input_cost + output_cost, 6),
+        audio_costing_available=audio_available,
+    )
+
+
 def plan_windows(
     *,
     duration_seconds: int,
@@ -233,6 +323,78 @@ def plan_windows(
             break
         start += step
     return tuple(windows)
+
+
+def aggregate_run_summary(
+    *,
+    video: BenchmarkVideo,
+    combination: BenchmarkCombination,
+    model: str,
+    prompt_variant: str,
+    media_resolution: str,
+    output_cap_tokens: int,
+    concurrency: int,
+    run_number: int,
+    wall_clock_seconds: float,
+    calls: list[CallResult],
+    pricing: PricingProfile,
+) -> dict[str, Any]:
+    """Aggregate per-window call results into one run summary."""
+    ordered_calls = sorted(calls, key=lambda item: item.window.start_seconds)
+    stitched = "\n\n".join(
+        call.transcript_text.strip()
+        for call in ordered_calls
+        if call.transcript_text.strip()
+    )
+    usage = TokenUsage(
+        input_tokens=sum(call.token_usage.input_tokens for call in ordered_calls),
+        output_tokens=sum(call.token_usage.output_tokens for call in ordered_calls),
+        total_tokens=sum(call.token_usage.total_tokens for call in ordered_calls),
+        cached_tokens=sum(call.token_usage.cached_tokens for call in ordered_calls),
+    )
+    cost = calculate_cost(usage, pricing)
+    anchor_results = [
+        score_anchor_region(
+            region_name=region.name,
+            transcript_text=stitched,
+            anchors=region.anchors,
+        )
+        for region in video.anchor_regions
+    ]
+    anchor_hits = sum(int(result["hits"]) for result in anchor_results)
+    anchor_total = sum(int(result["total"]) for result in anchor_results)
+    repetition = detect_repetition(stitched)
+
+    return {
+        "video_id": video.video_id,
+        "title": video.title,
+        "duration_seconds": video.duration_seconds,
+        "model": model,
+        "prompt_variant": prompt_variant,
+        "media_resolution": media_resolution,
+        "combination": combination.label,
+        "window_seconds": combination.window_seconds,
+        "overlap_seconds": combination.overlap_seconds,
+        "output_cap_tokens": output_cap_tokens,
+        "concurrency": concurrency,
+        "run_number": run_number,
+        "call_count": len(ordered_calls),
+        "failed_call_count": sum(1 for call in ordered_calls if call.error),
+        "wall_clock_seconds": round(wall_clock_seconds, 3),
+        "summed_call_latency_seconds": round(
+            sum(call.elapsed_seconds for call in ordered_calls),
+            3,
+        ),
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+        "estimated_cost_usd": cost.total_cost_usd,
+        "anchor_score": f"{anchor_hits}/{anchor_total}",
+        "anchor_results": anchor_results,
+        "repetition_warning": repetition.has_warning,
+        "word_count": len(stitched.split()),
+        "stitched_transcript": stitched,
+    }
 
 
 def expand_run_matrix(

@@ -5,8 +5,15 @@ from __future__ import annotations
 import pytest
 
 from scripts.gemini_video_benchmarking import (
+    AnchorRegion,
     BenchmarkCombination,
     BenchmarkVideo,
+    BenchmarkWindow,
+    CallResult,
+    PricingProfile,
+    TokenUsage,
+    aggregate_run_summary,
+    calculate_cost,
     calculate_output_cap,
     detect_repetition,
     expand_run_matrix,
@@ -119,3 +126,126 @@ def test_detect_repetition_normalizes_case_for_sentence_blocks() -> None:
     text = "Alpha beta gamma. alpha beta gamma. ALPHA beta gamma. Alpha beta gamma."
 
     assert detect_repetition(text).has_warning is True
+
+
+def test_pricing_profile_supports_standard_gemini_flash_lite() -> None:
+    profile = PricingProfile.for_model("gemini-3.1-flash-lite")
+
+    assert profile.model == "gemini-3.1-flash-lite"
+    assert profile.text_image_video_input_per_million == 0.25
+    assert profile.audio_input_per_million == 0.50
+    assert profile.output_per_million == 1.50
+
+
+def test_pricing_profile_rejects_unsupported_models() -> None:
+    with pytest.raises(ValueError, match="Unsupported pricing profile"):
+        PricingProfile.for_model("gemini-3.1-pro")
+
+
+def test_calculate_cost_uses_aggregate_input_when_modalities_are_absent() -> None:
+    profile = PricingProfile.for_model("gemini-3.1-flash-lite")
+    usage = TokenUsage(input_tokens=100_000, output_tokens=10_000, total_tokens=110_000)
+
+    cost = calculate_cost(usage, profile)
+
+    assert cost.input_cost_usd == 0.025
+    assert cost.output_cost_usd == 0.015
+    assert cost.total_cost_usd == 0.04
+    assert cost.audio_costing_available is False
+
+
+def test_calculate_cost_prices_audio_tokens_when_present() -> None:
+    profile = PricingProfile.for_model("gemini-3.1-flash-lite")
+    usage = TokenUsage(
+        input_tokens=100_000,
+        output_tokens=10_000,
+        total_tokens=110_000,
+        video_input_tokens=80_000,
+        audio_input_tokens=20_000,
+    )
+
+    cost = calculate_cost(usage, profile)
+
+    assert cost.input_cost_usd == 0.03
+    assert cost.output_cost_usd == 0.015
+    assert cost.total_cost_usd == 0.045
+    assert cost.audio_costing_available is True
+
+
+def test_aggregate_run_summary_orders_windows_and_sums_metrics() -> None:
+    video = BenchmarkVideo(
+        video_id="abc123",
+        url="https://youtu.be/abc123",
+        title="Demo",
+        duration_seconds=300,
+        anchor_regions=(
+            AnchorRegion(
+                name="opening",
+                start_seconds=0,
+                end_seconds=300,
+                anchors=("hello world",),
+            ),
+        ),
+    )
+    combination = BenchmarkCombination(window_seconds=180, overlap_seconds=30)
+    calls = [
+        CallResult(
+            window=BenchmarkWindow(start_seconds=150, end_seconds=300),
+            elapsed_seconds=2.0,
+            transcript_text="world",
+            token_usage=TokenUsage(input_tokens=200, output_tokens=20, total_tokens=220),
+        ),
+        CallResult(
+            window=BenchmarkWindow(start_seconds=0, end_seconds=180),
+            elapsed_seconds=1.0,
+            transcript_text="hello",
+            token_usage=TokenUsage(input_tokens=100, output_tokens=10, total_tokens=110),
+        ),
+    ]
+
+    summary = aggregate_run_summary(
+        video=video,
+        combination=combination,
+        model="gemini-3.1-flash-lite",
+        prompt_variant="plain_transcript_v1",
+        media_resolution="LOW",
+        output_cap_tokens=900,
+        concurrency=2,
+        run_number=1,
+        wall_clock_seconds=2.2,
+        calls=calls,
+        pricing=PricingProfile.for_model("gemini-3.1-flash-lite"),
+    )
+
+    assert summary["video_id"] == "abc123"
+    assert summary["title"] == "Demo"
+    assert summary["duration_seconds"] == 300
+    assert summary["model"] == "gemini-3.1-flash-lite"
+    assert summary["prompt_variant"] == "plain_transcript_v1"
+    assert summary["media_resolution"] == "LOW"
+    assert summary["combination"] == "180s / 30s"
+    assert summary["window_seconds"] == 180
+    assert summary["overlap_seconds"] == 30
+    assert summary["output_cap_tokens"] == 900
+    assert summary["concurrency"] == 2
+    assert summary["run_number"] == 1
+    assert summary["call_count"] == 2
+    assert summary["failed_call_count"] == 0
+    assert summary["wall_clock_seconds"] == 2.2
+    assert summary["summed_call_latency_seconds"] == 3.0
+    assert summary["input_tokens"] == 300
+    assert summary["output_tokens"] == 30
+    assert summary["total_tokens"] == 330
+    assert summary["estimated_cost_usd"] == 0.00012
+    assert summary["anchor_score"] == "1/1"
+    assert summary["anchor_results"] == [
+        {
+            "region": "opening",
+            "hits": 1,
+            "total": 1,
+            "found": {"hello world": True},
+        }
+    ]
+    assert summary["repetition_warning"] is False
+    assert summary["word_count"] == 2
+    assert summary["stitched_transcript"] == "hello\n\nworld"
