@@ -380,10 +380,12 @@ extension WebsitesPanelView {
                 }
                 if listSectionLayout.contains(.archive) {
                     Section {
+                        sidebarArchiveSectionSpacer()
+
                         SelectableRow(
                             isSelected: false,
                             insets: EdgeInsets(
-                                top: DesignTokens.Spacing.xxl,
+                                top: 0,
                                 leading: archiveRowHorizontalInset,
                                 bottom: 0,
                                 trailing: archiveRowHorizontalInset

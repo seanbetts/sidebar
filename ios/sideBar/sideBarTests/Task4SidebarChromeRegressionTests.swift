@@ -22,16 +22,25 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         )
     }
 
-    func testArchiveRowsUseXXLTopInsetWithoutHiddenHeaders() throws {
+    func testArchiveRowsKeepTopSpacingOutsideHoverableRow() throws {
         let notes = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let websites = try source(
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let panelComponents = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(notes.contains("top:DesignTokens.Spacing.xxl"))
-        XCTAssertTrue(websites.contains("top:DesignTokens.Spacing.xxl"))
+        XCTAssertFalse(notes.contains("top:DesignTokens.Spacing.xxl"))
+        XCTAssertFalse(websites.contains("top:DesignTokens.Spacing.xxl"))
+        XCTAssertTrue(notes.contains("sidebarArchiveSectionSpacer()"))
+        XCTAssertTrue(websites.contains("sidebarArchiveSectionSpacer()"))
+        XCTAssertTrue(panelComponents.contains("funcsidebarArchiveSectionSpacer()->someView"))
+        XCTAssertTrue(panelComponents.contains(".frame(height:DesignTokens.Spacing.xxl)"))
+        XCTAssertTrue(panelComponents.contains(".listRowInsets(EdgeInsets())"))
+        XCTAssertTrue(panelComponents.contains(".accessibilityHidden(true)"))
         XCTAssertFalse(notes.contains("sidebarHiddenProminentSectionHeader"))
         XCTAssertFalse(websites.contains("sidebarHiddenProminentSectionHeader"))
     }
