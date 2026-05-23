@@ -80,3 +80,47 @@ def test_main_live_without_google_api_key_exits_config_error(
 
     assert exit_code == 2
     assert "Missing environment variable: GOOGLE_API_KEY" in capsys.readouterr().err
+
+
+def test_main_dry_run_with_missing_video_duration_exits_config_error(
+    tmp_path,
+    capsys,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "title": "Demo",
+                    }
+                ],
+                "combinations": ["120:30"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["--config", str(config_path), "--dry-run"])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "Config error:" in captured.err
+    assert "duration" in captured.err
+
+
+def test_main_dry_run_with_top_level_list_exits_config_error(
+    tmp_path,
+    capsys,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(json.dumps([]), encoding="utf-8")
+
+    exit_code = main(["--config", str(config_path), "--dry-run"])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "Config error:" in captured.err
+    assert "top-level object" in captured.err

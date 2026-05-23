@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+from collections.abc import Mapping
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -268,32 +269,70 @@ def _parse_combination(raw: str) -> BenchmarkCombination:
     return combination
 
 
+def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
+    """Return a config mapping or raise a clear validation error."""
+    if not isinstance(value, Mapping):
+        if label == "top-level":
+            raise ValueError("Config must be a top-level object")
+        raise ValueError(f"Config {label} must be an object")
+    return value
+
+
+def _required_field(item: Mapping[str, Any], field: str, label: str) -> Any:
+    """Return a required config field or raise a clear validation error."""
+    if field not in item:
+        raise ValueError(f"Config {label} must include {field}")
+    return item[field]
+
+
+def _parse_anchor_region(raw: Any, index: int) -> AnchorRegion:
+    """Parse one anchor region from config JSON."""
+    region = _require_mapping(raw, f"anchor region {index}")
+    return AnchorRegion(
+        name=str(_required_field(region, "name", f"anchor region {index}")),
+        start_seconds=parse_offset_seconds(
+            _required_field(region, "start", f"anchor region {index}"),
+        ),
+        end_seconds=parse_offset_seconds(
+            _required_field(region, "end", f"anchor region {index}"),
+        ),
+        anchors=tuple(
+            str(anchor)
+            for anchor in _required_field(region, "anchors", f"anchor region {index}")
+        ),
+    )
+
+
+def _parse_video(raw: Any, index: int) -> BenchmarkVideo:
+    """Parse one benchmark video from config JSON."""
+    item = _require_mapping(raw, f"video {index}")
+    video_id = str(_required_field(item, "video_id", f"video {index}"))
+    return BenchmarkVideo(
+        video_id=video_id,
+        url=str(_required_field(item, "url", f"video {index}")),
+        title=str(item.get("title") or video_id),
+        duration_seconds=parse_duration_seconds(
+            _required_field(item, "duration", f"video {index}"),
+        ),
+        anchor_regions=tuple(
+            _parse_anchor_region(region, region_index)
+            for region_index, region in enumerate(item.get("anchor_regions", []), start=1)
+        ),
+        reference_transcript_path=(
+            str(item["reference_transcript_path"])
+            if item.get("reference_transcript_path") is not None
+            else None
+        ),
+    )
+
+
 def load_benchmark_config(path: Path) -> BenchmarkConfig:
     """Load benchmark config from a JSON file."""
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw = _require_mapping(json.loads(path.read_text(encoding="utf-8")), "top-level")
 
     videos = [
-        BenchmarkVideo(
-            video_id=str(item["video_id"]),
-            url=str(item["url"]),
-            title=str(item.get("title") or item["video_id"]),
-            duration_seconds=parse_duration_seconds(item["duration"]),
-            anchor_regions=tuple(
-                AnchorRegion(
-                    name=str(region["name"]),
-                    start_seconds=parse_offset_seconds(region["start"]),
-                    end_seconds=parse_offset_seconds(region["end"]),
-                    anchors=tuple(str(anchor) for anchor in region["anchors"]),
-                )
-                for region in item.get("anchor_regions", [])
-            ),
-            reference_transcript_path=(
-                str(item["reference_transcript_path"])
-                if item.get("reference_transcript_path") is not None
-                else None
-            ),
-        )
-        for item in raw.get("videos", [])
+        _parse_video(item, index)
+        for index, item in enumerate(raw.get("videos", []), start=1)
     ]
     if not videos:
         raise ValueError("Config must include at least one video")
