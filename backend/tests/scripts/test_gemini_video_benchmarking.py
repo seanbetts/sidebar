@@ -7,9 +7,13 @@ import pytest
 from scripts.gemini_video_benchmarking import (
     BenchmarkCombination,
     BenchmarkVideo,
+    calculate_output_cap,
+    detect_repetition,
     expand_run_matrix,
+    normalize_anchor_text,
     parse_duration_seconds,
     plan_windows,
+    score_anchor_region,
 )
 
 
@@ -62,3 +66,33 @@ def test_expand_run_matrix_defaults_to_three_repeats() -> None:
     assert [run.run_number for run in runs] == [1, 2, 3, 1, 2, 3]
     assert [run.concurrency for run in runs] == [1, 1, 1, 4, 4, 4]
     assert all(run.video.video_id == "abc123" for run in runs)
+
+
+def test_calculate_output_cap_scales_with_window_duration() -> None:
+    assert calculate_output_cap(duration_seconds=90) == 900
+    assert calculate_output_cap(duration_seconds=240) == 1152
+    assert calculate_output_cap(duration_seconds=360) == 1728
+
+
+def test_anchor_scoring_normalizes_case_punctuation_and_hyphens() -> None:
+    text = "I am going back over here to in-menu sensitivity and increasing it."
+
+    assert normalize_anchor_text("In-menu sensitivity") == "in menu sensitivity"
+    assert score_anchor_region(
+        region_name="opening",
+        transcript_text=text,
+        anchors=("in menu sensitivity", "missing phrase"),
+    ) == {
+        "region": "opening",
+        "hits": 1,
+        "total": 2,
+        "found": {"in menu sensitivity": True, "missing phrase": False},
+    }
+
+
+def test_detect_repetition_warns_for_repeated_sentence_blocks() -> None:
+    repeated = "Alpha beta gamma. " * 8
+    normal = "Alpha beta gamma. Delta epsilon zeta. Eta theta iota."
+
+    assert detect_repetition(repeated).has_warning is True
+    assert detect_repetition(normal).has_warning is False

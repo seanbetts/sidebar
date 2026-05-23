@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+from collections import Counter
 from dataclasses import dataclass
 
 
@@ -65,6 +67,15 @@ class PlannedRun:
     windows: tuple[BenchmarkWindow, ...]
 
 
+@dataclass(frozen=True)
+class RepetitionResult:
+    """Repetition warning result for a transcript fragment."""
+
+    has_warning: bool
+    repeated_text: str | None = None
+    repeat_count: int = 0
+
+
 def parse_duration_seconds(value: str | int) -> int:
     """Parse a duration from seconds, MM:SS, or HH:MM:SS."""
     if isinstance(value, int):
@@ -97,6 +108,82 @@ def parse_duration_seconds(value: str | int) -> int:
     ):
         raise ValueError(f"Invalid duration: {value}")
     return total
+
+
+def calculate_output_cap(
+    *,
+    duration_seconds: int,
+    min_tokens: int = 900,
+    tokens_per_second: float = 4.8,
+    max_tokens: int = 2400,
+) -> int:
+    """Calculate max output tokens for a transcript window."""
+    if duration_seconds <= 0:
+        raise ValueError("duration_seconds must be positive")
+    calculated = int(duration_seconds * tokens_per_second)
+    return min(max(calculated, min_tokens), max_tokens)
+
+
+def normalize_anchor_text(value: str) -> str:
+    """Normalize text for anchor matching."""
+    lowered = value.lower().replace("-", " ")
+    normalized = re.sub(r"[^a-z0-9]+", " ", lowered)
+    return " ".join(normalized.split())
+
+
+def score_anchor_region(
+    *,
+    region_name: str,
+    transcript_text: str,
+    anchors: tuple[str, ...],
+) -> dict[str, object]:
+    """Score one named anchor region against transcript text."""
+    normalized_text = normalize_anchor_text(transcript_text)
+    found = {
+        anchor: normalize_anchor_text(anchor) in normalized_text for anchor in anchors
+    }
+    hits = sum(1 for value in found.values() if value)
+    return {
+        "region": region_name,
+        "hits": hits,
+        "total": len(anchors),
+        "found": found,
+    }
+
+
+def detect_repetition(transcript_text: str) -> RepetitionResult:
+    """Detect obvious repeated sentence blocks in generated transcript text."""
+    normalized = " ".join(transcript_text.split())
+    if not normalized:
+        return RepetitionResult(has_warning=False)
+
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?])\s+", normalized)
+        if len(item.split()) >= 3
+    ]
+    sentence_counts = Counter(sentences)
+    for sentence, count in sentence_counts.items():
+        if count >= 4:
+            return RepetitionResult(
+                has_warning=True,
+                repeated_text=sentence,
+                repeat_count=count,
+            )
+
+    words = normalize_anchor_text(normalized).split()
+    if len(words) < 24:
+        return RepetitionResult(has_warning=False)
+    shingles = [" ".join(words[index : index + 8]) for index in range(len(words) - 7)]
+    shingle_counts = Counter(shingles)
+    repeated, count = shingle_counts.most_common(1)[0]
+    if count >= 6:
+        return RepetitionResult(
+            has_warning=True,
+            repeated_text=repeated,
+            repeat_count=count,
+        )
+    return RepetitionResult(has_warning=False)
 
 
 def plan_windows(
