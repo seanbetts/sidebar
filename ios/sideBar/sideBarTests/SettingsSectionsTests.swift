@@ -606,14 +606,11 @@ final class SettingsSectionsTests: XCTestCase {
     }
 
     func testProfileSettingsMacSourceUsesPromptBasedTextFields() throws {
-        let normalized = try profileSettingsSource()
+        let normalized = try profileClearableFieldSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("TextField(text:$name,prompt:Text(\"Notset\"))"))
-        XCTAssertTrue(normalized.contains("TextField(text:$jobTitle,prompt:Text(\"Notset\"))"))
-        XCTAssertTrue(normalized.contains("TextField(text:$employer,prompt:Text(\"Notset\"))"))
-        XCTAssertTrue(normalized.contains("TextField(text:$location,prompt:Text(\"Notset\"))"))
-        XCTAssertEqual(normalized.components(separatedBy: ".sidebarTextEntryField()").count - 1, 8)
+        XCTAssertTrue(normalized.contains("TextField(text:$text,prompt:Text(\"Notset\"))"))
+        XCTAssertTrue(normalized.contains(".sidebarTextEntryField()"))
         XCTAssertFalse(normalized.contains(".textFieldStyle(.roundedBorder)"))
     }
 
@@ -740,15 +737,45 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
     }
 
-    func testProfileStringSelectorSourceUsesSidebarSelectionMenu() throws {
+    func testProfileStringSelectorSourceUsesIOSSheetInsteadOfContextMenuBackedMenu() throws {
+        let source = try profileStringSelectorSource()
+        guard
+            let iosStart = source.range(of: "private var iosBody"),
+            let macStart = source.range(of: "#else", range: iosStart.upperBound..<source.endIndex)
+        else {
+            XCTFail("Unable to locate iOS selector branch")
+            return
+        }
+        let iosBranch = source[iosStart.upperBound..<macStart.lowerBound]
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(iosBranch.contains(".sheet(isPresented:$isPickerPresented)"))
+        XCTAssertTrue(iosBranch.contains("NavigationStack{List{"))
+        XCTAssertTrue(iosBranch.contains("Button{isPickerPresented=true}"))
+        XCTAssertFalse(iosBranch.contains("SidebarSelectionMenu("))
+        XCTAssertFalse(iosBranch.contains("Menu{"))
+    }
+
+    func testProfileStringSelectorSourceUsesSidebarSelectionMenuOnMacOS() throws {
         let normalized = try profileStringSelectorSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
+        XCTAssertTrue(normalized.contains("#else"))
         XCTAssertTrue(normalized.contains("SidebarSelectionMenu("))
         XCTAssertTrue(normalized.contains("options:[\"\"]+options"))
-        XCTAssertTrue(normalized.contains("option.isEmpty?\"Notset\":option"))
+        XCTAssertTrue(normalized.contains("title:Self.displayTitle"))
         XCTAssertTrue(normalized.contains("isPlaceholder:{$0.isEmpty}"))
         XCTAssertFalse(normalized.contains("Picker("))
+    }
+
+    func testProfileStringSelectorSourceFormatsLabelsAndClearsSelection() throws {
+        let normalized = try profileStringSelectorSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("staticfuncdisplayTitle(foroption:String)->String"))
+        XCTAssertTrue(normalized.contains("option.isEmpty?\"Notset\":tidiedDisplayTitle(for:option)"))
+        XCTAssertTrue(normalized.contains("ProfileClearValueButton(accessibilityLabel:\"Clear\\(selectionLabel.lowercased())\")"))
+        XCTAssertTrue(normalized.contains("selection=\"\""))
     }
 
     func testProfileSettingsIOSSourceUsesStandardizedProfileRows() throws {
@@ -768,6 +795,26 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(dateOfBirthNormalized.contains("FormField(\"DateofBirth\")"))
     }
 
+    func testProfileSettingsTextFieldsUseClearableFieldRows() throws {
+        let settingsNormalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let profileClearableFieldNormalized = try profileClearableFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertEqual(settingsNormalized.components(separatedBy: "ProfileTextField(").count - 1, 8)
+        XCTAssertTrue(settingsNormalized.contains("ProfileTextField(label:\"Name\",text:$name,autocapitalizesWords:true)"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileTextField(label:\"JobTitle\",text:$jobTitle)"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileTextField(label:\"Employer\",text:$employer)"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileTextField(label:\"Homelocation\",text:$location)"))
+        XCTAssertTrue(profileClearableFieldNormalized.contains("structProfileTextField:View"))
+        XCTAssertTrue(
+            profileClearableFieldNormalized.contains(
+                "ProfileClearValueButton(accessibilityLabel:\"Clear\\(label.lowercased())\")"
+            )
+        )
+        XCTAssertTrue(profileClearableFieldNormalized.contains("text=\"\""))
+    }
+
     func testProfileIOSControlWidthUsesSharedTrailingWidthCap() throws {
         let settingsNormalized = try profileSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -775,8 +822,11 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let profileRowNormalized = try profileIOSFieldRowSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let profileClearableFieldNormalized = try profileClearableFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertEqual(settingsNormalized.components(separatedBy: ".profileIOSControlFrame()").count - 1, 4)
+        XCTAssertTrue(settingsNormalized.contains("ProfileTextField("))
+        XCTAssertTrue(profileClearableFieldNormalized.contains(".profileIOSControlFrame()"))
         XCTAssertTrue(dateOfBirthNormalized.contains(".profileIOSControlFrame()"))
         XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlMaxWidth()->CGFloat"))
         XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlFrame()->someView"))
@@ -1204,6 +1254,13 @@ private func profileDateOfBirthFieldSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("ProfileDateOfBirthField.swift", file: file, line: line)
+}
+
+private func profileClearableFieldSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("ProfileClearableField.swift", file: file, line: line)
 }
 
 private func profileIOSFieldRowSource(

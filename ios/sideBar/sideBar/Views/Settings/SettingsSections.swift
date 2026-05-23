@@ -190,7 +190,7 @@ struct ProfileSettingsView: View {
                 subtitle: photoSubtitle,
                 action: { isProfilePhotoSourceDialogPresented = true },
                 leading: {
-                profileAvatar
+                    profileAvatar
                 }
             )
         }
@@ -203,30 +203,18 @@ struct ProfileSettingsView: View {
                 message: "Keep the details your assistant can reference during planning, writing, and personalization up to date."
             )
             FormField("Name") {
-                TextField(text: $name, prompt: Text("Not set")) {
-                }
-                    .sidebarTextEntryField()
-                    .frame(maxWidth: 320)
+                ProfileTextField(label: "Name", text: $name, autocapitalizesWords: true)
             }
             FormField("Job Title") {
-                TextField(text: $jobTitle, prompt: Text("Not set")) {
-                }
-                    .sidebarTextEntryField()
-                    .frame(maxWidth: 320)
+                ProfileTextField(label: "Job Title", text: $jobTitle)
             }
             FormField("Employer") {
-                TextField(text: $employer, prompt: Text("Not set")) {
-                }
-                    .sidebarTextEntryField()
-                    .frame(maxWidth: 320)
+                ProfileTextField(label: "Employer", text: $employer)
             }
             genderField
             pronounsField
             FormField("Home location") {
-                TextField(text: $location, prompt: Text("Not set")) {
-                }
-                    .sidebarTextEntryField()
-                    .frame(maxWidth: 320)
+                ProfileTextField(label: "Home location", text: $location)
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,
@@ -298,33 +286,18 @@ struct ProfileSettingsView: View {
     private var iosProfileDetailsSection: some View {
         Section("Profile") {
             FormField("Name") {
-                TextField("Not set", text: $name)
-                    .multilineTextAlignment(.trailing)
-                    .sidebarTextEntryField()
-                    .profileIOSControlFrame()
-                    #if os(iOS)
-                    .textInputAutocapitalization(.words)
-                    #endif
+                ProfileTextField(label: "Name", text: $name, autocapitalizesWords: true)
             }
             FormField("Job Title") {
-                TextField("Not set", text: $jobTitle)
-                    .multilineTextAlignment(.trailing)
-                    .sidebarTextEntryField()
-                    .profileIOSControlFrame()
+                ProfileTextField(label: "Job Title", text: $jobTitle)
             }
             FormField("Employer") {
-                TextField("Not set", text: $employer)
-                    .multilineTextAlignment(.trailing)
-                    .sidebarTextEntryField()
-                    .profileIOSControlFrame()
+                ProfileTextField(label: "Employer", text: $employer)
             }
             genderField
             pronounsField
             FormField("Home location") {
-                TextField("Not set", text: $location)
-                    .multilineTextAlignment(.trailing)
-                    .sidebarTextEntryField()
-                    .profileIOSControlFrame()
+                ProfileTextField(label: "Home location", text: $location)
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,
