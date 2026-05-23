@@ -1,0 +1,65 @@
+{
+  "videos": [
+    {
+      "video_id": "u3T_0HmNbHM",
+      "url": "https://www.youtube.com/watch?v=u3T_0HmNbHM",
+      "title": "Build your next story with Gemini Omni.",
+      "duration": "2:01",
+      "anchor_regions": [
+        {
+          "name": "omni_intro",
+          "start": "0:00",
+          "end": "0:37",
+          "anchors": [
+            "I'm excited to announce Gemini Omni",
+            "create anything from any input",
+            "Veo, Nano Banana, and Genie"
+          ]
+        },
+        {
+          "name": "physics_and_explainer",
+          "start": "0:37",
+          "end": "1:09",
+          "anchors": [
+            "kinetic energy and gravity",
+            "make a claymation explainer of protein folding",
+            "alpha helix"
+          ]
+        },
+        {
+          "name": "iterative_editing",
+          "start": "1:09",
+          "end": "1:43",
+          "anchors": [
+            "the creative process is rarely a single step",
+            "Nano Banana redefined image editing",
+            "the whole scene morphs"
+          ]
+        },
+        {
+          "name": "launch_close",
+          "start": "1:43",
+          "end": "2:01",
+          "anchors": [
+            "Gemini Omni Flash",
+            "Omni Pro soon",
+            "We can't wait to see what you create"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": [
+    "60:0",
+    "60:15",
+    "90:15",
+    "120:15",
+    "240:15"
+  ],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/u3T_0HmNbHM-short-sweep"
+}
