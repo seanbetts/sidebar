@@ -31,10 +31,12 @@ final class Task15SettingsIconSourceTests: XCTestCase {
         XCTAssertFalse(credentials.contains("Image(systemName:\"trash.circle.fill\")"))
 
         XCTAssertTrue(config.contains("Image(appIcon:AppIcon.State.successCircle)"))
-        XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.deleteCircleFilled"))
+        XCTAssertTrue(config.contains("Image(appIcon:AppIcon.Action.delete)"))
+        XCTAssertTrue(config.contains("StoreSkillUninstallIcon(busy:isStoreActionBusy)"))
         XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.addCircleFilled"))
         XCTAssertTrue(config.contains("leticon:AppIcon"))
         XCTAssertFalse(config.contains("Image(systemName:\"checkmark.circle\")"))
+        XCTAssertFalse(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.deleteCircleFilled"))
         XCTAssertFalse(config.contains("StoreSkillInstallIcon(systemName:\"checkmark.circle.fill\""))
         XCTAssertFalse(config.contains("StoreSkillInstallIcon(systemName:\"plus.circle.fill\""))
         XCTAssertFalse(config.contains("Image(systemName:systemName)"))

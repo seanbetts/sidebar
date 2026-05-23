@@ -312,15 +312,12 @@ struct StoreSkillConfigView: View {
             Button(role: .destructive) {
                 onInstalledTap?()
             } label: {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    StoreSkillInstallIcon(icon: AppIcon.Action.deleteCircleFilled, busy: isStoreActionBusy)
-                    Text("Uninstall")
-                        .appFont(.caption)
-                }
+                StoreSkillUninstallIcon(busy: isStoreActionBusy)
             }
             .accessibilityLabel("Uninstall skill")
+            .help("Uninstall skill")
             .disabled(isStoreActionBusy)
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
         } else {
             Button {
                 onInstallTap?()
@@ -416,6 +413,26 @@ struct StoreSkillConfigView: View {
         formatter.timeStyle = .none
         return formatter
     }()
+}
+
+private struct StoreSkillUninstallIcon: View {
+    let busy: Bool
+
+    var body: some View {
+        ZStack {
+            if busy {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(DesignTokens.Colors.error)
+            } else {
+                Image(appIcon: AppIcon.Action.delete)
+                    .appFont(.body)
+                    .foregroundStyle(DesignTokens.Colors.error)
+            }
+        }
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
+    }
 }
 
 private struct StoreSkillInstallIcon: View {

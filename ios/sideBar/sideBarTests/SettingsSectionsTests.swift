@@ -750,11 +750,10 @@ final class SettingsSectionsTests: XCTestCase {
         )
     }
 
-    func testSkillsSettingsSourceWiresStoreSkillUninstallConfirmation() throws {
+    func testSkillsSettingsSourceRoutesStoreSkillUninstallThroughDetailSheet() throws {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("@StateprivatevarstoreUninstallPrompt:StoreUninstallPrompt?"))
         XCTAssertTrue(
             normalized.contains(
                 "StoreSkillDetailSheet(viewModel:viewModel,skill:skill,isStoreActionBusy:viewModel.isSavingSkills,"
@@ -762,9 +761,8 @@ final class SettingsSectionsTests: XCTestCase {
                     + "onConfirmUninstall:{awaituninstallStoreSkillFromSettings(skill)})"
             )
         )
-        XCTAssertTrue(normalized.contains("Button(\"Uninstall\",role:.destructive){promptStoreSkillUninstall(skill)}"))
-        XCTAssertTrue(normalized.contains(".destructiveConfirmationAlert("))
-        XCTAssertTrue(normalized.contains("confirmTitle:\"Uninstall\""))
+        XCTAssertFalse(normalized.contains("@StateprivatevarstoreUninstallPrompt:StoreUninstallPrompt?"))
+        XCTAssertFalse(normalized.contains("Button(\"Uninstall\",role:.destructive)"))
         XCTAssertTrue(normalized.contains("awaitviewModel.uninstallStoreSkill(id:skill.id)"))
     }
 
@@ -1223,9 +1221,11 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("Button(role:.destructive){onInstalledTap?()}label:{"))
-        XCTAssertTrue(normalized.contains("Text(\"Uninstall\")"))
-        XCTAssertTrue(normalized.contains("StoreSkillInstallIcon(icon:AppIcon.Action.deleteCircleFilled"))
+        XCTAssertTrue(normalized.contains("StoreSkillUninstallIcon(busy:isStoreActionBusy)"))
+        XCTAssertTrue(normalized.contains("Image(appIcon:AppIcon.Action.delete)"))
         XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Uninstallskill\")"))
+        XCTAssertTrue(normalized.contains(".help(\"Uninstallskill\")"))
+        XCTAssertFalse(normalized.contains("Text(\"Uninstall\")"))
     }
 
     func testUserSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {
