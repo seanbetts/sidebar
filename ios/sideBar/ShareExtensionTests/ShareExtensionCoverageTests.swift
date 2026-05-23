@@ -124,6 +124,33 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(blockContents.contains("Assets.xcassets"))
     }
 
+    func testShareExtensionUsesPurposeBuiltSmallMacShareMenuIcons() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let shareIconDirectory = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset"
+        )
+        let appIconDirectory = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset"
+        )
+        let smallIconFilenames = [
+            "Icon-macOS-Default-16x16@1x.png",
+            "Icon-macOS-Default-16x16@2x.png",
+            "Icon-macOS-Default-32x32@1x.png",
+            "Icon-macOS-Default-32x32@2x.png"
+        ]
+
+        for filename in smallIconFilenames {
+            let shareIconData = try Data(contentsOf: shareIconDirectory.appendingPathComponent(filename))
+            let appIconData = try Data(contentsOf: appIconDirectory.appendingPathComponent(filename))
+
+            XCTAssertNotEqual(
+                shareIconData,
+                appIconData,
+                "\(filename) should be tuned for Safari's small share menu row, not copied from the main app icon."
+            )
+        }
+    }
+
     func testOnlyAppTargetLinksVendoredSentryFramework() throws {
         let repositoryRoot = try findRepositoryRoot()
         let projectURL = repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
