@@ -730,6 +730,37 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("SettingsMacSectionIntro(title:\"SkillType\""))
     }
 
+    func testSkillsSettingsSourceUsesIncludedAndStoreFiltersOnly() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("caseincluded"))
+        XCTAssertTrue(normalized.contains("return\"Included\""))
+        XCTAssertTrue(normalized.contains("returnskill.tier==.standard||skill.tier==.required"))
+        XCTAssertFalse(normalized.contains("caserequired"))
+        XCTAssertFalse(normalized.contains("return\"Standard\""))
+    }
+
+    func testSkillsSettingsSourceShowsRequiredSkillsAsActiveRequiredRows() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("isSkillRequired(skill)"))
+        XCTAssertTrue(normalized.contains("requiredSkillLock"))
+        XCTAssertTrue(normalized.contains("Image(appIcon:AppIcon.Auth.passwordLocked)"))
+        XCTAssertFalse(normalized.contains("Text(\"Required\")"))
+        XCTAssertTrue(normalized.contains("get:{isSkillRequired(skill)||isSkillEnabled(skill.id)}"))
+        XCTAssertTrue(normalized.contains("||isSkillRequired(skill)"))
+    }
+
+    func testSkillsSettingsSourceSortsRequiredSkillsAfterToggleableSkills() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("sortedSkills(sectionSkills,displayName:displayName)"))
+        XCTAssertTrue(normalized.contains("iflhsRequired!=rhsRequired{return!lhsRequired&&rhsRequired}"))
+    }
+
     func testSkillsSettingsSourceFiltersHiddenSkillsAcrossAllTiers() throws {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -758,7 +789,8 @@ final class SettingsSectionsTests: XCTestCase {
         )
         XCTAssertTrue(
             normalized.contains(
-                "staticletagentSkillIDs:Set<String>=[\"memory\",\"prompt-preview\",\"ui-theme\",\"web-search\"]"
+                "staticletagentSkillIDs:Set<String>=[\"assistant-identity\",\"assistant-soul\","
+                    + "\"memory\",\"prompt-preview\",\"ui-theme\",\"web-search\"]"
             )
         )
         XCTAssertTrue(normalized.contains("caseagent(String)"))

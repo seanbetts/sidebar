@@ -6,7 +6,7 @@ import sideBarShared
 
 struct SkillsSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
-    @State private var selectedTier: SkillsTierFilter = .standard
+    @State private var selectedTier: SkillsTierFilter = .included
     @State private var selectedStoreSkill: SkillItem?
 
     var body: some View {
@@ -147,20 +147,17 @@ struct SkillsSettingsView: View {
     }
 
     private enum SkillsTierFilter: String, CaseIterable, Identifiable {
-        case standard
+        case included
         case store
-        case required
 
         var id: String { rawValue }
 
         var title: String {
             switch self {
-            case .standard:
-                return "Standard"
+            case .included:
+                return "Included"
             case .store:
                 return "Store"
-            case .required:
-                return "Required"
             }
         }
     }
@@ -194,34 +191,40 @@ struct SkillsSettingsView: View {
             subtitle: viewModel.displayDescription(for: skill),
             icon: SkillIconResolver.settingsAppIcon(for: skill)
         ) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                if isSkillRequired(skill) {
+                    requiredSkillLock
+                }
+
+                Toggle("", isOn: Binding(
+                    get: { isSkillRequired(skill) || isSkillEnabled(skill.id) },
+                    set: { isEnabled in
+                        handleSkillToggleChange(id: skill.id, enabled: isEnabled)
+                    }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .disabled(isSkillToggleDisabled(skill))
+            }
+        }
+        #else
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+            skillLabel(skill)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if isSkillRequired(skill) {
+                requiredSkillLock
+            }
+
             Toggle("", isOn: Binding(
-                get: { isSkillEnabled(skill.id) },
+                get: { isSkillRequired(skill) || isSkillEnabled(skill.id) },
                 set: { isEnabled in
                     handleSkillToggleChange(id: skill.id, enabled: isEnabled)
                 }
             ))
             .labelsHidden()
-            .toggleStyle(.switch)
-            .disabled(
-                viewModel.isSavingSkills
-                || viewModel.settings == nil
-                || !skill.userToggleable
-            )
+            .disabled(isSkillToggleDisabled(skill))
         }
-        #else
-        Toggle(isOn: Binding(
-            get: { isSkillEnabled(skill.id) },
-            set: { isEnabled in
-                handleSkillToggleChange(id: skill.id, enabled: isEnabled)
-            }
-        )) {
-            skillLabel(skill)
-        }
-        .disabled(
-            viewModel.isSavingSkills
-            || viewModel.settings == nil
-            || !skill.userToggleable
-        )
         #endif
     }
 
@@ -300,12 +303,10 @@ struct SkillsSettingsView: View {
                 return false
             }
             switch selectedTier {
-            case .standard:
-                return skill.tier == .standard
+            case .included:
+                return skill.tier == .standard || skill.tier == .required
             case .store:
                 return skill.tier == .store && isStoreSkillInstalled(skill)
-            case .required:
-                return skill.tier == .required
             }
         }
     }
@@ -314,7 +315,7 @@ struct SkillsSettingsView: View {
         switch selectedTier {
         case .store:
             return "No Store skills installed yet. Install skills from the Skills Store to manage them here."
-        case .standard, .required:
+        case .included:
             return "No skills available."
         }
     }
@@ -362,8 +363,7 @@ struct SkillsSettingsView: View {
     private var allSkillsEnabled: Bool {
         let enabled = Set(viewModel.settings?.enabledSkills ?? [])
         let all = enableAllScopeSkillIds
-        // When a tier has no toggleable skills (for example Required),
-        // keep the disabled "Enable all" toggle visually on.
+        // Required skills are intentionally excluded from bulk toggles.
         return all.isEmpty || enabled.isSuperset(of: all)
     }
 
@@ -377,6 +377,23 @@ struct SkillsSettingsView: View {
 
     private func isStoreSkillInstalled(_ skill: SkillItem) -> Bool {
         viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+    }
+
+    private func isSkillRequired(_ skill: SkillItem) -> Bool {
+        skill.tier == .required
+    }
+    private func isSkillToggleDisabled(_ skill: SkillItem) -> Bool {
+        viewModel.isSavingSkills
+        || viewModel.settings == nil
+        || isSkillRequired(skill)
+        || !skill.userToggleable
+    }
+
+    private var requiredSkillLock: some View {
+        Image(appIcon: AppIcon.Auth.passwordLocked)
+            .appFont(.caption)
+            .foregroundStyle(DesignTokens.Colors.textSecondary)
+            .accessibilityLabel("Required skill")
     }
 }
 
@@ -395,6 +412,8 @@ private enum SkillsSettingsGrouping {
         "web-save"
     ]
     static let agentSkillIDs: Set<String> = [
+        "assistant-identity",
+        "assistant-soul",
         "memory",
         "prompt-preview",
         "ui-theme",
@@ -418,11 +437,23 @@ private enum SkillsSettingsGrouping {
             return SkillsSettingsSection(
                 id: section.id,
                 title: section.title,
-                skills: sectionSkills.sorted {
-                    displayName($0).localizedCaseInsensitiveCompare(displayName($1))
-                        == .orderedAscending
-                }
+                skills: sortedSkills(sectionSkills, displayName: displayName)
             )
+        }
+    }
+
+    private static func sortedSkills(
+        _ skills: [SkillItem],
+        displayName: (SkillItem) -> String
+    ) -> [SkillItem] {
+        skills.sorted { lhs, rhs in
+            let lhsRequired = lhs.tier == .required || !lhs.userToggleable
+            let rhsRequired = rhs.tier == .required || !rhs.userToggleable
+            if lhsRequired != rhsRequired {
+                return !lhsRequired && rhsRequired
+            }
+            return displayName(lhs).localizedCaseInsensitiveCompare(displayName(rhs))
+                == .orderedAscending
         }
     }
 
