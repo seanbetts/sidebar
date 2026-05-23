@@ -1,0 +1,103 @@
+{
+  "videos": [
+    {
+      "video_id": "YE9DUNMd8wI",
+      "url": "https://www.youtube.com/watch?v=YE9DUNMd8wI",
+      "title": "This is the TRUE Power of TYLER | Brotato",
+      "duration": "53:06",
+      "anchor_regions": [
+        {
+          "name": "setup_and_goal",
+          "start": "0:00",
+          "end": "6:50",
+          "anchors": [
+            "make Tyler great again",
+            "techno mage gains bonus structure attack speed",
+            "rainbow crate"
+          ]
+        },
+        {
+          "name": "early_survival",
+          "start": "6:50",
+          "end": "14:56",
+          "anchors": [
+            "one in 10",
+            "our structures can crit",
+            "our first Tyler"
+          ]
+        },
+        {
+          "name": "tyler_scaling",
+          "start": "14:56",
+          "end": "22:52",
+          "anchors": [
+            "we will get four elemental damage every wave",
+            "converts elemental damage into engineering",
+            "bounces"
+          ]
+        },
+        {
+          "name": "fish_hook_and_endless",
+          "start": "22:52",
+          "end": "30:43",
+          "anchors": [
+            "without the hook",
+            "second fish hook",
+            "hunting trophy"
+          ]
+        },
+        {
+          "name": "curse_and_scapegoat",
+          "start": "30:43",
+          "end": "38:15",
+          "anchors": [
+            "bonus projectiles",
+            "scapegoat",
+            "Tyler assembly"
+          ]
+        },
+        {
+          "name": "wave_30_pressure",
+          "start": "38:15",
+          "end": "45:31",
+          "anchors": [
+            "flamethrower",
+            "Wave 30",
+            "the anvil"
+          ]
+        },
+        {
+          "name": "rainbow_crate_shift",
+          "start": "45:31",
+          "end": "50:24",
+          "anchors": [
+            "100% chance",
+            "rainbow crate",
+            "22 Tylers"
+          ]
+        },
+        {
+          "name": "final_tyler_payoff",
+          "start": "50:24",
+          "end": "53:06",
+          "anchors": [
+            "jump forward to wave 49",
+            "95 Tylers",
+            "subscribe and give the video a like"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": [
+    "240:15",
+    "300:15",
+    "360:15"
+  ],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/YE9DUNMd8wI-even-longer-sweep"
+}
