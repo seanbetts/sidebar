@@ -1,0 +1,103 @@
+{
+  "videos": [
+    {
+      "video_id": "VHusISWwoGo",
+      "url": "https://www.youtube.com/watch?v=VHusISWwoGo",
+      "title": "The Moment Aston Villa WON The EUROPA LEAGUE!",
+      "duration": "37:18",
+      "anchor_regions": [
+        {
+          "name": "istanbul_culture",
+          "start": "0:00",
+          "end": "3:25",
+          "anchors": [
+            "Aston Villa could potentially end their 30-year trophy drought",
+            "This is the Blue Mosque",
+            "Hagia Sophia"
+          ]
+        },
+        {
+          "name": "grand_bazaar_and_galata",
+          "start": "3:49",
+          "end": "6:56",
+          "anchors": [
+            "the Grand Bazaar",
+            "completely free with a match ticket",
+            "Galata Tower"
+          ]
+        },
+        {
+          "name": "beer52_sponsor",
+          "start": "7:06",
+          "end": "8:45",
+          "anchors": [
+            "free case of 10 exclusive summer beers",
+            "Siren's Sphericals Imperial Stout",
+            "beer52.com/villa"
+          ]
+        },
+        {
+          "name": "fans_and_predictions",
+          "start": "8:45",
+          "end": "13:13",
+          "anchors": [
+            "I've even got Jamie Brown on the beers",
+            "It just feels like our time",
+            "2-0 Villa"
+          ]
+        },
+        {
+          "name": "fan_zone_and_march",
+          "start": "13:13",
+          "end": "16:05",
+          "anchors": [
+            "Istanbul final 2026",
+            "10,000 likes",
+            "Next stop"
+          ]
+        },
+        {
+          "name": "stadium_pre_match",
+          "start": "16:05",
+          "end": "18:35",
+          "anchors": [
+            "Europa League trophy",
+            "Every single seat in the villa section",
+            "Two nil to Aston Villa"
+          ]
+        },
+        {
+          "name": "match_goals",
+          "start": "20:09",
+          "end": "26:06",
+          "anchors": [
+            "First step of the game for Rogers",
+            "one nil to the boys",
+            "Amy Buendia is just phenomenal"
+          ]
+        },
+        {
+          "name": "closing_celebration",
+          "start": "29:43",
+          "end": "37:04",
+          "anchors": [
+            "We've done it",
+            "champions of Europe",
+            "A night I just won't forget ever in my life"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": [
+    "240:15",
+    "300:15",
+    "240:30"
+  ],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/VHusISWwoGo-long-sweep"
+}
