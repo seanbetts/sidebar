@@ -17,6 +17,7 @@ from api.services.tools.skill_metadata import (
     get_credential_requirements,
     get_legacy_skill_ids,
     get_provider_dependency,
+    get_skill_settings_section,
     get_skill_status,
     get_skill_tier,
     is_skill_default_enabled,
@@ -139,6 +140,7 @@ class SkillCatalogService:
                 or ""
             ).strip(),
             "category": category,
+            "settings_section": get_skill_settings_section(skill_id),
             "icon_key": skill_id,
             "tier": get_skill_tier(skill_id),
             "provider_dependency": get_provider_dependency(skill_id),

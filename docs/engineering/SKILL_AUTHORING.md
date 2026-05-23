@@ -294,16 +294,17 @@ To make a skill appear in the Skills Store UI, update backend catalog metadata:
    - `REQUIRED_SKILLS`
    - `STANDARD_SKILLS`
    - `STORE_SKILLS` (installable from Skills Store)
-3. If it is a store skill with provider requirements, update:
+3. Add the Settings grouping in `SKILL_SETTINGS_SECTIONS` when the skill should appear under the App or agent-named section. Omitted skills default to System.
+4. If it is a store skill with provider requirements, update:
    - `SKILL_PROVIDER_DEPENDENCY`
    - `SKILL_CREDENTIAL_REQUIREMENTS`
-4. Ensure skill detail metadata is present in `SKILL.md` frontmatter `metadata` (`long_description`, `how_it_works`, `version`, `updated_at` required for Store skills; add `requirements` when setup prerequisites exist).
-5. Bump `CATALOG_VERSION` in `backend/api/services/tools/skill_metadata.py`.
-6. Add category mapping in `backend/api/services/agent/skills/catalog.py` (`_category_map`).
-7. Add or update API/service tests:
+5. Ensure skill detail metadata is present in `SKILL.md` frontmatter `metadata` (`long_description`, `how_it_works`, `version`, `updated_at` required for Store skills; add `requirements` when setup prerequisites exist).
+6. Bump `CATALOG_VERSION` in `backend/api/services/tools/skill_metadata.py`.
+7. Add category mapping in `backend/api/services/agent/skills/catalog.py` (`_category_map`).
+8. Add or update API/service tests:
    - `backend/tests/api/test_skill_catalog_service.py`
    - `backend/tests/api/test_skills_api.py`
-8. If skill inventory changed, regenerate `backend/SKILLS.md`:
+9. If skill inventory changed, regenerate `backend/SKILLS.md`:
 
 ```bash
 python backend/scripts/generate_skills_md.py

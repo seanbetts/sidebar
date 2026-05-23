@@ -775,6 +775,7 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Picker(\"SkillType\",selection:$selectedTier)"))
         XCTAssertTrue(normalized.contains("SkillsSettingsGrouping.sections("))
         XCTAssertTrue(normalized.contains("assistantDisplayName:viewModel.assistantDisplayName"))
+        XCTAssertTrue(normalized.contains("switchskill.settingsSection"))
         XCTAssertFalse(normalized.contains("Dictionary(grouping:filteredSkills){$0.category}"))
     }
 
@@ -782,17 +783,8 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(
-            normalized.contains(
-                "staticletappSkillIDs:Set<String>=[\"conversations\",\"files\",\"notes\",\"tasks\",\"web-save\"]"
-            )
-        )
-        XCTAssertTrue(
-            normalized.contains(
-                "staticletagentSkillIDs:Set<String>=[\"assistant-identity\",\"assistant-soul\","
-                    + "\"memory\",\"prompt-preview\",\"ui-theme\",\"web-search\"]"
-            )
-        )
+        XCTAssertFalse(normalized.contains("staticletappSkillIDs:Set<String>"))
+        XCTAssertFalse(normalized.contains("staticletagentSkillIDs:Set<String>"))
         XCTAssertTrue(normalized.contains("caseagent(String)"))
         XCTAssertTrue(normalized.contains("returnassistantDisplayName"))
         XCTAssertTrue(normalized.contains("[.app,.agent(assistantDisplayName),.system]"))

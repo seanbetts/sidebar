@@ -80,6 +80,7 @@ final class SkillsAPITests: XCTestCase {
               "name": "Assistant Soul",
               "description": "Desc",
               "category": "System",
+              "settings_section": "agent",
               "user_toggleable": false
             }
           ]
@@ -89,6 +90,7 @@ final class SkillsAPITests: XCTestCase {
         let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
 
         XCTAssertEqual(response.skills.first?.id, "assistant-soul")
+        XCTAssertEqual(response.skills.first?.settingsSection, .agent)
         XCTAssertEqual(response.skills.first?.userToggleable, false)
     }
 

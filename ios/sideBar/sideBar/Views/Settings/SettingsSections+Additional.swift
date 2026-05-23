@@ -404,22 +404,6 @@ private struct SkillsSettingsSection: Identifiable {
 }
 
 private enum SkillsSettingsGrouping {
-    static let appSkillIDs: Set<String> = [
-        "conversations",
-        "files",
-        "notes",
-        "tasks",
-        "web-save"
-    ]
-    static let agentSkillIDs: Set<String> = [
-        "assistant-identity",
-        "assistant-soul",
-        "memory",
-        "prompt-preview",
-        "ui-theme",
-        "web-search"
-    ]
-
     static func sections(
         from skills: [SkillItem],
         assistantDisplayName: String,
@@ -461,13 +445,14 @@ private enum SkillsSettingsGrouping {
         for skill: SkillItem,
         assistantDisplayName: String
     ) -> Section {
-        if appSkillIDs.contains(skill.id) {
+        switch skill.settingsSection {
+        case .app:
             return .app
-        }
-        if agentSkillIDs.contains(skill.id) {
+        case .agent:
             return .agent(assistantDisplayName)
+        case .system:
+            return .system
         }
-        return .system
     }
 
     private enum Section: Hashable {

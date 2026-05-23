@@ -165,7 +165,30 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 12
+    assert SkillCatalogService.catalog_version() == 13
+
+
+def test_list_skills_exposes_settings_sections(tmp_path) -> None:
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir(parents=True)
+
+    for skill_id in [
+        "files",
+        "memory",
+        "assistant-identity",
+        "settings-other-preferences",
+        "audio-transcribe",
+    ]:
+        _write_skill(skills_dir, skill_id)
+
+    skills = SkillCatalogService.list_skills(skills_dir)
+    by_id = {str(skill["id"]): skill for skill in skills}
+
+    assert by_id["files"]["settings_section"] == "app"
+    assert by_id["memory"]["settings_section"] == "agent"
+    assert by_id["assistant-identity"]["settings_section"] == "agent"
+    assert by_id["settings-other-preferences"]["settings_section"] == "system"
+    assert by_id["audio-transcribe"]["settings_section"] == "system"
 
 
 def test_capability_registry_exposes_code_backed_contract() -> None:

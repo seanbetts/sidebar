@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 12
+CATALOG_VERSION = 13
 
 SkillTier = Literal["required", "standard", "store"]
+SkillSettingsSection = Literal["app", "agent", "system"]
 
 SKILL_ID_ALIASES: dict[str, str] = {}
 
@@ -135,6 +136,20 @@ STORE_SKILLS = {
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
+}
+
+SKILL_SETTINGS_SECTIONS: dict[str, SkillSettingsSection] = {
+    "conversations": "app",
+    "files": "app",
+    "notes": "app",
+    "tasks": "app",
+    "web-save": "app",
+    "assistant-identity": "agent",
+    "assistant-soul": "agent",
+    "memory": "agent",
+    "prompt-preview": "agent",
+    "ui-theme": "agent",
+    "web-search": "agent",
 }
 
 EXPOSED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS | STORE_SKILLS
@@ -301,6 +316,12 @@ def get_skill_tier(skill_id: str) -> SkillTier:
     if canonical in STORE_SKILLS:
         return "store"
     return "standard"
+
+
+def get_skill_settings_section(skill_id: str) -> SkillSettingsSection:
+    """Return the Settings section for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return SKILL_SETTINGS_SECTIONS.get(canonical, "system")
 
 
 def is_skill_user_toggleable(skill_id: str) -> bool:

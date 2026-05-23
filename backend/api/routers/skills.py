@@ -1,6 +1,8 @@
 """Skills catalog API router."""
 # ruff: noqa: B008
 
+from typing import cast
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -12,6 +14,7 @@ from api.db.session import get_db
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.store_skills_service import StoreSkillsService
+from api.services.tools.skill_metadata import SkillSettingsSection
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
@@ -24,6 +27,7 @@ class SkillItem(BaseModel):
     name: str
     description: str
     category: str
+    settings_section: SkillSettingsSection
     icon_key: str
     tier: str
     provider_dependency: str
@@ -118,6 +122,10 @@ async def list_skills(
                 name=str(skill["name"]),
                 description=str(skill["description"]),
                 category=str(skill["category"]),
+                settings_section=cast(
+                    SkillSettingsSection,
+                    skill.get("settings_section", "system"),
+                ),
                 icon_key=str(skill.get("icon_key", skill["id"])),
                 tier=str(skill.get("tier", "standard")),
                 provider_dependency=str(skill.get("provider_dependency", "none")),

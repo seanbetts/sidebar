@@ -34,7 +34,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 12
+    assert payload["catalog_version"] == 13
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
@@ -43,6 +43,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["conversations"]["tier"] == "standard"
     assert by_id["conversations"]["installable"] is False
     assert by_id["conversations"]["category"] == "Productivity"
+    assert by_id["conversations"]["settings_section"] == "app"
     assert "files" in by_id
     assert "fs" not in by_id
     assert by_id["files"]["legacy_ids"] == []
@@ -64,6 +65,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["audio-transcribe"]["current_user_vote"] is None
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
+    assert by_id["prompt-preview"]["settings_section"] == "agent"
     assert by_id["settings-other-preferences"]["tier"] == "standard"
     assert by_id["settings-other-preferences"]["installable"] is False
     assert by_id["settings-other-preferences"]["name"] == "Device Preferences"
@@ -78,6 +80,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     )
     assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
+    assert by_id["product-feedback"]["settings_section"] == "system"
     assert "onboarding-coach" in by_id
     assert by_id["onboarding-coach"]["status"] == "hidden"
     assert by_id["onboarding-coach"]["user_toggleable"] is False

@@ -7,6 +7,13 @@ public enum SkillTier: String, Codable {
     case store
 }
 
+/// Settings section from catalog metadata.
+public enum SkillSettingsSection: String, Codable {
+    case app
+    case agent
+    case system
+}
+
 /// Credential requirement metadata for a skill.
 public struct SkillCredentialRequirement: Codable, Equatable {
     public let provider: String
@@ -71,6 +78,8 @@ public struct SkillItem: Codable, Identifiable {
     public let description: String
     /// The category value.
     public let category: String
+    /// Settings section for grouping skills in settings.
+    public let settingsSection: SkillSettingsSection
     /// Symbol/icon key for UI rendering.
     public let iconKey: String
     /// Skill tier for skills/settings grouping.
@@ -112,6 +121,7 @@ public struct SkillItem: Codable, Identifiable {
         name: String,
         description: String,
         category: String,
+        settingsSection: SkillSettingsSection = .system,
         iconKey: String? = nil,
         tier: SkillTier = .standard,
         providerDependency: String = "none",
@@ -135,6 +145,7 @@ public struct SkillItem: Codable, Identifiable {
         self.name = name
         self.description = description
         self.category = category
+        self.settingsSection = settingsSection
         self.iconKey = iconKey ?? id
         self.tier = tier
         self.providerDependency = providerDependency
@@ -160,6 +171,7 @@ public struct SkillItem: Codable, Identifiable {
         case name
         case description
         case category
+        case settingsSection
         case iconKey
         case tier
         case providerDependency
@@ -178,6 +190,7 @@ public struct SkillItem: Codable, Identifiable {
         case downvotes
         case currentUserVote
         case legacyLegacyIds = "legacy_ids"
+        case legacySettingsSection = "settings_section"
         case legacyIconKey = "icon_key"
         case legacyProviderDependency = "provider_dependency"
         case legacyCredentialRequirements = "credential_requirements"
@@ -203,6 +216,13 @@ public struct SkillItem: Codable, Identifiable {
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
         category = try container.decode(String.self, forKey: .category)
+        settingsSection = try Self.decodePreferred(
+            SkillSettingsSection.self,
+            from: container,
+            primary: .settingsSection,
+            legacy: .legacySettingsSection,
+            default: .system
+        )
         iconKey = try Self.decodePreferred(
             String.self,
             from: container,
@@ -264,6 +284,7 @@ public struct SkillItem: Codable, Identifiable {
         try container.encode(name, forKey: .name)
         try container.encode(description, forKey: .description)
         try container.encode(category, forKey: .category)
+        try container.encode(settingsSection, forKey: .settingsSection)
         try container.encode(iconKey, forKey: .iconKey)
         try container.encode(tier, forKey: .tier)
         try container.encode(providerDependency, forKey: .providerDependency)
