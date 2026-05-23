@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import csv
+import json
 import re
 from collections import Counter
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -19,6 +22,20 @@ class BenchmarkVideo:
     duration_seconds: int
     anchor_regions: tuple["AnchorRegion", ...] = ()
     reference_transcript_path: str | None = None
+
+
+@dataclass(frozen=True)
+class BenchmarkConfig:
+    """Loaded benchmark configuration."""
+
+    videos: list[BenchmarkVideo]
+    combinations: list["BenchmarkCombination"]
+    concurrency_levels: list[int]
+    repeat_count: int
+    models: list[str]
+    prompt_variant: str
+    media_resolution: str
+    output_dir: Path
 
 
 @dataclass(frozen=True)
@@ -132,6 +149,38 @@ class CallResult:
     error: str | None = None
 
 
+SUMMARY_COLUMNS = [
+    "video_id",
+    "title",
+    "duration_seconds",
+    "model",
+    "prompt_variant",
+    "media_resolution",
+    "combination",
+    "window_seconds",
+    "overlap_seconds",
+    "output_cap_tokens",
+    "concurrency",
+    "run_number",
+    "call_count",
+    "failed_call_count",
+    "wall_clock_seconds",
+    "summed_call_latency_seconds",
+    "input_tokens",
+    "output_tokens",
+    "total_tokens",
+    "video_input_tokens",
+    "audio_input_tokens",
+    "input_cost_usd",
+    "output_cost_usd",
+    "estimated_cost_usd",
+    "audio_costing_available",
+    "anchor_score",
+    "word_count",
+    "repetition_warning",
+]
+
+
 def parse_duration_seconds(value: str | int) -> int:
     """Parse a duration from seconds, MM:SS, or HH:MM:SS."""
     if isinstance(value, int):
@@ -164,6 +213,79 @@ def parse_duration_seconds(value: str | int) -> int:
     ):
         raise ValueError(f"Invalid duration: {value}")
     return total
+
+
+def _parse_combination(raw: str) -> BenchmarkCombination:
+    """Parse a window:overlap combination."""
+    parts = raw.split(":", 1)
+    if len(parts) != 2 or not all(part.strip().isdigit() for part in parts):
+        raise ValueError(f"Invalid combination: {raw}")
+
+    combination = BenchmarkCombination(
+        window_seconds=int(parts[0]),
+        overlap_seconds=int(parts[1]),
+    )
+    if combination.window_seconds <= 0:
+        raise ValueError("Invalid combination: window must be positive")
+    if combination.overlap_seconds < 0:
+        raise ValueError("Invalid combination: overlap must be non-negative")
+    if combination.overlap_seconds >= combination.window_seconds:
+        raise ValueError("Invalid combination: overlap must be less than window")
+    return combination
+
+
+def load_benchmark_config(path: Path) -> BenchmarkConfig:
+    """Load benchmark config from a JSON file."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+
+    videos = [
+        BenchmarkVideo(
+            video_id=str(item["video_id"]),
+            url=str(item["url"]),
+            title=str(item.get("title") or item["video_id"]),
+            duration_seconds=parse_duration_seconds(item["duration"]),
+            anchor_regions=tuple(
+                AnchorRegion(
+                    name=str(region["name"]),
+                    start_seconds=parse_duration_seconds(region["start"]),
+                    end_seconds=parse_duration_seconds(region["end"]),
+                    anchors=tuple(str(anchor) for anchor in region["anchors"]),
+                )
+                for region in item.get("anchor_regions", [])
+            ),
+            reference_transcript_path=(
+                str(item["reference_transcript_path"])
+                if item.get("reference_transcript_path") is not None
+                else None
+            ),
+        )
+        for item in raw.get("videos", [])
+    ]
+    if not videos:
+        raise ValueError("Config must include at least one video")
+
+    combinations = [_parse_combination(str(item)) for item in raw.get("combinations", [])]
+    if not combinations:
+        raise ValueError("Config must include at least one combination")
+
+    concurrency_levels = [int(item) for item in raw.get("concurrency", [1])]
+    if any(level <= 0 for level in concurrency_levels):
+        raise ValueError("concurrency levels must be positive")
+
+    repeat_count = int(raw.get("repeat_count", 3))
+    if repeat_count <= 0:
+        raise ValueError("repeat_count must be positive")
+
+    return BenchmarkConfig(
+        videos=videos,
+        combinations=combinations,
+        concurrency_levels=concurrency_levels,
+        repeat_count=repeat_count,
+        models=[str(item) for item in raw.get("models", ["gemini-3.1-flash-lite"])],
+        prompt_variant=str(raw.get("prompt_variant", "plain_transcript_v1")),
+        media_resolution=str(raw.get("media_resolution", "LOW")),
+        output_dir=Path(raw.get("output_dir", "gemini-video-benchmark-output")),
+    )
 
 
 def calculate_output_cap(
@@ -451,3 +573,39 @@ def expand_run_matrix(
                         )
                     )
     return runs
+
+
+def _summary_column_label(column: str) -> str:
+    """Return markdown table label for a summary column."""
+    return column.replace("_", " ").title().replace(" Id", " ID")
+
+
+def write_reports(*, output_dir: Path, summaries: list[dict[str, Any]]) -> None:
+    """Write JSON, markdown, and CSV benchmark summaries."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "summary.json").write_text(
+        json.dumps(summaries, indent=2),
+        encoding="utf-8",
+    )
+
+    with (output_dir / "summary.csv").open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=SUMMARY_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(summaries)
+
+    header = (
+        "| "
+        + " | ".join(_summary_column_label(column) for column in SUMMARY_COLUMNS)
+        + " |"
+    )
+    separator = "| " + " | ".join("---" for _ in SUMMARY_COLUMNS) + " |"
+    rows = [
+        "| "
+        + " | ".join(str(summary.get(column, "")) for column in SUMMARY_COLUMNS)
+        + " |"
+        for summary in summaries
+    ]
+    (output_dir / "summary.md").write_text(
+        "\n".join([header, separator, *rows]) + "\n",
+        encoding="utf-8",
+    )

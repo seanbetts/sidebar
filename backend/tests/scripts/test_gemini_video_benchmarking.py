@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from scripts.gemini_video_benchmarking import (
@@ -17,10 +19,12 @@ from scripts.gemini_video_benchmarking import (
     calculate_output_cap,
     detect_repetition,
     expand_run_matrix,
+    load_benchmark_config,
     normalize_anchor_text,
     parse_duration_seconds,
     plan_windows,
     score_anchor_region,
+    write_reports,
 )
 
 
@@ -401,3 +405,137 @@ def test_aggregate_run_summary_includes_cost_breakdown_fields() -> None:
     assert summary["output_cost_usd"] == 0.015
     assert summary["estimated_cost_usd"] == 0.04
     assert summary["audio_costing_available"] is False
+
+
+def test_load_benchmark_config_defaults_repeat_count_to_three(tmp_path) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "title": "Demo",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "concurrency": [1, 4],
+                "output_dir": str(tmp_path / "out"),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_benchmark_config(config_path)
+
+    assert config.repeat_count == 3
+    assert config.videos[0].video_id == "abc123"
+    assert config.videos[0].duration_seconds == 1220
+    assert config.combinations[0] == BenchmarkCombination(
+        window_seconds=240,
+        overlap_seconds=30,
+    )
+    assert config.concurrency_levels == [1, 4]
+    assert config.output_dir == tmp_path / "out"
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"combinations": ["240:30"]}, "Config must include at least one video"),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+            },
+            "Config must include at least one combination",
+        ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "repeat_count": 0,
+            },
+            "repeat_count must be positive",
+        ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240/30"],
+            },
+            "Invalid combination",
+        ),
+    ],
+)
+def test_load_benchmark_config_rejects_invalid_config(
+    tmp_path,
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_benchmark_config(config_path)
+
+
+def test_write_reports_creates_json_markdown_and_csv(tmp_path) -> None:
+    output_dir = tmp_path / "reports"
+    summaries = [
+        {
+            "video_id": "abc123",
+            "title": "Demo",
+            "duration_seconds": 300,
+            "model": "gemini-3.1-flash-lite",
+            "prompt_variant": "plain_transcript_v1",
+            "media_resolution": "LOW",
+            "combination": "240s / 30s",
+            "window_seconds": 240,
+            "overlap_seconds": 30,
+            "output_cap_tokens": 1152,
+            "concurrency": 1,
+            "run_number": 1,
+            "call_count": 2,
+            "failed_call_count": 0,
+            "wall_clock_seconds": 5.0,
+            "summed_call_latency_seconds": 8.0,
+            "input_tokens": 100,
+            "output_tokens": 10,
+            "total_tokens": 110,
+            "video_input_tokens": 80,
+            "audio_input_tokens": 20,
+            "input_cost_usd": 0.00002,
+            "output_cost_usd": 0.00002,
+            "estimated_cost_usd": 0.00004,
+            "audio_costing_available": True,
+            "anchor_score": "1/1",
+            "word_count": 42,
+            "repetition_warning": False,
+            "stitched_transcript": "hello world",
+        }
+    ]
+
+    write_reports(output_dir=output_dir, summaries=summaries)
+
+    assert json.loads((output_dir / "summary.json").read_text(encoding="utf-8")) == summaries
+    assert (output_dir / "summary.md").read_text(encoding="utf-8").startswith("| Video ID |")
+    assert "abc123" in (output_dir / "summary.csv").read_text(encoding="utf-8")
