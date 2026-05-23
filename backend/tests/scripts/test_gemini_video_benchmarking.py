@@ -16,6 +16,7 @@ from scripts.gemini_video_benchmarking import (
 def test_parse_duration_seconds_accepts_mm_ss_and_hh_mm_ss() -> None:
     assert parse_duration_seconds("20:20") == 1220
     assert parse_duration_seconds("1:02:03") == 3723
+    assert parse_duration_seconds("95") == 95
     assert parse_duration_seconds(95) == 95
 
 

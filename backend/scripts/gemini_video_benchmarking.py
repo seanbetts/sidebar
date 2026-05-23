@@ -73,20 +73,28 @@ def parse_duration_seconds(value: str | int) -> int:
         return value
 
     parts = value.strip().split(":")
-    if len(parts) not in {2, 3}:
+    if len(parts) not in {1, 2, 3}:
         raise ValueError(f"Invalid duration: {value}")
     if not all(part.isdigit() for part in parts):
         raise ValueError(f"Invalid duration: {value}")
 
     numbers = [int(part) for part in parts]
-    if len(numbers) == 2:
+    if len(numbers) == 1:
+        total = numbers[0]
+        seconds = total
+        minutes = 0
+    elif len(numbers) == 2:
         minutes, seconds = numbers
         total = minutes * 60 + seconds
     else:
         hours, minutes, seconds = numbers
         total = hours * 3600 + minutes * 60 + seconds
 
-    if total <= 0 or seconds >= 60 or (len(numbers) == 3 and minutes >= 60):
+    if (
+        total <= 0
+        or (len(numbers) > 1 and seconds >= 60)
+        or (len(numbers) == 3 and minutes >= 60)
+    ):
         raise ValueError(f"Invalid duration: {value}")
     return total
 
