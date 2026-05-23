@@ -285,20 +285,54 @@ def _required_field(item: Mapping[str, Any], field: str, label: str) -> Any:
     return item[field]
 
 
+def _required_duration(item: Mapping[str, Any], field: str, label: str) -> str | int:
+    """Return a duration config field with a supported value type."""
+    value = _required_field(item, field, label)
+    if not isinstance(value, (str, int)):
+        raise ValueError(f"Config {label} {field} must be a string or int")
+    return value
+
+
+def _required_offset(item: Mapping[str, Any], field: str, label: str) -> str | int:
+    """Return an offset config field with a supported value type."""
+    value = _required_field(item, field, label)
+    if not isinstance(value, (str, int)):
+        raise ValueError(f"Config {label} {field} must be a string or int")
+    return value
+
+
+def _optional_list(item: Mapping[str, Any], field: str, label: str) -> list[Any]:
+    """Return an optional list config field or raise a clear validation error."""
+    if field not in item:
+        return []
+    value = item[field]
+    if not isinstance(value, list):
+        raise ValueError(f"Config {label} {field} must be a list")
+    return value
+
+
+def _required_list(item: Mapping[str, Any], field: str, label: str) -> list[Any]:
+    """Return a required list config field or raise a clear validation error."""
+    value = _required_field(item, field, label)
+    if not isinstance(value, list):
+        raise ValueError(f"Config {label} {field} must be a list")
+    return value
+
+
 def _parse_anchor_region(raw: Any, index: int) -> AnchorRegion:
     """Parse one anchor region from config JSON."""
     region = _require_mapping(raw, f"anchor region {index}")
     return AnchorRegion(
         name=str(_required_field(region, "name", f"anchor region {index}")),
         start_seconds=parse_offset_seconds(
-            _required_field(region, "start", f"anchor region {index}"),
+            _required_offset(region, "start", f"anchor region {index}"),
         ),
         end_seconds=parse_offset_seconds(
-            _required_field(region, "end", f"anchor region {index}"),
+            _required_offset(region, "end", f"anchor region {index}"),
         ),
         anchors=tuple(
             str(anchor)
-            for anchor in _required_field(region, "anchors", f"anchor region {index}")
+            for anchor in _required_list(region, "anchors", f"anchor region {index}")
         ),
     )
 
@@ -312,11 +346,14 @@ def _parse_video(raw: Any, index: int) -> BenchmarkVideo:
         url=str(_required_field(item, "url", f"video {index}")),
         title=str(item.get("title") or video_id),
         duration_seconds=parse_duration_seconds(
-            _required_field(item, "duration", f"video {index}"),
+            _required_duration(item, "duration", f"video {index}"),
         ),
         anchor_regions=tuple(
             _parse_anchor_region(region, region_index)
-            for region_index, region in enumerate(item.get("anchor_regions", []), start=1)
+            for region_index, region in enumerate(
+                _optional_list(item, "anchor_regions", f"video {index}"),
+                start=1,
+            )
         ),
         reference_transcript_path=(
             str(item["reference_transcript_path"])

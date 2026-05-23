@@ -124,3 +124,62 @@ def test_main_dry_run_with_top_level_list_exits_config_error(
     captured = capsys.readouterr()
     assert "Config error:" in captured.err
     assert "top-level object" in captured.err
+
+
+def test_main_dry_run_with_null_video_duration_exits_config_error(
+    tmp_path,
+    capsys,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": None,
+                    }
+                ],
+                "combinations": ["120:30"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["--config", str(config_path), "--dry-run"])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "Config error:" in captured.err
+    assert "duration" in captured.err
+
+
+def test_main_dry_run_with_null_anchor_regions_exits_config_error(
+    tmp_path,
+    capsys,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "3:00",
+                        "anchor_regions": None,
+                    }
+                ],
+                "combinations": ["120:30"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["--config", str(config_path), "--dry-run"])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "Config error:" in captured.err
+    assert "anchor_regions" in captured.err
