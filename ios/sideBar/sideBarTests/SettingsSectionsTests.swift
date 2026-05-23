@@ -737,6 +737,35 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
     }
 
+    func testSkillsSettingsSourceUsesSettingsSectionsWithinTierFilter() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Picker(\"SkillType\",selection:$selectedTier)"))
+        XCTAssertTrue(normalized.contains("SkillsSettingsGrouping.sections("))
+        XCTAssertTrue(normalized.contains("assistantDisplayName:viewModel.assistantDisplayName"))
+        XCTAssertFalse(normalized.contains("Dictionary(grouping:filteredSkills){$0.category}"))
+    }
+
+    func testSkillsSettingsSourceDefinesAppAgentAndSystemSkillSections() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "staticletappSkillIDs:Set<String>=[\"conversations\",\"files\",\"notes\",\"tasks\",\"web-save\"]"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "staticletagentSkillIDs:Set<String>=[\"memory\",\"prompt-preview\",\"ui-theme\",\"web-search\"]"
+            )
+        )
+        XCTAssertTrue(normalized.contains("caseagent(String)"))
+        XCTAssertTrue(normalized.contains("returnassistantDisplayName"))
+        XCTAssertTrue(normalized.contains("[.app,.agent(assistantDisplayName),.system]"))
+    }
+
     func testSkillsSettingsSourceUsesStoreSpecificEmptyState() throws {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

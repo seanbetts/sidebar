@@ -57,14 +57,14 @@ struct SkillsSettingsView: View {
                 if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                     SettingsMacStatusBanner(message: emptySkillsMessage, tone: .info)
                 } else {
-                    ForEach(groupedSkills, id: \.0) { category, skills in
+                    ForEach(groupedSkills) { section in
                         SettingsMacPanelCard {
                             SettingsMacSectionIntro(
-                                title: category,
-                                message: "Review the skills in this category and decide"
+                                title: section.title,
+                                message: "Review the skills in this section and decide"
                                     + " which ones should be active for your current workspace."
                             )
-                            ForEach(skills, id: \.id) { skill in
+                            ForEach(section.skills, id: \.id) { skill in
                                 if selectedTier == .store {
                                     storeSkillRow(skill)
                                 } else {
@@ -120,9 +120,9 @@ struct SkillsSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                ForEach(groupedSkills, id: \.0) { category, skills in
-                    Section(category) {
-                        ForEach(skills, id: \.id) { skill in
+                ForEach(groupedSkills) { section in
+                    Section(section.title) {
+                        ForEach(section.skills, id: \.id) { skill in
                             if selectedTier == .store {
                                 storeSkillRow(skill)
                             } else {
@@ -319,11 +319,12 @@ struct SkillsSettingsView: View {
         }
     }
 
-    private var groupedSkills: [(String, [SkillItem])] {
-        let grouped = Dictionary(grouping: filteredSkills) { $0.category }
-        return grouped.keys.sorted().map { key in
-            (key, grouped[key]?.sorted { $0.name < $1.name } ?? [])
-        }
+    private var groupedSkills: [SkillsSettingsSection] {
+        SkillsSettingsGrouping.sections(
+            from: filteredSkills,
+            assistantDisplayName: viewModel.assistantDisplayName,
+            displayName: { viewModel.displayName(for: $0) }
+        )
     }
 
     private func handleSkillToggleChange(id: String, enabled: Bool) {
@@ -376,5 +377,93 @@ struct SkillsSettingsView: View {
 
     private func isStoreSkillInstalled(_ skill: SkillItem) -> Bool {
         viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+    }
+}
+
+private struct SkillsSettingsSection: Identifiable {
+    let id: String
+    let title: String
+    let skills: [SkillItem]
+}
+
+private enum SkillsSettingsGrouping {
+    static let appSkillIDs: Set<String> = [
+        "conversations",
+        "files",
+        "notes",
+        "tasks",
+        "web-save"
+    ]
+    static let agentSkillIDs: Set<String> = [
+        "memory",
+        "prompt-preview",
+        "ui-theme",
+        "web-search"
+    ]
+
+    static func sections(
+        from skills: [SkillItem],
+        assistantDisplayName: String,
+        displayName: (SkillItem) -> String
+    ) -> [SkillsSettingsSection] {
+        let orderedSections: [Section] = [.app, .agent(assistantDisplayName), .system]
+        let grouped = Dictionary(grouping: skills) { skill in
+            section(for: skill, assistantDisplayName: assistantDisplayName)
+        }
+
+        return orderedSections.compactMap { section in
+            guard let sectionSkills = grouped[section], !sectionSkills.isEmpty else {
+                return nil
+            }
+            return SkillsSettingsSection(
+                id: section.id,
+                title: section.title,
+                skills: sectionSkills.sorted {
+                    displayName($0).localizedCaseInsensitiveCompare(displayName($1))
+                        == .orderedAscending
+                }
+            )
+        }
+    }
+
+    private static func section(
+        for skill: SkillItem,
+        assistantDisplayName: String
+    ) -> Section {
+        if appSkillIDs.contains(skill.id) {
+            return .app
+        }
+        if agentSkillIDs.contains(skill.id) {
+            return .agent(assistantDisplayName)
+        }
+        return .system
+    }
+
+    private enum Section: Hashable {
+        case app
+        case agent(String)
+        case system
+
+        var id: String {
+            switch self {
+            case .app:
+                return "app"
+            case .agent:
+                return "agent"
+            case .system:
+                return "system"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .app:
+                return "App"
+            case let .agent(assistantDisplayName):
+                return assistantDisplayName
+            case .system:
+                return "System"
+            }
+        }
     }
 }
