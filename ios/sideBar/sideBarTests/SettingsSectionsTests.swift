@@ -737,7 +737,7 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
     }
 
-    func testProfileStringSelectorSourceUsesIOSSheetInsteadOfContextMenuBackedMenu() throws {
+    func testProfileStringSelectorSourceUsesIOSCompactSheetInsteadOfInlineOrMenu() throws {
         let source = try profileStringSelectorSource()
         guard
             let iosStart = source.range(of: "private var iosBody"),
@@ -746,26 +746,53 @@ final class SettingsSectionsTests: XCTestCase {
             XCTFail("Unable to locate iOS selector branch")
             return
         }
+        let normalized = source
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let iosBranch = source[iosStart.upperBound..<macStart.lowerBound]
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(iosBranch.contains(".sheet(isPresented:$isPickerPresented)"))
-        XCTAssertTrue(iosBranch.contains("NavigationStack{List{"))
-        XCTAssertTrue(iosBranch.contains("Button{isPickerPresented=true}"))
-        XCTAssertFalse(iosBranch.contains("SidebarSelectionMenu("))
+        XCTAssertTrue(normalized.contains("@StateprivatevarisPickerPresented=false"))
+        XCTAssertTrue(iosBranch.contains("Button{isPickerPresented=true}label:{"))
+        XCTAssertTrue(iosBranch.contains(".sheet(isPresented:$isPickerPresented){selectorSheet}"))
+        XCTAssertTrue(iosBranch.contains("privatevarselectorSheet:someView{"))
+        XCTAssertTrue(iosBranch.contains(".presentationDetents([.height(selectorSheetHeight)])"))
+        XCTAssertTrue(iosBranch.contains("privatevarselectorSheetHeight:CGFloat{"))
+        XCTAssertTrue(iosBranch.contains("Button{selection=optionisPickerPresented=false}"))
+        XCTAssertTrue(iosBranch.contains("Text(Self.displayTitle(for:option)).appFont(.body)"))
+        XCTAssertTrue(
+            iosBranch.contains(
+                "SidebarSelectionTriggerLabel(title:Self.displayTitle(for:selection),"
+                    + "isPlaceholder:selection.isEmpty)"
+            )
+        )
+        XCTAssertFalse(iosBranch.contains("isOptionsExpanded"))
+        XCTAssertFalse(iosBranch.contains("inline"))
         XCTAssertFalse(iosBranch.contains("Menu{"))
+        XCTAssertFalse(iosBranch.contains("Picker(selection:$selection)"))
+        XCTAssertFalse(iosBranch.contains(".pickerStyle(.navigationLink)"))
+        XCTAssertFalse(iosBranch.contains(".pickerStyle(.menu)"))
+        XCTAssertFalse(iosBranch.contains("NavigationStack{List{"))
+        XCTAssertFalse(iosBranch.contains("SidebarSelectionMenu("))
     }
 
     func testProfileStringSelectorSourceUsesSidebarSelectionMenuOnMacOS() throws {
-        let normalized = try profileStringSelectorSource()
+        let source = try profileStringSelectorSource()
+        guard
+            let iosStart = source.range(of: "private var iosBody"),
+            let macStart = source.range(of: "#else", range: iosStart.upperBound..<source.endIndex),
+            let macEnd = source.range(of: "#endif", range: macStart.upperBound..<source.endIndex)
+        else {
+            XCTFail("Unable to locate macOS selector branch")
+            return
+        }
+        let macBranch = source[macStart.upperBound..<macEnd.lowerBound]
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("#else"))
-        XCTAssertTrue(normalized.contains("SidebarSelectionMenu("))
-        XCTAssertTrue(normalized.contains("options:[\"\"]+options"))
-        XCTAssertTrue(normalized.contains("title:Self.displayTitle"))
-        XCTAssertTrue(normalized.contains("isPlaceholder:{$0.isEmpty}"))
-        XCTAssertFalse(normalized.contains("Picker("))
+        XCTAssertTrue(macBranch.contains("SidebarSelectionMenu("))
+        XCTAssertTrue(macBranch.contains("options:[\"\"]+options"))
+        XCTAssertTrue(macBranch.contains("title:Self.displayTitle"))
+        XCTAssertTrue(macBranch.contains("isPlaceholder:{$0.isEmpty}"))
+        XCTAssertFalse(macBranch.contains("Picker("))
     }
 
     func testProfileStringSelectorSourceFormatsLabelsAndClearsSelection() throws {
@@ -793,6 +820,14 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Gender\")"))
         XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Pronouns\")"))
         XCTAssertTrue(dateOfBirthNormalized.contains("FormField(\"DateofBirth\")"))
+    }
+
+    func testProfileSettingsIOSFormKeepsFormAsProfileRoot() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatevariosProfileForm:someView{Form{"))
+        XCTAssertFalse(normalized.contains("privatevariosProfileForm:someView{NavigationStack{Form{"))
     }
 
     func testProfileSettingsTextFieldsUseClearableFieldRows() throws {
@@ -830,6 +865,35 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(dateOfBirthNormalized.contains(".profileIOSControlFrame()"))
         XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlMaxWidth()->CGFloat"))
         XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlFrame()->someView"))
+    }
+
+    func testProfileDateOfBirthIOSUsesCompactSheetInsteadOfInlineOrHiddenPicker() throws {
+        let source = try profileDateOfBirthFieldSource()
+        guard
+            let iosStart = source.range(of: "#if os(iOS)"),
+            let end = source.range(of: "#endif", range: iosStart.upperBound..<source.endIndex)
+        else {
+            XCTFail("Unable to locate iOS date of birth branch")
+            return
+        }
+        let normalized = source
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let iosBranch = source[iosStart.upperBound..<end.lowerBound]
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("@StateprivatevarisDatePickerPresented=false"))
+        XCTAssertTrue(iosBranch.contains("Button{isDatePickerPresented=true}label:{"))
+        XCTAssertTrue(iosBranch.contains(".sheet(isPresented:$isDatePickerPresented){datePickerSheet}"))
+        XCTAssertTrue(iosBranch.contains("privatevardatePickerSheet:someView{"))
+        XCTAssertTrue(iosBranch.contains(".presentationDetents([.height(320)])"))
+        XCTAssertTrue(iosBranch.contains("DatePicker(\"DateofBirth\",selection:$dateOfBirth,displayedComponents:.date)"))
+        XCTAssertTrue(iosBranch.contains(".labelsHidden().datePickerStyle(.wheel)"))
+        XCTAssertFalse(iosBranch.contains("isDatePickerExpanded"))
+        XCTAssertFalse(iosBranch.contains("inlineDatePicker"))
+        XCTAssertFalse(iosBranch.contains(".opacity(0.01)"))
+        XCTAssertFalse(iosBranch.contains(".overlay("))
+        XCTAssertFalse(iosBranch.contains(".datePickerStyle(.graphical)"))
+        XCTAssertFalse(iosBranch.contains("NavigationStack{Form{"))
     }
 
     func testProfileSelectorTriggerUsesTrailingTextAlignment() throws {

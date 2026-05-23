@@ -74,25 +74,7 @@ struct ProfileDateOfBirthField: View {
             iosContent
         }
         .sheet(isPresented: $isDatePickerPresented) {
-            NavigationStack {
-                Form {
-                    DatePicker(
-                        "Date of Birth",
-                        selection: $dateOfBirth,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.graphical)
-                }
-                .navigationTitle("Date of Birth")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            isDatePickerPresented = false
-                        }
-                    }
-                }
-            }
+            datePickerSheet
         }
     }
 
@@ -111,6 +93,7 @@ struct ProfileDateOfBirthField: View {
 
                 Button {
                     dateOfBirthEnabled = false
+                    isDatePickerPresented = false
                 } label: {
                     Image(appIcon: AppIcon.Action.clearFilled)
                         .appFont(.body)
@@ -133,6 +116,27 @@ struct ProfileDateOfBirthField: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var datePickerSheet: some View {
+        VStack(alignment: .trailing, spacing: DesignTokens.Spacing.md) {
+            DatePicker(
+                "Date of Birth",
+                selection: $dateOfBirth,
+                displayedComponents: .date
+            )
+            .labelsHidden()
+            .datePickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+
+            Button("Done") {
+                isDatePickerPresented = false
+            }
+            .appFont(.body)
+        }
+        .padding(DesignTokens.Spacing.lg)
+        .presentationDetents([.height(320)])
+        .presentationDragIndicator(.visible)
     }
     #endif
 }
