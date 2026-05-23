@@ -94,11 +94,21 @@ extension WebsitesViewModel {
                 }
                 endWebsiteSave()
                 clearWebsiteJobPolling(jobId: jobId)
+                await completeWebsiteJobProgress(
+                    jobId: jobId,
+                    status: response.status,
+                    entityId: pendingURL.absoluteString
+                )
                 return true
             case "canceled":
                 endWebsiteSave()
                 removePendingWebsite(for: pendingURL.absoluteString)
                 clearWebsiteJobPolling(jobId: jobId)
+                await completeWebsiteJobProgress(
+                    jobId: jobId,
+                    status: response.status,
+                    entityId: pendingURL.absoluteString
+                )
                 return true
             case "failed", "stalled":
                 let message = response.error?.message ?? "Save failed"
@@ -109,6 +119,11 @@ extension WebsitesViewModel {
                     message: message
                 )
                 clearWebsiteJobPolling(jobId: jobId)
+                await completeWebsiteJobProgress(
+                    jobId: jobId,
+                    status: response.status,
+                    entityId: pendingURL.absoluteString
+                )
                 return true
             case "processing":
                 updatePendingWebsiteStatus(for: pendingURL.absoluteString, status: .reading)
@@ -130,6 +145,15 @@ extension WebsitesViewModel {
     func clearWebsiteJobPolling(jobId: String) {
         jobPollingTasks.removeValue(forKey: jobId)
         jobPollingTaskTokens.removeValue(forKey: jobId)
+    }
+
+    func completeWebsiteJobProgress(jobId: String, status: String, entityId: String?) async {
+        _ = await jobProgressCoordinator.applyRealtimeStatus(
+            jobId: jobId,
+            status: AsyncJobStatus(rawValue: status),
+            userMessage: nil
+        )
+        await scheduleWebsiteJobTerminalRefresh(entityId: entityId)
     }
 
     private func finishWebsiteJobPolling(jobId: String, token: UUID) {

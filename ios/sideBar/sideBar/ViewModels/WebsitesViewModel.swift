@@ -65,6 +65,7 @@ public final class WebsitesViewModel: ObservableObject {
     let ingestionStore: IngestionStore?
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
+    let jobProgressCoordinator: AsyncJobProgressCoordinator
     let transcriptPollIntervalNanoseconds: UInt64
     let transcriptPollMaxIntervalNanoseconds: UInt64
     let transcriptPollMaxConsecutiveFailures: Int
@@ -76,9 +77,10 @@ public final class WebsitesViewModel: ObservableObject {
     var jobPollingTasks: [String: Task<Void, Never>] = [:]
     var jobPollingTaskTokens: [String: UUID] = [:]
     var allowsFallbackPolling: @MainActor (AppSection, Bool) -> Bool = { _, _ in true }
+    var onJobTerminalState: @MainActor (DomainSyncChange) async -> Void = { _ in }
     var cancellables = Set<AnyCancellable>()
 
-    public init(
+    public convenience init(
         api: any WebsitesProviding,
         store: WebsitesStore,
         ingestionStore: IngestionStore? = nil,
@@ -90,11 +92,40 @@ public final class WebsitesViewModel: ObservableObject {
         transcriptPollJitterWindow: TimeInterval = 0.4,
         transcriptPollMinimumInterval: TimeInterval = 0.25
     ) {
+        self.init(
+            api: api,
+            store: store,
+            ingestionStore: ingestionStore,
+            toastCenter: toastCenter,
+            networkStatus: networkStatus,
+            jobProgressCoordinator: AsyncJobProgressCoordinator(),
+            transcriptPollInterval: transcriptPollInterval,
+            transcriptPollMaxInterval: transcriptPollMaxInterval,
+            transcriptPollMaxConsecutiveFailures: transcriptPollMaxConsecutiveFailures,
+            transcriptPollJitterWindow: transcriptPollJitterWindow,
+            transcriptPollMinimumInterval: transcriptPollMinimumInterval
+        )
+    }
+
+    init(
+        api: any WebsitesProviding,
+        store: WebsitesStore,
+        ingestionStore: IngestionStore? = nil,
+        toastCenter: ToastCenter,
+        networkStatus: any NetworkStatusProviding,
+        jobProgressCoordinator: AsyncJobProgressCoordinator,
+        transcriptPollInterval: TimeInterval = 5,
+        transcriptPollMaxInterval: TimeInterval = 20,
+        transcriptPollMaxConsecutiveFailures: Int = 6,
+        transcriptPollJitterWindow: TimeInterval = 0.4,
+        transcriptPollMinimumInterval: TimeInterval = 0.25
+    ) {
         self.api = api
         self.store = store
         self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
+        self.jobProgressCoordinator = jobProgressCoordinator
         let minimumPollInterval = max(transcriptPollMinimumInterval, 0)
         let clampedPollInterval = max(transcriptPollInterval, minimumPollInterval)
         self.transcriptPollIntervalNanoseconds = UInt64(clampedPollInterval * 1_000_000_000)
@@ -122,7 +153,7 @@ public final class WebsitesViewModel: ObservableObject {
                     ]
                 )
                 self?.active = active
-                self?.syncTranscriptPolling(for: active)
+                self?.syncTranscriptProgress(for: active)
             }
             .store(in: &cancellables)
 
@@ -204,10 +235,6 @@ public final class WebsitesViewModel: ObservableObject {
         isLoadingDetail = false
     }
 
-    func showTranscriptFailureToast() {
-        toastCenter.show(message: "Couldn't get the transcript right now. Please try again.")
-    }
-
     public func selectWebsite(id: String) async {
         WebsiteQueueDebugTrace.log(
             "websites-detail.select",
@@ -240,11 +267,9 @@ public final class WebsitesViewModel: ObservableObject {
         do {
             let response = try await api.save(url: normalized.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalized)
-            startWebsiteJobPollingIfAllowed(
+            registerWebsiteSaveJob(
                 jobId: response.jobId,
-                pendingURL: normalized,
-                previousSelectedId: previousSelectedId,
-                shouldSelectOnCompletion: true
+                pendingURL: normalized
             )
             return true
         } catch {
@@ -310,11 +335,9 @@ public final class WebsitesViewModel: ObservableObject {
         do {
             let response = try await api.save(url: normalizedURL.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalizedURL)
-            startWebsiteJobPollingIfAllowed(
+            registerWebsiteSaveJob(
                 jobId: response.jobId,
-                pendingURL: normalizedURL,
-                previousSelectedId: nil,
-                shouldSelectOnCompletion: false
+                pendingURL: normalizedURL
             )
             return true
         } catch {
@@ -384,69 +407,6 @@ public final class WebsitesViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to queue website update"
         }
-    }
-
-    public func requestYouTubeTranscript(websiteId: String, url: String) async {
-        guard networkStatus.isOffline == false else {
-            errorMessage = "Transcript requires an online connection."
-            return
-        }
-        guard let videoId = YouTubeURLPolicy.extractVideoId(from: url) else {
-            errorMessage = "Invalid YouTube URL."
-            return
-        }
-        if isTranscriptPending(websiteId: websiteId, videoId: videoId) {
-            return
-        }
-        setTranscriptRequestInFlight(true, websiteId: websiteId, videoId: videoId)
-        defer {
-            setTranscriptRequestInFlight(false, websiteId: websiteId, videoId: videoId)
-        }
-
-        do {
-            let response = try await api.transcribeYouTube(id: websiteId, url: url)
-            if let detail = response.readyWebsite {
-                store.applyTranscriptReadyDetail(detail)
-                stopTranscriptPolling(websiteId: websiteId, videoId: videoId)
-                return
-            }
-
-            store.applyTranscriptQueuedUpdate(
-                websiteId: websiteId,
-                videoId: videoId,
-                status: response.queuedStatus ?? "queued",
-                fileId: response.queuedFileId
-            )
-            startTranscriptPollingIfNeeded(websiteId: websiteId, videoId: videoId)
-        } catch {
-            errorMessage = ErrorMapping.message(for: error)
-            showTranscriptFailureToast()
-        }
-    }
-
-    public func isTranscriptPending(websiteId: String, videoId: String) -> Bool {
-        let normalizedVideoId = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedVideoId.isEmpty else { return false }
-        if let status = active?.youtubeTranscripts?[normalizedVideoId]?.status?.lowercased() {
-            if Self.isTranscriptStatusPending(status) {
-                return true
-            }
-            if status == "ready" || status == "failed" || status == "canceled" {
-                return false
-            }
-        }
-        if inFlightTranscriptRequests[websiteId]?.contains(normalizedVideoId) == true {
-            return true
-        }
-        return pendingTranscriptJobs[websiteId]?.contains(normalizedVideoId) == true
-    }
-
-    public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
-        let websiteId = payload.record?.id ?? payload.oldRecord?.id
-        if payload.eventType == .delete, selectedWebsiteId == websiteId {
-            selectedWebsiteId = nil
-        }
-        store.applyRealtimeEvent(payload)
     }
 
 }

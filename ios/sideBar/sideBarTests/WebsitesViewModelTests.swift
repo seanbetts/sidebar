@@ -513,9 +513,12 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertTrue(viewModel.isLoadingDetail)
 
-        let failed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
-            viewModel.pendingWebsite?.status == .failed
-        }
+        let failed = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: true
+        )
 
         XCTAssertTrue(failed)
         XCTAssertFalse(viewModel.isLoadingDetail)
@@ -559,9 +562,12 @@ final class WebsitesViewModelTests: XCTestCase {
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
         XCTAssertTrue(saved)
-        let completed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
-            viewModel.pendingWebsite == nil && viewModel.selectedWebsiteId == "saved-1"
-        }
+        let completed = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: true
+        )
 
         XCTAssertTrue(completed)
         XCTAssertEqual(viewModel.items.first?.id, "saved-1")
@@ -655,6 +661,18 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
+    }
+
+    func testSaveWebsiteRegistersJobProgressInsteadOfStartingDirectPolling() async {
+        let progress = AsyncJobProgressCoordinator()
+        let sut = makeSUT(jobProgressCoordinator: progress)
+        sut.api.enqueueSaveResponse(jobId: "job-1")
+
+        let saved = await sut.viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
+        XCTAssertTrue(sut.viewModel.jobPollingTasks.isEmpty)
     }
 
     func testWebsiteJobRefreshSkipsAPIWhenFallbackPolicyBecomesDeniedAfterStart() async {
@@ -845,11 +863,16 @@ final class WebsitesViewModelTests: XCTestCase {
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
         XCTAssertTrue(saved)
-        let canceled = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
-            viewModel.pendingWebsite == nil && viewModel.jobPollingTasks.isEmpty
-        }
+        let canceled = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: true
+        )
 
         XCTAssertTrue(canceled)
+        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
         XCTAssertFalse(viewModel.isLoadingDetail)
         XCTAssertFalse(viewModel.isSavingWebsite)
         XCTAssertNil(viewModel.saveErrorMessage)
@@ -1368,12 +1391,16 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         XCTAssertTrue(saved)
-        let completed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
-            viewModel.pendingWebsites.isEmpty
-                && viewModel.items.contains(where: { $0.id == "saved-1" })
-        }
+        let completed = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://new.example")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
 
         XCTAssertTrue(completed)
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertTrue(viewModel.items.contains(where: { $0.id == "saved-1" }))
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
         XCTAssertEqual(viewModel.active?.id, "site-existing")
         XCTAssertEqual(viewModel.active?.content, "Existing content")
@@ -1711,7 +1738,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func testRequestYouTubeTranscriptQueuesLocalTranscriptState() async {
+    func testRequestYouTubeTranscriptQueuesTransientTranscriptState() async {
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -1741,18 +1768,47 @@ final class WebsitesViewModelTests: XCTestCase {
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         )
         let queued = await waitForCondition {
-            store.active?.youtubeTranscripts?["dQw4w9WgXcQ"] != nil
+            viewModel.isTranscriptPending(websiteId: "site-1", videoId: "dQw4w9WgXcQ")
         }
         XCTAssertTrue(queued)
+        XCTAssertNil(store.active?.youtubeTranscripts?["dQw4w9WgXcQ"])
+    }
 
-        XCTAssertEqual(
-            store.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.status,
-            "queued"
+    func testRequestYouTubeTranscriptRegistersJobProgressWithoutStartingDirectPolling() async {
+        let detail = makeDetail(id: "site-1")
+        let progress = AsyncJobProgressCoordinator()
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            getResult: .success(detail),
+            transcribeResult: .success(
+                WebsiteTranscriptResponse(
+                    readyWebsite: nil,
+                    queuedStatus: "queued",
+                    queuedFileId: "file-1"
+                )
+            )
         )
-        XCTAssertEqual(
-            store.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.fileId,
-            "file-1"
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: progress
         )
+
+        await viewModel.selectWebsite(id: "site-1")
+        await viewModel.requestYouTubeTranscript(
+            websiteId: "site-1",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        XCTAssertTrue(progress.hasActiveJob(jobId: "file-1"))
+        XCTAssertTrue(
+            viewModel.isTranscriptPending(websiteId: "site-1", videoId: "dQw4w9WgXcQ")
+        )
+        XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
+        XCTAssertNil(store.active?.youtubeTranscripts?["dQw4w9WgXcQ"])
     }
 
     func testTranscriptPendingUsesIngestionStoreJobState() async {
@@ -2039,18 +2095,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
     func testRequestYouTubeTranscriptPollsAndLoadsReadyTranscriptContent() async {
         let videoId = "dQw4w9WgXcQ"
-        let queuedDetail = makeDetail(
-            id: "site-1",
-            content: "Before",
-            youtubeTranscripts: [
-                videoId: WebsiteTranscriptEntry(
-                    status: "queued",
-                    fileId: "file-1",
-                    updatedAt: "2026-02-07T10:00:00Z",
-                    error: nil
-                )
-            ]
-        )
+        let queuedDetail = makeDetail(id: "site-1", content: "Before")
         let readyDetail = makeDetail(
             id: "site-1",
             content: "Before\n\n<!-- YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ -->\n\nTranscript",
@@ -2085,6 +2130,9 @@ final class WebsitesViewModelTests: XCTestCase {
             transcriptPollJitterWindow: 0,
             transcriptPollMinimumInterval: 0
         )
+        viewModel.onJobTerminalState = { _ in
+            await viewModel.loadById(id: "site-1", force: true)
+        }
 
         await viewModel.selectWebsite(id: "site-1")
         api.enqueueGetResult(.success(readyDetail))
@@ -2092,6 +2140,14 @@ final class WebsitesViewModelTests: XCTestCase {
         await viewModel.requestYouTubeTranscript(
             websiteId: "site-1",
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+        await viewModel.applyRealtimeEvent(
+            makeTranscriptRealtimePayload(
+                websiteId: "site-1",
+                videoId: videoId,
+                status: "ready",
+                fileId: "file-1"
+            )
         )
 
         let loadedTranscript = await waitForCondition {
@@ -2108,18 +2164,19 @@ final class WebsitesViewModelTests: XCTestCase {
 
     func testTranscriptPollingStopsAfterRepeatedFailuresAndMarksTranscriptFailed() async {
         let videoId = "dQw4w9WgXcQ"
-        let detail = makeDetail(id: "site-1")
-        let cache = InMemoryCacheClient()
-        let api = MockWebsitesAPI(
-            getResult: .success(detail),
-            transcribeResult: .success(
-                WebsiteTranscriptResponse(
-                    readyWebsite: nil,
-                    queuedStatus: "queued",
-                    queuedFileId: "file-1"
+        let detail = makeDetail(
+            id: "site-1",
+            youtubeTranscripts: [
+                videoId: WebsiteTranscriptEntry(
+                    status: "queued",
+                    fileId: "file-1",
+                    updatedAt: "2026-02-07T10:00:00Z",
+                    error: nil
                 )
-            )
+            ]
         )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(getResult: .success(detail))
         let toastCenter = ToastCenter()
         let store = WebsitesStore(api: api, cache: cache)
         let viewModel = WebsitesViewModel(
@@ -2138,23 +2195,17 @@ final class WebsitesViewModelTests: XCTestCase {
         api.enqueueGetResult(.failure(MockError.forced))
         api.enqueueGetResult(.failure(MockError.forced))
 
-        await viewModel.requestYouTubeTranscript(
-            websiteId: "site-1",
-            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        )
+        viewModel.recordPendingTranscriptJob(websiteId: "site-1", videoId: videoId)
+        viewModel.startTranscriptPollingIfNeeded(websiteId: "site-1", videoId: videoId)
 
         let failed = await waitForCondition {
-            viewModel.active?.youtubeTranscripts?[videoId]?.status == "failed"
+            viewModel.errorMessage == "Could not refresh transcript status. Retry transcription."
         }
         XCTAssertTrue(failed)
 
         XCTAssertEqual(
             viewModel.active?.youtubeTranscripts?[videoId]?.status,
-            "failed"
-        )
-        XCTAssertEqual(
-            viewModel.active?.youtubeTranscripts?[videoId]?.error,
-            "Could not refresh transcript status. Retry transcription."
+            "queued"
         )
         XCTAssertEqual(
             viewModel.errorMessage,
@@ -2202,6 +2253,62 @@ final class WebsitesViewModelTests: XCTestCase {
 }
 
 extension WebsitesViewModelTests {
+    private struct SUT {
+        let viewModel: WebsitesViewModel
+        let api: MockWebsitesAPI
+    }
+
+    private func makeSUT(
+        jobProgressCoordinator: AsyncJobProgressCoordinator? = nil
+    ) -> SUT {
+        let progress = jobProgressCoordinator ?? AsyncJobProgressCoordinator()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: InMemoryCacheClient())
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: progress
+        )
+        return SUT(viewModel: viewModel, api: api)
+    }
+
+    private func makeTranscriptRealtimePayload(
+        websiteId: String,
+        videoId: String,
+        status: String,
+        fileId: String
+    ) -> RealtimePayload<WebsiteRealtimeRecord> {
+        let transcriptEntry: [String: Any] = [
+            "status": status,
+            "file_id": fileId,
+            "updated_at": "2026-02-07T10:00:05Z"
+        ]
+        let transcripts: [String: Any] = [videoId: transcriptEntry]
+        return RealtimePayload(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: websiteId,
+                title: "Website",
+                url: "https://www.youtube.com/watch?v=\(videoId)",
+                domain: "youtube.com",
+                metadata: [
+                    "youtube_transcripts": AnyCodable(transcripts)
+                ],
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-02-07T10:00:05Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+    }
+
     private func waitForCondition(
         timeoutNanoseconds: UInt64 = 250_000_000,
         pollNanoseconds: UInt64 = 1_000_000,
@@ -2279,6 +2386,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     private(set) var deleteRequestUpdatedAts: [String?] = []
     private var queuedListResults: [Result<WebsitesResponse, Error>] = []
     private var queuedGetResults: [Result<WebsiteDetail, Error>] = []
+    private var queuedSaveResults: [Result<WebsiteSaveJobResponse, Error>] = []
     private var queuedDeleteResults: [Result<Void, Error>] = []
 
     init(
@@ -2335,6 +2443,9 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func save(url: String) async throws -> WebsiteSaveJobResponse {
         lastSavedUrl = url
+        if !queuedSaveResults.isEmpty {
+            return try queuedSaveResults.removeFirst().get()
+        }
         return try saveResult.get()
     }
 
@@ -2401,6 +2512,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func enqueueGetResult(_ result: Result<WebsiteDetail, Error>) {
         queuedGetResults.append(result)
+    }
+
+    func enqueueSaveResponse(jobId: String, status: String = "queued") {
+        queuedSaveResults.append(
+            .success(WebsiteSaveJobResponse(jobId: jobId, status: status))
+        )
     }
 
     func enqueueListResult(_ result: Result<WebsitesResponse, Error>) {

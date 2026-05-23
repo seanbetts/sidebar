@@ -138,16 +138,15 @@ extension WebsitesViewModel {
         if let jobId = pending.jobId {
             jobPollingTasks[jobId]?.cancel()
             clearWebsiteJobPolling(jobId: jobId)
+            jobProgressCoordinator.cancel(jobId: jobId)
         }
 
         do {
             let response = try await api.save(url: normalized.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalized)
-            startWebsiteJobPollingIfAllowed(
+            registerWebsiteSaveJob(
                 jobId: response.jobId,
-                pendingURL: normalized,
-                previousSelectedId: previousSelectedId,
-                shouldSelectOnCompletion: true
+                pendingURL: normalized
             )
             return true
         } catch {
@@ -314,19 +313,87 @@ extension WebsitesViewModel {
         inFlightTranscriptRequests = next
     }
 
-    func syncTranscriptPolling(for active: WebsiteDetail?) {
+    func syncTranscriptProgress(for active: WebsiteDetail?) {
         guard let active else {
             stopTranscriptPolling()
             return
         }
-        var activeKeys = Set<String>()
         for (videoId, entry) in active.youtubeTranscripts ?? [:] {
-            guard Self.isTranscriptStatusPending(entry.status) else { continue }
-            activeKeys.insert(Self.transcriptPollingKey(websiteId: active.id, videoId: videoId))
-            startTranscriptPollingIfNeeded(websiteId: active.id, videoId: videoId)
+            guard Self.isTranscriptStatusPending(entry.status),
+                  let fileId = entry.fileId else {
+                continue
+            }
+            recordPendingTranscriptJob(websiteId: active.id, videoId: videoId)
+            registerTranscriptJob(websiteId: active.id, jobId: fileId)
         }
-        for key in Array(transcriptPollingTasks.keys) where !activeKeys.contains(key) {
-            stopTranscriptPolling(key: key)
+    }
+
+    func syncTranscriptPolling(for active: WebsiteDetail?) {
+        syncTranscriptProgress(for: active)
+    }
+
+    func registerWebsiteSaveJob(jobId: String, pendingURL: URL) {
+        jobProgressCoordinator.register(
+            AsyncJobDescriptor(
+                domain: .websiteSave,
+                entityId: pendingURL.absoluteString,
+                jobId: jobId,
+                terminalStatuses: ["completed", "failed", "canceled", "stalled"]
+            )
+        )
+    }
+
+    func registerTranscriptJob(websiteId: String, jobId: String) {
+        jobProgressCoordinator.register(
+            AsyncJobDescriptor(
+                domain: .websiteTranscript,
+                entityId: websiteId,
+                jobId: jobId,
+                terminalStatuses: ["ready", "completed", "failed", "canceled", "stalled"]
+            )
+        )
+    }
+
+    func recordPendingTranscriptJob(websiteId: String, videoId: String) {
+        let normalizedVideoId = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedVideoId.isEmpty else { return }
+        pendingTranscriptJobs[websiteId, default: []].insert(normalizedVideoId)
+    }
+
+    func clearPendingTranscriptJob(websiteId: String, videoId: String) {
+        let normalizedVideoId = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedVideoId.isEmpty else { return }
+        pendingTranscriptJobs[websiteId]?.remove(normalizedVideoId)
+        if pendingTranscriptJobs[websiteId]?.isEmpty == true {
+            pendingTranscriptJobs.removeValue(forKey: websiteId)
+        }
+    }
+
+    func scheduleWebsiteJobTerminalRefresh(entityId: String?) async {
+        await onJobTerminalState(
+            WebsitesRefreshAdapter.jobTerminalChange(entityId: entityId)
+        )
+    }
+
+    func applyTranscriptRealtimeProgress(from item: WebsiteItem) async {
+        for (videoId, entry) in item.youtubeTranscripts ?? [:] {
+            guard let status = entry.status?.lowercased(),
+                  Self.isTranscriptStatusPending(status) == false,
+                  let fileId = entry.fileId,
+                  jobProgressCoordinator.hasActiveJob(jobId: fileId) else {
+                continue
+            }
+            _ = await jobProgressCoordinator.applyRealtimeStatus(
+                jobId: fileId,
+                status: AsyncJobStatus(rawValue: status),
+                userMessage: entry.error
+            )
+            clearPendingTranscriptJob(websiteId: item.id, videoId: videoId)
+            if status == "failed" || status == "canceled" {
+                errorMessage = entry.error ?? "Transcript failed."
+                showTranscriptFailureToast()
+            }
+            await scheduleWebsiteJobTerminalRefresh(entityId: item.id)
         }
     }
 
@@ -403,6 +470,17 @@ extension WebsitesViewModel {
         guard Self.isTranscriptStatusPending(status) == false else {
             return .pending
         }
+        let fileId = current.youtubeTranscripts?[videoId]?.fileId
+        if let fileId,
+           jobProgressCoordinator.hasActiveJob(jobId: fileId) {
+            _ = await jobProgressCoordinator.applyRealtimeStatus(
+                jobId: fileId,
+                status: AsyncJobStatus(rawValue: status),
+                userMessage: current.youtubeTranscripts?[videoId]?.error
+            )
+        }
+        clearPendingTranscriptJob(websiteId: websiteId, videoId: videoId)
+        await scheduleWebsiteJobTerminalRefresh(entityId: websiteId)
         if status == "failed" || status == "canceled" {
             errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
             showTranscriptFailureToast()
@@ -413,14 +491,7 @@ extension WebsitesViewModel {
 
     func markTranscriptPollingFailed(websiteId: String, videoId: String, key: String) {
         let message = "Could not refresh transcript status. Retry transcription."
-        let currentFileId = active?.youtubeTranscripts?[videoId]?.fileId
-        store.applyTranscriptQueuedUpdate(
-            websiteId: websiteId,
-            videoId: videoId,
-            status: "failed",
-            fileId: currentFileId,
-            error: message
-        )
+        clearPendingTranscriptJob(websiteId: websiteId, videoId: videoId)
         errorMessage = message
         showTranscriptFailureToast()
         stopTranscriptPolling(key: key)

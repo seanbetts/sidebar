@@ -275,6 +275,13 @@ public final class AppEnvironment: ObservableObject {
         self.websitesViewModel.allowsFallbackPolling = { [weak self] section, hasActiveJob in
             self?.allowsFallbackPolling(section: section, hasActiveJob: hasActiveJob) ?? false
         }
+        self.websitesViewModel.onJobTerminalState = { [weak self] change in
+            guard let self else { return }
+            await resolvedRefreshCoordinator.scheduleJobTerminalRefresh(
+                change,
+                context: currentRefreshContext()
+            )
+        }
         self.chatViewModel.workspaceActionDispatcher = { [weak self] action in
             self?.dispatchChatWorkspaceAction(action)
         }
