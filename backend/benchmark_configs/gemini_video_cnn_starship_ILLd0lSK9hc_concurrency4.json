@@ -1,0 +1,17 @@
+{
+  "videos": [
+    {
+      "video_id": "ILLd0lSK9hc",
+      "url": "https://youtu.be/ILLd0lSK9hc?si=g4LwMskASdDzcBl6",
+      "title": "SpaceX Starship: Launch, satellite deploy & propulsive landing",
+      "duration": "8:42"
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": ["120:30", "240:30", "300:30", "360:30"],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/ILLd0lSK9hc-concurrency4-sweep"
+}
