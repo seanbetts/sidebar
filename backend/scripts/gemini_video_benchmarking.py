@@ -319,6 +319,29 @@ def _required_list(item: Mapping[str, Any], field: str, label: str) -> list[Any]
     return value
 
 
+def _config_list(
+    raw: Mapping[str, Any],
+    field: str,
+    *,
+    default: list[Any],
+) -> list[Any]:
+    """Return a top-level list config field or raise a clear validation error."""
+    if field not in raw:
+        return default
+    value = raw[field]
+    if not isinstance(value, list):
+        raise ValueError(f"Config {field} must be a list")
+    return value
+
+
+def _validate_media_resolution(value: str) -> str:
+    """Normalize and validate a configured Gemini media resolution."""
+    normalized = value.strip().upper()
+    if normalized not in {"LOW", "MEDIUM", "HIGH"}:
+        raise ValueError(f"Unsupported media_resolution: {value}")
+    return normalized
+
+
 def _parse_anchor_region(raw: Any, index: int) -> AnchorRegion:
     """Parse one anchor region from config JSON."""
     region = _require_mapping(raw, f"anchor region {index}")
@@ -378,7 +401,7 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
     if not combinations:
         raise ValueError("Config must include at least one combination")
 
-    concurrency_levels = [int(item) for item in raw.get("concurrency", [1])]
+    concurrency_levels = [int(item) for item in _config_list(raw, "concurrency", default=[1])]
     if any(level <= 0 for level in concurrency_levels):
         raise ValueError("concurrency levels must be positive")
 
@@ -386,14 +409,18 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
     if repeat_count <= 0:
         raise ValueError("repeat_count must be positive")
 
+    models = [str(item) for item in _config_list(raw, "models", default=["gemini-3.1-flash-lite"])]
+    for model in models:
+        PricingProfile.for_model(model)
+
     return BenchmarkConfig(
         videos=videos,
         combinations=combinations,
         concurrency_levels=concurrency_levels,
         repeat_count=repeat_count,
-        models=[str(item) for item in raw.get("models", ["gemini-3.1-flash-lite"])],
+        models=models,
         prompt_variant=str(raw.get("prompt_variant", "plain_transcript_v1")),
-        media_resolution=str(raw.get("media_resolution", "LOW")),
+        media_resolution=_validate_media_resolution(str(raw.get("media_resolution", "LOW"))),
         output_dir=Path(raw.get("output_dir", "gemini-video-benchmark-output")),
     )
 

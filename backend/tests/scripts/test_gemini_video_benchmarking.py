@@ -542,6 +542,62 @@ def test_load_benchmark_config_accepts_zero_anchor_region_start(
             },
             "Invalid combination",
         ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "models": "gemini-3.1-flash-lite",
+            },
+            "Config models must be a list",
+        ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "models": ["gemini-3.1-pro"],
+            },
+            "Unsupported pricing profile",
+        ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "concurrency": 1,
+            },
+            "Config concurrency must be a list",
+        ),
+        (
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "duration": "20:20",
+                    }
+                ],
+                "combinations": ["240:30"],
+                "media_resolution": "ULTRA",
+            },
+            "Unsupported media_resolution",
+        ),
     ],
 )
 def test_load_benchmark_config_rejects_invalid_config(
