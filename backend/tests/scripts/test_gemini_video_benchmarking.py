@@ -21,6 +21,7 @@ from scripts.gemini_video_benchmarking import (
     expand_run_matrix,
     load_benchmark_config,
     normalize_anchor_text,
+    order_call_results,
     parse_duration_seconds,
     plan_windows,
     score_anchor_region,
@@ -174,6 +175,27 @@ def test_calculate_cost_prices_audio_tokens_when_present() -> None:
     assert cost.output_cost_usd == 0.015
     assert cost.total_cost_usd == 0.045
     assert cost.audio_costing_available is True
+
+
+def test_order_call_results_sorts_by_window_start_time() -> None:
+    calls = [
+        CallResult(
+            window=BenchmarkWindow(start_seconds=100, end_seconds=200),
+            elapsed_seconds=1.0,
+            transcript_text="second",
+            token_usage=TokenUsage(),
+        ),
+        CallResult(
+            window=BenchmarkWindow(start_seconds=0, end_seconds=100),
+            elapsed_seconds=1.0,
+            transcript_text="first",
+            token_usage=TokenUsage(),
+        ),
+    ]
+
+    ordered = order_call_results(calls)
+
+    assert [call.transcript_text for call in ordered] == ["first", "second"]
 
 
 def test_aggregate_run_summary_orders_windows_and_sums_metrics() -> None:

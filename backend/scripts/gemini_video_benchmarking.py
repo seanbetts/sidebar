@@ -529,6 +529,11 @@ def calculate_cost(usage: TokenUsage, pricing: PricingProfile) -> CostBreakdown:
     )
 
 
+def order_call_results(calls: list[CallResult]) -> list[CallResult]:
+    """Return call results in deterministic window order."""
+    return sorted(calls, key=lambda item: item.window.start_seconds)
+
+
 def plan_windows(
     *,
     duration_seconds: int,
@@ -572,7 +577,7 @@ def aggregate_run_summary(
     pricing: PricingProfile,
 ) -> dict[str, Any]:
     """Aggregate per-window call results into one run summary."""
-    ordered_calls = sorted(calls, key=lambda item: item.window.start_seconds)
+    ordered_calls = order_call_results(calls)
     stitched = "\n\n".join(
         call.transcript_text.strip()
         for call in ordered_calls
