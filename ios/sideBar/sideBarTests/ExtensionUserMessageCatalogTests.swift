@@ -1,4 +1,5 @@
 import XCTest
+import ImageIO
 import sideBarShared
 
 final class ExtensionUserMessageCatalogTests: XCTestCase {
@@ -180,6 +181,25 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         }
     }
 
+    func testSafariManifestIconsFillTheirCanvasWithoutTransparentPadding() throws {
+        for iconDirectory in [
+            repositoryDirectory().appendingPathComponent("assets/safari-extension"),
+            extensionResourcesDirectory(targetDirectory: "sideBar Safari Extension/Resources/images"),
+            extensionResourcesDirectory(targetDirectory: "sideBar Safari Extension (macOS) Extension/Resources/images")
+        ] {
+            for size in [16, 32, 48, 64, 96, 128, 256, 512] {
+                let iconURL = iconDirectory.appendingPathComponent("icon-\(size).png")
+                let bounds = try alphaBounds(forPNGAt: iconURL)
+
+                XCTAssertEqual(
+                    bounds,
+                    CGRect(x: 0, y: 0, width: size, height: size),
+                    "\(iconURL.path) should fill its canvas so Safari does not compound icon padding inside system icon wells."
+                )
+            }
+        }
+    }
+
     func testMacSafariContainingAppDeclaresLaunchServicesIconSet() throws {
         let iconSetDirectory = extensionResourcesDirectory(
             targetDirectory: "sideBar Safari Extension (macOS)/Assets.xcassets/AppIcon.appiconset"
@@ -278,6 +298,14 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
             .appendingPathComponent(targetDirectory)
     }
 
+    private func repositoryDirectory() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+
     private func resourceText(in directory: URL, filename: String) throws -> String {
         let fileURL = directory.appendingPathComponent(filename)
         return try String(contentsOf: fileURL, encoding: .utf8)
@@ -285,6 +313,53 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
 
     private func normalizedResourceText(_ text: String) -> String {
         text.replacingOccurrences(of: "\r\n", with: "\n")
+    }
+
+    private func alphaBounds(forPNGAt fileURL: URL) throws -> CGRect {
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            XCTFail("Could not decode PNG at \(fileURL.path)")
+            return .null
+        }
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
+            XCTFail("Could not create bitmap context for \(fileURL.path)")
+            return .null
+        }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        for y in 0..<height {
+            for x in 0..<width {
+                let alphaIndex = ((y * width) + x) * 4 + 3
+                if pixels[alphaIndex] > 0 {
+                    minX = min(minX, x)
+                    minY = min(minY, y)
+                    maxX = max(maxX, x)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+
+        guard maxX >= minX, maxY >= minY else {
+            return .null
+        }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
     private func popupCodeMap(from script: String) throws -> [String: String] {
