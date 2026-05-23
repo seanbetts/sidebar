@@ -477,7 +477,6 @@ extension TasksDetailView {
             }
             Text(title)
                 .appFont(.subheading)
-                .fontWeight(.semibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
     }

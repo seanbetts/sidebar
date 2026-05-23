@@ -115,7 +115,6 @@ public struct SiteHeaderBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
                     .appFont(.subheading)
-                    .fontWeight(.bold)
                 Text("WORKSPACE")
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
@@ -142,7 +141,6 @@ public struct SiteHeaderBar: View {
                 }
                 VStack(alignment: .trailing, spacing: 4) {
                     HeaderInfoItem(icon: AppIcon.State.weather, text: weatherText)
-                        .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                     Text(locationText)
                         .appFont(.caption)
@@ -386,7 +384,7 @@ private struct HeaderInfoItem: View {
         HStack(spacing: 6) {
             Image(appIcon: icon)
             Text(text)
-                .appFont(.subheading)
+                .appFont(.body)
         }
     }
 }

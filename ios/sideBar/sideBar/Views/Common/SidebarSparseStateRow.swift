@@ -23,7 +23,7 @@ public struct SidebarSparseStateRow: View {
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .appFont(.subheading)
+                        .appFont(.body)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

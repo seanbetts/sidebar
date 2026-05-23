@@ -87,7 +87,7 @@ public struct SettingsView: View {
                 onClose?()
             } label: {
                 Image(appIcon: AppIcon.Action.clearFilled)
-                    .font(.system(size: 18, weight: .semibold))
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)

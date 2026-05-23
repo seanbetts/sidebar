@@ -36,7 +36,6 @@ public struct SidebarPanelPlaceholder: View {
                 if let icon = resolvedIcon {
                     Image(appIcon: icon)
                         .appFont(.body)
-                        .fontWeight(.semibold)
                         .foregroundStyle(iconColor)
                 }
                 Text(title)
@@ -44,7 +43,7 @@ public struct SidebarPanelPlaceholder: View {
                     .foregroundStyle(titleColor)
                 if let subtitle {
                     Text(subtitle)
-                        .appFont(.subheading)
+                        .appFont(.body)
                         .foregroundStyle(subtitleColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -64,6 +64,34 @@ final class Task14TypographySourceCleanupTests: XCTestCase {
         XCTAssertFalse(source.contains(".appFont(.subheading)"))
     }
 
+    func testHeaderStatusTextAvoidsExplicitBoldWeights() throws {
+        let normalized = try normalizedSourceFile("sideBar/Views/Websites/SiteHeaderBar.swift")
+
+        XCTAssertTrue(normalized.contains("Text(text).appFont(.body)"))
+        XCTAssertFalse(normalized.contains(".fontWeight(.bold)"))
+        XCTAssertFalse(normalized.contains(".fontWeight(.semibold)"))
+    }
+
+    func testSharedPlaceholderDescriptionsUseBodyTypography() throws {
+        let panelPlaceholder = try normalizedSourceFile("sideBar/Views/Common/SidebarPanelPlaceholder.swift")
+        let sparseStateRow = try normalizedSourceFile("sideBar/Views/Common/SidebarSparseStateRow.swift")
+
+        XCTAssertTrue(panelPlaceholder.contains("Text(subtitle).appFont(.body)"))
+        XCTAssertFalse(panelPlaceholder.contains("Text(subtitle).appFont(.subheading)"))
+        XCTAssertFalse(panelPlaceholder.contains(".fontWeight(.semibold)"))
+        XCTAssertTrue(sparseStateRow.contains("Text(subtitle).appFont(.body)"))
+        XCTAssertFalse(sparseStateRow.contains("Text(subtitle).appFont(.subheading)"))
+    }
+
+    func testSettingsAndTaskChromeAvoidRawOrRedundantFontWeights() throws {
+        let settingsView = try normalizedSourceFile("sideBar/Views/Settings/SettingsView.swift")
+        let tasksDetail = try normalizedSourceFile("sideBar/Views/Tasks/TasksDetailView.swift")
+
+        XCTAssertFalse(settingsView.contains(".font(.system(size:18,weight:.semibold))"))
+        XCTAssertTrue(settingsView.contains("Image(appIcon:AppIcon.Action.clearFilled).appFont(.body)"))
+        XCTAssertFalse(tasksDetail.contains("Text(title).appFont(.subheading).fontWeight(.semibold)"))
+    }
+
     func testToastBannerUsesRationalizedStatusPillTypography() throws {
         let toastSource = try sourceFile("sideBar/Design/Components/ToastCenter.swift")
         let pillSource = try sourceFile("sideBar/Design/Components/StatusPill.swift")
