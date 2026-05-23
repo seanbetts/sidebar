@@ -139,9 +139,16 @@ def score_anchor_region(
 ) -> dict[str, object]:
     """Score one named anchor region against transcript text."""
     normalized_text = normalize_anchor_text(transcript_text)
-    found = {
-        anchor: normalize_anchor_text(anchor) in normalized_text for anchor in anchors
-    }
+    found = {}
+    for anchor in anchors:
+        normalized_anchor = normalize_anchor_text(anchor)
+        found[anchor] = bool(
+            normalized_anchor
+            and re.search(
+                rf"(?<![a-z0-9]){re.escape(normalized_anchor)}(?![a-z0-9])",
+                normalized_text,
+            )
+        )
     hits = sum(1 for value in found.values() if value)
     return {
         "region": region_name,
@@ -158,9 +165,9 @@ def detect_repetition(transcript_text: str) -> RepetitionResult:
         return RepetitionResult(has_warning=False)
 
     sentences = [
-        item.strip()
+        normalize_anchor_text(item)
         for item in re.split(r"(?<=[.!?])\s+", normalized)
-        if len(item.split()) >= 3
+        if len(normalize_anchor_text(item).split()) >= 3
     ]
     sentence_counts = Counter(sentences)
     for sentence, count in sentence_counts.items():
@@ -172,6 +179,20 @@ def detect_repetition(transcript_text: str) -> RepetitionResult:
             )
 
     words = normalize_anchor_text(normalized).split()
+    for block_size in range(3, min(8, len(words) // 2) + 1):
+        blocks = [
+            " ".join(words[index : index + block_size])
+            for index in range(0, len(words) - block_size + 1, block_size)
+        ]
+        block_counts = Counter(blocks)
+        repeated, count = block_counts.most_common(1)[0]
+        if count >= 4:
+            return RepetitionResult(
+                has_warning=True,
+                repeated_text=repeated,
+                repeat_count=count,
+            )
+
     if len(words) < 24:
         return RepetitionResult(has_warning=False)
     shingles = [" ".join(words[index : index + 8]) for index in range(len(words) - 7)]

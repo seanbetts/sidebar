@@ -90,9 +90,32 @@ def test_anchor_scoring_normalizes_case_punctuation_and_hyphens() -> None:
     }
 
 
+def test_anchor_scoring_rejects_substrings_and_empty_normalized_anchors() -> None:
+    assert score_anchor_region(
+        region_name="opening",
+        transcript_text="the claimed value",
+        anchors=("aim", "!!!"),
+    ) == {
+        "region": "opening",
+        "hits": 0,
+        "total": 2,
+        "found": {"aim": False, "!!!": False},
+    }
+
+
 def test_detect_repetition_warns_for_repeated_sentence_blocks() -> None:
     repeated = "Alpha beta gamma. " * 8
     normal = "Alpha beta gamma. Delta epsilon zeta. Eta theta iota."
 
     assert detect_repetition(repeated).has_warning is True
     assert detect_repetition(normal).has_warning is False
+
+
+def test_detect_repetition_warns_for_short_repeated_word_blocks() -> None:
+    assert detect_repetition("Alpha beta gamma " * 4).has_warning is True
+
+
+def test_detect_repetition_normalizes_case_for_sentence_blocks() -> None:
+    text = "Alpha beta gamma. alpha beta gamma. ALPHA beta gamma. Alpha beta gamma."
+
+    assert detect_repetition(text).has_warning is True
