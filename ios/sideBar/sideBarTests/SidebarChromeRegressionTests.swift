@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task4SidebarChromeRegressionTests: XCTestCase {
+final class SidebarChromeRegressionTests: XCTestCase {
     func testSidebarHoverModifierAvoidsCursorPushPopStackManagement() throws {
         let normalized = try source(
             at: ["sideBar", "Design", "Modifiers", "SidebarHoverModifier.swift"]

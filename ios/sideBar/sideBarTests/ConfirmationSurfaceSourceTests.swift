@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15ConfirmationSurfaceSourceTests: XCTestCase {
+final class ConfirmationSurfaceSourceTests: XCTestCase {
     func testSharedConfirmationHelpersCoverDestructiveAndActionDialogs() throws {
         let normalized = try sourceFile("Design/Components/DeleteConfirmationAlert.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

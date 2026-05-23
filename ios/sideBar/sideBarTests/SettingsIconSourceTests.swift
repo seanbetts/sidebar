@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15SettingsIconSourceTests: XCTestCase {
+final class SettingsIconSourceTests: XCTestCase {
     func testSettingsProfileChromeUsesAppIconVocabulary() throws {
         try assertSettingsVocabularyExists()
         try assertSettingsNavigationChromeUsesAppIcon()

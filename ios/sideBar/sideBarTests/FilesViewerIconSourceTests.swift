@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15FilesViewerIconSourceTests: XCTestCase {
+final class FilesViewerIconSourceTests: XCTestCase {
     func testFilesViewerControlsRouteIconsThroughAppIcon() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let fileViewer = try normalizedSource(at: ["sideBar", "Views", "Files", "FileViewerView.swift"])

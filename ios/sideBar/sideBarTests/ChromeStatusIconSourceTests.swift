@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15ChromeStatusIconSourceTests: XCTestCase {
+final class ChromeStatusIconSourceTests: XCTestCase {
     func testChromeStatusAndNotesIconVocabularyExists() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
 

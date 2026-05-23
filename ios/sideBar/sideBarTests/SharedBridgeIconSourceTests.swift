@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15SharedBridgeIconSourceTests: XCTestCase {
+final class SharedBridgeIconSourceTests: XCTestCase {
     func testSharedPlaceholderAndHeaderBridgesRenderThroughAppIcon() throws {
         let contentHeader = try normalizedSource(at: ["sideBar", "Design", "Components", "ContentHeaderRow.swift"])
         let placeholder = try normalizedSource(at: ["sideBar", "Views", "Common", "ContentViewComponents.swift"])

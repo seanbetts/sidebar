@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15LiquidGlassSourceTests: XCTestCase {
+final class LiquidGlassSourceTests: XCTestCase {
     func testSharedGlassChromeDefinesLargeFeatureCardKinds() throws {
         let source = try normalizedSource(at: ["sideBar", "Design", "Styles", "GlassChrome.swift"])
 

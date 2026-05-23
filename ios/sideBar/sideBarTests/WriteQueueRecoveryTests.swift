@@ -4,14 +4,14 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-final class WriteQueueTask5Tests: XCTestCase {
+final class WriteQueueRecoveryTests: XCTestCase {
     func testProcessQueueRecoversInProgressWriteBeforeExecuting() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
-        let executor = Task5TestWriteExecutor()
+        let executor = RecordingWriteQueueExecutor()
         let queue = WriteQueue(
             container: persistence.container,
             connectivityMonitor: connectivityMonitor,
@@ -79,7 +79,7 @@ final class WriteQueueTask5Tests: XCTestCase {
     }
 }
 
-private final class Task5TestWriteExecutor: WriteQueueExecutor {
+private final class RecordingWriteQueueExecutor: WriteQueueExecutor {
     private(set) var executedIds: [UUID] = []
 
     func execute(write: PendingWriteRecord) async throws {

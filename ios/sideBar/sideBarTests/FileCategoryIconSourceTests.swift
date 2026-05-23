@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15FileCategoryIconSourceTests: XCTestCase {
+final class FileCategoryIconSourceTests: XCTestCase {
     func testFileCategoryAndMarkdownFallbackIconsRouteThroughAppIcon() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let ingestionRow = try normalizedSource(

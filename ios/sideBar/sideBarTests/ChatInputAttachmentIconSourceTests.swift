@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15ChatInputAttachmentIconSourceTests: XCTestCase {
+final class ChatInputAttachmentIconSourceTests: XCTestCase {
     func testChatInputAndAttachmentControlsUseAppIconVocabulary() throws {
         try assertChatInputVocabularyExists()
         try assertChatAttachmentsUseAppIcon()

@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15EmptyStateIconSourceTests: XCTestCase {
+final class EmptyStateIconSourceTests: XCTestCase {
     func testSharedEmptySearchStatusComponentsUseAppIconVocabulary() throws {
         try assertNoForbiddenIconPatterns([
             (
@@ -86,7 +86,7 @@ final class Task15EmptyStateIconSourceTests: XCTestCase {
     }
 }
 
-private extension Task15EmptyStateIconSourceTests {
+private extension EmptyStateIconSourceTests {
     func assertNoForbiddenIconPatterns(
         _ forbiddenByFile: [([String], [String])],
         file: StaticString = #filePath,

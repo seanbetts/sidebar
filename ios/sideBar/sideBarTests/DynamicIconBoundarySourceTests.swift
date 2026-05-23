@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15DynamicIconBoundarySourceTests: XCTestCase {
+final class DynamicIconBoundarySourceTests: XCTestCase {
     func testDynamicSwiftUIIconBoundariesRenderThroughAppIconAdapters() throws {
         let skillIconView = try normalizedSource(at: ["sideBar", "Views", "Common", "SkillIconView.swift"])
         let settingsMac = try normalizedSource(at: ["sideBar", "Views", "Settings", "SettingsMacStyles.swift"])

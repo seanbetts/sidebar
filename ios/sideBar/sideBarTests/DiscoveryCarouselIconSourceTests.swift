@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15DiscoveryIconSourceTests: XCTestCase {
+final class DiscoveryCarouselIconSourceTests: XCTestCase {
     func testStaticDiscoveryCarouselUsesAppIconVocabulary() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let carousel = try normalizedSource(at: ["sideBar", "Views", "Chat", "StaticFeatureCarousel.swift"])

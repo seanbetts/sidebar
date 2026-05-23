@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15CommonMediaIconSourceTests: XCTestCase {
+final class CommonMediaIconSourceTests: XCTestCase {
     func testAudioPlayerAndTikTokFallbackControlsRouteIconsThroughAppIcon() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let audioPlayer = try normalizedSource(at: ["sideBar", "Views", "Common", "AudioPlayerView.swift"])

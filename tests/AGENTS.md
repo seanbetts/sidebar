@@ -77,6 +77,14 @@ frontend/src/tests/
 └── utils/
 ```
 
+## Test Naming
+
+Use subject-oriented names, not development task labels.
+
+- Files and XCTest classes should name the subject or behavior under test, for example `AppIconSourceTests` or `WriteQueueRecoveryTests`.
+- Test methods should describe the behavior being asserted, not the task, ticket, or rollout step that introduced the test.
+- Avoid prefixes such as `Task15`, `Ticket42`, or `Phase3` in test filenames, classes, helpers, and method names. Product domain names such as `TaskItem`, `TasksStore`, and `testTaskList...` are fine when they describe app behavior.
+
 ## Fixtures
 
 Use `db_session` fixture for database tests:

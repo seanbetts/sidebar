@@ -1,9 +1,9 @@
 import XCTest
 
-final class Task15PillAdoptionSourceTests: XCTestCase {
+final class PillAdoptionSourceTests: XCTestCase {
     func testTaskPillDelegatesVisualChromeToMetadataPill() throws {
         let normalized = try source(at: ["sideBar", "Views", "Tasks", "TasksViewComponents.swift"])
-            .normalizedForTask15PillAssertions()
+            .normalizedForPillAssertions()
         let taskPill = try segment(
             in: normalized,
             from: "structTaskPill:View{",
@@ -18,7 +18,7 @@ final class Task15PillAdoptionSourceTests: XCTestCase {
 
     func testChatMessageRolePillDelegatesVisualChromeToMetadataPill() throws {
         let normalized = try source(at: ["sideBar", "Views", "Chat", "ChatMessageRow.swift"])
-            .normalizedForTask15PillAssertions()
+            .normalizedForPillAssertions()
 
         XCTAssertTrue(normalized.contains("MetadataPill(message.role==.assistant?assistantDisplayName:\"You\")"))
         XCTAssertFalse(normalized.contains("privatevarrolePillBackground:Color"))
@@ -29,7 +29,7 @@ final class Task15PillAdoptionSourceTests: XCTestCase {
 
     func testChatToolSummaryPillDelegatesVisualChromeToMetadataPill() throws {
         let normalized = try source(at: ["sideBar", "Views", "Chat", "ChatToolComponents.swift"])
-            .normalizedForTask15PillAssertions()
+            .normalizedForPillAssertions()
 
         XCTAssertTrue(normalized.contains("MetadataPill(text,maxTitleWidth:maxToolPillTextWidth)"))
         XCTAssertFalse(normalized.contains("Capsule(style:.continuous)"))
@@ -39,9 +39,9 @@ final class Task15PillAdoptionSourceTests: XCTestCase {
 
     func testResolvedStatusPillSurfacesStayOnSharedStatusPill() throws {
         let siteHeader = try source(at: ["sideBar", "Views", "Websites", "SiteHeaderBar.swift"])
-            .normalizedForTask15PillAssertions()
+            .normalizedForPillAssertions()
         let toastCenter = try source(at: ["sideBar", "Design", "Components", "ToastCenter.swift"])
-            .normalizedForTask15PillAssertions()
+            .normalizedForPillAssertions()
 
         XCTAssertTrue(siteHeader.contains("HeaderStatusPillButton("))
         XCTAssertTrue(toastCenter.contains("StatusPill("))
@@ -57,7 +57,7 @@ final class Task15PillAdoptionSourceTests: XCTestCase {
         guard let start = source.range(of: startMarker)?.lowerBound,
               let end = source.range(of: endMarker, range: start..<source.endIndex)?.lowerBound else {
             XCTFail("Failed to find source segment from \(startMarker) to \(endMarker)", file: file, line: line)
-            throw NSError(domain: "Task15PillAdoptionSourceTests", code: 1)
+            throw NSError(domain: "PillAdoptionSourceTests", code: 1)
         }
         return String(source[start..<end])
     }
@@ -83,7 +83,7 @@ final class Task15PillAdoptionSourceTests: XCTestCase {
 }
 
 private extension String {
-    func normalizedForTask15PillAssertions() -> String {
+    func normalizedForPillAssertions() -> String {
         replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
     }
 }

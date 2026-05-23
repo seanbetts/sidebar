@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15HeaderSidebarIconSourceTests: XCTestCase {
+final class HeaderSidebarIconSourceTests: XCTestCase {
     func testHeaderActionComponentsDoNotExposeStringIconCompatibilityApis() throws {
         let normalized = try source(at: ["sideBar", "Design", "Components", "HeaderActionIcon.swift"])
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

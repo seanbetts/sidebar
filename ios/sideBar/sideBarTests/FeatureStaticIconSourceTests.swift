@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15FeatureStaticIconSourceTests: XCTestCase {
+final class FeatureStaticIconSourceTests: XCTestCase {
     func testSkillsStoreStaticChromeRoutesThroughAppIcon() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let cardComponents = try normalizedSource(

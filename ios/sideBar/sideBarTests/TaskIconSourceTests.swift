@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15TaskIconSourceTests: XCTestCase {
+final class TaskIconSourceTests: XCTestCase {
     func testTaskFeatureActionStatusIconsUseAppIconVocabulary() throws {
         try assertNoForbiddenIconPatterns([
             (

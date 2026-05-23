@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15WidgetDeepLinkRoutingSourceTests: XCTestCase {
+final class WidgetDeepLinkRoutingSourceTests: XCTestCase {
     func testNavigationCoordinatorUsesSinglePendingSidebarDeepLinkRoute() throws {
         let normalized = try sourceFile("App/NavigationCoordinator.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15AuthOnboardingIconSourceTests: XCTestCase {
+final class AuthOnboardingIconSourceTests: XCTestCase {
     func testAuthAndOnboardingChromeUsesAppIconVocabulary() throws {
         try assertAuthOnboardingVocabularyExists()
         try assertAuthChromeUsesAppIcon()

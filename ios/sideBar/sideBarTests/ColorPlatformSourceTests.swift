@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15ColorPlatformSourceTests: XCTestCase {
+final class ColorPlatformSourceTests: XCTestCase {
     func testColorPlatformUsesUnifiedPaletteInsteadOfPlatformSpecificSurfaceSources() throws {
         let normalized = try colorPlatformSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15AppIconSourceTests: XCTestCase {
+final class AppIconSourceTests: XCTestCase {
     func testSharedAppIconVocabularyExistsWithCanonicalGroups() throws {
         let normalized = try source(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -406,7 +406,7 @@ final class Task15AppIconSourceTests: XCTestCase {
 
 }
 
-private extension Task15AppIconSourceTests {
+private extension AppIconSourceTests {
     func assertNoForbiddenIconPatterns(
         _ forbiddenByFile: [([String], [String])],
         file: StaticString = #filePath,

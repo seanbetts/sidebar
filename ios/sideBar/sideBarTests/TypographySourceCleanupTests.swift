@@ -1,7 +1,7 @@
 import XCTest
 
-final class Task14TypographySourceCleanupTests: XCTestCase {
-    func testTask14FilesDoNotUseDeprecatedAppFontStyleNames() throws {
+final class TypographySourceCleanupTests: XCTestCase {
+    func testTypographySourceFilesDoNotUseDeprecatedAppFontStyleNames() throws {
         let sources = try swiftSources(
             under: sourceRoot.appendingPathComponent("sideBar")
         )

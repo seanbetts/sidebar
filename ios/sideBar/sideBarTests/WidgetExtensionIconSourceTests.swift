@@ -1,7 +1,7 @@
 import XCTest
 import sideBarShared
 
-final class Task15WidgetExtensionIconSourceTests: XCTestCase {
+final class WidgetExtensionIconSourceTests: XCTestCase {
     func testWidgetRenderingHelpersRouteSymbolsThroughAppIcon() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
         let widgetLayout = try normalizedSource(at: ["sideBarWidgets", "Widgets", "WidgetListLayout.swift"])

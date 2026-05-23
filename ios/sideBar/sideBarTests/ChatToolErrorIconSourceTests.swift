@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15ChatToolErrorIconSourceTests: XCTestCase {
+final class ChatToolErrorIconSourceTests: XCTestCase {
     func testChatToolAndErrorChromeUsesAppIconVocabulary() throws {
         try assertChatToolErrorVocabularyExists()
         try assertChatMessageCopyFeedbackUsesAppIcon()

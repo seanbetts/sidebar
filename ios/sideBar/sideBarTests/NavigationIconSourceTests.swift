@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15NavigationIconSourceTests: XCTestCase {
+final class NavigationIconSourceTests: XCTestCase {
     func testSidebarRailRoutesSectionIconsThroughAppIcon() throws {
         let source = try normalizedSource(at: ["sideBar", "Views", "SidebarRail.swift"])
 

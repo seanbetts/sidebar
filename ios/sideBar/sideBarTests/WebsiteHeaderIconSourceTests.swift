@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15WebsiteHeaderIconSourceTests: XCTestCase {
+final class WebsiteHeaderIconSourceTests: XCTestCase {
     func testWebsiteHeaderIconVocabularyExists() throws {
         let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
 

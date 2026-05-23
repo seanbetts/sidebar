@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15FormFieldAdoptionSourceTests: XCTestCase {
+final class FormFieldAdoptionSourceTests: XCTestCase {
     func testLegacyFormWrapperStructsAreRetired() throws {
         let normalized = try combinedFormSurfaceSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

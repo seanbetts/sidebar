@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15PDFIconSourceTests: XCTestCase {
+final class PDFIconSourceTests: XCTestCase {
     func testPdfControlBarRoutesControlIconsThroughAppIcon() throws {
         let normalized = try source(at: [
             "sideBar", "Views", "Files", "PDFControlBar.swift"

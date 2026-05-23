@@ -1,6 +1,6 @@
 import XCTest
 
-final class Task15WorkspaceTargetIconSourceTests: XCTestCase {
+final class WorkspaceTargetIconSourceTests: XCTestCase {
     func testWorkspaceTargetParserUsesAppIconVocabulary() throws {
         let parserSource = try source(at: ["sideBar", "ViewModels", "Chat", "ToolResultWorkspaceSurfaceParser.swift"])
             .normalizedForSourceAssertions()
