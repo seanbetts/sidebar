@@ -180,6 +180,38 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         }
     }
 
+    func testMacSafariContainingAppDeclaresLaunchServicesIconSet() throws {
+        let iconSetDirectory = extensionResourcesDirectory(
+            targetDirectory: "sideBar Safari Extension (macOS)/Assets.xcassets/AppIcon.appiconset"
+        )
+        let contentsText = try resourceText(in: iconSetDirectory, filename: "Contents.json")
+        let contentsData = Data(contentsText.utf8)
+        let contents = try JSONDecoder().decode(AppIconSetContents.self, from: contentsData)
+        let macImages = contents.images.filter { $0.idiom == "mac" }
+        let declaredSizes = Set(macImages.map(\.launchServicesKey))
+        let requiredSizes: Set<String> = [
+            "16x16@1x",
+            "16x16@2x",
+            "32x32@1x",
+            "32x32@2x",
+            "128x128@1x",
+            "128x128@2x",
+            "256x256@1x",
+            "256x256@2x",
+            "512x512@1x",
+            "512x512@2x"
+        ]
+
+        XCTAssertEqual(declaredSizes, requiredSizes)
+        for image in macImages {
+            let filename = try XCTUnwrap(image.filename, "Missing filename for \(image.launchServicesKey)")
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: iconSetDirectory.appendingPathComponent(filename).path),
+                "Missing macOS Safari containing app icon asset: \(filename)"
+            )
+        }
+    }
+
     func testQueueResultMapperReturnsQueueFailedWhenItemIsMissing() {
         let message = ExtensionQueueResultMapper.queueMessage(for: nil)
         XCTAssertFalse(ExtensionQueueResultMapper.queueSucceeded(for: nil))
@@ -276,5 +308,20 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
             map[String(mapBody[codeRange])] = String(mapBody[messageRange])
         }
         return map
+    }
+}
+
+private struct AppIconSetContents: Decodable {
+    let images: [AppIconSetImage]
+}
+
+private struct AppIconSetImage: Decodable {
+    let filename: String?
+    let idiom: String
+    let scale: String?
+    let size: String
+
+    var launchServicesKey: String {
+        "\(size)@\(scale ?? "1x")"
     }
 }
