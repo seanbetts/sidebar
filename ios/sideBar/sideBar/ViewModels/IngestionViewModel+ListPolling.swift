@@ -12,6 +12,10 @@ extension IngestionViewModel {
             stopListPolling()
             return
         }
+        guard currentSyncHealth().allowsFallbackPolling else {
+            stopListPolling()
+            return
+        }
         if isListPollRequestInFlight {
             return
         }
@@ -38,9 +42,7 @@ extension IngestionViewModel {
 
     func hasActiveServerBackedItems(_ items: [IngestionListItem]) -> Bool {
         items.contains { item in
-            let status = [IngestionListItem].normalizedStatus(item.statusValue)
-            guard !status.isEmpty else { return false }
-            guard ![IngestionListItem].terminalStatuses.contains(status) else { return false }
+            guard FileJobStatusPolicy.isActive(item.statusValue) else { return false }
             return IdentifierValidation.isServerFileID(item.file.id)
         }
     }

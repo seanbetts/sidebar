@@ -103,6 +103,7 @@ public final class IngestionViewModel: ObservableObject {
     let pendingShareStore: PendingShareStore
     let uploadManager: IngestionUploadManaging
     let ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator
+    let jobProgressCoordinator: AsyncJobProgressCoordinator
     let networkStatus: (any NetworkStatusProviding)?
     let jobPollingBaseInterval: TimeInterval
     let jobPollingMaxInterval: TimeInterval
@@ -110,6 +111,15 @@ public final class IngestionViewModel: ObservableObject {
     let jobPollingJitterWindow: TimeInterval
     let jobPollingSleep: JobPollingSleep
     var allowsFallbackPolling: @MainActor (AppSection, Bool) -> Bool = { _, _ in true }
+    var currentSyncHealth: @MainActor () -> SyncHealthState = { .degraded }
+    var syncHealthForTesting: SyncHealthState? {
+        didSet {
+            if let syncHealthForTesting {
+                currentSyncHealth = { syncHealthForTesting }
+            }
+        }
+    }
+    var onJobTerminalState: @MainActor (DomainSyncChange) async -> Void = { _ in }
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:] {
@@ -178,6 +188,7 @@ public final class IngestionViewModel: ObservableObject {
             uploadManager: uploadManager,
             toastCenter: toastCenter,
             ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator(),
+            jobProgressCoordinator: AsyncJobProgressCoordinator(),
             pendingShareStore: pendingShareStore,
             networkStatus: networkStatus,
             jobPollingBaseInterval: jobPollingBaseInterval,
@@ -195,6 +206,7 @@ public final class IngestionViewModel: ObservableObject {
         uploadManager: IngestionUploadManaging,
         toastCenter: ToastCenter,
         ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator,
+        jobProgressCoordinator: AsyncJobProgressCoordinator,
         pendingShareStore: PendingShareStore = .shared,
         networkStatus: (any NetworkStatusProviding)? = nil,
         jobPollingBaseInterval: TimeInterval = 2,
@@ -212,6 +224,7 @@ public final class IngestionViewModel: ObservableObject {
         self.pendingShareStore = pendingShareStore
         self.uploadManager = uploadManager
         self.ingestionProgressActivityCoordinator = ingestionProgressActivityCoordinator
+        self.jobProgressCoordinator = jobProgressCoordinator
         self.networkStatus = networkStatus
         self.jobPollingBaseInterval = max(jobPollingBaseInterval, 0.1)
         self.jobPollingMaxInterval = max(jobPollingMaxInterval, self.jobPollingBaseInterval)

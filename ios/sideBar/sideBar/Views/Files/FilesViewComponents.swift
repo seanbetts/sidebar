@@ -136,8 +136,7 @@ struct FilesProcessingView: View {
 
 enum FilesWorkspaceDisplayPolicy {
     static func shouldShowProcessingStateInMainWorkspace(for item: IngestionListItem) -> Bool {
-        let status = item.statusValue
-        return ![IngestionListItem].terminalStatuses.contains(status)
+        FileJobStatusPolicy.isActive(item.statusValue)
     }
 
     static func shouldShowUploadProgressInMainWorkspace(for _: IngestionListItem) -> Bool {

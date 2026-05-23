@@ -272,6 +272,7 @@ public final class AppEnvironment: ObservableObject {
         self.ingestionViewModel.allowsFallbackPolling = { [weak self] section, hasActiveJob in
             self?.allowsFallbackPolling(section: section, hasActiveJob: hasActiveJob) ?? false
         }
+        configureFileJobProgressCallbacks(refreshCoordinator: resolvedRefreshCoordinator)
         self.websitesViewModel.allowsFallbackPolling = { [weak self] section, hasActiveJob in
             self?.allowsFallbackPolling(section: section, hasActiveJob: hasActiveJob) ?? false
         }

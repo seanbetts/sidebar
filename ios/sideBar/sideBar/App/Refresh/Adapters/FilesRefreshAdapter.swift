@@ -1,6 +1,21 @@
 import Foundation
 
 final class FilesRefreshAdapter: SectionRefreshAdapter {
+    static func jobTerminalChange(
+        entityId: String?,
+        requiresDetailRefresh: Bool
+    ) -> DomainSyncChange {
+        DomainSyncChange(
+            section: .files,
+            entityId: entityId,
+            kind: .jobProgress,
+            updatedAt: nil,
+            requiresListRefresh: true,
+            requiresDetailRefresh: requiresDetailRefresh,
+            canPatchMetadata: false
+        )
+    }
+
     init(viewModel: IngestionViewModel) {
         super.init(
             section: .files,

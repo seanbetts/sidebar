@@ -900,6 +900,52 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(tracker.count, 0)
     }
 
+    func testCompletedFileJobRealtimeOpensSelectedViewerAndClearsActivePolicy() async {
+        let fileId = UUID().uuidString
+        let processingItem = makeListItem(id: fileId, status: "processing", stage: "extracting")
+        let processingMeta = IngestionMetaResponse(
+            file: makeFile(id: fileId),
+            job: makeJob(status: "processing", stage: "extracting"),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d1",
+                    kind: "text_original",
+                    storageKey: "storage",
+                    mime: "text/plain",
+                    sizeBytes: 10
+                )
+            ],
+            recommendedViewer: "text_original"
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [processingItem])),
+            metaResult: .success(processingMeta),
+            contentResult: .success(Data("Completed".utf8)),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: TemporaryFileStore(directory: tempDirectory),
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+        await viewModel.load()
+        viewModel.selectedFileId = fileId
+        store.applyMetaUpdate(processingMeta, persist: false)
+
+        await viewModel.applyFileJobEvent(fileJobPayload(fileId: fileId, status: "completed"))
+
+        XCTAssertEqual(viewModel.activeMeta?.job.status, "completed")
+        XCTAssertEqual(viewModel.viewerState?.kind, .text)
+        XCTAssertEqual(viewModel.viewerState?.text, "Completed")
+        XCTAssertFalse(viewModel.canCancelIngestion(fileId: fileId))
+        XCTAssertTrue(viewModel.activeUploadItems.isEmpty)
+    }
+
     func testCanRetryFailedUploadTrueForLocalFailedWithBookmark() async throws {
         let api = MockIngestionAPI(
             listResult: .success(IngestionListResponse(items: [])),
@@ -1255,6 +1301,79 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertTrue(vm.jobPollingTaskTokens.isEmpty)
     }
 
+    func testJobPollingDoesNotStartWhenRealtimeHealthy() async {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+        vm.syncHealthForTesting = .healthy
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+
+        XCTAssertTrue(vm.jobPollingTasks.isEmpty)
+        XCTAssertTrue(vm.jobPollingTaskTokens.isEmpty)
+    }
+
+    func testTerminalFileJobRealtimeCancelsPollingAndSchedulesRefresh() async {
+        let fileId = UUID().uuidString
+        let vm = makePollingViewModel(fileId: fileId, jobStatus: "processing")
+        var terminalChanges: [DomainSyncChange] = []
+        vm.onJobTerminalState = { change in
+            terminalChanges.append(change)
+        }
+
+        vm.startJobPollingIfNeeded(fileId: fileId)
+        XCTAssertNotNil(vm.jobPollingTasks[fileId])
+
+        await vm.applyFileJobEvent(fileJobPayload(fileId: fileId, status: "ready"))
+
+        XCTAssertNil(vm.jobPollingTasks[fileId])
+        XCTAssertNil(vm.jobPollingTaskTokens[fileId])
+        XCTAssertNil(vm.jobProgressCoordinator.descriptor(jobId: fileId))
+        XCTAssertEqual(
+            terminalChanges,
+            [
+                DomainSyncChange(
+                    section: .files,
+                    entityId: fileId,
+                    kind: .jobProgress,
+                    updatedAt: nil,
+                    requiresListRefresh: true,
+                    requiresDetailRefresh: true,
+                    canPatchMetadata: false
+                )
+            ]
+        )
+    }
+
+    func testUnregisteredActiveFileJobRealtimeSchedulesTerminalRefresh() async {
+        let fileId = UUID().uuidString
+        let vm = makeViewModelForYouTubeParsing()
+        var terminalChanges: [DomainSyncChange] = []
+        vm.onJobTerminalState = { change in
+            terminalChanges.append(change)
+        }
+        vm.store.applyListUpdate(
+            [makeListItem(id: fileId, status: "processing", stage: "extracting")],
+            persist: false
+        )
+
+        await vm.applyFileJobEvent(fileJobPayload(fileId: fileId, status: "completed"))
+
+        XCTAssertNil(vm.jobProgressCoordinator.descriptor(jobId: fileId))
+        XCTAssertEqual(
+            terminalChanges,
+            [
+                DomainSyncChange(
+                    section: .files,
+                    entityId: fileId,
+                    kind: .jobProgress,
+                    updatedAt: nil,
+                    requiresListRefresh: true,
+                    requiresDetailRefresh: false,
+                    canPatchMetadata: false
+                )
+            ]
+        )
+    }
+
     func testListPollingTickSkipsServerReadWhenFallbackPolicyBecomesDenied() async {
         let api = CountingIngestionAPI(
             listResult: .success(IngestionListResponse(items: [])),
@@ -1445,6 +1564,24 @@ final class IngestionViewModelTests: XCTestCase {
             file: makeFile(id: id),
             job: makeJob(status: status, stage: stage),
             recommendedViewer: "text_original"
+        )
+    }
+
+    private func fileJobPayload(fileId: String, status: String) -> RealtimePayload<FileJobRealtimeRecord> {
+        RealtimePayload<FileJobRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.fileJobs,
+            schema: "public",
+            record: FileJobRealtimeRecord(
+                fileId: fileId,
+                status: status,
+                stage: status,
+                errorCode: nil,
+                errorMessage: nil,
+                attempts: 1,
+                updatedAt: "2026-01-10T00:00:00Z"
+            ),
+            oldRecord: nil
         )
     }
 

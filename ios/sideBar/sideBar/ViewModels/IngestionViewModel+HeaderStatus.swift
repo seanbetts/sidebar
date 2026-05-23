@@ -90,6 +90,7 @@ extension IngestionViewModel {
             }
             store.removeItem(fileId: fileId)
             cancelJobPolling(fileId: fileId)
+            jobProgressCoordinator.cancel(jobId: fileId)
         } catch {
             throw IngestionHeaderActionError.unavailable("Failed to cancel ingestion")
         }

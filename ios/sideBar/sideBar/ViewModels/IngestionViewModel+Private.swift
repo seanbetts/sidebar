@@ -4,6 +4,8 @@ import Foundation
 import UniformTypeIdentifiers
 // MARK: - IngestionViewModel+Private
 extension IngestionViewModel {
+    static let fileJobTerminalStatuses = FileJobStatusPolicy.terminalStatuses
+
     func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }
@@ -40,23 +42,37 @@ extension IngestionViewModel {
         guard selectedFileId == fileId else { return }
         guard let meta = activeMeta else { return }
         guard viewerState == nil else { return }
-        guard (meta.job.status ?? "") == "ready" else { return }
+        guard FileJobStatusPolicy.isSuccessfulTerminal(meta.job.status) else { return }
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
     }
     func startJobPollingIfNeeded(fileId: String) {
         guard let meta = activeMeta, meta.file.id == fileId else { return }
-        let status = meta.job.status ?? ""
-        guard status != "ready" && status != "failed" && status != "canceled" else {
+        let status = FileJobStatusPolicy.normalized(meta.job.status)
+        guard !Self.fileJobTerminalStatuses.contains(status) else {
             cancelJobPolling(fileId: fileId)
             return
         }
+        registerFileJobProgress(fileId: fileId)
         guard allowsFallbackPolling(.files, true) else { return }
+        guard jobProgressCoordinator.shouldPoll(jobId: fileId, health: currentSyncHealth()) else { return }
         guard jobPollingTasks[fileId] == nil else { return }
         let token = UUID()
         jobPollingTaskTokens[fileId] = token
         jobPollingTasks[fileId] = makeJobPollingTask(fileId: fileId, token: token)
+    }
+
+    func registerFileJobProgress(fileId: String) {
+        guard !IdentifierValidation.isLocalPlaceholderID(fileId) else { return }
+        jobProgressCoordinator.register(
+            AsyncJobDescriptor(
+                domain: .fileProcessing,
+                entityId: fileId,
+                jobId: fileId,
+                terminalStatuses: Self.fileJobTerminalStatuses
+            )
+        )
     }
 
     func cancelJobPolling(fileId: String? = nil) {
@@ -105,6 +121,9 @@ extension IngestionViewModel {
                 guard self.allowsFallbackPolling(.files, true) else {
                     return
                 }
+                guard self.jobProgressCoordinator.shouldPoll(jobId: fileId, health: self.currentSyncHealth()) else {
+                    return
+                }
                 do {
                     let terminal = try await self.pollJobStatus(fileId: fileId)
                     if terminal {
@@ -127,17 +146,33 @@ extension IngestionViewModel {
         guard allowsFallbackPolling(.files, true) else {
             return true
         }
+        guard jobProgressCoordinator.shouldPoll(jobId: fileId, health: currentSyncHealth()) else {
+            return true
+        }
         try await store.loadMeta(fileId: fileId, force: true)
         guard let meta = activeMeta, meta.file.id == fileId else {
             return false
         }
         store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
-        let status = (meta.job.status ?? "").lowercased()
-        if status == "ready" {
+        let status = FileJobStatusPolicy.normalized(meta.job.status)
+        if FileJobStatusPolicy.isSuccessfulTerminal(status) {
+            _ = await jobProgressCoordinator.applyRealtimeStatus(
+                jobId: fileId,
+                status: AsyncJobStatus(rawValue: status),
+                userMessage: nil
+            )
             await ensureViewerReady(for: fileId)
             return true
         }
-        return status == "failed" || status == "canceled"
+        if Self.fileJobTerminalStatuses.contains(status) {
+            _ = await jobProgressCoordinator.applyRealtimeStatus(
+                jobId: fileId,
+                status: AsyncJobStatus(rawValue: status),
+                userMessage: meta.job.errorMessage ?? meta.job.userMessage
+            )
+            return true
+        }
+        return false
     }
 
     private func markJobPollingFailed(fileId: String) {
@@ -157,7 +192,7 @@ extension IngestionViewModel {
             stopListPolling()
             return
         }
-        if hasActiveServerBackedItems(items) {
+        if hasActiveServerBackedItems(items) && currentSyncHealth().allowsFallbackPolling {
             startListPolling()
         } else {
             stopListPolling()
@@ -189,7 +224,7 @@ extension IngestionViewModel {
             let status = item.job.status ?? ""
             if let previous = statusCache[fileId],
                previous != status,
-               status == "ready" {
+               FileJobStatusPolicy.isSuccessfulTerminal(status) {
                 let notification = ReadyFileNotification(
                     fileId: fileId,
                     filename: item.file.filenameOriginal
@@ -378,6 +413,7 @@ extension IngestionViewModel {
         switch result {
         case .success(let fileId):
             releaseSecurityScopedAccess(for: tempId)
+            registerFileJobProgress(fileId: fileId)
             store.replaceLocalUpload(
                 tempId: tempId,
                 fileId: fileId,

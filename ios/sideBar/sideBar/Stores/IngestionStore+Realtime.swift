@@ -78,6 +78,16 @@ extension IngestionStore {
         } else {
             return
         }
+        if let meta = activeMeta, meta.file.id == record.fileId {
+            let updatedMeta = IngestionMetaResponse(
+                file: meta.file,
+                job: job,
+                derivatives: meta.derivatives,
+                recommendedViewer: meta.recommendedViewer
+            )
+            activeMeta = updatedMeta
+            persistMeta(updatedMeta)
+        }
         items = mergeItems(remoteItems)
         persistListCache()
     }

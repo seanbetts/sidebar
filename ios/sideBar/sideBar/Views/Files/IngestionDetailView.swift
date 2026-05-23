@@ -89,8 +89,7 @@ public struct IngestionDetailView: View {
         if let errorMessage, !errorMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return false
         }
-        let normalizedStatus = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalizedStatus != "ready" && normalizedStatus != "failed" && normalizedStatus != "canceled"
+        return FileJobStatusPolicy.isActive(status)
     }
 
     static func isFailedState(
@@ -100,8 +99,7 @@ public struct IngestionDetailView: View {
         if hasViewerState {
             return false
         }
-        let normalizedStatus = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalizedStatus == "failed"
+        return FileJobStatusPolicy.normalized(status) == "failed"
     }
 
     private var processingDetail: String? {

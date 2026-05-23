@@ -114,7 +114,7 @@ struct FilesIngestionRow: View, Equatable {
 
     private var statusText: String? {
         let status = item.job.status ?? ""
-        if status.isEmpty || status == "ready" {
+        if status.isEmpty || FileJobStatusPolicy.isSuccessfulTerminal(status) {
             return nil
         }
         return ingestionStatusLabel(for: item.job) ?? "Processing"
@@ -128,8 +128,7 @@ struct FilesIngestionRow: View, Equatable {
     }
 
     private var isProcessing: Bool {
-        let status = item.statusValue
-        return !status.isEmpty && ![IngestionListItem].terminalStatuses.contains(status)
+        FileJobStatusPolicy.isActive(item.statusValue)
     }
 
     private var isFailed: Bool {

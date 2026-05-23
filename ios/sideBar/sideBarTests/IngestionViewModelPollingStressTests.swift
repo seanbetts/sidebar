@@ -22,6 +22,40 @@ final class IngestionViewModelPollingStressTests: XCTestCase {
         }
     }
 
+    func testActiveServerBackedItemsDoNotStartListPollingWhenRealtimeHealthy() async {
+        let fileId = UUID().uuidString
+        let viewModel = makePollingViewModel(fileId: fileId, jobStatus: "processing")
+        viewModel.syncHealthForTesting = .healthy
+
+        viewModel.updateListPollingState(items: [
+            IngestionListItem(
+                file: makeFile(id: fileId),
+                job: makeJob(status: "processing"),
+                recommendedViewer: nil
+            )
+        ])
+
+        XCTAssertNil(viewModel.listPollingTask)
+    }
+
+    func testTerminalServerBackedItemsDoNotStartListPollingWhenRealtimeDegraded() async {
+        for status in ["completed", "cancelled"] {
+            let fileId = UUID().uuidString
+            let viewModel = makePollingViewModel(fileId: fileId, jobStatus: status)
+            viewModel.syncHealthForTesting = .degraded
+
+            viewModel.updateListPollingState(items: [
+                IngestionListItem(
+                    file: makeFile(id: fileId),
+                    job: makeJob(status: status),
+                    recommendedViewer: nil
+                )
+            ])
+
+            XCTAssertNil(viewModel.listPollingTask, "Status \(status) should not start list polling")
+        }
+    }
+
     private func makePollingViewModel(fileId: String, jobStatus: String) -> IngestionViewModel {
         let meta = IngestionMetaResponse(
             file: makeFile(id: fileId),

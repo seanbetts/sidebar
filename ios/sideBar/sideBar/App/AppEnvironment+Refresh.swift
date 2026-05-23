@@ -53,6 +53,16 @@ extension AppEnvironment {
         )
     }
 
+    func configureFileJobProgressCallbacks(refreshCoordinator: any RefreshCoordinatorType) {
+        ingestionViewModel.currentSyncHealth = { [weak self] in
+            self?.currentSyncHealth ?? .offline
+        }
+        ingestionViewModel.onJobTerminalState = { [weak self, weak refreshCoordinator] change in
+            guard let self, let refreshCoordinator else { return }
+            await refreshCoordinator.scheduleJobTerminalRefresh(change, context: currentRefreshContext())
+        }
+    }
+
     func prepareVisibleSectionForPresentation(_ section: AppSection?) async {
         await refreshCoordinator.prepareVisibleSectionForPresentation(
             section,

@@ -39,6 +39,9 @@ extension IngestionViewModel {
                 store.updateFilename(fileId: fileId, filename: meta.file.filenameOriginal)
                 store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
             }
+            if force {
+                cancelJobPolling(fileId: fileId)
+            }
             startJobPollingIfNeeded(fileId: fileId)
             await ensureViewerReady(for: fileId)
             return true
@@ -75,6 +78,9 @@ extension IngestionViewModel {
     }
 
     public func prepareSelection(fileId: String) {
+        if let selectedFileId, selectedFileId != fileId {
+            cancelJobPolling(fileId: selectedFileId)
+        }
         if activeMeta?.file.id != fileId {
             store.clearActiveMeta()
         }
@@ -148,20 +154,6 @@ extension IngestionViewModel {
             store.applyPinnedOrder(previousOrder)
             presentMutationFailureMessage("Failed to reorder pinned files")
             return false
-        }
-    }
-
-    public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) async {
-        store.applyIngestedFileEvent(payload)
-        if let selectedFileId, selectedFileId == payload.record?.id || selectedFileId == payload.oldRecord?.id {
-            _ = await loadMeta(fileId: selectedFileId)
-        }
-    }
-
-    public func applyFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) async {
-        store.applyFileJobEvent(payload)
-        if let selectedFileId, selectedFileId == payload.record?.fileId {
-            _ = await loadMeta(fileId: selectedFileId)
         }
     }
 
@@ -353,6 +345,7 @@ extension IngestionViewModel {
         prepareSelection(fileId: tempId)
         do {
             let fileId = try await api.ingestYouTube(url: normalized)
+            registerFileJobProgress(fileId: fileId)
             store.replaceLocalUpload(
                 tempId: tempId,
                 fileId: fileId,
@@ -388,9 +381,7 @@ extension IngestionViewModel {
 
     public func canCancelIngestion(fileId: String) -> Bool {
         guard let item = items.first(where: { $0.file.id == fileId }) else { return false }
-        let status = [IngestionListItem].normalizedStatus(item.statusValue)
-        guard !status.isEmpty else { return false }
-        guard ![IngestionListItem].terminalStatuses.contains(status) else { return false }
+        guard FileJobStatusPolicy.isActive(item.statusValue) else { return false }
         if fileId.hasPrefix("youtube-") {
             // A temporary YouTube placeholder does not have a server-side job ID yet.
             return false
@@ -435,7 +426,7 @@ extension IngestionViewModel {
     }
 
     public var activeUploadItems: [IngestionListItem] {
-        items.activeItems
+        items.filter { FileJobStatusPolicy.isActive($0.statusValue) }
     }
 
     public var failedUploadItems: [IngestionListItem] {

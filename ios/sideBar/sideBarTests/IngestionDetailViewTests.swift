@@ -21,12 +21,15 @@ final class IngestionDetailViewTests: XCTestCase {
     }
 
     func testShouldShowProcessingStateFalseForTerminalStatus() {
-        XCTAssertFalse(
-            IngestionDetailView.shouldShowProcessingState(
-                status: "ready",
-                errorMessage: nil
+        for status in ["ready", "completed", "failed", "canceled", "cancelled"] {
+            XCTAssertFalse(
+                IngestionDetailView.shouldShowProcessingState(
+                    status: status,
+                    errorMessage: nil
+                ),
+                "Status \(status) should not render as processing"
             )
-        )
+        }
     }
 
     func testShouldShowProcessingStateFalseWhenViewerStateIsAvailable() {
