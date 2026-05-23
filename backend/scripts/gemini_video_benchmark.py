@@ -122,12 +122,55 @@ def _usage_from_response(response: Any) -> TokenUsage:
     usage = getattr(response, "usage_metadata", None)
     if usage is None:
         return TokenUsage()
+    video_tokens, audio_tokens = _prompt_modality_token_counts(usage)
     return TokenUsage(
         input_tokens=int(getattr(usage, "prompt_token_count", 0) or 0),
         output_tokens=int(getattr(usage, "candidates_token_count", 0) or 0),
         total_tokens=int(getattr(usage, "total_token_count", 0) or 0),
         cached_tokens=int(getattr(usage, "cached_content_token_count", 0) or 0),
+        video_input_tokens=video_tokens,
+        audio_input_tokens=audio_tokens,
     )
+
+
+def _prompt_modality_token_counts(usage: Any) -> tuple[int | None, int | None]:
+    """Return video and audio prompt token counts when Gemini exposes them."""
+    video_tokens = 0
+    audio_tokens = 0
+    has_video_tokens = False
+    has_audio_tokens = False
+    for detail in getattr(usage, "prompt_tokens_details", None) or ():
+        modality = _modality_name(getattr(detail, "modality", ""))
+        token_count = int(getattr(detail, "token_count", 0) or 0)
+        if modality == "VIDEO":
+            video_tokens += token_count
+            has_video_tokens = True
+        elif modality == "AUDIO":
+            audio_tokens += token_count
+            has_audio_tokens = True
+    return (
+        video_tokens if has_video_tokens else None,
+        audio_tokens if has_audio_tokens else None,
+    )
+
+
+def _modality_name(value: Any) -> str:
+    """Normalize SDK modality values without depending on SDK classes."""
+    raw = getattr(value, "name", None) or getattr(value, "value", None) or str(value)
+    return str(raw).upper().removeprefix("MODALITY_")
+
+
+def _media_resolution_enum(types: Any, media_resolution: str) -> Any:
+    """Map config media resolution text to the Gemini SDK enum value."""
+    normalized = media_resolution.strip().upper()
+    enum_name = f"MEDIA_RESOLUTION_{normalized}"
+    if normalized not in {"LOW", "MEDIUM", "HIGH"}:
+        raise ValueError(f"Unsupported media_resolution: {media_resolution}")
+    if hasattr(types.MediaResolution, enum_name):
+        return getattr(types.MediaResolution, enum_name)
+    if hasattr(types.MediaResolution, normalized):
+        return getattr(types.MediaResolution, normalized)
+    raise ValueError(f"Unsupported media_resolution: {media_resolution}")
 
 
 async def _run_window_call(
@@ -136,6 +179,7 @@ async def _run_window_call(
     model: str,
     video_url: str,
     window: BenchmarkWindow,
+    media_resolution: str,
 ) -> CallResult:
     """Run one live Gemini call for a benchmark window."""
     from google.genai import types
@@ -162,7 +206,7 @@ async def _run_window_call(
                 max_output_tokens=calculate_output_cap(
                     duration_seconds=window.duration_seconds,
                 ),
-                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW,
+                media_resolution=_media_resolution_enum(types, media_resolution),
             ),
         )
         return CallResult(
@@ -198,6 +242,7 @@ async def _run_planned_run(
                 model=model,
                 video_url=run.video.url,
                 window=window,
+                media_resolution=config.media_resolution,
             )
 
     started = time.perf_counter()

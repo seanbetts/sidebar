@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 import json
+import asyncio
 from types import SimpleNamespace
 
 from scripts import gemini_video_benchmark
 from scripts.gemini_video_benchmark import (
     _prompt_for_window,
+    _run_planned_run,
     _usage_from_response,
     main,
     parse_args,
 )
-from scripts.gemini_video_benchmarking import BenchmarkWindow, TokenUsage
+from scripts.gemini_video_benchmarking import (
+    BenchmarkCombination,
+    BenchmarkConfig,
+    BenchmarkVideo,
+    BenchmarkWindow,
+    CallResult,
+    PlannedRun,
+    TokenUsage,
+)
 
 
 def test_parse_args_accepts_config_and_dry_run() -> None:
@@ -49,8 +59,119 @@ def test_usage_from_response_maps_gemini_usage_metadata() -> None:
     )
 
 
+def test_usage_from_response_maps_prompt_token_modality_details() -> None:
+    response = SimpleNamespace(
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=100,
+            candidates_token_count=20,
+            total_token_count=120,
+            cached_content_token_count=5,
+            prompt_tokens_details=[
+                SimpleNamespace(modality="VIDEO", token_count=70),
+                SimpleNamespace(modality="AUDIO", token_count=25),
+                SimpleNamespace(modality="TEXT", token_count=5),
+            ],
+        )
+    )
+
+    assert _usage_from_response(response) == TokenUsage(
+        input_tokens=100,
+        output_tokens=20,
+        total_tokens=120,
+        cached_tokens=5,
+        video_input_tokens=70,
+        audio_input_tokens=25,
+    )
+
+
 def test_usage_from_response_returns_empty_usage_when_metadata_missing() -> None:
     assert _usage_from_response(SimpleNamespace()) == TokenUsage()
+
+
+def test_run_planned_run_bounds_concurrency_and_aggregates_in_window_order(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    video = BenchmarkVideo(
+        video_id="abc123",
+        url="https://youtu.be/abc123",
+        title="Demo",
+        duration_seconds=300,
+    )
+    combination = BenchmarkCombination(window_seconds=100, overlap_seconds=0)
+    windows = (
+        BenchmarkWindow(start_seconds=0, end_seconds=100),
+        BenchmarkWindow(start_seconds=100, end_seconds=200),
+        BenchmarkWindow(start_seconds=200, end_seconds=300),
+    )
+    run = PlannedRun(
+        video=video,
+        combination=combination,
+        concurrency=2,
+        run_number=1,
+        windows=windows,
+    )
+    config = BenchmarkConfig(
+        videos=[video],
+        combinations=[combination],
+        concurrency_levels=[2],
+        repeat_count=1,
+        models=["gemini-3.1-flash-lite"],
+        prompt_variant="plain_transcript_v1",
+        media_resolution="HIGH",
+        output_dir=tmp_path,
+    )
+    active_count = 0
+    max_active_count = 0
+    observed_media_resolutions: list[str] = []
+
+    async def fake_run_window_call(
+        client,
+        *,
+        model: str,
+        video_url: str,
+        window: BenchmarkWindow,
+        media_resolution: str,
+    ) -> CallResult:
+        nonlocal active_count, max_active_count
+        assert model == "gemini-3.1-flash-lite"
+        assert video_url == video.url
+        observed_media_resolutions.append(media_resolution)
+        active_count += 1
+        max_active_count = max(max_active_count, active_count)
+        await asyncio.sleep((300 - window.start_seconds) / 10_000)
+        active_count -= 1
+        transcript = {
+            0: "first",
+            100: "second",
+            200: "third",
+        }[window.start_seconds]
+        return CallResult(
+            window=window,
+            elapsed_seconds=0.1,
+            transcript_text=transcript,
+            token_usage=TokenUsage(input_tokens=1, output_tokens=1, total_tokens=2),
+        )
+
+    monkeypatch.setattr(
+        gemini_video_benchmark,
+        "_run_window_call",
+        fake_run_window_call,
+    )
+
+    summary = asyncio.run(
+        _run_planned_run(
+            object(),
+            config=config,
+            run=run,
+            model="gemini-3.1-flash-lite",
+        )
+    )
+
+    assert max_active_count == 2
+    assert observed_media_resolutions == ["HIGH", "HIGH", "HIGH"]
+    assert summary["media_resolution"] == "HIGH"
+    assert summary["stitched_transcript"] == "first\n\nsecond\n\nthird"
 
 
 def test_main_dry_run_writes_summary_reports_without_google_api_key(
