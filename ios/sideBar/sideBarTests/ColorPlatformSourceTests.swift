@@ -29,7 +29,7 @@ final class ColorPlatformSourceTests: XCTestCase {
         let normalized = try colorPlatformSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("staticvarappSettingsBackground:Color{AppPalette.background.color}"))
+        XCTAssertTrue(normalized.contains("staticvarappSettingsBackground:Color{AppPalette.muted.color}"))
         XCTAssertTrue(normalized.contains("staticvarappSettingsFormBackground:Color{AppPalette.surface.color}"))
         XCTAssertFalse(normalized.contains("uiColor:.systemGroupedBackground"))
         XCTAssertFalse(normalized.contains("uiColor:.secondarySystemGroupedBackground"))

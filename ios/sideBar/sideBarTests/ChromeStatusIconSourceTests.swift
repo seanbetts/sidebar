@@ -37,7 +37,7 @@ final class ChromeStatusIconSourceTests: XCTestCase {
         XCTAssertTrue(compactMoreHeader.contains("Image(appIcon:AppIcon.Navigation.back)"))
         XCTAssertFalse(compactMoreHeader.contains("Image(systemName:\"chevron.left\")"))
 
-        XCTAssertTrue(settingsAdditional.contains("Image(appIcon:AppIcon.Action.close)"))
+        XCTAssertTrue(settingsAdditional.contains("storeSkillDetailSheet(skill)"))
         XCTAssertFalse(settingsAdditional.contains("Image(systemName:\"xmark\")"))
         XCTAssertTrue(storeSkillDetail.contains("Image(appIcon:AppIcon.Action.close)"))
         XCTAssertFalse(storeSkillDetail.contains("Image(systemName:\"xmark\")"))
