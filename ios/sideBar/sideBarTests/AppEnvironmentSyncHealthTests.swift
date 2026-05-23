@@ -9,7 +9,7 @@ final class AppEnvironmentSyncHealthTests: XCTestCase {
     func testCurrentSyncHealthIsReconnectingWhileReconnectRefreshIsPending() async throws {
         let refreshCoordinator = BlockingRefreshCoordinator()
         let environment = makeEnvironment(refreshCoordinator: refreshCoordinator)
-        try await requireConnectivityReachable(in: environment)
+        try await requireProtectedServerReadsAllowed(in: environment)
 
         let refreshTask = Task { @MainActor in
             await environment.syncCoordinator.refreshAll()
@@ -17,23 +17,22 @@ final class AppEnvironmentSyncHealthTests: XCTestCase {
 
         await refreshCoordinator.waitForRefreshStart()
 
-        try await requireConnectivityReachable(in: environment)
+        try await requireProtectedServerReadsAllowed(in: environment)
         XCTAssertEqual(environment.currentSyncHealth, .reconnecting)
 
         refreshCoordinator.finishRefresh()
         await refreshTask.value
-        try await requireConnectivityReachable(in: environment)
+        try await requireProtectedServerReadsAllowed(in: environment)
         XCTAssertEqual(environment.currentSyncHealth, .degraded)
     }
 
     private func makeEnvironment(refreshCoordinator: RefreshCoordinatorType) -> AppEnvironment {
-        let authSession = PlaceholderAuthSession(
+        let authSession = SyncHealthMutableAuthSession(
             accessToken: "access-token",
             userId: "user-1",
             authState: .active
         )
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
+        let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
@@ -42,26 +41,105 @@ final class AppEnvironmentSyncHealthTests: XCTestCase {
         return environment
     }
 
-    private func requireConnectivityReachable(
+    private func requireProtectedServerReadsAllowed(
         in environment: AppEnvironment,
         file: StaticString = #filePath,
         line: UInt = #line
     ) async throws {
+        (environment.container.authSession as? SyncHealthMutableAuthSession)?.restoreActiveSession()
+        environment.authState = .active
         for _ in 0..<2 {
             NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
         }
-        for _ in 0..<20 where !environment.connectivityMonitor.canAttemptServerRead {
+        for _ in 0..<20 where !canAttemptProtectedServerRead(in: environment) {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
-        guard environment.connectivityMonitor.canAttemptServerRead else {
-            XCTFail("Connectivity precondition could not be established", file: file, line: line)
+        guard canAttemptProtectedServerRead(in: environment) else {
+            XCTFail("Protected server-read precondition could not be established", file: file, line: line)
             throw TestPreconditionFailure()
         }
+    }
+
+    private func canAttemptProtectedServerRead(in environment: AppEnvironment) -> Bool {
+        environment.connectivityMonitor.canAttemptServerRead
+            && environment.protectedContentReadiness.canAttemptServerRead
     }
 }
 
 private struct TestPreconditionFailure: Error {}
+
+private final class SyncHealthMutableAuthSession:
+    AuthSession,
+    AuthSessionInvalidating,
+    AuthSessionTokenScopedInvalidating {
+
+    var accessToken: String?
+    var userId: String?
+    var authState: AuthState
+
+    var authorizationToken: String? {
+        authState == .active ? accessToken : nil
+    }
+
+    var pendingVerificationEmail: String? {
+        nil
+    }
+
+    init(accessToken: String?, userId: String?, authState: AuthState) {
+        self.accessToken = accessToken
+        self.userId = userId
+        self.authState = authState
+    }
+
+    func signIn(email: String, password: String) async throws {
+        _ = email
+        _ = password
+        restoreActiveSession()
+    }
+
+    func signUp(email: String, password: String) async throws {
+        _ = email
+        _ = password
+    }
+
+    func verifyOTP(email: String, code: String) async throws {
+        _ = email
+        _ = code
+    }
+
+    func refreshSession() async {
+        restoreActiveSession()
+    }
+
+    func refreshSessionIfStale() async {
+    }
+
+    func signOut() async {
+        accessToken = nil
+        userId = nil
+        authState = .signedOut
+    }
+
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure() {
+        authState = .reauthenticationRequired
+    }
+
+    func markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: String?) {
+        if let rejectedToken,
+           let accessToken,
+           rejectedToken != accessToken {
+            return
+        }
+        markSessionReauthenticationRequiredAfterAuthorizationFailure()
+    }
+
+    func restoreActiveSession() {
+        accessToken = "access-token"
+        userId = "user-1"
+        authState = .active
+    }
+}
 
 @MainActor
 private final class BlockingRefreshCoordinator: RefreshCoordinatorType {
