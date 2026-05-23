@@ -1,0 +1,88 @@
+{
+  "videos": [
+    {
+      "video_id": "xKK5ze3FukQ",
+      "url": "https://www.youtube.com/watch?v=xKK5ze3FukQ",
+      "title": "How does Atlas learn? | Inside the Lab | Boston Dynamics",
+      "duration": "5:43",
+      "anchor_regions": [
+        {
+          "name": "atlas_design",
+          "start": "0:18",
+          "end": "1:32",
+          "anchors": [
+            "This is my sixth week at Boston Dynamics",
+            "low cost, ease of manufacturing, reliability, and simplicity",
+            "having fun in simulation designing behaviors"
+          ]
+        },
+        {
+          "name": "fridge_task",
+          "start": "1:42",
+          "end": "2:27",
+          "anchors": [
+            "Atlas needs to be a tool",
+            "the empty fridge is fifty pounds",
+            "big heavy object like a fridge"
+          ]
+        },
+        {
+          "name": "whole_body_control",
+          "start": "2:27",
+          "end": "3:07",
+          "anchors": [
+            "using the whole body",
+            "put your whole body into it",
+            "really capable new robot"
+          ]
+        },
+        {
+          "name": "testing_pipeline",
+          "start": "3:07",
+          "end": "4:16",
+          "anchors": [
+            "I've been here at Boston Dynamics for fifteen years",
+            "a rigorous pipeline that's been established",
+            "my policy is on the robot"
+          ]
+        },
+        {
+          "name": "simulation_to_hardware",
+          "start": "4:16",
+          "end": "4:56",
+          "anchors": [
+            "in simulation for millions of hours",
+            "the physics correct for the hand dragging along the fridge",
+            "We have not seen the limits of what Atlas can do"
+          ]
+        },
+        {
+          "name": "ending",
+          "start": "4:56",
+          "end": "5:43",
+          "anchors": [
+            "Backflip in three, two, one",
+            "Like a champ",
+            "We're only limited by our imagination now"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": [
+    "120:30",
+    "120:15",
+    "240:30",
+    "240:15",
+    "300:30",
+    "300:15",
+    "360:30",
+    "360:15"
+  ],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/xKK5ze3FukQ-overlap-sweep"
+}
