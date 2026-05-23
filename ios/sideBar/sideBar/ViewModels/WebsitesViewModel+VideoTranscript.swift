@@ -66,6 +66,9 @@ extension WebsitesViewModel {
         store.applyRealtimeEvent(payload)
         if let record = payload.record,
            let item = RealtimeMappers.mapWebsite(record) {
+            if payload.eventType == .insert {
+                await applyWebsiteSaveRealtimeCompletion(from: item)
+            }
             await applyTranscriptRealtimeProgress(from: item)
         }
     }

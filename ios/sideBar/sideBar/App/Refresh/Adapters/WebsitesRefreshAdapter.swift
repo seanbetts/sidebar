@@ -1,14 +1,17 @@
 import Foundation
 
 final class WebsitesRefreshAdapter: SectionRefreshAdapter {
-    static func jobTerminalChange(entityId: String?) -> DomainSyncChange {
+    static func jobTerminalChange(
+        entityId: String?,
+        requiresDetailRefresh: Bool
+    ) -> DomainSyncChange {
         DomainSyncChange(
             section: .websites,
             entityId: entityId,
             kind: .jobProgress,
             updatedAt: nil,
             requiresListRefresh: true,
-            requiresDetailRefresh: true,
+            requiresDetailRefresh: requiresDetailRefresh,
             canPatchMetadata: false
         )
     }

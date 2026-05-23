@@ -577,7 +577,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testWebsiteRealtimeInsertDoesNotClearPendingSaveBeforePollCompletes() async {
+    func testWebsiteRealtimeInsertCompletesPendingSaveJob() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -629,11 +629,9 @@ final class WebsitesViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(viewModel.items.first?.id, "saved-1")
-        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
-        XCTAssertEqual(viewModel.pendingWebsite?.status, .queued)
-
-        viewModel.jobPollingTasks["job-1"]?.cancel()
-        viewModel.jobPollingTasks.removeValue(forKey: "job-1")
+        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.selectedWebsiteId, "saved-1")
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
     func testSaveWebsiteDoesNotStartJobPollingWhenFallbackPollingPolicyDenies() async {
@@ -673,6 +671,82 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
         XCTAssertTrue(sut.viewModel.jobPollingTasks.isEmpty)
+    }
+
+    func testSaveWebsiteCompletesFromRealtimeInsert() async {
+        let progress = AsyncJobProgressCoordinator()
+        let sut = makeSUT(jobProgressCoordinator: progress)
+        sut.api.enqueueSaveResponse(jobId: "job-1")
+        var terminalChanges: [DomainSyncChange] = []
+        sut.viewModel.onJobTerminalState = { change in
+            terminalChanges.append(change)
+        }
+
+        let saved = await sut.viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
+        XCTAssertNotNil(sut.viewModel.pendingWebsite)
+
+        await sut.viewModel.applyRealtimeEvent(
+            makeWebsiteRealtimePayload(
+                eventType: .insert,
+                websiteId: "saved-1",
+                url: "https://example.com"
+            )
+        )
+
+        XCTAssertFalse(progress.hasActiveJob(jobId: "job-1"))
+        XCTAssertNil(sut.viewModel.pendingWebsite)
+        XCTAssertEqual(sut.viewModel.selectedWebsiteId, "saved-1")
+        XCTAssertFalse(sut.viewModel.isLoadingDetail)
+        XCTAssertFalse(sut.viewModel.isSavingWebsite)
+        XCTAssertEqual(
+            terminalChanges,
+            [
+                DomainSyncChange(
+                    section: .websites,
+                    entityId: "saved-1",
+                    kind: .jobProgress,
+                    updatedAt: nil,
+                    requiresListRefresh: true,
+                    requiresDetailRefresh: true,
+                    canPatchMetadata: false
+                )
+            ]
+        )
+    }
+
+    func testCancelPendingWebsiteClearsRegisteredJobProgress() async {
+        let progress = AsyncJobProgressCoordinator()
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            cancelResult: .success(())
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: progress
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        XCTAssertTrue(saved)
+        guard let pendingId = viewModel.pendingWebsite?.id else {
+            XCTFail("Expected pending website")
+            return
+        }
+        XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
+
+        await viewModel.cancelPendingWebsite(id: pendingId)
+
+        XCTAssertFalse(progress.hasActiveJob(jobId: "job-1"))
+        XCTAssertNil(viewModel.pendingWebsite)
     }
 
     func testWebsiteJobRefreshSkipsAPIWhenFallbackPolicyBecomesDeniedAfterStart() async {
@@ -830,11 +904,8 @@ final class WebsitesViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(viewModel.items.first?.id, "saved-1")
-        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+        XCTAssertNil(viewModel.pendingWebsite)
         XCTAssertTrue(viewModel.visiblePendingWebsites.isEmpty)
-
-        viewModel.jobPollingTasks["job-1"]?.cancel()
-        viewModel.jobPollingTasks.removeValue(forKey: "job-1")
     }
 
     func testSaveWebsitePollingCanceledClearsPendingState() async {
@@ -1811,6 +1882,56 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(store.active?.youtubeTranscripts?["dQw4w9WgXcQ"])
     }
 
+    func testTranscriptRealtimeTerminalRefreshCoalescesAndSkipsUnselectedDetail() async {
+        let progress = AsyncJobProgressCoordinator()
+        let sut = makeSUT(jobProgressCoordinator: progress)
+        sut.viewModel.selectedWebsiteId = "site-other"
+        sut.viewModel.registerTranscriptJob(websiteId: "site-1", jobId: "file-1")
+        sut.viewModel.registerTranscriptJob(websiteId: "site-1", jobId: "file-2")
+        var terminalChanges: [DomainSyncChange] = []
+        sut.viewModel.onJobTerminalState = { change in
+            terminalChanges.append(change)
+        }
+        let transcripts: [String: Any] = [
+            "video-1": [
+                "status": "ready",
+                "file_id": "file-1",
+                "updated_at": "2026-02-07T10:00:05Z"
+            ],
+            "video-2": [
+                "status": "completed",
+                "file_id": "file-2",
+                "updated_at": "2026-02-07T10:00:05Z"
+            ]
+        ]
+
+        await sut.viewModel.applyRealtimeEvent(
+            makeWebsiteRealtimePayload(
+                eventType: .update,
+                websiteId: "site-1",
+                url: "https://www.youtube.com/watch?v=video-1",
+                metadata: ["youtube_transcripts": AnyCodable(transcripts)]
+            )
+        )
+
+        XCTAssertFalse(progress.hasActiveJob(jobId: "file-1"))
+        XCTAssertFalse(progress.hasActiveJob(jobId: "file-2"))
+        XCTAssertEqual(
+            terminalChanges,
+            [
+                DomainSyncChange(
+                    section: .websites,
+                    entityId: "site-1",
+                    kind: .jobProgress,
+                    updatedAt: nil,
+                    requiresListRefresh: true,
+                    requiresDetailRefresh: false,
+                    canPatchMetadata: false
+                )
+            ]
+        )
+    }
+
     func testTranscriptPendingUsesIngestionStoreJobState() async {
         let cache = InMemoryCacheClient()
         let websitesAPI = MockWebsitesAPI(getResult: .success(makeDetail(id: "site-1")))
@@ -2272,6 +2393,33 @@ extension WebsitesViewModelTests {
             jobProgressCoordinator: progress
         )
         return SUT(viewModel: viewModel, api: api)
+    }
+
+    private func makeWebsiteRealtimePayload(
+        eventType: RealtimeEventType,
+        websiteId: String,
+        url: String,
+        metadata: [String: AnyCodable]? = nil
+    ) -> RealtimePayload<WebsiteRealtimeRecord> {
+        RealtimePayload(
+            eventType: eventType,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: websiteId,
+                title: "Website",
+                url: url,
+                domain: URL(string: url)?.host ?? "example.com",
+                metadata: metadata,
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-02-07T10:00:05Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
     }
 
     private func makeTranscriptRealtimePayload(

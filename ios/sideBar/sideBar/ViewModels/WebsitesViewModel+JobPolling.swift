@@ -97,7 +97,8 @@ extension WebsitesViewModel {
                 await completeWebsiteJobProgress(
                     jobId: jobId,
                     status: response.status,
-                    entityId: pendingURL.absoluteString
+                    entityId: response.website?.id,
+                    requiresDetailRefresh: shouldSelectOnCompletion && response.website != nil
                 )
                 return true
             case "canceled":
@@ -107,7 +108,8 @@ extension WebsitesViewModel {
                 await completeWebsiteJobProgress(
                     jobId: jobId,
                     status: response.status,
-                    entityId: pendingURL.absoluteString
+                    entityId: nil,
+                    requiresDetailRefresh: false
                 )
                 return true
             case "failed", "stalled":
@@ -122,7 +124,8 @@ extension WebsitesViewModel {
                 await completeWebsiteJobProgress(
                     jobId: jobId,
                     status: response.status,
-                    entityId: pendingURL.absoluteString
+                    entityId: nil,
+                    requiresDetailRefresh: false
                 )
                 return true
             case "processing":
@@ -147,13 +150,21 @@ extension WebsitesViewModel {
         jobPollingTaskTokens.removeValue(forKey: jobId)
     }
 
-    func completeWebsiteJobProgress(jobId: String, status: String, entityId: String?) async {
+    func completeWebsiteJobProgress(
+        jobId: String,
+        status: String,
+        entityId: String?,
+        requiresDetailRefresh: Bool
+    ) async {
         _ = await jobProgressCoordinator.applyRealtimeStatus(
             jobId: jobId,
             status: AsyncJobStatus(rawValue: status),
             userMessage: nil
         )
-        await scheduleWebsiteJobTerminalRefresh(entityId: entityId)
+        await scheduleWebsiteJobTerminalRefresh(
+            entityId: entityId,
+            requiresDetailRefresh: requiresDetailRefresh
+        )
     }
 
     private func finishWebsiteJobPolling(jobId: String, token: UUID) {

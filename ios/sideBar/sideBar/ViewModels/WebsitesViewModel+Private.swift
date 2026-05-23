@@ -369,13 +369,50 @@ extension WebsitesViewModel {
         }
     }
 
-    func scheduleWebsiteJobTerminalRefresh(entityId: String?) async {
+    func scheduleWebsiteJobTerminalRefresh(
+        entityId: String?,
+        requiresDetailRefresh: Bool
+    ) async {
         await onJobTerminalState(
-            WebsitesRefreshAdapter.jobTerminalChange(entityId: entityId)
+            WebsitesRefreshAdapter.jobTerminalChange(
+                entityId: entityId,
+                requiresDetailRefresh: requiresDetailRefresh
+            )
+        )
+    }
+
+    func applyWebsiteSaveRealtimeCompletion(from item: WebsiteItem) async {
+        guard let pending = pendingWebsiteMatching(realtimeItem: item),
+              let jobId = pending.jobId,
+              jobProgressCoordinator.hasActiveJob(jobId: jobId) else {
+            return
+        }
+        guard case .terminal = await jobProgressCoordinator.applyRealtimeStatus(
+            jobId: jobId,
+            status: AsyncJobStatus(rawValue: "completed"),
+            userMessage: nil
+        ) else {
+            return
+        }
+
+        let shouldSelectDetail = selectedWebsiteId == pending.id && pending.source == .directSave
+        clearWebsiteJobPolling(jobId: jobId)
+        removePendingWebsite(id: pending.id)
+        saveErrorMessage = nil
+        if pending.source == .directSave {
+            endWebsiteSave()
+        }
+        if shouldSelectDetail {
+            selectedWebsiteId = item.id
+        }
+        await scheduleWebsiteJobTerminalRefresh(
+            entityId: item.id,
+            requiresDetailRefresh: shouldSelectDetail
         )
     }
 
     func applyTranscriptRealtimeProgress(from item: WebsiteItem) async {
+        var shouldScheduleTerminalRefresh = false
         for (videoId, entry) in item.youtubeTranscripts ?? [:] {
             guard let status = entry.status?.lowercased(),
                   Self.isTranscriptStatusPending(status) == false,
@@ -383,17 +420,24 @@ extension WebsitesViewModel {
                   jobProgressCoordinator.hasActiveJob(jobId: fileId) else {
                 continue
             }
-            _ = await jobProgressCoordinator.applyRealtimeStatus(
+            let result = await jobProgressCoordinator.applyRealtimeStatus(
                 jobId: fileId,
                 status: AsyncJobStatus(rawValue: status),
                 userMessage: entry.error
             )
+            guard case .terminal = result else { continue }
             clearPendingTranscriptJob(websiteId: item.id, videoId: videoId)
             if status == "failed" || status == "canceled" {
                 errorMessage = entry.error ?? "Transcript failed."
                 showTranscriptFailureToast()
             }
-            await scheduleWebsiteJobTerminalRefresh(entityId: item.id)
+            shouldScheduleTerminalRefresh = true
+        }
+        if shouldScheduleTerminalRefresh {
+            await scheduleWebsiteJobTerminalRefresh(
+                entityId: item.id,
+                requiresDetailRefresh: selectedWebsiteId == item.id
+            )
         }
     }
 
@@ -480,7 +524,10 @@ extension WebsitesViewModel {
             )
         }
         clearPendingTranscriptJob(websiteId: websiteId, videoId: videoId)
-        await scheduleWebsiteJobTerminalRefresh(entityId: websiteId)
+        await scheduleWebsiteJobTerminalRefresh(
+            entityId: websiteId,
+            requiresDetailRefresh: selectedWebsiteId == websiteId
+        )
         if status == "failed" || status == "canceled" {
             errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
             showTranscriptFailureToast()
@@ -523,6 +570,13 @@ extension WebsitesViewModel {
         case completed
         case pending
         case retryableFailure
+    }
+
+    private func pendingWebsiteMatching(realtimeItem item: WebsiteItem) -> PendingWebsiteItem? {
+        let canonical = canonicalWebsiteURLForPendingMatch(item.url) ?? item.url
+        return pendingWebsites.first {
+            $0.canonicalURL == canonical && $0.jobId != nil
+        }
     }
 
     private func transcriptPollingDelayNanoseconds(
