@@ -945,6 +945,39 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("TextEditor(text:$workingRelationship)"))
     }
 
+    func testUserSettingsIOSFormOwnsSettingsBackgroundAndTopMargin() throws {
+        let normalized = try systemSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden)"))
+        XCTAssertTrue(normalized.contains(".contentMargins(.top,DesignTokens.Spacing.xl,for:.scrollContent)"))
+        XCTAssertTrue(normalized.contains(".background(DesignTokens.Colors.settingsBackground)"))
+    }
+
+    func testAgentSettingsIOSFormOwnsSettingsBackgroundAndTopMargin() throws {
+        let source = try systemSettingsSource()
+        guard let agentStart = source.range(of: "struct AgentSettingsView") else {
+            XCTFail("Unable to locate AgentSettingsView")
+            return
+        }
+        let normalized = source[agentStart.lowerBound...]
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden)"))
+        XCTAssertTrue(normalized.contains(".contentMargins(.top,DesignTokens.Spacing.xl,for:.scrollContent)"))
+        XCTAssertTrue(normalized.contains(".background(DesignTokens.Colors.settingsBackground)"))
+    }
+
+    func testSkillsSettingsIOSFormOwnsSettingsBackgroundAndTopMargin() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatevariosSkillsForm:someView{Form{"))
+        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden)"))
+        XCTAssertTrue(normalized.contains(".contentMargins(.top,DesignTokens.Spacing.xl,for:.scrollContent)"))
+        XCTAssertTrue(normalized.contains(".background(DesignTokens.Colors.settingsBackground)"))
+    }
+
     func testSettingsTabsIOSUsesExplicitMoreTabInsteadOfOverflowTabs() throws {
         let normalized = try settingsTabsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -48,6 +48,9 @@ struct UserSettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, DesignTokens.Spacing.xl, for: .scrollContent)
+        .background(DesignTokens.Colors.settingsBackground)
         #if os(macOS)
         .formStyle(.grouped)
         #endif
@@ -307,6 +310,9 @@ struct AgentSettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, DesignTokens.Spacing.xl, for: .scrollContent)
+        .background(DesignTokens.Colors.settingsBackground)
         #if os(macOS)
         .formStyle(.grouped)
         #endif

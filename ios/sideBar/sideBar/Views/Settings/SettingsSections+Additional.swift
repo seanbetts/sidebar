@@ -148,6 +148,9 @@ struct SkillsSettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, DesignTokens.Spacing.xl, for: .scrollContent)
+        .background(DesignTokens.Colors.settingsBackground)
         .sheet(item: $selectedStoreSkill) { skill in
             NavigationStack {
                 StoreSkillConfigView(viewModel: viewModel, skill: skill)
