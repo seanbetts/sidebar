@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Return profile and user settings fields for a user."""
+"""Return profile details and preference fields for a user."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def _serialize_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_profile_user_settings(user_id: str) -> dict[str, Any]:
-    """Fetch profile and user settings fields for a user."""
+    """Fetch profile details and preference fields for a user."""
     if SessionLocal is None or SettingsService is None:
         raise RuntimeError("Database dependencies are unavailable")
 

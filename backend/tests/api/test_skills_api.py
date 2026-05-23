@@ -34,7 +34,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 11
+    assert payload["catalog_version"] == 12
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
@@ -66,7 +66,16 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["prompt-preview"]["installable"] is False
     assert by_id["settings-other-preferences"]["tier"] == "standard"
     assert by_id["settings-other-preferences"]["installable"] is False
-    assert by_id["settings-other-preferences"]["name"] == "Settings"
+    assert by_id["settings-other-preferences"]["name"] == "Device Preferences"
+    assert (
+        by_id["settings-other-preferences"]["description"]
+        == "Update device-local preferences such as temperature units and biometric unlock"
+    )
+    assert by_id["settings-profile-user"]["name"] == "Profile & Preferences"
+    assert (
+        by_id["settings-profile-user"]["description"]
+        == "Read and update profile details, personal context, communication style, and profile photo"
+    )
     assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
     assert "onboarding-coach" in by_id

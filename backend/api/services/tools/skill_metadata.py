@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 11
+CATALOG_VERSION = 12
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -79,12 +79,18 @@ SKILL_DISPLAY = {
         ),
     },
     "settings-profile-user": {
-        "name": "Settings Profile/User",
-        "description": "Read and update profile and user settings fields",
+        "name": "Profile & Preferences",
+        "description": (
+            "Read and update profile details, personal context, communication "
+            "style, and profile photo"
+        ),
     },
     "settings-other-preferences": {
-        "name": "Settings",
-        "description": "Update local Other settings preferences",
+        "name": "Device Preferences",
+        "description": (
+            "Update device-local preferences such as temperature units and "
+            "biometric unlock"
+        ),
     },
     "product-feedback": {
         "name": "Product Feedback",

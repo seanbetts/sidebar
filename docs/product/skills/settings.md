@@ -1,6 +1,6 @@
 ---
 title: Settings
-summary: Read and update your profile, preferences, and app settings through Chat.
+summary: Read and update your profile, preferences, and device settings through Chat.
 tags: [skills, settings, profile]
 audience: user
 surfaces: [app, website, internal-knowledge]
@@ -9,22 +9,19 @@ skill_id: [settings-profile-user, ui-theme, settings-other-preferences]
 
 ## What it does
 
-The Settings skill lets sideBar read and update your profile and app
-preferences directly from Chat. You can ask sideBar to update your name,
-job title, or home location, change how it communicates with you, swap the
-app theme, or adjust other preferences like temperature units, all without
-leaving the conversation.
+The Settings skill lets sideBar read and update your profile, personal
+preferences, and device-local preferences directly from Chat. You can ask
+sideBar to update your name, job title, or home location, change how it
+communicates with you, swap the app theme, or adjust preferences like
+temperature units, all without leaving the conversation.
 
 ## Actions
 
 | Action | Description |
 | --- | --- |
-| Get profile and user settings | Reads your current profile details and user preferences |
-| Update profile and user settings | Updates profile fields (name, job title, employer, home location, pronouns) and user preferences (communication style, working relationship) |
-| Upload profile image | Sets your profile image from a file |
-| Remove profile image | Removes your current profile image |
+| Profile & Preferences | Reads and updates your profile details, personal context, communication style, and profile photo |
 | Set UI theme | Switches the app between light and dark mode |
-| Set other preferences | Updates preferences such as temperature units and biometric lock |
+| Device Preferences | Updates device-local preferences such as temperature units and biometric lock |
 
 ## When sideBar uses it
 

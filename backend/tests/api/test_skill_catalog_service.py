@@ -115,7 +115,16 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     )
     assert by_id["settings-other-preferences"]["tier"] == "standard"
     assert by_id["settings-other-preferences"]["installable"] is False
-    assert str(by_id["settings-other-preferences"]["name"]) == "Settings"
+    assert str(by_id["settings-other-preferences"]["name"]) == "Device Preferences"
+    assert (
+        str(by_id["settings-other-preferences"]["description"])
+        == "Update device-local preferences such as temperature units and biometric unlock"
+    )
+    assert str(by_id["settings-profile-user"]["name"]) == "Profile & Preferences"
+    assert (
+        str(by_id["settings-profile-user"]["description"])
+        == "Read and update profile details, personal context, communication style, and profile photo"
+    )
     assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
     assert by_id["audio-transcribe"]["credential_requirements"]
     assert (
@@ -156,7 +165,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 11
+    assert SkillCatalogService.catalog_version() == 12
 
 
 def test_capability_registry_exposes_code_backed_contract() -> None:

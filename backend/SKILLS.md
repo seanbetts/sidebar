@@ -56,10 +56,10 @@ Submit bug reports and feature requests to the product team by creating GitHub i
 Generate the current system prompt output with injected variables for preview or debugging.
 
 #### [settings-other-preferences](./skills/settings-other-preferences/SKILL.md) `[writes]`
-Update device-local Other settings preferences (temperature units and biometric unlock preference) through realtime preference events. Use when the assistant needs to change settings in the Other section.
+Update device-local preferences such as temperature units and biometric unlock through realtime preference events. Use when the assistant needs to change device preferences in Settings.
 
 #### [settings-profile-user](./skills/settings-profile-user/SKILL.md) `[reads, writes]`
-Read and update user-managed Profile and User settings fields (name, job title, employer, date of birth, gender, pronouns, location, communication style, working relationship, and profile image). Use when the assistant needs to inspect or modify these settings.
+Read and update user-managed profile details, personal context, communication preferences, and profile image. Use when the assistant needs to inspect or modify these settings.
 
 #### [tasks](./skills/tasks/SKILL.md) `[reads, writes]`
 Create, complete, defer, and organize tasks and projects.

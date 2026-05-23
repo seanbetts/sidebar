@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update profile and user settings fields for a user."""
+"""Update profile details and preference fields for a user."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def update_profile_user_settings(
     pronouns: str | None,
     location: str | None,
 ) -> dict[str, Any]:
-    """Update one or more profile and user settings fields."""
+    """Update one or more profile details and preference fields."""
     if SessionLocal is None or SettingsService is None:
         raise RuntimeError("Database dependencies are unavailable")
 

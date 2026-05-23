@@ -1,6 +1,6 @@
 ---
 name: settings-profile-user
-description: Read and update user-managed Profile and User settings fields (name, job title, employer, date of birth, gender, pronouns, location, communication style, working relationship, and profile image). Use when the assistant needs to inspect or modify these settings.
+description: Read and update user-managed profile details, personal context, communication preferences, and profile image. Use when the assistant needs to inspect or modify these settings.
 metadata:
   capabilities:
     reads: true
@@ -9,9 +9,9 @@ metadata:
     external_apis: false
 ---
 
-# Settings Profile User Skill
+# Profile & Preferences Skill
 
-Manage user-owned settings fields from the Profile and User sections.
+Manage user-owned profile details and preference fields from the Profile and User sections.
 
 ## Tools
 

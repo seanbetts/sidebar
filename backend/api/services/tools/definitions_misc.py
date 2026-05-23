@@ -115,7 +115,10 @@ def get_misc_definitions() -> dict:
             "build_args": pm.build_assistant_soul_reset_args,
         },
         "Get Profile and User Settings": {
-            "description": "Fetch current profile and user settings values.",
+            "description": (
+                "Fetch current profile details, personal context, and "
+                "communication preferences."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {},
@@ -126,8 +129,8 @@ def get_misc_definitions() -> dict:
         },
         "Update Profile and User Settings": {
             "description": (
-                "Update profile and user settings fields such as communication style, "
-                "working relationship, personal profile fields, and date of birth."
+                "Update profile details, personal context, communication style, "
+                "working relationship, and date of birth."
             ),
             "input_schema": {
                 "type": "object",
@@ -189,8 +192,8 @@ def get_misc_definitions() -> dict:
         },
         "Set Other Preferences": {
             "description": (
-                "Update local Other settings preferences such as temperature units "
-                "or biometric unlock preference."
+                "Update device-local preferences such as temperature units "
+                "or biometric unlock."
             ),
             "input_schema": {
                 "type": "object",

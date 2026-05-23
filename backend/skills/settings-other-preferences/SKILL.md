@@ -1,6 +1,6 @@
 ---
 name: settings-other-preferences
-description: Update device-local Other settings preferences (temperature units and biometric unlock preference) through realtime preference events. Use when the assistant needs to change settings in the Other section.
+description: Update device-local preferences such as temperature units and biometric unlock through realtime preference events. Use when the assistant needs to change device preferences in Settings.
 metadata:
   capabilities:
     reads: false
@@ -9,9 +9,9 @@ metadata:
     external_apis: false
 ---
 
-# Settings Other Preferences Skill
+# Device Preferences Skill
 
-Publish local preference updates for the Other settings section.
+Publish local device preference updates for Settings.
 
 ## Tools
 
