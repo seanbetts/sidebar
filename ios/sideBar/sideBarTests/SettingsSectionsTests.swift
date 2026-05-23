@@ -737,6 +737,37 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
     }
 
+    func testSkillsSettingsSourceUsesStoreSpecificEmptyState() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner(message:emptySkillsMessage"))
+        XCTAssertTrue(normalized.contains("Text(emptySkillsMessage)"))
+        XCTAssertTrue(
+            normalized.contains(
+                "return\"NoStoreskillsinstalledyet.InstallskillsfromtheSkillsStoretomanagethemhere.\""
+            )
+        )
+    }
+
+    func testSkillsSettingsSourceWiresStoreSkillUninstallConfirmation() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("@StateprivatevarstoreUninstallPrompt:StoreUninstallPrompt?"))
+        XCTAssertTrue(
+            normalized.contains(
+                "StoreSkillDetailSheet(viewModel:viewModel,skill:skill,isStoreActionBusy:viewModel.isSavingSkills,"
+                    + "isInstalled:isStoreSkillInstalled(skill),installError:viewModel.skillsError,onInstallTap:{},"
+                    + "onConfirmUninstall:{awaituninstallStoreSkillFromSettings(skill)})"
+            )
+        )
+        XCTAssertTrue(normalized.contains("Button(\"Uninstall\",role:.destructive){promptStoreSkillUninstall(skill)}"))
+        XCTAssertTrue(normalized.contains(".destructiveConfirmationAlert("))
+        XCTAssertTrue(normalized.contains("confirmTitle:\"Uninstall\""))
+        XCTAssertTrue(normalized.contains("awaitviewModel.uninstallStoreSkill(id:skill.id)"))
+    }
+
     func testProfileStringSelectorSourceUsesIOSCompactSheetInsteadOfInlineOrMenu() throws {
         let source = try profileStringSelectorSource()
         guard
@@ -1185,6 +1216,16 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
+    }
+
+    func testStoreSkillConfigExposesVisibleUninstallAction() throws {
+        let normalized = try storeSkillConfigSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Button(role:.destructive){onInstalledTap?()}label:{"))
+        XCTAssertTrue(normalized.contains("Text(\"Uninstall\")"))
+        XCTAssertTrue(normalized.contains("StoreSkillInstallIcon(icon:AppIcon.Action.deleteCircleFilled"))
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Uninstallskill\")"))
     }
 
     func testUserSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {

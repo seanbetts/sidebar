@@ -26,6 +26,15 @@ final class SkillsStoreViewSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("actionTitle:\"Retry\""))
         XCTAssertTrue(normalized.contains("Task{awaitreloadSkillsStore()}"))
     }
+
+    func testInstalledStoreSkillCardExposesUninstallAction() throws {
+        let normalized = try skillsStoreCardComponentsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Uninstallskill\")"))
+        XCTAssertTrue(normalized.contains(".help(\"Uninstallskill\")"))
+        XCTAssertFalse(normalized.contains(".accessibilityLabel(\"Installed\")"))
+    }
 }
 
 private func skillsStoreViewSource(

@@ -309,14 +309,18 @@ struct StoreSkillConfigView: View {
     @ViewBuilder
     private var installActionButton: some View {
         if isInstalled {
-            Button {
+            Button(role: .destructive) {
                 onInstalledTap?()
             } label: {
-                StoreSkillInstallIcon(icon: AppIcon.State.successFilled, busy: isStoreActionBusy)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    StoreSkillInstallIcon(icon: AppIcon.Action.deleteCircleFilled, busy: isStoreActionBusy)
+                    Text("Uninstall")
+                        .appFont(.caption)
+                }
             }
-            .accessibilityLabel("Installed")
+            .accessibilityLabel("Uninstall skill")
             .disabled(isStoreActionBusy)
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
         } else {
             Button {
                 onInstallTap?()

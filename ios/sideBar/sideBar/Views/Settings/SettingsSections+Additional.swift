@@ -8,6 +8,7 @@ struct SkillsSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @State private var selectedTier: SkillsTierFilter = .standard
     @State private var selectedStoreSkill: SkillItem?
+    @State private var storeUninstallPrompt: StoreUninstallPrompt?
 
     var body: some View {
         #if os(macOS)
@@ -55,7 +56,7 @@ struct SkillsSettingsView: View {
                 }
 
                 if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
-                    SettingsMacStatusBanner(message: "No skills available.", tone: .info)
+                    SettingsMacStatusBanner(message: emptySkillsMessage, tone: .info)
                 } else {
                     ForEach(groupedSkills, id: \.0) { category, skills in
                         SettingsMacPanelCard {
@@ -79,23 +80,20 @@ struct SkillsSettingsView: View {
         }
         .background(DesignTokens.Colors.settingsBackground)
         .sheet(item: $selectedStoreSkill) { skill in
-            NavigationStack {
-                StoreSkillConfigView(viewModel: viewModel, skill: skill)
-                    .navigationTitle(viewModel.displayName(for: skill))
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button {
-                                selectedStoreSkill = nil
-                            } label: {
-                                Image(appIcon: AppIcon.Action.close)
-                            }
-                            .accessibilityLabel("Close skill details")
-                            .keyboardShortcut(.cancelAction)
-                        }
-                    }
-            }
-            .settingsSheetGrabBarVisible()
+            storeSkillDetailSheet(skill)
         }
+        .destructiveConfirmationAlert(
+            title: "Uninstall skill?",
+            isPresented: isStoreUninstallPromptPresented,
+            message: storeUninstallPromptMessage,
+            confirmTitle: "Uninstall",
+            onConfirm: {
+                confirmStoreSkillUninstall()
+            },
+            onCancel: {
+                storeUninstallPrompt = nil
+            }
+        )
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
@@ -131,7 +129,7 @@ struct SkillsSettingsView: View {
 
             if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                 Section {
-                    Text("No skills available.")
+                    Text(emptySkillsMessage)
                         .foregroundStyle(.secondary)
                 }
             } else {
@@ -152,12 +150,20 @@ struct SkillsSettingsView: View {
         .contentMargins(.top, DesignTokens.Spacing.xl, for: .scrollContent)
         .background(DesignTokens.Colors.settingsBackground)
         .sheet(item: $selectedStoreSkill) { skill in
-            NavigationStack {
-                StoreSkillConfigView(viewModel: viewModel, skill: skill)
-                    .navigationTitle(viewModel.displayName(for: skill))
-            }
-            .settingsSheetGrabBarVisible()
+            storeSkillDetailSheet(skill)
         }
+        .destructiveConfirmationAlert(
+            title: "Uninstall skill?",
+            isPresented: isStoreUninstallPromptPresented,
+            message: storeUninstallPromptMessage,
+            confirmTitle: "Uninstall",
+            onConfirm: {
+                confirmStoreSkillUninstall()
+            },
+            onCancel: {
+                storeUninstallPrompt = nil
+            }
+        )
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
@@ -257,6 +263,8 @@ struct SkillsSettingsView: View {
                 }
                 .buttonStyle(.bordered)
 
+                uninstallButton(skill)
+
                 Toggle("", isOn: Binding(
                     get: { isSkillEnabled(skill.id) },
                     set: { isEnabled in
@@ -283,20 +291,45 @@ struct SkillsSettingsView: View {
             }
             .buttonStyle(.plain)
 
-            Toggle("", isOn: Binding(
-                get: { isSkillEnabled(skill.id) },
-                set: { isEnabled in
-                    handleSkillToggleChange(id: skill.id, enabled: isEnabled)
-                }
-            ))
-            .labelsHidden()
-            .disabled(
-                viewModel.isSavingSkills
-                || viewModel.settings == nil
-                || !skill.userToggleable
-            )
+            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
+                Toggle("", isOn: Binding(
+                    get: { isSkillEnabled(skill.id) },
+                    set: { isEnabled in
+                        handleSkillToggleChange(id: skill.id, enabled: isEnabled)
+                    }
+                ))
+                .labelsHidden()
+                .disabled(
+                    viewModel.isSavingSkills
+                    || viewModel.settings == nil
+                    || !skill.userToggleable
+                )
+
+                uninstallButton(skill)
+            }
         }
         #endif
+    }
+
+    private func uninstallButton(_ skill: SkillItem) -> some View {
+        Button("Uninstall", role: .destructive) {
+            promptStoreSkillUninstall(skill)
+        }
+        .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
+    }
+
+    private func storeSkillDetailSheet(_ skill: SkillItem) -> some View {
+        StoreSkillDetailSheet(
+            viewModel: viewModel,
+            skill: skill,
+            isStoreActionBusy: viewModel.isSavingSkills,
+            isInstalled: isStoreSkillInstalled(skill),
+            installError: viewModel.skillsError,
+            onInstallTap: {},
+            onConfirmUninstall: {
+                await uninstallStoreSkillFromSettings(skill)
+            }
+        )
     }
 
     private var filteredSkills: [SkillItem] {
@@ -312,6 +345,15 @@ struct SkillsSettingsView: View {
             case .required:
                 return skill.tier == .required
             }
+        }
+    }
+
+    private var emptySkillsMessage: String {
+        switch selectedTier {
+        case .store:
+            return "No Store skills installed yet. Install skills from the Skills Store to manage them here."
+        case .standard, .required:
+            return "No skills available."
         }
     }
 
@@ -337,6 +379,43 @@ struct SkillsSettingsView: View {
                 scopeSkillIds: enableAllScopeSkillIds
             )
         }
+    }
+
+    private func promptStoreSkillUninstall(_ skill: SkillItem) {
+        storeUninstallPrompt = StoreUninstallPrompt(skill: skill)
+    }
+
+    private func confirmStoreSkillUninstall() {
+        guard let prompt = storeUninstallPrompt else { return }
+        storeUninstallPrompt = nil
+        Task {
+            await uninstallStoreSkillFromSettings(prompt.skill)
+        }
+    }
+
+    private func uninstallStoreSkillFromSettings(_ skill: SkillItem) async {
+        let didUninstall = await viewModel.uninstallStoreSkill(id: skill.id)
+        if didUninstall, selectedStoreSkill?.id == skill.id {
+            selectedStoreSkill = nil
+        }
+    }
+
+    private var isStoreUninstallPromptPresented: Binding<Bool> {
+        Binding(
+            get: { storeUninstallPrompt != nil },
+            set: { isPresented in
+                if !isPresented {
+                    storeUninstallPrompt = nil
+                }
+            }
+        )
+    }
+
+    private var storeUninstallPromptMessage: String {
+        guard let prompt = storeUninstallPrompt else {
+            return ""
+        }
+        return "This will uninstall \(viewModel.displayName(for: prompt.skill))."
     }
 
     private var enableAllScopeSkillIds: Set<String> {

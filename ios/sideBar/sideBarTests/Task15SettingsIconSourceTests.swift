@@ -31,7 +31,7 @@ final class Task15SettingsIconSourceTests: XCTestCase {
         XCTAssertFalse(credentials.contains("Image(systemName:\"trash.circle.fill\")"))
 
         XCTAssertTrue(config.contains("Image(appIcon:AppIcon.State.successCircle)"))
-        XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.State.successFilled"))
+        XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.deleteCircleFilled"))
         XCTAssertTrue(config.contains("StoreSkillInstallIcon(icon:AppIcon.Action.addCircleFilled"))
         XCTAssertTrue(config.contains("leticon:AppIcon"))
         XCTAssertFalse(config.contains("Image(systemName:\"checkmark.circle\")"))

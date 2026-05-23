@@ -146,7 +146,8 @@ struct SkillsStoreCard: View {
                 Button(action: onInstalledTap) {
                     SkillsStoreInstallPill(icon: AppIcon.State.successFilled, busy: isBusy)
                 }
-                .accessibilityLabel("Installed")
+                .accessibilityLabel("Uninstall skill")
+                .help("Uninstall skill")
             } else {
                 Button(action: onInstall) {
                     SkillsStoreInstallPill(icon: AppIcon.Action.addCircleFilled, busy: isBusy)
