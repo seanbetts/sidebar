@@ -2,44 +2,40 @@ import Foundation
 
 extension TasksViewModel {
     public func applyTaskRealtimeEvent(_ payload: RealtimePayload<TaskRealtimeRecord>) async {
-        _ = payload
-        scheduleRealtimeRefresh()
+        await invalidateTaskRealtime(
+            entityId: payload.record?.id ?? payload.oldRecord?.id,
+            updatedAt: DateParsing.parseISO8601(payload.record?.updatedAt ?? payload.oldRecord?.updatedAt),
+            isDeleted: payload.eventType == .delete || payload.record?.deletedAt != nil
+        )
     }
 
     public func applyTaskProjectRealtimeEvent(_ payload: RealtimePayload<TaskProjectRealtimeRecord>) async {
-        _ = payload
-        scheduleRealtimeRefresh()
+        await invalidateTaskRealtime(
+            entityId: payload.record?.id ?? payload.oldRecord?.id,
+            updatedAt: DateParsing.parseISO8601(payload.record?.updatedAt ?? payload.oldRecord?.updatedAt),
+            isDeleted: payload.eventType == .delete || payload.record?.deletedAt != nil
+        )
     }
 
     public func applyTaskGroupRealtimeEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>) async {
-        _ = payload
-        scheduleRealtimeRefresh()
+        await invalidateTaskRealtime(
+            entityId: payload.record?.id ?? payload.oldRecord?.id,
+            updatedAt: DateParsing.parseISO8601(payload.record?.updatedAt ?? payload.oldRecord?.updatedAt),
+            isDeleted: payload.eventType == .delete || payload.record?.deletedAt != nil
+        )
     }
 
     func setLocalErrorMessage(_ message: String?) {
         localErrorMessage = message
     }
 
-    private func scheduleRealtimeRefresh() {
-        guard !shouldQueueTaskWrites else {
-            return
-        }
-        realtimeRefreshTask?.cancel()
-        realtimeRefreshTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            if self.realtimeRefreshDelayNanoseconds > 0 {
-                try? await Task.sleep(nanoseconds: self.realtimeRefreshDelayNanoseconds)
-            }
-            guard !Task.isCancelled else { return }
-
-            let currentSelection = self.selection
-            if currentSelection != .none {
-                // Reconcile from cache first, then refresh in background to avoid UI flicker.
-                await self.load(selection: currentSelection)
-            }
-            await self.loadCounts()
-            await self.refreshWidgetData()
-        }
+    private func invalidateTaskRealtime(entityId: String?, updatedAt: Date?, isDeleted: Bool) async {
+        let change = TasksRefreshAdapter.classifyTaskRealtime(
+            entityId: entityId,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted
+        )
+        await onRealtimeInvalidation?(change)
     }
 
     public func refreshAfterExternalTaskChange(force: Bool = true) async {

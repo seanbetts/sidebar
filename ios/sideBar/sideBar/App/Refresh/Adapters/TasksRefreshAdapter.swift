@@ -35,4 +35,16 @@ final class TasksRefreshAdapter: DomainRefreshAdapter {
             await viewModel.refreshWidgetData()
         }
     }
+
+    static func classifyTaskRealtime(entityId: String?, updatedAt: Date?, isDeleted: Bool) -> DomainSyncChange {
+        DomainSyncChange(
+            section: .tasks,
+            entityId: entityId,
+            kind: isDeleted ? .listRefresh : .metadataPatch,
+            updatedAt: updatedAt,
+            requiresListRefresh: true,
+            requiresDetailRefresh: false,
+            canPatchMetadata: false
+        )
+    }
 }

@@ -741,8 +741,7 @@ final class TasksViewModelTests: XCTestCase {
         networkAvailable: Bool,
         serverReachable: Bool = true,
         isOffline: Bool = false,
-        searchDebounceNanoseconds: UInt64 = 350_000_000,
-        realtimeRefreshDelayNanoseconds: UInt64 = 200_000_000
+        searchDebounceNanoseconds: UInt64 = 350_000_000
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -776,8 +775,7 @@ final class TasksViewModelTests: XCTestCase {
             widgetDataManager: widgetDataManager,
             toastCenter: toastCenter,
             networkStatus: networkStatus,
-            searchDebounceNanoseconds: searchDebounceNanoseconds,
-            realtimeRefreshDelayNanoseconds: realtimeRefreshDelayNanoseconds
+            searchDebounceNanoseconds: searchDebounceNanoseconds
         )
         return SUT(
             viewModel: viewModel,

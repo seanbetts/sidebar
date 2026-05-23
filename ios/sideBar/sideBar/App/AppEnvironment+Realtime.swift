@@ -1,6 +1,16 @@
 import Foundation
 
 extension AppEnvironment: RealtimeEventHandler {
+    func configureTaskRealtimeInvalidationHandler() {
+        tasksViewModel.onRealtimeInvalidation = { [weak self] change in
+            guard let self else { return }
+            await refreshCoordinator.scheduleRealtimeInvalidation(
+                change,
+                context: currentRefreshContext()
+            )
+        }
+    }
+
     var currentSyncHealth: SyncHealthState {
         SyncHealthModel.evaluate(
             canAttemptServerRead: connectivityMonitor.canAttemptServerRead &&

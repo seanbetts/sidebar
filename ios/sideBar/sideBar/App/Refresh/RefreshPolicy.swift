@@ -55,7 +55,13 @@ struct RefreshPolicy {
                 ),
                 requiresQueueReplayFirst: false
             )
-        case .realtimeInvalidation, .jobTerminalState, .decodeFailure:
+        case .realtimeInvalidation:
+            return RefreshPlan(
+                trigger: trigger,
+                targets: dedupedTargets(realtimeTargets(from: context.staleTargets)),
+                requiresQueueReplayFirst: false
+            )
+        case .jobTerminalState, .decodeFailure:
             return RefreshPlan(
                 trigger: trigger,
                 targets: dedupedTargets(context.staleTargets),
@@ -109,6 +115,17 @@ struct RefreshPolicy {
         var targets: [RefreshTarget] = [.chatList, .taskCounts]
         targets.append(contentsOf: visibleTargets(for: context))
         targets.append(contentsOf: context.pinnedSections.map { .pinnedMetadata($0) })
+        return targets
+    }
+
+    private func realtimeTargets(from staleTargets: [RefreshTarget]) -> [RefreshTarget] {
+        var targets: [RefreshTarget] = []
+        for target in staleTargets {
+            targets.append(target)
+            if target == .sectionList(.tasks) {
+                targets.append(.taskCounts)
+            }
+        }
         return targets
     }
 

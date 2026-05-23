@@ -208,6 +208,24 @@ final class RefreshPolicyTests: XCTestCase {
         XCTAssertFalse(plan.requiresQueueReplayFirst)
     }
 
+    func testRealtimeInvalidationPlanExpandsTaskListTargetToTaskCounts() {
+        let policy = RefreshPolicy()
+        let plan = policy.makePlan(
+            trigger: .realtimeInvalidation,
+            context: RefreshContext(
+                visibleSection: .tasks,
+                hasVisibleDetail: false,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [.sectionList(.tasks)],
+                canAttemptServerRead: true
+            )
+        )
+
+        XCTAssertEqual(plan.targets, [.sectionList(.tasks), .taskCounts])
+        XCTAssertFalse(plan.requiresQueueReplayFirst)
+    }
+
     func testJobTerminalStatePlanUsesExplicitStaleTargets() {
         let policy = RefreshPolicy()
         let plan = policy.makePlan(

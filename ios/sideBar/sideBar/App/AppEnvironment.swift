@@ -283,6 +283,7 @@ public final class AppEnvironment: ObservableObject {
         self.chatViewModel.configureRefreshCoordinator(resolvedRefreshCoordinator) { [weak self] in
             self?.currentRefreshContext()
         }
+        configureTaskRealtimeInvalidationHandler()
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         hydratePushDiagnosticsStateFromStorage()
