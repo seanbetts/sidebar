@@ -1,0 +1,79 @@
+{
+  "videos": [
+    {
+      "video_id": "_Ih3F9Ooxkc",
+      "url": "https://youtu.be/_Ih3F9Ooxkc?si=cVu6WsOv9iI2tmoU",
+      "title": "Nerd Nest Steam Controller unlimited inputs",
+      "duration": "20:20",
+      "anchor_regions": [
+        {
+          "name": "virtual_menu_setup",
+          "start": "0:00",
+          "end": "2:30",
+          "anchors": [
+            "essentially unlimited inputs on the Steam controller",
+            "I'm going to add a virtual menu",
+            "in menu sensitivity"
+          ]
+        },
+        {
+          "name": "action_layers",
+          "start": "3:00",
+          "end": "6:45",
+          "anchors": [
+            "through action sets",
+            "hold action set layer",
+            "now it's letters"
+          ]
+        },
+        {
+          "name": "menu_switching",
+          "start": "7:00",
+          "end": "11:50",
+          "anchors": [
+            "add action set layer",
+            "touch menu activation style",
+            "numbers, letters"
+          ]
+        },
+        {
+          "name": "subcommands",
+          "start": "12:20",
+          "end": "14:45",
+          "anchors": [
+            "bind multiple actions to the same input",
+            "add a subcommand",
+            "extra commands"
+          ]
+        },
+        {
+          "name": "press_styles",
+          "start": "14:45",
+          "end": "18:20",
+          "anchors": [
+            "double press",
+            "long press",
+            "release press"
+          ]
+        },
+        {
+          "name": "double_tap_tuning",
+          "start": "18:20",
+          "end": "20:20",
+          "anchors": [
+            "1000 millisecond",
+            "reset this to default",
+            "Stay rad everybody"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": ["gemini-3.1-flash-lite"],
+  "combinations": ["120:30", "240:30", "300:30", "360:30"],
+  "concurrency": [4],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/_Ih3F9Ooxkc-concurrency4-sweep"
+}
