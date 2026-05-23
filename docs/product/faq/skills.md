@@ -1,6 +1,6 @@
 ---
 title: Skills
-summary: Common questions about skills, skill tiers, installing Store skills, API keys, and how skills work in chat.
+summary: Common questions about skills, Included skills, installing Store skills, API keys, and how skills work in chat.
 tags: [faq, skills]
 audience: user
 surfaces: [app, website, internal-knowledge]
@@ -14,21 +14,20 @@ web, transcribing audio, sending email, reading calendars, and more. sideBar
 selects and uses relevant skills automatically as you chat. You do not need to
 invoke them by name or switch modes.
 
-## What is the difference between Required, Standard, and Store skills?
+## What is the difference between Included and Store skills?
 
-- **Required** skills are always active and power core functionality like
-  sideBar's identity and feedback tools. They cannot be disabled.
-- **Standard** skills come pre-installed and enabled. They cover common
-  capabilities and you can turn any of them off if you prefer.
+- **Included** skills come with sideBar. Some are optional and can be turned
+  on or off. Core included skills are locked on because sideBar depends on them
+  to function.
 - **Store** skills are additional capabilities you choose to install from the
   Skills Store. Some are ready to use immediately; others require an API key
   from an external service.
 
 ## Do I need to do anything to use skills?
 
-No, for Standard and Required skills. They work automatically. For Store skills
-you first install them from the Skills Store, and some require an API key from
-an external service before they will work. Once installed, sideBar uses them
+No, for Included skills. They work automatically. For Store skills you first
+install them from the Skills Store, and some require an API key from an
+external service before they will work. Once installed, sideBar uses them
 without any further input from you.
 
 ## How do I know when a skill is running?
@@ -41,7 +40,7 @@ succeeded or hit an error. This happens in real time so you can follow along.
 
 Yes. Go to Settings → Skills to see all your installed skills with toggles.
 Disabling a skill keeps it installed but stops sideBar from using it. You can
-re-enable it at any time. Required skills cannot be disabled.
+re-enable it at any time. Locked included skills cannot be disabled.
 
 ## Do Store skills cost money?
 

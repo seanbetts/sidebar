@@ -43,12 +43,11 @@ AI chat interface — it's an assistant that adapts to you over time.
 
 ## Skills
 
-[Skills](/manual/skills) extend what sideBar can do. There are three kinds:
+[Skills](/manual/skills) extend what sideBar can do. Settings organises them
+into Included and Store skills:
 
-- **Required skills** are always active and power core capabilities like
-  sideBar's identity and feedback tools.
-- **Standard skills** come pre-installed and cover common capabilities. You can
-  turn each of them on or off.
+- **Included skills** come with sideBar. Some are optional and can be turned
+  on or off. Core included skills are locked on because sideBar depends on them.
 - **Store skills** are additional capabilities you can install yourself from the
   [Skills Store](/manual/skills-store). Examples include transcribing YouTube
   videos and integrations with services like Gmail and Spotify.

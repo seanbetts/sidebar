@@ -68,13 +68,18 @@ and soul work and how they evolve over time.
 
 ## Skills
 
-Manage which skills are active. Skills are grouped into three tiers. Use the
-filter at the top to switch between **Standard**, **Store**, and **Required**.
+Manage which skills are active. Use the filter at the top to switch between
+**Included** and **Store**.
 
-The **Enable all** toggle turns every skill in the current tier on or off at
-once. Individual rows let you toggle them independently. Tapping a Store skill
-opens its detail view, where you can see its full description, requirements, and
-any API credentials it needs.
+Included skills are grouped by area: app skills, assistant skills, and system
+skills. Optional included skills have toggles. Locked included skills stay on
+because sideBar needs them to function, and they appear at the bottom of each
+section.
+
+The **Enable all** toggle turns every optional skill in the current view on or
+off at once. Individual rows let you toggle them independently. Tapping a Store
+skill opens its detail view, where you can see its full description,
+requirements, and any API credentials it needs.
 
 See [Skills](/manual/skills) and [Skills Store](/manual/skills-store) for more
 on what skills are and how they work.

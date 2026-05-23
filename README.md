@@ -9,7 +9,7 @@ A cross-platform personal AI workspace for iPhone, iPad, Mac, and web. sideBar c
 - **Bring your own AI provider** - Connect Anthropic, OpenAI, or Google with your own API key
 - **Context-aware chat** - Real-time streaming conversations that can pull from your notes, tasks, websites, files, memories, and recent activity
 - **Notes, tasks, websites, and files** - Built-in personal workspace for writing, planning, saving pages, and working with documents
-- **Skills system** - Required, Standard, and Store skills that let sideBar search the web, manage content, and connect to external services
+- **Skills system** - Included and Store skills that let sideBar search the web, manage content, and connect to external services
 - **Cross-device sync** - Your content syncs across iPhone, iPad, Mac, and web, with offline reading for existing content
 - **Widgets and extensions** - Home screen widgets, lock screen widgets, Share extension, and Safari extension support
 - **Personalization** - User profile, communication style, working relationship, and persistent memories

@@ -48,16 +48,11 @@
         ]
       },
       {
-        "group": "Required Skills",
+        "group": "Included Skills",
         "pages": [
           "skills/sidebar-identity",
           "skills/sidebar-soul",
-          "skills/product-feedback"
-        ]
-      },
-      {
-        "group": "Standard Skills",
-        "pages": [
+          "skills/product-feedback",
           "skills/conversations",
           "skills/files",
           "skills/memory",

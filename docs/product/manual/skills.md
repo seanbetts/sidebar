@@ -1,12 +1,12 @@
 ---
 title: Skills
-summary: What skills are, how sideBar uses them, and the difference between Required, Standard, and Store skills.
+summary: What skills are, how sideBar uses them, and the difference between Included and Store skills.
 tags: [manual, skills]
 audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
-{/* TODO: screenshot — skills.png: Settings → Skills showing Standard skill toggles (iPad landscape) */}
+{/* TODO: screenshot — skills.png: Settings → Skills showing Included skill toggles (iPad landscape) */}
 <Frame>
   {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/skills.png" alt="sideBar skills settings" />
@@ -20,14 +20,13 @@ skill is running, you'll see the skill pill appear inline in the
 [conversation](/manual/chat#skills-in-action) so you can follow along in
 real time.
 
-## Skill Tiers
+## Skill Types
 
-Skills fall into three tiers:
+Settings organises skills into two groups:
 
-- **Required**: core skills that are always active. These cannot be
-  disabled because sideBar depends on them to function.
-- **Standard**: optional skills that come installed and enabled by default.
-  You can turn any of them off if you don't want sideBar using them.
+- **Included**: skills that come with sideBar. Some are optional and can be
+  turned on or off. Core skills are locked on because sideBar depends on them
+  to function.
 - **Store**: additional skills you choose to install from the
   [Skills Store](/manual/skills-store). Some are ready to use immediately;
   others require an API key from an external service, which you provide
@@ -35,8 +34,9 @@ Skills fall into three tiers:
 
 ## Skill States
 
-Standard skills have a toggle: **enabled** means sideBar can use the skill,
+Included skills have a toggle: **enabled** means sideBar can use the skill,
 **disabled** means it's installed but inactive until you turn it back on.
+Locked included skills are always active and cannot be disabled.
 
 Store skills can also show as **unavailable**, this means the skill is
 installed but can't run right now, either because a required API key is
@@ -76,9 +76,11 @@ enabled in [Settings](/manual/settings) → **Skills**.
 ## Managing Skills
 
 Go to [Settings](/manual/settings) → **Skills** to manage what's active.
-Standard and Required skills appear as a list with a toggle next to each one.
-Installed Store skills appear here too. You can enable, disable, update
-their API key, or uninstall them from this view.
+Use the filter at the top to switch between **Included** and **Store**.
+Included skills are grouped by area, with locked core skills shown at the
+bottom of each section. You can enable or disable optional included skills.
+Installed Store skills appear in the Store view, where you can enable,
+disable, update their API key, or uninstall them.
 
 To browse and install new Store skills, go to the
 [Skills Store](/manual/skills-store).
