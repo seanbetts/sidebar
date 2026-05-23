@@ -215,6 +215,40 @@ def parse_duration_seconds(value: str | int) -> int:
     return total
 
 
+def parse_offset_seconds(value: str | int) -> int:
+    """Parse a non-negative offset from seconds, MM:SS, or HH:MM:SS."""
+    if isinstance(value, int):
+        if value < 0:
+            raise ValueError("Invalid offset: must be non-negative")
+        return value
+
+    parts = value.strip().split(":")
+    if len(parts) not in {1, 2, 3}:
+        raise ValueError(f"Invalid offset: {value}")
+    if not all(part.isdigit() for part in parts):
+        raise ValueError(f"Invalid offset: {value}")
+
+    numbers = [int(part) for part in parts]
+    if len(numbers) == 1:
+        total = numbers[0]
+        seconds = total
+        minutes = 0
+    elif len(numbers) == 2:
+        minutes, seconds = numbers
+        total = minutes * 60 + seconds
+    else:
+        hours, minutes, seconds = numbers
+        total = hours * 3600 + minutes * 60 + seconds
+
+    if (
+        total < 0
+        or (len(numbers) > 1 and seconds >= 60)
+        or (len(numbers) == 3 and minutes >= 60)
+    ):
+        raise ValueError(f"Invalid offset: {value}")
+    return total
+
+
 def _parse_combination(raw: str) -> BenchmarkCombination:
     """Parse a window:overlap combination."""
     parts = raw.split(":", 1)
@@ -247,8 +281,8 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
             anchor_regions=tuple(
                 AnchorRegion(
                     name=str(region["name"]),
-                    start_seconds=parse_duration_seconds(region["start"]),
-                    end_seconds=parse_duration_seconds(region["end"]),
+                    start_seconds=parse_offset_seconds(region["start"]),
+                    end_seconds=parse_offset_seconds(region["end"]),
                     anchors=tuple(str(anchor) for anchor in region["anchors"]),
                 )
                 for region in item.get("anchor_regions", [])
@@ -580,6 +614,12 @@ def _summary_column_label(column: str) -> str:
     return column.replace("_", " ").title().replace(" Id", " ID")
 
 
+def _format_markdown_cell(value: Any) -> str:
+    """Return a value safe for one markdown table cell."""
+    normalized = " ".join(str(value).split())
+    return normalized.replace("\\", "\\\\").replace("|", "\\|")
+
+
 def write_reports(*, output_dir: Path, summaries: list[dict[str, Any]]) -> None:
     """Write JSON, markdown, and CSV benchmark summaries."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -601,7 +641,7 @@ def write_reports(*, output_dir: Path, summaries: list[dict[str, Any]]) -> None:
     separator = "| " + " | ".join("---" for _ in SUMMARY_COLUMNS) + " |"
     rows = [
         "| "
-        + " | ".join(str(summary.get(column, "")) for column in SUMMARY_COLUMNS)
+        + " | ".join(_format_markdown_cell(summary.get(column, "")) for column in SUMMARY_COLUMNS)
         + " |"
         for summary in summaries
     ]

@@ -441,6 +441,42 @@ def test_load_benchmark_config_defaults_repeat_count_to_three(tmp_path) -> None:
     assert config.output_dir == tmp_path / "out"
 
 
+@pytest.mark.parametrize("start", [0, "0"])
+def test_load_benchmark_config_accepts_zero_anchor_region_start(
+    tmp_path,
+    start: int | str,
+) -> None:
+    config_path = tmp_path / "benchmark.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "videos": [
+                    {
+                        "video_id": "abc123",
+                        "url": "https://youtu.be/abc123",
+                        "title": "Demo",
+                        "duration": "20:20",
+                        "anchor_regions": [
+                            {
+                                "name": "opening",
+                                "start": start,
+                                "end": "0:30",
+                                "anchors": ["hello world"],
+                            }
+                        ],
+                    }
+                ],
+                "combinations": ["240:30"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_benchmark_config(config_path)
+
+    assert config.videos[0].anchor_regions[0].start_seconds == 0
+
+
 @pytest.mark.parametrize(
     ("payload", "message"),
     [
@@ -539,3 +575,34 @@ def test_write_reports_creates_json_markdown_and_csv(tmp_path) -> None:
     assert json.loads((output_dir / "summary.json").read_text(encoding="utf-8")) == summaries
     assert (output_dir / "summary.md").read_text(encoding="utf-8").startswith("| Video ID |")
     assert "abc123" in (output_dir / "summary.csv").read_text(encoding="utf-8")
+
+
+def test_write_reports_escapes_markdown_table_cells(tmp_path) -> None:
+    output_dir = tmp_path / "reports"
+    summaries = [
+        {
+            "video_id": "abc123",
+            "title": "Demo | Pipe\nTitle",
+            "duration_seconds": 300,
+            "model": "gemini-3.1-flash-lite",
+            "combination": "240s / 30s",
+            "concurrency": 1,
+            "run_number": 1,
+            "call_count": 2,
+            "wall_clock_seconds": 5.0,
+            "summed_call_latency_seconds": 8.0,
+            "input_tokens": 100,
+            "output_tokens": 10,
+            "total_tokens": 110,
+            "estimated_cost_usd": 0.00004,
+            "anchor_score": "1/1",
+            "word_count": 42,
+            "repetition_warning": False,
+        }
+    ]
+
+    write_reports(output_dir=output_dir, summaries=summaries)
+
+    lines = (output_dir / "summary.md").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 3
+    assert "Demo \\| Pipe Title" in lines[2]
