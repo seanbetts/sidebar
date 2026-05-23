@@ -1,0 +1,86 @@
+{
+  "videos": [
+    {
+      "video_id": "v3n3Ao9QyAA",
+      "url": "https://www.youtube.com/watch?v=v3n3Ao9QyAA",
+      "title": "1874 final match day preview",
+      "duration": "28:10",
+      "anchor_regions": [
+        {
+          "name": "opening_context",
+          "start": "0:00",
+          "end": "1:20",
+          "anchors": [
+            "final match day preview of the season",
+            "Villa are on the beach",
+            "Pep's final game"
+          ]
+        },
+        {
+          "name": "istanbul_emotion",
+          "start": "2:00",
+          "end": "7:40",
+          "anchors": [
+            "I was just in total shock after the game",
+            "coming out as an Aston Villa fan",
+            "it felt like a real community"
+          ]
+        },
+        {
+          "name": "ticket_prices_context",
+          "start": "8:40",
+          "end": "10:00",
+          "anchors": [
+            "ticket prices",
+            "PSR and SCR",
+            "fourth compared to fifth"
+          ]
+        },
+        {
+          "name": "lineup_discussion",
+          "start": "11:00",
+          "end": "13:10",
+          "anchors": [
+            "Marco Bizot will be in goal",
+            "anyone that's going to the World Cup",
+            "Barkley"
+          ]
+        },
+        {
+          "name": "pep_tactical_legacy",
+          "start": "14:20",
+          "end": "21:40",
+          "anchors": [
+            "zonal marking",
+            "positional play",
+            "playing out from the back"
+          ]
+        },
+        {
+          "name": "future_shows",
+          "start": "23:40",
+          "end": "27:30",
+          "anchors": [
+            "normal football show",
+            "thanks to everyone for all the comments",
+            "Super Cup in August"
+          ]
+        }
+      ]
+    }
+  ],
+  "models": [
+    "gemini-3.1-flash-lite"
+  ],
+  "combinations": [
+    "240:15",
+    "300:15"
+  ],
+  "concurrency": [
+    4
+  ],
+  "repeat_count": 3,
+  "prompt_variant": "plain_transcript_v1",
+  "media_resolution": "LOW",
+  "output_dir": "benchmark_results/gemini-video/v3n3Ao9QyAA-overlap15-targeted"
+}
