@@ -97,6 +97,9 @@ final class WriteQueueTests: XCTestCase {
             autoProcessEnabled: false,
             retrySleep: sleepProbe.sleep
         )
+        await waitUntilWriteQueueState {
+            queue.hasRecoveredStuckWrites && queue.hasRecoveredConflictWrites
+        }
 
         struct Payload: Codable {
             let value: String
@@ -203,6 +206,69 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertEqual(restored.attempts, 3)
         XCTAssertEqual(restored.lastAttemptAt, originalLastAttemptAt)
         XCTAssertNil(restored.lastError)
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertFalse(queue.isExecutingWrite)
+    }
+
+    func testProcessRetriedWriteRetrySleepCancellationRestoresOriginalState() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = TestWriteExecutor(error: MockError.forced)
+        let sleepProbe = WriteQueueSleepProbe()
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false,
+            retrySleep: sleepProbe.sleep
+        )
+        await waitUntilWriteQueueState {
+            queue.hasRecoveredStuckWrites && queue.hasRecoveredConflictWrites
+        }
+
+        struct Payload: Codable {
+            let value: String
+        }
+        let writeId = UUID()
+        let originalLastAttemptAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let originalServerSnapshot = Data("snapshot".utf8)
+        let context = persistence.container.viewContext
+        let write = PendingWrite.insertNew(in: context)
+        write.id = writeId
+        write.operationType = WriteOperation.update.rawValue
+        write.entityType = WriteEntityType.note.rawValue
+        write.entityId = "note-1"
+        write.payload = try JSONEncoder().encode(Payload(value: "retry"))
+        write.createdAt = Date()
+        write.attempts = 3
+        write.status = WriteQueueStatus.pending.rawValue
+        write.lastError = "Previous error"
+        write.lastAttemptAt = originalLastAttemptAt
+        write.conflictReason = "Previous conflict"
+        write.serverSnapshot = originalServerSnapshot
+        try context.save()
+
+        let task = Task { await queue.processRetriedWrite(id: writeId) }
+        while sleepProbe.sleepCallCount == 0 {
+            await Task.yield()
+        }
+        task.cancel()
+        sleepProbe.failSleepsWithCancellation()
+        await task.value
+
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+        let writes = try persistence.container.viewContext.fetch(request)
+        let restored = try XCTUnwrap(writes.first)
+        XCTAssertEqual(restored.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertEqual(restored.attempts, 3)
+        XCTAssertEqual(restored.lastAttemptAt, originalLastAttemptAt)
+        XCTAssertEqual(restored.lastError, "Previous error")
+        XCTAssertEqual(restored.conflictReason, "Previous conflict")
+        XCTAssertEqual(restored.serverSnapshot, originalServerSnapshot)
         XCTAssertFalse(queue.isProcessing)
         XCTAssertFalse(queue.isExecutingWrite)
     }

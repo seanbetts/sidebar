@@ -1082,6 +1082,49 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedWebsiteId, "saved-1")
     }
 
+    func testContinuePendingWebsiteJobsInBackgroundStopsPromptlyWhenCancelled() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "processing",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        viewModel.pendingWebsite = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-1",
+            title: "Reading...",
+            domain: "example.com",
+            url: "https://example.com",
+            canonicalURL: "https://example.com",
+            source: .queuedShare,
+            jobId: "job-1",
+            status: .queued
+        )
+
+        let task = Task { await viewModel.continuePendingWebsiteJobsInBackground(maxDuration: 1) }
+        while api.jobStatusCallIds.isEmpty {
+            await Task.yield()
+        }
+        let startedAt = Date()
+        task.cancel()
+        let completed = await task.value
+
+        XCTAssertFalse(completed)
+        XCTAssertLessThan(Date().timeIntervalSince(startedAt), 0.5)
+        XCTAssertEqual(api.jobStatusCallIds, ["job-1"])
+    }
+
     func testWebsiteRealtimeInsertDoesNotClearPendingYouTubeCandidate() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()

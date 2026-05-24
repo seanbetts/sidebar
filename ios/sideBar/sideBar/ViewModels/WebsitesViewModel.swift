@@ -289,37 +289,45 @@ public final class WebsitesViewModel: ObservableObject {
         }
         let deadline = Date().addingTimeInterval(max(1, maxDuration))
 
-        while Date() < deadline {
-            guard allowsFallbackPolling(.websites, true) else {
-                return false
-            }
-            let pendingJobs = pendingWebsites.compactMap { pending -> PendingWebsiteItem? in
-                pending.jobId != nil ? pending : nil
-            }
-            guard !pendingJobs.isEmpty else { return true }
-
-            for pending in pendingJobs {
-                guard let jobId = pending.jobId,
-                      let pendingURL = URL(string: pending.url) else {
-                    continue
+        do {
+            while Date() < deadline {
+                try Task.checkCancellation()
+                guard allowsFallbackPolling(.websites, true) else {
+                    return false
                 }
-                let shouldSelectOnCompletion = pending.source == .directSave
-                let isTerminal = await refreshWebsiteJobStatus(
-                    jobId: jobId,
-                    pendingURL: pendingURL,
-                    previousSelectedId: pending.selectionFallbackId,
-                    shouldSelectOnCompletion: shouldSelectOnCompletion
-                )
-                if isTerminal {
-                    continue
+                let pendingJobs = pendingWebsites.compactMap { pending -> PendingWebsiteItem? in
+                    pending.jobId != nil ? pending : nil
                 }
-            }
+                guard !pendingJobs.isEmpty else { return true }
 
-            if pendingWebsites.contains(where: { $0.jobId != nil }) == false {
-                return true
-            }
+                for pending in pendingJobs {
+                    try Task.checkCancellation()
+                    guard let jobId = pending.jobId,
+                          let pendingURL = URL(string: pending.url) else {
+                        continue
+                    }
+                    let shouldSelectOnCompletion = pending.source == .directSave
+                    let isTerminal = await refreshWebsiteJobStatus(
+                        jobId: jobId,
+                        pendingURL: pendingURL,
+                        previousSelectedId: pending.selectionFallbackId,
+                        shouldSelectOnCompletion: shouldSelectOnCompletion
+                    )
+                    if isTerminal {
+                        continue
+                    }
+                }
 
-            try? await Task.sleep(for: .seconds(3))
+                if pendingWebsites.contains(where: { $0.jobId != nil }) == false {
+                    return true
+                }
+
+                try await Task.sleep(for: .seconds(3))
+            }
+        } catch is CancellationError {
+            return false
+        } catch {
+            return false
         }
 
         return pendingWebsites.contains(where: { $0.jobId != nil }) == false

@@ -401,6 +401,9 @@ private struct PendingWriteRecoveryState: Sendable {
     let status: String
     let attempts: Int16
     let lastAttemptAt: Date?
+    let lastError: String?
+    let conflictReason: String?
+    let serverSnapshot: Data?
 }
 
 extension WriteQueue {
@@ -436,7 +439,12 @@ extension WriteQueue {
             await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetryWrite)
             if shouldRetryWrite {
                 let delay = backoffDelay(for: Int(write.attempts))
-                try await retrySleep(delay)
+                do {
+                    try await retrySleep(delay)
+                } catch is CancellationError {
+                    await restoreFetchedWriteAfterCancellation(fetchedWrite)
+                    throw CancellationError()
+                }
             }
             return true
         }
@@ -463,7 +471,10 @@ extension WriteQueue {
             let originalState = PendingWriteRecoveryState(
                 status: write.status,
                 attempts: write.attempts,
-                lastAttemptAt: write.lastAttemptAt
+                lastAttemptAt: write.lastAttemptAt,
+                lastError: write.lastError,
+                conflictReason: write.conflictReason,
+                serverSnapshot: write.serverSnapshot
             )
             write.status = WriteQueueStatus.inProgress.rawValue
             write.attempts += 1
@@ -499,7 +510,10 @@ extension WriteQueue {
             let originalState = PendingWriteRecoveryState(
                 status: write.status,
                 attempts: write.attempts,
-                lastAttemptAt: write.lastAttemptAt
+                lastAttemptAt: write.lastAttemptAt,
+                lastError: write.lastError,
+                conflictReason: write.conflictReason,
+                serverSnapshot: write.serverSnapshot
             )
             write.status = WriteQueueStatus.inProgress.rawValue
             write.attempts += 1
@@ -661,7 +675,9 @@ extension WriteQueue {
                 request.predicate = NSPredicate(format: "id == %@", fetchedWrite.record.id as CVarArg)
                 guard let write = try context.fetch(request).first else { return }
                 write.status = fetchedWrite.recoveryState.status
-                write.lastError = nil
+                write.lastError = fetchedWrite.recoveryState.lastError
+                write.conflictReason = fetchedWrite.recoveryState.conflictReason
+                write.serverSnapshot = fetchedWrite.recoveryState.serverSnapshot
                 if fetchedWrite.restoresOriginalAttemptState {
                     write.attempts = fetchedWrite.recoveryState.attempts
                     write.lastAttemptAt = fetchedWrite.recoveryState.lastAttemptAt
