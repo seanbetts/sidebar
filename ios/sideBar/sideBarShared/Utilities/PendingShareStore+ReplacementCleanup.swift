@@ -4,15 +4,18 @@ extension PendingShareStore {
     public func replaceAllCleaningRemovedStagedFiles(_ newItems: [PendingShareItem]) -> Bool {
         withAccessLock {
             let newReferences = Set(newItems.compactMap(stagedReferenceKey))
-            let removedItems = loadAll().filter { oldItem in
+            let oldItems = loadAll()
+            let removedItems = oldItems.filter { oldItem in
                 guard let oldReference = stagedReferenceKey(for: oldItem) else { return false }
                 return newReferences.contains(oldReference) == false
             }
-            for item in removedItems {
-                guard removeStagedFileIfPresent(for: item) else { return false }
-            }
-            writeMetadata(newItems)
-            return true
+            let cleanup = stagedCleanupResults(for: removedItems)
+            let failedIds = Set(cleanup.failed.map(\.id))
+            let retainedFailedItems = oldItems.filter { failedIds.contains($0.id) }
+            let retainedFailedItemIds = Set(retainedFailedItems.map(\.id))
+            let retainedNewItems = newItems.filter { retainedFailedItemIds.contains($0.id) == false }
+            writeMetadata(retainedFailedItems + retainedNewItems)
+            return cleanup.failed.isEmpty
         }
     }
 

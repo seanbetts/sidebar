@@ -1,6 +1,19 @@
 import Foundation
 
 extension PendingShareStore {
+    func stagedCleanupResults(for items: [PendingShareItem]) -> (succeeded: Set<UUID>, failed: [PendingShareItem]) {
+        var succeeded = Set<UUID>()
+        var failed: [PendingShareItem] = []
+        for item in items {
+            if removeStagedFileIfPresent(for: item) {
+                succeeded.insert(item.id)
+            } else {
+                failed.append(item)
+            }
+        }
+        return (succeeded, failed)
+    }
+
     func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
         guard let relativePath = item.filePath,
               let baseDirectory = rootDirectory else { return true }

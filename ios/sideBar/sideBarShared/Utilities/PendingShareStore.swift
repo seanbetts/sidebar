@@ -289,11 +289,14 @@ public final class PendingShareStore {
         withAccessLock {
             let items = loadAll()
             guard !items.isEmpty else { return [] }
-            for item in items {
-                guard removeStagedFileIfPresent(for: item) else { return [] }
+            let cleanup = stagedCleanupResults(for: items)
+            let consumed = items.filter { cleanup.succeeded.contains($0.id) }
+            if cleanup.failed.isEmpty {
+                writeMetadata([])
+            } else {
+                writeMetadata(cleanup.failed)
             }
-            writeMetadata([])
-            return items
+            return consumed
         }
     }
 
@@ -301,12 +304,12 @@ public final class PendingShareStore {
     public func clearAll() {
         withAccessLock {
             let items = loadAll()
-            for item in items {
-                guard removeStagedFileIfPresent(for: item) else { return }
-            }
-            if let defaults {
+            let cleanup = stagedCleanupResults(for: items)
+            if cleanup.failed.isEmpty, let defaults {
                 defaults.removeObject(forKey: itemsKey)
                 defaults.synchronize()
+            } else {
+                writeMetadata(cleanup.failed)
             }
         }
     }
@@ -318,10 +321,11 @@ public final class PendingShareStore {
             let idsToRemove = Set(ids)
             let items = loadAll()
             let removedItems = items.filter { idsToRemove.contains($0.id) }
-            for item in removedItems {
-                guard removeStagedFileIfPresent(for: item) else { return }
+            let cleanup = stagedCleanupResults(for: removedItems)
+            let remaining = items.filter { item in
+                idsToRemove.contains(item.id) == false || cleanup.succeeded.contains(item.id) == false
             }
-            writeMetadata(items.filter { idsToRemove.contains($0.id) == false })
+            writeMetadata(remaining)
         }
     }
 
@@ -363,16 +367,13 @@ public final class PendingShareStore {
             guard days > 0 else { return }
             let cutoff = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
             var items = loadAll()
-            var removedIds: [UUID] = []
-            for item in items where item.createdAt < cutoff {
-                guard removeStagedFileIfPresent(for: item) else { return }
-                removedIds.append(item.id)
-            }
+            let cleanup = stagedCleanupResults(for: items.filter { $0.createdAt < cutoff })
+            let removedIds = cleanup.succeeded
             if !removedIds.isEmpty {
                 items.removeAll { removedIds.contains($0.id) }
                 writeMetadata(items)
             }
-            guard cleanValidatedEmptyItemDirectories(olderThan: cutoff) else { return }
+            _ = cleanValidatedEmptyItemDirectories(olderThan: cutoff)
         }
     }
 
