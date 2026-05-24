@@ -20,17 +20,23 @@ final class WidgetDeepLinkRoutingSourceTests: XCTestCase {
     }
 
     func testAppEnvironmentDeepLinkLogsDoNotExposeRoutedResourceIdentifiers() throws {
-        let normalized = try sourceFile("App/AppEnvironment+DeepLink.swift")
+        let source = try sourceFile("App/AppEnvironment+DeepLink.swift")
+        let normalized = source
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let loggerLines = source
+            .components(separatedBy: .newlines)
+            .filter { $0.contains("logger.info") }
 
         XCTAssertTrue(normalized.contains("logger.info(\"Deeplinktonote\")"))
         XCTAssertTrue(normalized.contains("logger.info(\"Deeplinktowebsite\")"))
         XCTAssertTrue(normalized.contains("logger.info(\"Deeplinktofile\")"))
         XCTAssertTrue(normalized.contains("logger.info(\"Deeplinktochat\")"))
-        XCTAssertFalse(normalized.contains("logger.info(\"Deeplinktonote:\\(noteId,privacy:.public)"))
-        XCTAssertFalse(normalized.contains("logger.info(\"Deeplinktowebsite:\\(websiteId,privacy:.public)"))
-        XCTAssertFalse(normalized.contains("logger.info(\"Deeplinktofile:\\(fileId,privacy:.public)"))
-        XCTAssertFalse(normalized.contains("logger.info(\"Deeplinktochat:\\(chatId,privacy:.public)"))
+        for identifier in ["noteId", "websiteId", "fileId", "chatId"] {
+            XCTAssertFalse(
+                loggerLines.contains { $0.contains(identifier) },
+                "Deep-link logger.info should not expose routed identifier: \(identifier)"
+            )
+        }
     }
 
     func testTaskAndNoteViewsConsumeSharedPendingSidebarDeepLinkRoute() throws {
