@@ -52,6 +52,47 @@ final class WidgetDataBridgeTests: XCTestCase {
         )
     }
 
+    func testConcurrentPendingOperationRecordsPreserveEveryUniqueOperation() async {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<50 {
+                group.addTask {
+                    let operation = WidgetPendingOperation(
+                        itemId: "task-\(index)",
+                        action: TaskWidgetAction.complete
+                    )
+                    bridge.recordPendingOperation(operation, for: .tasks)
+                }
+            }
+        }
+
+        let pending = bridge.loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+        XCTAssertEqual(Set(pending.map(\.itemId)).count, 50)
+    }
+
+    func testConcurrentDuplicatePendingOperationRecordsDeduplicate() async {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+        let operation = WidgetPendingOperation(itemId: "task-1", action: TaskWidgetAction.complete)
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<50 {
+                group.addTask {
+                    bridge.recordPendingOperation(operation, for: .tasks)
+                }
+            }
+        }
+
+        let pending = bridge.loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.itemId, "task-1")
+        XCTAssertEqual(pending.first?.action, .complete)
+    }
+
     func testHasStoredSnapshotReturnsTrueAfterStoringEmptyPayload() {
         let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

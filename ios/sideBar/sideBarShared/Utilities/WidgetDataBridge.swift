@@ -5,17 +5,23 @@ public final class WidgetDataBridge {
     private let appGroupResolutionProvider: () -> WidgetBridgeAppGroupResolution
     private let diagnosticsRecorder: (String, String, [String: String]) -> Void
     private let timelineReloader: (WidgetContentType) -> Void
+    private let pendingOperationStore: WidgetPendingOperationStore
 
     public init(
         userDefaultsProvider: @escaping () -> UserDefaults?,
         appGroupResolutionProvider: @escaping () -> WidgetBridgeAppGroupResolution,
         diagnosticsRecorder: @escaping (String, String, [String: String]) -> Void,
-        timelineReloader: @escaping (WidgetContentType) -> Void
+        timelineReloader: @escaping (WidgetContentType) -> Void,
+        pendingOperationStore: WidgetPendingOperationStore? = nil
     ) {
         self.userDefaultsProvider = userDefaultsProvider
         self.appGroupResolutionProvider = appGroupResolutionProvider
         self.diagnosticsRecorder = diagnosticsRecorder
         self.timelineReloader = timelineReloader
+        self.pendingOperationStore = pendingOperationStore ?? WidgetPendingOperationStore(
+            userDefaultsProvider: userDefaultsProvider,
+            appGroupResolutionProvider: appGroupResolutionProvider
+        )
     }
 
     public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
@@ -109,31 +115,31 @@ public final class WidgetDataBridge {
         _ operation: WidgetPendingOperation<A>,
         for contentType: WidgetContentType
     ) {
-        guard let defaults = userDefaultsProvider() else { return }
-        var pending = loadPendingOperations(for: contentType, actionType: A.self)
-        if !pending.contains(where: { $0.itemId == operation.itemId && $0.action == operation.action }) {
-            pending.append(operation)
-            if let encoded = try? Self.makeEncoder().encode(pending) {
-                defaults.set(encoded, forKey: contentType.pendingKey)
-                diagnosticsRecorder(
-                    "record_pending_operation",
-                    "Recorded widget pending operation.",
-                    [
-                        "content_type": contentType.rawValue,
-                        "count": "\(pending.count)"
-                    ]
-                )
-            }
+        guard let count = pendingOperationStore.record(operation, key: contentType.pendingKey) else {
+            return
         }
+
+        diagnosticsRecorder(
+            "record_pending_operation",
+            "Recorded widget pending operation.",
+            [
+                "content_type": contentType.rawValue,
+                "count": "\(count)"
+            ]
+        )
     }
 
     public func consumePendingOperations<A: Codable & Equatable>(
         for contentType: WidgetContentType,
         actionType: A.Type
     ) -> [WidgetPendingOperation<A>] {
-        guard let defaults = userDefaultsProvider() else { return [] }
-        let pending = loadPendingOperations(for: contentType, actionType: actionType)
-        defaults.removeObject(forKey: contentType.pendingKey)
+        guard let pending = pendingOperationStore.consume(
+            key: contentType.pendingKey,
+            actionType: actionType
+        ) else {
+            return []
+        }
+
         diagnosticsRecorder(
             "consume_pending_operations",
             "Consumed widget pending operations.",
@@ -150,39 +156,31 @@ public final class WidgetDataBridge {
         actionType: A.Type,
         matching: (A) -> Bool
     ) -> [WidgetPendingOperation<A>] {
-        guard let defaults = userDefaultsProvider() else { return [] }
-        let pending = loadPendingOperations(for: contentType, actionType: actionType)
-        guard !pending.isEmpty else { return [] }
-
-        let matchingOperations = pending.filter { matching($0.action) }
-        let remainingOperations = pending.filter { !matching($0.action) }
-
-        if remainingOperations.isEmpty {
-            defaults.removeObject(forKey: contentType.pendingKey)
-        } else if let encoded = try? Self.makeEncoder().encode(remainingOperations) {
-            defaults.set(encoded, forKey: contentType.pendingKey)
+        guard let result = pendingOperationStore.consume(
+            key: contentType.pendingKey,
+            actionType: actionType,
+            matching: matching
+        ) else {
+            return []
         }
+
         diagnosticsRecorder(
             "consume_matching_pending_operations",
             "Consumed matching widget pending operations.",
             [
                 "content_type": contentType.rawValue,
-                "matched_count": "\(matchingOperations.count)",
-                "remaining_count": "\(remainingOperations.count)"
+                "matched_count": "\(result.matched.count)",
+                "remaining_count": "\(result.remainingCount)"
             ]
         )
-        return matchingOperations
+        return result.matched
     }
 
     public func loadPendingOperations<A: Codable & Equatable>(
         for contentType: WidgetContentType,
         actionType: A.Type
     ) -> [WidgetPendingOperation<A>] {
-        guard let defaults = userDefaultsProvider(),
-              let data = defaults.data(forKey: contentType.pendingKey) else {
-            return []
-        }
-        return (try? Self.makeDecoder().decode([WidgetPendingOperation<A>].self, from: data)) ?? []
+        pendingOperationStore.load(key: contentType.pendingKey, actionType: actionType)
     }
 
     public func removePendingOperation<A: Codable & Equatable>(
@@ -190,25 +188,21 @@ public final class WidgetDataBridge {
         for contentType: WidgetContentType,
         actionType: A.Type
     ) {
-        guard let defaults = userDefaultsProvider() else { return }
-        let pending = loadPendingOperations(for: contentType, actionType: actionType)
-        guard !pending.isEmpty else { return }
-
-        let filtered = pending.filter { $0.id != operationId }
-        guard filtered.count != pending.count else { return }
-
-        if filtered.isEmpty {
-            defaults.removeObject(forKey: contentType.pendingKey)
-        } else if let encoded = try? Self.makeEncoder().encode(filtered) {
-            defaults.set(encoded, forKey: contentType.pendingKey)
+        guard let remainingCount = pendingOperationStore.remove(
+            id: operationId,
+            key: contentType.pendingKey,
+            actionType: actionType
+        ) else {
+            return
         }
+
         diagnosticsRecorder(
             "remove_pending_operation",
             "Removed widget pending operation.",
             [
                 "content_type": contentType.rawValue,
                 "removed_operation_id": operationId,
-                "remaining_count": "\(filtered.count)"
+                "remaining_count": "\(remainingCount)"
             ]
         )
     }
