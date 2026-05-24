@@ -4,6 +4,25 @@ import Foundation
 import os
 import UserNotifications
 
+final class BackgroundProcessingTaskExpirationState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didExpire = false
+
+    func markExpired(canceling task: Task<Bool, Never>) {
+        lock.lock()
+        didExpire = true
+        lock.unlock()
+        task.cancel()
+    }
+
+    func completedSuccessfully(workSucceeded: Bool) -> Bool {
+        lock.lock()
+        let expired = didExpire
+        lock.unlock()
+        return workSucceeded && !expired
+    }
+}
+
 #if os(iOS)
 import UIKit
 
@@ -239,11 +258,10 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
             }
             return await environment.performBackgroundWebsiteContinuation()
         }
+        let expirationState = BackgroundProcessingTaskExpirationState()
 
-        var didExpire = false
         task.expirationHandler = {
-            didExpire = true
-            continuationTask.cancel()
+            expirationState.markExpired(canceling: continuationTask)
         }
 
         Task {
@@ -252,7 +270,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
                environment.hasPendingWebsiteBackgroundWork {
                 Self.scheduleWebsiteSaveContinuation()
             }
-            task.setTaskCompleted(success: success && didExpire == false && Task.isCancelled == false)
+            task.setTaskCompleted(success: expirationState.completedSuccessfully(workSucceeded: success))
         }
     }
 
@@ -279,11 +297,10 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
             }
             return await environment.performBackgroundWriteQueueFlush()
         }
+        let expirationState = BackgroundProcessingTaskExpirationState()
 
-        var didExpire = false
         task.expirationHandler = {
-            didExpire = true
-            flushTask.cancel()
+            expirationState.markExpired(canceling: flushTask)
         }
 
         Task {
@@ -292,7 +309,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
                await environment.writeQueue.hasPendingWritesNeedingFlush() {
                 Self.scheduleWriteQueueFlush()
             }
-            task.setTaskCompleted(success: success && didExpire == false && Task.isCancelled == false)
+            task.setTaskCompleted(success: expirationState.completedSuccessfully(workSucceeded: success))
         }
     }
 

@@ -164,6 +164,40 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertFalse(queue.isExecutingWrite)
     }
 
+    func testProcessQueueCancellationAfterExecutorSuccessDeletesWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = CancellingAfterSuccessWriteExecutor()
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+        try await queue.enqueue(
+            operation: .create,
+            entityType: .message,
+            entityId: nil,
+            payload: Payload(value: "created remotely")
+        )
+
+        await queue.processQueue()
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertTrue(writes.isEmpty)
+        XCTAssertEqual(executor.executedIds.count, 1)
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertFalse(queue.isExecutingWrite)
+    }
+
     func testProcessRetriedWriteExecutorCancellationRestoresOriginalState() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
@@ -755,6 +789,17 @@ private final class TestWriteExecutor: WriteQueueExecutor {
             throw error
         }
         executedIds.append(write.id)
+    }
+}
+
+private final class CancellingAfterSuccessWriteExecutor: WriteQueueExecutor {
+    private(set) var executedIds: [UUID] = []
+
+    func execute(write: PendingWriteRecord) async throws {
+        executedIds.append(write.id)
+        withUnsafeCurrentTask { task in
+            task?.cancel()
+        }
     }
 }
 

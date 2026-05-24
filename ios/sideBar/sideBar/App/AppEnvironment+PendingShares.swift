@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 
@@ -244,7 +245,7 @@ extension AppEnvironment {
                     readingQueueItemId: item.id
                 )
             }
-            if let retainedItem = await processPendingShare(
+            if let retainedItem = try await processPendingShare(
                 item,
                 now: now,
                 replayStartSignal: replayStartSignal
@@ -261,9 +262,9 @@ extension AppEnvironment {
         _ item: PendingShareItem,
         now: Date,
         replayStartSignal: PendingShareReplayStartSignal? = nil
-    ) async -> PendingShareItem? {
+    ) async throws -> PendingShareItem? {
         if item.kind == .website {
-            return await processPendingWebsite(
+            return try await processPendingWebsite(
                 item,
                 now: now,
                 replayStartSignal: replayStartSignal
@@ -282,12 +283,19 @@ extension AppEnvironment {
         guard let item = snapshot.first(where: { $0.id == queueItemId }) else {
             return true
         }
-        let processed = await processPendingWebsite(
-            item,
-            now: now,
-            selectAfterSave: selectAfterSave,
-            forceAttempt: true
-        )
+        let processed: PendingShareItem?
+        do {
+            processed = try await processPendingWebsite(
+                item,
+                now: now,
+                selectAfterSave: selectAfterSave,
+                forceAttempt: true
+            )
+        } catch is CancellationError {
+            return false
+        } catch {
+            return false
+        }
         let latestItems = storage.pendingShareStore.loadAll()
         let updatedItems = latestItems.compactMap { current -> PendingShareItem? in
             if current.id == queueItemId {
@@ -306,7 +314,7 @@ extension AppEnvironment {
         selectAfterSave: Bool = false,
         forceAttempt: Bool = false,
         replayStartSignal: PendingShareReplayStartSignal? = nil
-    ) async -> PendingShareItem? {
+    ) async throws -> PendingShareItem? {
         if isPendingWebsiteFailed(item) && !forceAttempt {
             return item
         }
@@ -321,10 +329,12 @@ extension AppEnvironment {
         }
         websitesViewModel.saveErrorMessage = nil
         replayStartSignal?.markStarted()
-        let saved = await websitesViewModel.saveWebsite(
-            url: url,
-            selectAfterSave: selectAfterSave
-        )
+        let saved: Bool
+        if selectAfterSave {
+            saved = await websitesViewModel.saveWebsite(url: url, selectAfterSave: true)
+        } else {
+            saved = try await websitesViewModel.saveQueuedWebsite(url: url)
+        }
         guard !saved else {
             return acceptedWebsiteJobItem(from: item, url: url)
         }

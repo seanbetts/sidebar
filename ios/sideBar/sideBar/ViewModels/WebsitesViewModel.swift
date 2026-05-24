@@ -261,7 +261,13 @@ public final class WebsitesViewModel: ObservableObject {
         }
 
         if !selectAfterSave {
-            return await saveWebsiteWithoutSelection(normalizedURL: normalized)
+            do {
+                return try await saveWebsiteWithoutSelection(normalizedURL: normalized)
+            } catch is CancellationError {
+                return false
+            } catch {
+                return false
+            }
         }
         let previousSelectedId = beginWebsiteSave(for: normalized)
         do {
@@ -333,7 +339,12 @@ public final class WebsitesViewModel: ObservableObject {
         return pendingWebsites.contains(where: { $0.jobId != nil }) == false
     }
 
-    private func saveWebsiteWithoutSelection(normalizedURL: URL) async -> Bool {
+    func saveQueuedWebsite(url: String) async throws -> Bool {
+        guard let normalized = normalizedWebsiteURL(from: url) else { return false }
+        return try await saveWebsiteWithoutSelection(normalizedURL: normalized)
+    }
+
+    private func saveWebsiteWithoutSelection(normalizedURL: URL) async throws -> Bool {
         _ = upsertPendingWebsite(
             from: normalizedURL,
             source: .queuedShare,
@@ -348,6 +359,8 @@ public final class WebsitesViewModel: ObservableObject {
                 pendingURL: normalizedURL
             )
             return true
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             updatePendingWebsiteStatus(for: normalizedURL.absoluteString, status: .failed)
             saveErrorMessage = ErrorMapping.message(for: error)

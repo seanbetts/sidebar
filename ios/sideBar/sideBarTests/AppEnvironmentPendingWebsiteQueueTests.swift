@@ -509,6 +509,48 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.items.first?.id, "saved-1")
     }
 
+    func testBackgroundWebsiteContinuationCancellationDuringQueuedSavePreservesOriginalItem() async throws {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let gate = AsyncGate()
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(CancellationError()),
+            onSave: { _ in
+                await gate.wait()
+            }
+        )
+        environment = makeEnvironment(
+            storage: storage,
+            websitesAPI: websitesAPI,
+            authSessionState: .active
+        )
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        let originalItem = try XCTUnwrap(queuedItem)
+
+        let task = Task {
+            await environment.performBackgroundWebsiteContinuation(maxDuration: 2)
+        }
+        for _ in 0..<20 where websitesAPI.saveCallCount == 0 {
+            await Task.yield()
+        }
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+
+        task.cancel()
+        await gate.open()
+        let completed = await task.value
+
+        let retainedItem = storage.pendingShareStore.loadAll().first
+        XCTAssertFalse(completed)
+        XCTAssertEqual(retainedItem?.id, originalItem.id)
+        XCTAssertEqual(retainedItem?.retryCount, originalItem.retryCount)
+        XCTAssertEqual(retainedItem?.nextRetryAt, originalItem.nextRetryAt)
+        XCTAssertEqual(retainedItem?.lastError, originalItem.lastError)
+        XCTAssertEqual(retainedItem?.websiteJobId, originalItem.websiteJobId)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.status, .queued)
+    }
+
     func testBackgroundWebsiteContinuationResumesAcceptedQueuedJobAfterRelaunch() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let acceptedAPI = DeepLinkWebsitesAPI(
@@ -665,6 +707,26 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
 
         XCTAssertEqual(websitesAPI.saveCallCount, 0)
         XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+    }
+
+    func testWebsiteContinuationExpirationCompletionReportsFailureWhenExpirationWins() async {
+        let state = BackgroundProcessingTaskExpirationState()
+        let processingTask = Task { true }
+
+        state.markExpired(canceling: processingTask)
+        let completed = await processingTask.value
+
+        XCTAssertFalse(state.completedSuccessfully(workSucceeded: completed))
+    }
+
+    func testWriteQueueFlushExpirationCompletionReportsFailureWhenExpirationWins() async {
+        let state = BackgroundProcessingTaskExpirationState()
+        let processingTask = Task { true }
+
+        state.markExpired(canceling: processingTask)
+        let completed = await processingTask.value
+
+        XCTAssertFalse(state.completedSuccessfully(workSucceeded: completed))
     }
 }
 

@@ -411,6 +411,7 @@ extension WriteQueue {
 
     private func processWrite(_ fetchedWrite: FetchedPendingWrite) async throws -> Bool {
         let write = fetchedWrite.record
+        var didExecuteWrite = false
         do {
             try Task.checkCancellation()
             guard let executor else {
@@ -419,11 +420,13 @@ extension WriteQueue {
             isExecutingWrite = true
             defer { isExecutingWrite = false }
             try await executor.execute(write: write)
-            try Task.checkCancellation()
+            didExecuteWrite = true
             try await deleteWrite(id: write.id)
             return true
         } catch is CancellationError {
-            await restoreFetchedWriteAfterCancellation(fetchedWrite)
+            if !didExecuteWrite {
+                await restoreFetchedWriteAfterCancellation(fetchedWrite)
+            }
             throw CancellationError()
         } catch {
             if let conflictError = error as? WriteQueueConflictError {
