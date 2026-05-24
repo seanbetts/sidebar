@@ -141,7 +141,7 @@ public final class PendingShareStore {
             )
             var items = existingItems
             items.append(item)
-            replaceAll(items)
+            writeMetadata(items)
             WebsiteSaveHandoffNotifier.post()
             os_log(.default, log: Self.log, "Queued website share %{public}@", redactedURL)
             recordDiagnostics(
@@ -178,7 +178,7 @@ public final class PendingShareStore {
             )
             var items = existingItems
             items.append(item)
-            replaceAll(items)
+            writeMetadata(items)
             os_log(.default, log: Self.log, "Queued YouTube share %{public}@", redactedURL)
             return item
         }
@@ -262,6 +262,10 @@ public final class PendingShareStore {
 
     /// Replaces all queued share items with the provided collection.
     public func replaceAll(_ items: [PendingShareItem]) {
+        _ = replaceAllCleaningRemovedStagedFiles(items)
+    }
+
+    private func writeMetadata(_ items: [PendingShareItem]) {
         withAccessLock {
             guard let defaults else { return }
             let encoder = Self.makeEncoder()
@@ -282,7 +286,10 @@ public final class PendingShareStore {
         withAccessLock {
             let items = loadAll()
             guard !items.isEmpty else { return [] }
-            replaceAll([])
+            for item in items {
+                guard removeStagedFileIfPresent(for: item) else { return [] }
+            }
+            writeMetadata([])
             return items
         }
     }
@@ -311,7 +318,7 @@ public final class PendingShareStore {
             for item in removedItems {
                 guard removeStagedFileIfPresent(for: item) else { return }
             }
-            replaceAll(items.filter { idsToRemove.contains($0.id) == false })
+            writeMetadata(items.filter { idsToRemove.contains($0.id) == false })
         }
     }
 
@@ -360,7 +367,7 @@ public final class PendingShareStore {
             }
             if !removedIds.isEmpty {
                 items.removeAll { removedIds.contains($0.id) }
-                replaceAll(items)
+                writeMetadata(items)
             }
             guard cleanValidatedEmptyItemDirectories(olderThan: cutoff) else { return }
         }
@@ -373,7 +380,7 @@ public final class PendingShareStore {
             for item in removedItems {
                 guard removeStagedFileIfPresent(for: item) else { return false }
             }
-            replaceAll(newItems)
+            writeMetadata(newItems)
             return true
         }
     }
@@ -381,7 +388,7 @@ public final class PendingShareStore {
     private func append(_ item: PendingShareItem) {
         var items = loadAll()
         items.append(item)
-        replaceAll(items)
+        writeMetadata(items)
     }
 
     private func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
@@ -413,38 +420,31 @@ public final class PendingShareStore {
     private func writeFile(data: Data, itemId: UUID, filename: String) -> String? {
         guard let baseDirectory = rootDirectory else { return nil }
         let safeFilename = sanitizeFilename(filename)
-        let relativePath = "\(directoryName)/\(itemId.uuidString)/\(safeFilename)"
-        let fileURL = baseDirectory.appendingPathComponent(relativePath)
-        do {
-            try fileManager.createDirectory(
-                at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try data.write(to: fileURL)
-            return relativePath
-        } catch {
-            return nil
-        }
+        return stagedFileMutationLock(baseDirectory) { [self] in
+            PendingShareStagedFileOperations.writeStagedFile(
+                data: data,
+                filename: safeFilename,
+                itemId: itemId,
+                baseDirectory: baseDirectory,
+                directoryName: directoryName,
+                fileManager: fileManager
+            ) != nil
+        } ? "\(directoryName)/\(itemId.uuidString)/\(safeFilename)" : nil
     }
 
     private func copyFile(from url: URL, itemId: UUID, filename: String) -> String? {
         guard let baseDirectory = rootDirectory else { return nil }
         let safeFilename = sanitizeFilename(filename)
-        let relativePath = "\(directoryName)/\(itemId.uuidString)/\(safeFilename)"
-        let destinationURL = baseDirectory.appendingPathComponent(relativePath)
-        do {
-            try fileManager.createDirectory(
-                at: destinationURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            if fileManager.fileExists(atPath: destinationURL.path) {
-                try fileManager.removeItem(at: destinationURL)
-            }
-            try fileManager.copyItem(at: url, to: destinationURL)
-            return relativePath
-        } catch {
-            return nil
-        }
+        return stagedFileMutationLock(baseDirectory) { [self] in
+            PendingShareStagedFileOperations.copyStagedFile(
+                from: url,
+                filename: safeFilename,
+                itemId: itemId,
+                baseDirectory: baseDirectory,
+                directoryName: directoryName,
+                fileManager: fileManager
+            ) != nil
+        } ? "\(directoryName)/\(itemId.uuidString)/\(safeFilename)" : nil
     }
 
     private func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) -> Bool {

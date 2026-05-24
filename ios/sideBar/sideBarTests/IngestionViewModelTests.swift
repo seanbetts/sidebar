@@ -1045,7 +1045,8 @@ final class IngestionViewModelTests: XCTestCase {
             toastCenter: ToastCenter()
         )
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pending-share-upload-test-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("pending-share-uploads", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let fileURL = directory.appendingPathComponent("queued.txt")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data("payload".utf8).write(to: fileURL)

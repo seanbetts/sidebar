@@ -27,4 +27,89 @@ struct PendingShareStagedFileOperations {
             return nil
         }
     }
+
+    static func stagingDirectory(
+        baseDirectory: URL,
+        directoryName: String,
+        itemId: UUID,
+        fileManager: FileManager
+    ) -> URL? {
+        try? fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        let root = baseDirectory.appendingPathComponent(directoryName, isDirectory: true).standardizedFileURL
+        guard createAndValidateDirectory(root, fileManager: fileManager) else { return nil }
+
+        let directory = root.appendingPathComponent(itemId.uuidString, isDirectory: true).standardizedFileURL
+        guard directory.deletingLastPathComponent().path == root.path else { return nil }
+        guard createAndValidateDirectory(directory, fileManager: fileManager) else { return nil }
+        return directory
+    }
+
+    static func writeStagedFile(
+        data: Data,
+        filename: String,
+        itemId: UUID,
+        baseDirectory: URL,
+        directoryName: String,
+        fileManager: FileManager
+    ) -> String? {
+        guard let directory = stagingDirectory(
+            baseDirectory: baseDirectory,
+            directoryName: directoryName,
+            itemId: itemId,
+            fileManager: fileManager
+        ) else { return nil }
+        let fileURL = directory.appendingPathComponent(filename, isDirectory: false)
+        guard fileURL.deletingLastPathComponent().path == directory.path else { return nil }
+        guard fileManager.fileExists(atPath: fileURL.path) == false else { return nil }
+        do {
+            try data.write(to: fileURL)
+            return "\(directoryName)/\(itemId.uuidString)/\(filename)"
+        } catch {
+            return nil
+        }
+    }
+
+    static func copyStagedFile(
+        from sourceURL: URL,
+        filename: String,
+        itemId: UUID,
+        baseDirectory: URL,
+        directoryName: String,
+        fileManager: FileManager
+    ) -> String? {
+        guard let directory = stagingDirectory(
+            baseDirectory: baseDirectory,
+            directoryName: directoryName,
+            itemId: itemId,
+            fileManager: fileManager
+        ) else { return nil }
+        let destinationURL = directory.appendingPathComponent(filename, isDirectory: false)
+        guard destinationURL.deletingLastPathComponent().path == directory.path else { return nil }
+        guard fileManager.fileExists(atPath: destinationURL.path) == false else { return nil }
+        do {
+            try fileManager.copyItem(at: sourceURL, to: destinationURL)
+            return "\(directoryName)/\(itemId.uuidString)/\(filename)"
+        } catch {
+            return nil
+        }
+    }
+
+    private static func createAndValidateDirectory(_ url: URL, fileManager: FileManager) -> Bool {
+        if fileManager.fileExists(atPath: url.path) {
+            return isRealDirectory(url)
+        }
+        do {
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: false)
+            return isRealDirectory(url)
+        } catch {
+            return false
+        }
+    }
+
+    private static func isRealDirectory(_ url: URL) -> Bool {
+        guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) else {
+            return false
+        }
+        return values.isDirectory == true && values.isSymbolicLink != true
+    }
 }

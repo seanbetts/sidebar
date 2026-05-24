@@ -83,7 +83,13 @@ extension IngestionViewModel {
 
     private func cleanupTemporaryPendingShareUpload(_ url: URL?) {
         guard let url else { return }
-        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pending-share-uploads", isDirectory: true)
+            .standardizedFileURL
+        let directory = url.deletingLastPathComponent().standardizedFileURL
+        guard directory.deletingLastPathComponent().path == root.path,
+              UUID(uuidString: directory.lastPathComponent) != nil else { return }
+        try? FileManager.default.removeItem(at: directory)
     }
 
     private func queueUserSelectedUploadForLater(url: URL, filename: String, mimeType: String) -> Bool {
