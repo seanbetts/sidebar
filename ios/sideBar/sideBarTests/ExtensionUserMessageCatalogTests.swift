@@ -344,14 +344,14 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         var minY = height
         var maxX = -1
         var maxY = -1
-        for y in 0..<height {
-            for x in 0..<width {
-                let alphaIndex = ((y * width) + x) * 4 + 3
+        for row in 0..<height {
+            for column in 0..<width {
+                let alphaIndex = ((row * width) + column) * 4 + 3
                 if pixels[alphaIndex] > 0 {
-                    minX = min(minX, x)
-                    minY = min(minY, y)
-                    maxX = max(maxX, x)
-                    maxY = max(maxY, y)
+                    minX = min(minX, column)
+                    minY = min(minY, row)
+                    maxX = max(maxX, column)
+                    maxY = max(maxY, row)
                 }
             }
         }
