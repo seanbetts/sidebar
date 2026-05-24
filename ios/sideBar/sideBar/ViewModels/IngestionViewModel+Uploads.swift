@@ -74,11 +74,19 @@ extension IngestionViewModel {
                         sizeBytes: sizeBytes,
                         result: result
                     )
-                    self.cleanupTemporaryPendingShareUpload(cleanupOnCompletion)
+                    self.finishPendingShareUploadCleanup(cleanupOnCompletion, tempId: tempId, result: result)
                 }
             }
         )
         return true
+    }
+
+    private func finishPendingShareUploadCleanup(_ url: URL?, tempId: String, result: Result<String, Error>) {
+        guard url != nil else { return }
+        if case .failure = result {
+            store.removeLocalUploadBookmark(fileId: tempId)
+        }
+        cleanupTemporaryPendingShareUpload(url)
     }
 
     private func cleanupTemporaryPendingShareUpload(_ url: URL?) {

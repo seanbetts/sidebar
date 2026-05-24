@@ -1052,12 +1052,50 @@ final class IngestionViewModelTests: XCTestCase {
         try Data("payload".utf8).write(to: fileURL)
 
         XCTAssertTrue(viewModel.startPendingShareUpload(url: fileURL))
-        uploadManager.completions.first?(.failure(MockError.forced))
+        uploadManager.completions.first?(.success("file-1"))
         await waitUntilPolling {
             FileManager.default.fileExists(atPath: directory.path) == false
         }
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    func testFailedPendingShareUploadDeletesTemporaryCopyAndDisablesRetry() async throws {
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let uploadManager = MockIngestionUploadManager()
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: uploadManager,
+            toastCenter: toastCenter
+        )
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pending-share-uploads", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("queued.txt")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("payload".utf8).write(to: fileURL)
+
+        XCTAssertTrue(viewModel.startPendingShareUpload(url: fileURL))
+        let uploadId = try XCTUnwrap(uploadManager.startedRequests.first?.uploadId)
+        uploadManager.completions.first?(.failure(MockError.forced))
+        await waitUntilPolling {
+            FileManager.default.fileExists(atPath: directory.path) == false
+        }
+
+        XCTAssertFalse(viewModel.canRetryFailedUpload(fileId: uploadId))
+        viewModel.retryFailedUpload(fileId: uploadId)
+        XCTAssertEqual(uploadManager.startedRequests.count, 1)
+        XCTAssertEqual(toastCenter.toast?.message, "Re-select file to retry upload")
     }
 
     func testRetryAllFailedUploadsRetriesOnlyRetryableItems() async throws {

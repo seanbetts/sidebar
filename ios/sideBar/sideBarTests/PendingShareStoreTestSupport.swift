@@ -10,11 +10,18 @@ func makeStore() -> PendingShareStore {
     return PendingShareStore(baseDirectory: directory, userDefaults: UserDefaults(suiteName: pendingShareStoreTestSuiteName))
 }
 
-func makeIsolatedStore(stagedFileMutationLock: ((URL, @escaping () -> Bool) -> Bool)? = nil) throws -> (PendingShareStore, URL) {
+func makeIsolatedStore(
+    stagedFileMutationLock: ((URL, @escaping () -> Bool) -> Bool)? = nil,
+    idGenerator: @escaping () -> UUID = UUID.init
+) throws -> (PendingShareStore, URL) {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
     let store = PendingShareStore(
-        baseDirectory: directory, userDefaults: defaults, allowAppGroupFallback: false, stagedFileMutationLock: stagedFileMutationLock
+        baseDirectory: directory,
+        userDefaults: defaults,
+        allowAppGroupFallback: false,
+        stagedFileMutationLock: stagedFileMutationLock,
+        idGenerator: idGenerator
     )
     return (store, directory)
 }

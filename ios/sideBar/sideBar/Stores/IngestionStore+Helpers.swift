@@ -435,6 +435,12 @@ extension IngestionStore {
         persistLocalUploads()
     }
 
+    func removeLocalUploadBookmark(fileId: String) {
+        guard let record = localUploadRecords[fileId] else { return }
+        localUploadRecords[fileId] = LocalUploadRecord(item: record.item, bookmarkData: nil)
+        persistLocalUploads()
+    }
+
     func removeLocalUploadRecord(fileId: String) {
         localItems.removeValue(forKey: fileId)
         localUploadRecords.removeValue(forKey: fileId)

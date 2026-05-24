@@ -76,6 +76,7 @@ public final class PendingShareStore {
     private let userDefaults: UserDefaults?
     private let allowAppGroupFallback: Bool
     let stagedFileMutationLock: (URL, @escaping () -> Bool) -> Bool
+    private let idGenerator: () -> UUID
     private let accessLock = NSRecursiveLock()
 
     /// Creates a pending-share store with injectable storage dependencies for tests.
@@ -84,13 +85,15 @@ public final class PendingShareStore {
         userDefaults: UserDefaults? = nil,
         allowAppGroupFallback: Bool = true,
         fileManager: FileManager = .default,
-        stagedFileMutationLock: ((URL, @escaping () -> Bool) -> Bool)? = nil
+        stagedFileMutationLock: ((URL, @escaping () -> Bool) -> Bool)? = nil,
+        idGenerator: @escaping () -> UUID = UUID.init
     ) {
         self.baseDirectory = baseDirectory
         self.userDefaults = userDefaults
         self.allowAppGroupFallback = allowAppGroupFallback
         self.fileManager = fileManager
         self.stagedFileMutationLock = stagedFileMutationLock ?? PendingShareStagedFileOperations.withDefaultLock
+        self.idGenerator = idGenerator
     }
 
     /// Returns whether website/youtube queue metadata can be persisted.
@@ -196,7 +199,7 @@ public final class PendingShareStore {
             guard hasRequiredStorage(needsFileContainer: true, context: "enqueueFile(data)") else {
                 return nil
             }
-            let itemId = UUID()
+            let itemId = idGenerator()
             guard let filePath = writeFile(
                 data: data,
                 itemId: itemId,
@@ -229,7 +232,7 @@ public final class PendingShareStore {
             guard hasRequiredStorage(needsFileContainer: true, context: "enqueueFile(url)") else {
                 return nil
             }
-            let itemId = UUID()
+            let itemId = idGenerator()
             guard let filePath = copyFile(
                 from: url,
                 itemId: itemId,

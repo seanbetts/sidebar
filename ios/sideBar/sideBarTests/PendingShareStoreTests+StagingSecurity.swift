@@ -37,6 +37,63 @@ extension PendingShareStoreTests {
         XCTAssertTrue((try FileManager.default.contentsOfDirectory(atPath: target.path)).isEmpty)
     }
 
+    func testEnqueueFileDataFailsForDanglingDestinationLeafSymlink() throws {
+        let itemId = UUID()
+        let filename = "dangling.txt"
+        let (store, directory) = try makeIsolatedStore(idGenerator: { itemId })
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let itemDirectory = root.appendingPathComponent(itemId.uuidString, isDirectory: true)
+        let target = directory.appendingPathComponent("outside-target.txt")
+        try FileManager.default.createDirectory(at: itemDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: itemDirectory.appendingPathComponent(filename),
+            withDestinationURL: target
+        )
+
+        let item = store.enqueueFile(
+            data: Data("payload".utf8),
+            filename: filename,
+            mimeType: "text/plain",
+            kind: .file
+        )
+
+        XCTAssertNil(item)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
+        XCTAssertNotNil(try? FileManager.default.destinationOfSymbolicLink(
+            atPath: itemDirectory.appendingPathComponent(filename).path
+        ))
+    }
+
+    func testEnqueueFileCopyFailsForDanglingDestinationLeafSymlink() throws {
+        let itemId = UUID()
+        let filename = "copied.txt"
+        let (store, directory) = try makeIsolatedStore(idGenerator: { itemId })
+        let source = directory.appendingPathComponent("source.txt")
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let itemDirectory = root.appendingPathComponent(itemId.uuidString, isDirectory: true)
+        let target = directory.appendingPathComponent("outside-copy-target.txt")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("payload".utf8).write(to: source)
+        try FileManager.default.createDirectory(at: itemDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: itemDirectory.appendingPathComponent(filename),
+            withDestinationURL: target
+        )
+
+        let item = store.enqueueFile(
+            at: source,
+            filename: filename,
+            mimeType: "text/plain",
+            kind: .file
+        )
+
+        XCTAssertNil(item)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
+        XCTAssertNotNil(try? FileManager.default.destinationOfSymbolicLink(
+            atPath: itemDirectory.appendingPathComponent(filename).path
+        ))
+    }
+
     func testResolveFileURLRejectsAbsoluteAndTraversalPaths() throws {
         let (store, directory) = try makeIsolatedStore()
         try FileManager.default.createDirectory(

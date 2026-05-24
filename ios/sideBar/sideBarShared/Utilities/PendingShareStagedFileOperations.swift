@@ -60,13 +60,8 @@ struct PendingShareStagedFileOperations {
         ) else { return nil }
         let fileURL = directory.appendingPathComponent(filename, isDirectory: false)
         guard fileURL.deletingLastPathComponent().path == directory.path else { return nil }
-        guard fileManager.fileExists(atPath: fileURL.path) == false else { return nil }
-        do {
-            try data.write(to: fileURL)
-            return "\(directoryName)/\(itemId.uuidString)/\(filename)"
-        } catch {
-            return nil
-        }
+        guard writeDataNoFollow(data, to: fileURL, fileManager: fileManager) else { return nil }
+        return "\(directoryName)/\(itemId.uuidString)/\(filename)"
     }
 
     static func copyStagedFile(
@@ -85,13 +80,8 @@ struct PendingShareStagedFileOperations {
         ) else { return nil }
         let destinationURL = directory.appendingPathComponent(filename, isDirectory: false)
         guard destinationURL.deletingLastPathComponent().path == directory.path else { return nil }
-        guard fileManager.fileExists(atPath: destinationURL.path) == false else { return nil }
-        do {
-            try fileManager.copyItem(at: sourceURL, to: destinationURL)
-            return "\(directoryName)/\(itemId.uuidString)/\(filename)"
-        } catch {
-            return nil
-        }
+        guard copyFileNoFollow(from: sourceURL, to: destinationURL, fileManager: fileManager) else { return nil }
+        return "\(directoryName)/\(itemId.uuidString)/\(filename)"
     }
 
     private static func createAndValidateDirectory(_ url: URL, fileManager: FileManager) -> Bool {
@@ -111,5 +101,64 @@ struct PendingShareStagedFileOperations {
             return false
         }
         return values.isDirectory == true && values.isSymbolicLink != true
+    }
+
+    private static func writeDataNoFollow(_ data: Data, to destinationURL: URL, fileManager: FileManager) -> Bool {
+        let descriptor = open(
+            destinationURL.path,
+            O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY,
+            S_IRUSR | S_IWUSR
+        )
+        guard descriptor >= 0 else { return false }
+        var shouldRemovePartialFile = true
+        defer {
+            close(descriptor)
+            if shouldRemovePartialFile {
+                try? fileManager.removeItem(at: destinationURL)
+            }
+        }
+        guard writeAll(data, to: descriptor) else { return false }
+        shouldRemovePartialFile = false
+        return true
+    }
+
+    private static func copyFileNoFollow(from sourceURL: URL, to destinationURL: URL, fileManager: FileManager) -> Bool {
+        let descriptor = open(
+            destinationURL.path,
+            O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY,
+            S_IRUSR | S_IWUSR
+        )
+        guard descriptor >= 0 else { return false }
+        var shouldRemovePartialFile = true
+        defer {
+            close(descriptor)
+            if shouldRemovePartialFile {
+                try? fileManager.removeItem(at: destinationURL)
+            }
+        }
+        guard let source = try? FileHandle(forReadingFrom: sourceURL) else { return false }
+        defer { try? source.close() }
+        while true {
+            let chunk = source.readData(ofLength: 64 * 1024)
+            if chunk.isEmpty { break }
+            guard writeAll(chunk, to: descriptor) else { return false }
+        }
+        shouldRemovePartialFile = false
+        return true
+    }
+
+    private static func writeAll(_ data: Data, to descriptor: Int32) -> Bool {
+        data.withUnsafeBytes { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress else { return true }
+            var bytesRemaining = rawBuffer.count
+            var offset = 0
+            while bytesRemaining > 0 {
+                let written = write(descriptor, baseAddress.advanced(by: offset), bytesRemaining)
+                guard written > 0 else { return false }
+                offset += written
+                bytesRemaining -= written
+            }
+            return true
+        }
     }
 }
