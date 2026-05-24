@@ -263,7 +263,11 @@ public final class PendingShareStore {
         }
     }
 
-    /// Replaces all queued share items with the provided collection.
+    /// Replaces queued share items while preserving staged-file cleanup safety.
+    ///
+    /// File/image items removed or retargeted by the replacement are cleaned up first.
+    /// If staged cleanup fails for an existing file/image item, that item is retained
+    /// in metadata instead of being silently dropped.
     public func replaceAll(_ items: [PendingShareItem]) {
         _ = replaceAllCleaningRemovedStagedFiles(items)
     }
