@@ -30,7 +30,9 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("FormField(leadingIcon:AppIcon.Auth.password)"))
         XCTAssertFalse(normalized.contains("SecureFieldWithToggle("))
         XCTAssertTrue(normalized.contains("ForEach(0..<4,id:\\.self)"))
-        XCTAssertTrue(normalized.contains("Passwordsdon'tmatch."))
+        XCTAssertTrue(normalized.contains("privatevarpasswordMismatchMessage:String?{passwordValidation.passwordMismatchMessage}"))
+        XCTAssertTrue(normalized.contains("Text(passwordMismatchMessage??\"\")"))
+        XCTAssertTrue(normalized.contains("elseifletpasswordMismatchMessage{errorMessage=passwordMismatchMessage}"))
         XCTAssertTrue(normalized.contains("DesignTokens.Colors.border.opacity(0.85)"))
         XCTAssertTrue(normalized.contains("PasswordStrengthRules.guidanceMessage"))
         XCTAssertTrue(normalized.contains(".multilineTextAlignment(.center)"))
@@ -49,7 +51,6 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
         let sourceURLs = [
             authRoot.appendingPathComponent("LoginView.swift"),
             authRoot.appendingPathComponent("LoginViewComponents.swift"),
-            authRoot.appendingPathComponent("PasswordFormValidation.swift"),
             authRoot.appendingPathComponent("PasswordResetCompletionView.swift")
         ]
 
