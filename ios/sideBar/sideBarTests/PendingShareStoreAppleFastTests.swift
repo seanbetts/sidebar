@@ -15,7 +15,9 @@ private final class AppleFastFailingRemoveFileManager: FileManager {
 
 final class PendingShareStoreAppleFastTests: XCTestCase {
     func testResolverRejectsUnsafeSymlinkAndDirectoryLeafPaths() throws {
-        let (store, directory, _) = try makeStore()
+        let fixture = try makeStore()
+        let store = fixture.store
+        let directory = fixture.directory
         let uuid = UUID().uuidString
         let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
         let itemDirectory = root.appendingPathComponent(uuid, isDirectory: true)
@@ -43,10 +45,12 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
         let copyItemID = UUID()
         let ids = [dataItemID, copyItemID]
         var idIndex = 0
-        let (store, directory, _) = try makeStore(idGenerator: {
+        let fixture = try makeStore(idGenerator: {
             defer { idIndex += 1 }
             return ids[idIndex]
         })
+        let store = fixture.store
+        let directory = fixture.directory
         let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
         let dataDirectory = root.appendingPathComponent(dataItemID.uuidString, isDirectory: true)
         let copyDirectory = root.appendingPathComponent(copyItemID.uuidString, isDirectory: true)
@@ -87,7 +91,10 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
 
     func testCleanupFailureAndResolverRejectionRetainMetadata() throws {
         let failingFileManager = AppleFastFailingRemoveFileManager()
-        let (writer, directory, defaults) = try makeStore()
+        let writerFixture = try makeStore()
+        let writer = writerFixture.store
+        let directory = writerFixture.directory
+        let defaults = writerFixture.defaults
         let removable = try XCTUnwrap(writer.enqueueFile(
             data: Data("payload".utf8),
             filename: "removable.txt",
@@ -113,7 +120,7 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
     }
 
     func testReplacementCleanupHandlesPathChangesAndSharedStagedPaths() throws {
-        let (store, _, _) = try makeStore()
+        let store = try makeStore().store
         let original = try XCTUnwrap(store.enqueueFile(
             data: Data("old".utf8),
             filename: "old.txt",
@@ -144,9 +151,46 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: retainedURL.path))
     }
 
+    func testDuplicateStagedPathItemsAreCleanedTogetherForRemoveAndReplacement() throws {
+        let removeStore = try makeStore().store
+        let removeFirst = try XCTUnwrap(removeStore.enqueueFile(
+            data: Data("payload".utf8),
+            filename: "remove-shared.txt",
+            mimeType: "text/plain",
+            kind: .file
+        ))
+        let removeURL = try XCTUnwrap(removeStore.resolveFileURL(for: removeFirst))
+        let removeDuplicate = duplicateFileItem(from: removeFirst)
+        removeStore.writeMetadata([removeFirst, removeDuplicate])
+
+        removeStore.remove(ids: [removeFirst.id, removeDuplicate.id])
+
+        XCTAssertTrue(removeStore.loadAll().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: removeURL.path))
+
+        let replaceStore = try makeStore().store
+        let replaceFirst = try XCTUnwrap(replaceStore.enqueueFile(
+            data: Data("payload".utf8),
+            filename: "replace-shared.txt",
+            mimeType: "text/plain",
+            kind: .file
+        ))
+        let replaceURL = try XCTUnwrap(replaceStore.resolveFileURL(for: replaceFirst))
+        let replaceDuplicate = duplicateFileItem(from: replaceFirst)
+        replaceStore.writeMetadata([replaceFirst, replaceDuplicate])
+
+        XCTAssertTrue(replaceStore.replaceAllCleaningRemovedStagedFiles([]))
+
+        XCTAssertTrue(replaceStore.loadAll().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: replaceURL.path))
+    }
+
     func testReplacementCleanupRetainsMetadataWhenSameIDDropsStagedReference() throws {
         let failingFileManager = AppleFastFailingRemoveFileManager()
-        let (writer, directory, defaults) = try makeStore()
+        let writerFixture = try makeStore()
+        let writer = writerFixture.store
+        let directory = writerFixture.directory
+        let defaults = writerFixture.defaults
         let original = try XCTUnwrap(writer.enqueueFile(
             data: Data("old".utf8),
             filename: "old.txt",
@@ -170,7 +214,9 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
     }
 
     func testBatchCleanupProgressUpdatesMetadataForSucceededItems() throws {
-        let (store, directory, _) = try makeStore()
+        let fixture = try makeStore()
+        let store = fixture.store
+        let directory = fixture.directory
         let valid = try XCTUnwrap(store.enqueueFile(
             data: Data("payload".utf8),
             filename: "valid.txt",
@@ -188,9 +234,23 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: invalid.target.path))
     }
 
-    private func makeStore(
-        idGenerator: @escaping () -> UUID = UUID.init
-    ) throws -> (PendingShareStore, URL, UserDefaults) {
+    func testNonFileKindWithLegacyFilePathDoesNotRequireStagedCleanup() throws {
+        let store = try makeStore().store
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: Date(),
+            url: "https://example.com",
+            filePath: "../legacy.txt"
+        )
+        store.writeMetadata([item])
+
+        store.remove(ids: [item.id])
+
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    private func makeStore(idGenerator: @escaping () -> UUID = UUID.init) throws -> StoreFixture {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "PendingShareStoreAppleFastTests.\(UUID().uuidString)"))
         let store = PendingShareStore(
@@ -199,11 +259,28 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
             allowAppGroupFallback: false,
             idGenerator: idGenerator
         )
-        return (store, directory, defaults)
+        return StoreFixture(store: store, directory: directory, defaults: defaults)
+    }
+
+    private struct StoreFixture {
+        let store: PendingShareStore
+        let directory: URL
+        let defaults: UserDefaults
     }
 
     private func fileItem(filePath: String) -> PendingShareItem {
         PendingShareItem(id: UUID(), kind: .file, createdAt: Date(), filePath: filePath)
+    }
+
+    private func duplicateFileItem(from item: PendingShareItem) -> PendingShareItem {
+        PendingShareItem(
+            id: UUID(),
+            kind: item.kind,
+            createdAt: item.createdAt,
+            filePath: item.filePath,
+            filename: item.filename,
+            mimeType: item.mimeType
+        )
     }
 
     private func makeLeafSymlinkItem(

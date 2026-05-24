@@ -4,8 +4,20 @@ extension PendingShareStore {
     func stagedCleanupResults(for items: [PendingShareItem]) -> (succeeded: Set<UUID>, failed: [PendingShareItem]) {
         var succeeded = Set<UUID>()
         var failed: [PendingShareItem] = []
+        var resultsByStagedReference: [String: Bool] = [:]
         for item in items {
-            if removeStagedFileIfPresent(for: item) {
+            guard let stagedReference = stagedCleanupReference(for: item) else {
+                succeeded.insert(item.id)
+                continue
+            }
+            let didSucceed: Bool
+            if let existingResult = resultsByStagedReference[stagedReference] {
+                didSucceed = existingResult
+            } else {
+                didSucceed = removeStagedFileIfPresent(for: item)
+                resultsByStagedReference[stagedReference] = didSucceed
+            }
+            if didSucceed {
                 succeeded.insert(item.id)
             } else {
                 failed.append(item)
@@ -15,6 +27,7 @@ extension PendingShareStore {
     }
 
     func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
+        guard item.kind == .file || item.kind == .image else { return true }
         guard let relativePath = item.filePath else { return true }
         guard let baseDirectory = rootDirectory else { return false }
         var didRun = false
@@ -26,6 +39,11 @@ extension PendingShareStore {
             return removeItemDirectoryIfEmpty(for: fileURL, relativePath: relativePath, resolver: resolver)
         }
         return didRun && didSucceed
+    }
+
+    private func stagedCleanupReference(for item: PendingShareItem) -> String? {
+        guard item.kind == .file || item.kind == .image else { return nil }
+        return item.filePath
     }
 
     func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) -> Bool {

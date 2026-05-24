@@ -25,4 +25,26 @@ extension PendingShareStoreTests {
         XCTAssertEqual(loaded.filePath, fileItem.filePath)
         XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
     }
+
+    func testReplaceAllCleaningRemovedStagedFilesCleansDuplicateStagedPathItemsTogether() throws {
+        let (store, _) = try makeIsolatedStore()
+        let first = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "shared.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: first))
+        let duplicate = PendingShareItem(
+            id: UUID(),
+            kind: .file,
+            createdAt: first.createdAt,
+            filePath: first.filePath,
+            filename: first.filename,
+            mimeType: first.mimeType
+        )
+        store.writeMetadata([first, duplicate])
+
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([]))
+
+        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.path))
+    }
 }
