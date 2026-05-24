@@ -3,6 +3,7 @@ included:
   - sideBarTests
   - sideBarUITests
   - ShareExtension
+  - ShareExtensionTests
   - "sideBar Safari Extension"
   - "sideBar Safari Extension (macOS)"
   - "sideBar Safari Extension (macOS) Extension"

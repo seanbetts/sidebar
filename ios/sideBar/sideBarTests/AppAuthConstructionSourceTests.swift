@@ -9,6 +9,14 @@ final class AppAuthConstructionSourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("SupabaseAuthAdapter("))
         XCTAssertFalse(normalized.contains("KeychainAuthStateStore("))
     }
+
+    func testUITestAuthBootstrapIsDebugGatedInSideBarApp() throws {
+        let source = try sideBarAppSource()
+        let normalized = source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("#ifDEBUGletseededSession=UITestAuthBootstrap.makeSeededSession"))
+        XCTAssertTrue(normalized.contains("#ifDEBUGletinitialPasswordResetState:PasswordResetState?="))
+    }
 }
 
 private func sideBarAppSource(

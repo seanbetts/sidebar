@@ -103,8 +103,13 @@ struct SideBarApp: App {
         logStep("Config load", configStart, configEnd)
 
         let authStart = CFAbsoluteTimeGetCurrent()
+        #if DEBUG
+        let seededSession = UITestAuthBootstrap.makeSeededSession(from: processEnvironment)
+        #else
+        let seededSession: PlaceholderAuthSession? = nil
+        #endif
         let authSession: AuthSession
-        if let seededSession = UITestAuthBootstrap.makeSeededSession(from: processEnvironment) {
+        if let seededSession {
             authSession = seededSession
         } else {
             authSession = DefaultAuthSessionFactory().makeAuthSession(
@@ -125,10 +130,14 @@ struct SideBarApp: App {
         logStep("Service container", cacheStart, cacheEnd)
 
         let envStart = CFAbsoluteTimeGetCurrent()
+#if DEBUG
         let initialPasswordResetState: PasswordResetState? =
             UITestAuthBootstrap.shouldForcePasswordReset(from: processEnvironment)
             ? .enterNewPassword
             : nil
+#else
+        let initialPasswordResetState: PasswordResetState? = nil
+#endif
         _environment = StateObject(wrappedValue: AppEnvironment(
             container: container,
             configError: configError,

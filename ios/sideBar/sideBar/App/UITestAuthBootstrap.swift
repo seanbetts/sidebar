@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 /// UI-test-only launch bootstrap that can start the app from an authenticated state.
 enum UITestAuthBootstrap {
     static let bootstrapAuthKey = "SIDEBAR_UI_TEST_BOOTSTRAP_AUTH"
@@ -47,3 +48,4 @@ enum UITestAuthBootstrap {
         return rawValue
     }
 }
+#endif
