@@ -15,7 +15,7 @@ struct PendingShareFileResolver {
 
         let candidate = pathStandardizedURL(directory.appendingPathComponent(components.filename, isDirectory: false))
         guard candidate.path.hasPrefix(root.path + "/") else { return nil }
-        guard isSymlink(candidate) == false else { return nil }
+        guard isRegularFileOrMissing(candidate) else { return nil }
         return candidate
     }
 
@@ -73,6 +73,16 @@ struct PendingShareFileResolver {
 
     private func isSymlink(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+    }
+
+    private func isRegularFileOrMissing(_ url: URL) -> Bool {
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .isDirectoryKey, .isSymbolicLinkKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else {
+            return fileManager.fileExists(atPath: url.path) == false
+        }
+        if values.isSymbolicLink == true { return false }
+        if values.isRegularFile == true { return true }
+        return fileManager.fileExists(atPath: url.path) == false
     }
 
     private func pathStandardizedURL(_ url: URL) -> URL {
