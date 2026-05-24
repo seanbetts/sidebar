@@ -147,7 +147,7 @@ public final class APIClient {
     func logTransportError(_ error: Error, request: URLRequest) {
         let nsError = error as NSError
         let method = request.httpMethod ?? "?"
-        let url = request.url?.absoluteString ?? "?"
+        let url = LogRedaction.redactedURLString(request.url)
         let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
         logger.error(
             "Transport error \(method, privacy: .public) \(url, privacy: .public) hadToken=\(hadToken)"
@@ -172,8 +172,7 @@ public final class APIClient {
 
     func logCancellation(_ request: URLRequest) {
         let method = request.httpMethod ?? "?"
-        let url = request.url?.absoluteString ?? "?"
-        logger.debug("Request cancelled \(method, privacy: .public) \(url, privacy: .public)")
+        logger.debug("Request cancelled \(method, privacy: .public) \(LogRedaction.redactedURLString(request.url), privacy: .public)")
     }
 
     private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {

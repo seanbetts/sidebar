@@ -28,23 +28,23 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         } else {
             message = request?.userInfo?["message"]
         }
-
-        os_log(
-            .default,
-            "Received message from browser.runtime.sendNativeMessage: %@ (profile: %@)",
-            String(describing: message),
-            profile?.uuidString ?? "none"
-        )
         let payload = message as? [String: Any]
         let action = payload?["action"] as? String
         let urlString = payload?["url"] as? String
+
+        os_log(
+            .default,
+            "Received Safari extension message %{public}@ (profile: %{public}@)",
+            LogRedaction.safariPayloadSummary(action: action, urlString: urlString),
+            profile?.uuidString ?? "none"
+        )
         SafariExtensionDiagnostics.reporter.recordBreadcrumb(
             surface: "safari_extension",
             stage: "begin_request",
             message: "Received Safari extension request.",
             metadata: [
                 "action": action ?? "nil",
-                "url": urlString ?? "nil",
+                "url": LogRedaction.redactedURLString(urlString),
                 "profile": profile?.uuidString ?? "none",
                 "bundle_id": Bundle.main.bundleIdentifier ?? "nil"
             ]
@@ -57,10 +57,15 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 pendingStore: .shared,
                 saveStrategy: .queueOnly
             )
-            os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
+            os_log(
+                .default,
+                "SafariWebExtensionHandler response ok=%{public}@ code=%{public}@",
+                (responsePayload["ok"] as? Bool).map { $0 ? "true" : "false" } ?? "nil",
+                responsePayload["code"] as? String ?? "nil"
+            )
             let responseMetadata = [
                 "action": action ?? "nil",
-                "url": urlString ?? "nil",
+                "url": LogRedaction.redactedURLString(urlString),
                 "ok": (responsePayload["ok"] as? Bool).map { $0 ? "true" : "false" } ?? "nil",
                 "code": responsePayload["code"] as? String ?? "nil",
                 "bundle_id": Bundle.main.bundleIdentifier ?? "nil"

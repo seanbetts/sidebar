@@ -14,17 +14,18 @@ extension AppEnvironment {
 
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
+        let redactedURL = LogRedaction.redactedURLString(url)
         guard isAuthenticated else {
-            logger.info("Queueing deep link until sign-in completes: \(url.absoluteString, privacy: .public)")
+            logger.info("Queueing deep link until sign-in completes: \(redactedURL, privacy: .public)")
             queueProtectedDeepLink(url)
             return
         }
         guard isProtectedContentReady else {
-            logger.info("Queueing protected deep link until auth is ready: \(url.absoluteString, privacy: .public)")
+            logger.info("Queueing protected deep link until auth is ready: \(redactedURL, privacy: .public)")
             queueProtectedDeepLink(url)
             return
         }
-        logger.info("Handling deep link: \(url.absoluteString, privacy: .public)")
+        logger.info("Handling deep link: \(redactedURL, privacy: .public)")
         AppSentry.recordAction(
             category: "deep_link",
             name: deepLinkActionName(for: url),
@@ -34,7 +35,7 @@ extension AppEnvironment {
             surface: "deep_link",
             stage: "handle",
             message: "Handling deep link.",
-            metadata: ["url": url.absoluteString]
+            metadata: ["url": redactedURL]
         )
         handleSidebarDeepLink(url: url, logger: logger)
     }
@@ -130,7 +131,7 @@ extension AppEnvironment {
                 logger.info("Deep link missing website save URL")
                 return
             }
-            logger.info("Deep link to save website: \(websiteURL, privacy: .public)")
+            logger.info("Deep link to save website: \(LogRedaction.redactedURLString(websiteURL), privacy: .public)")
             Task {
                 _ = await enqueueWebsiteSave(url: websiteURL, selectAfterSave: false)
             }

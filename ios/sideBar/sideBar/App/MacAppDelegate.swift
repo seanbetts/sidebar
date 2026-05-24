@@ -68,7 +68,8 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     func application(_ application: NSApplication, open urls: [URL]) {
         _ = application
         for url in urls where url.scheme == "sidebar" {
-            deepLinkLogger.info("MacAppDelegate handling deep link: \(url.absoluteString, privacy: .public)")
+            let redactedURL = LogRedaction.redactedURLString(url)
+            deepLinkLogger.info("Handling deep link: \(redactedURL, privacy: .public)")
             handleOrQueueDeepLink(url)
         }
     }

@@ -108,22 +108,23 @@ public final class PendingShareStore {
     /// Enqueues a website URL share if not already present.
     public func enqueueWebsite(url: String) -> PendingShareItem? {
         withAccessLock {
+            let redactedURL = LogRedaction.redactedURLString(url)
             guard hasRequiredStorage(needsFileContainer: false, context: "enqueueWebsite") else {
                 recordDiagnostics(
                     stage: "enqueue_website_missing_storage",
                     message: "Could not queue website because shared storage was unavailable.",
-                    metadata: ["url": url]
+                    metadata: ["url": redactedURL]
                 )
                 return nil
             }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
-                os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
+                os_log(.default, log: Self.log, "Website share already queued %{public}@", redactedURL)
                 recordDiagnostics(
                     stage: "enqueue_website_duplicate",
                     message: "Website was already queued.",
                     metadata: [
-                        "url": url,
+                        "url": redactedURL,
                         "queue_item_id": existing.id.uuidString
                     ]
                 )
@@ -139,12 +140,12 @@ public final class PendingShareStore {
             items.append(item)
             replaceAll(items)
             WebsiteSaveHandoffNotifier.post()
-            os_log(.default, log: Self.log, "Queued website share %{public}@", url)
+            os_log(.default, log: Self.log, "Queued website share %{public}@", redactedURL)
             recordDiagnostics(
                 stage: "enqueue_website",
                 message: "Queued website share.",
                 metadata: [
-                    "url": url,
+                    "url": redactedURL,
                     "queue_item_id": item.id.uuidString,
                     "count": "\(items.count)"
                 ]
@@ -157,12 +158,13 @@ public final class PendingShareStore {
     /// Enqueues a YouTube URL share if not already present.
     public func enqueueYouTube(url: String) -> PendingShareItem? {
         withAccessLock {
+            let redactedURL = LogRedaction.redactedURLString(url)
             guard hasRequiredStorage(needsFileContainer: false, context: "enqueueYouTube") else {
                 return nil
             }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
-                os_log(.default, log: Self.log, "YouTube share already queued %{public}@", url)
+                os_log(.default, log: Self.log, "YouTube share already queued %{public}@", redactedURL)
                 return existing
             }
             let item = PendingShareItem(
@@ -174,7 +176,7 @@ public final class PendingShareStore {
             var items = existingItems
             items.append(item)
             replaceAll(items)
-            os_log(.default, log: Self.log, "Queued YouTube share %{public}@", url)
+            os_log(.default, log: Self.log, "Queued YouTube share %{public}@", redactedURL)
             return item
         }
     }

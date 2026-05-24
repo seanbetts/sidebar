@@ -1,6 +1,7 @@
 import Foundation
 import os
 import CoreSpotlight
+import sideBarShared
 #if os(iOS)
 import UIKit
 
@@ -12,7 +13,8 @@ final class AppSceneDelegate: NSObject, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
         guard let url = contexts.first?.url else { return }
         guard url.scheme == "sidebar" else { return }
-        logger.info("SceneDelegate handling deep link: \(url.absoluteString, privacy: .public)")
+        let redactedURL = LogRedaction.redactedURLString(url)
+        logger.info("Handling deep link: \(redactedURL, privacy: .public)")
         handleOrQueueDeepLink(url)
     }
 

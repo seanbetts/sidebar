@@ -52,6 +52,7 @@ public enum DiagnosticsMetadataSanitizer {
         "status_code",
         "surface",
         "total_count",
+        "url",
         "url_error_code",
         "widget_kinds"
     ]

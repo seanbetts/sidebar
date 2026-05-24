@@ -57,7 +57,7 @@ extension APIClient {
         var request = request
         try await prepareAuthorizationIfNeeded(for: &request, intent: intent)
         if let url = request.url {
-            logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
+            logger.debug("Request \(request.httpMethod ?? "GET") \(LogRedaction.redactedURLString(url), privacy: .public)")
         }
         let bytes: URLSession.AsyncBytes
         let response: URLResponse
@@ -85,7 +85,7 @@ extension APIClient {
     ) async throws -> (Data, HTTPURLResponse) {
         let start = Date()
         if let url = request.url {
-            logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
+            logger.debug("Request \(request.httpMethod ?? "GET") \(LogRedaction.redactedURLString(url), privacy: .public)")
         }
 
         let (data, response) = try await performTransport(request, intent: intent, transport: transport)
@@ -210,7 +210,7 @@ extension APIClient {
         }
 
         let method = request.httpMethod ?? "GET"
-        let url = request.url?.absoluteString ?? "?"
+        let url = LogRedaction.redactedURLString(request.url)
         let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
         logger.notice("Response 401 for \(method) \(url); hadToken=\(hadToken) retrying auth refresh")
 
