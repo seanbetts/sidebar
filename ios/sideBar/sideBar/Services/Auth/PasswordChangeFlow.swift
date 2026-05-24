@@ -8,9 +8,8 @@ public protocol PasswordChanging: AnyObject {
 }
 
 func validatedPasswordForMutation(_ candidate: String) throws -> String {
-    let trimmedPassword = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard trimmedPassword.count >= PasswordStrengthRules.minimumLength else {
+    guard candidate.count >= PasswordStrengthRules.minimumLength else {
         throw AuthAdapterError.weakPassword
     }
-    return trimmedPassword
+    return candidate
 }

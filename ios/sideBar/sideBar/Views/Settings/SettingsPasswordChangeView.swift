@@ -16,34 +16,24 @@ struct SettingsPasswordChangeView: View {
         case confirmPassword
     }
 
-    private var trimmedNewPassword: String {
-        newPassword.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var trimmedConfirmPassword: String {
-        confirmPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var passwordValidation: PasswordFormValidation {
+        PasswordFormValidation(newPassword: newPassword, confirmPassword: confirmPassword)
     }
 
     private var passwordStrength: Int {
-        PasswordStrengthRules.score(for: trimmedNewPassword)
+        passwordValidation.strengthScore
     }
 
     private var hasMinimumPasswordLength: Bool {
-        trimmedNewPassword.count >= PasswordStrengthRules.minimumLength
+        passwordValidation.hasMinimumPasswordLength
     }
 
     private var passwordMismatchMessage: String? {
-        guard !confirmPassword.isEmpty, trimmedNewPassword != trimmedConfirmPassword else {
-            return nil
-        }
-        return "Passwords do not match."
+        passwordValidation.passwordMismatchMessage
     }
 
     private var canSubmit: Bool {
-        !isSubmitting
-            && hasMinimumPasswordLength
-            && !trimmedConfirmPassword.isEmpty
-            && passwordMismatchMessage == nil
+        passwordValidation.canSubmit(isSubmitting: isSubmitting)
     }
 
     var body: some View {
@@ -202,7 +192,7 @@ struct SettingsPasswordChangeView: View {
         }
 
         guard passwordMismatchMessage == nil else {
-            errorMessage = "Passwords do not match."
+            errorMessage = passwordMismatchMessage
             return
         }
 
@@ -210,7 +200,7 @@ struct SettingsPasswordChangeView: View {
         defer { isSubmitting = false }
 
         do {
-            try await environment.completeSettingsPasswordChange(newPassword: trimmedNewPassword)
+            try await environment.completeSettingsPasswordChange(newPassword: newPassword)
             dismiss()
         } catch let authError as AuthAdapterError {
             errorMessage = authError.errorDescription

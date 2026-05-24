@@ -89,9 +89,9 @@ import sideBarShared
         environment.passwordResetState = .enterNewPassword
         environment.authState = .active
 
-        try await environment.completePasswordRecovery(newPassword: "StrongPass123!")
+        try await environment.completePasswordRecovery(newPassword: "  StrongPass123!  ")
 
-        XCTAssertEqual(manager.completedPasswords, ["StrongPass123!"])
+        XCTAssertEqual(manager.completedPasswords, ["  StrongPass123!  "])
         XCTAssertEqual(authSession.signOutCallCount, 1)
         XCTAssertNil(environment.passwordResetState)
         XCTAssertEqual(environment.passwordResetSuccessMessage, "Password updated. Sign in with your new password.")
@@ -125,9 +125,9 @@ import sideBarShared
         let environment = AppEnvironment(container: container)
         environment.authState = .active
 
-        try await environment.completeSettingsPasswordChange(newPassword: "StrongPass123!")
+        try await environment.completeSettingsPasswordChange(newPassword: "  StrongPass123!  ")
 
-        XCTAssertEqual(passwordChangeManager.completedPasswords, ["StrongPass123!"])
+        XCTAssertEqual(passwordChangeManager.completedPasswords, ["  StrongPass123!  "])
         XCTAssertEqual(authSession.signOutCallCount, 1)
         XCTAssertEqual(environment.passwordResetSuccessMessage, "Password updated. Sign in with your new password.")
         XCTAssertNil(environment.passwordResetSuccessDetail)

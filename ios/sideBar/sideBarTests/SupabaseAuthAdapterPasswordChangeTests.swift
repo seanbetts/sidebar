@@ -5,7 +5,7 @@ import Supabase
 
 @MainActor
 final class SupabaseAuthAdapterPasswordChangeTests: XCTestCase {
-    func testChangePasswordTrimsAndUpdatesViaClient() async throws {
+    func testChangePasswordPreservesExactPasswordValue() async throws {
         let authClient = FakeSupabaseAuthClient()
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterPasswordChangeTests")
         defer { isolated.tearDown() }
@@ -18,7 +18,7 @@ final class SupabaseAuthAdapterPasswordChangeTests: XCTestCase {
 
         try await adapter.changePassword(newPassword: "  StrongPass123!  ")
 
-        XCTAssertEqual(authClient.updatedPasswords, ["StrongPass123!"])
+        XCTAssertEqual(authClient.updatedPasswords, ["  StrongPass123!  "])
     }
 
     func testChangePasswordRejectsWeakPassword() async {

@@ -15,31 +15,24 @@ struct PasswordResetCompletionView: View {
         case confirmPassword
     }
 
-    private var trimmedNewPassword: String {
-        newPassword.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var trimmedConfirmPassword: String {
-        confirmPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var passwordValidation: PasswordFormValidation {
+        PasswordFormValidation(newPassword: newPassword, confirmPassword: confirmPassword)
     }
 
     private var passwordStrength: Int {
-        PasswordStrengthRules.score(for: trimmedNewPassword)
+        passwordValidation.strengthScore
     }
 
     private var hasMinimumPasswordLength: Bool {
-        trimmedNewPassword.count >= PasswordStrengthRules.minimumLength
+        passwordValidation.hasMinimumPasswordLength
     }
 
     private var passwordMismatchMessage: String? {
-        guard !confirmPassword.isEmpty, trimmedNewPassword != trimmedConfirmPassword else {
-            return nil
-        }
-        return "Passwords do not match."
+        passwordValidation.passwordMismatchMessage
     }
 
     private var canSubmit: Bool {
-        !isSubmitting && hasMinimumPasswordLength && !trimmedConfirmPassword.isEmpty && passwordMismatchMessage == nil
+        passwordValidation.canSubmit(isSubmitting: isSubmitting)
     }
 
     private var inactivePasswordStrengthColor: Color {
@@ -211,7 +204,7 @@ struct PasswordResetCompletionView: View {
         }
 
         guard passwordMismatchMessage == nil else {
-            errorMessage = "Passwords do not match."
+            errorMessage = passwordMismatchMessage
             return
         }
 
@@ -219,7 +212,7 @@ struct PasswordResetCompletionView: View {
         defer { isSubmitting = false }
 
         do {
-            try await environment.completePasswordRecovery(newPassword: trimmedNewPassword)
+            try await environment.completePasswordRecovery(newPassword: newPassword)
         } catch let authError as AuthAdapterError {
             errorMessage = authError.errorDescription
         } catch {
