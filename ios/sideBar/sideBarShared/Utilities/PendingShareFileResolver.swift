@@ -29,6 +29,31 @@ struct PendingShareFileResolver {
         return directory
     }
 
+    func emptyItemDirectories(olderThan cutoff: Date) -> [URL] {
+        let root = standardizedDirectoryURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
+        guard let directories = try? fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.creationDateKey, .isDirectoryKey, .isSymbolicLinkKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        return directories.compactMap { emptyItemDirectory(for: $0, root: root, olderThan: cutoff) }
+    }
+
+    private func emptyItemDirectory(for url: URL, root: URL, olderThan cutoff: Date) -> URL? {
+        guard let values = try? url.resourceValues(forKeys: [.creationDateKey, .isDirectoryKey, .isSymbolicLinkKey]),
+              values.isSymbolicLink != true,
+              values.isDirectory == true,
+              let createdAt = values.creationDate,
+              createdAt < cutoff else { return nil }
+        let directory = standardizedDirectoryURL(url)
+        guard directory.deletingLastPathComponent().path == root.path else { return nil }
+        guard UUID(uuidString: directory.lastPathComponent) != nil else { return nil }
+        guard (try? fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true else {
+            return nil
+        }
+        return directory
+    }
+
     private func standardizedDirectoryURL(_ url: URL) -> URL {
         url.standardizedFileURL.resolvingSymlinksInPath()
     }

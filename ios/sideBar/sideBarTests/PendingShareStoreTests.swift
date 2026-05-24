@@ -87,21 +87,20 @@ final class PendingShareStoreTests: XCTestCase {
     }
     func testResolveFileURLRejectsAbsoluteAndTraversalPaths() throws {
         let store = makeStore()
-        let absolute = PendingShareItem(
-            id: UUID(), kind: .file,
-            createdAt: Date(),
-            filePath: "/tmp/escaped.txt",
-            filename: "escaped.txt", mimeType: "text/plain"
-        )
-        let traversal = PendingShareItem(
-            id: UUID(), kind: .file,
-            createdAt: Date(),
-            filePath: "pending-shares/\(UUID().uuidString)/../escaped.txt",
-            filename: "escaped.txt", mimeType: "text/plain"
-        )
-
-        XCTAssertNil(store.resolveFileURL(for: absolute))
-        XCTAssertNil(store.resolveFileURL(for: traversal))
+        let invalidPaths = [
+            "/tmp/escaped.txt",
+            "pending-shares/\(UUID().uuidString)/../escaped.txt",
+            "pending-shares/file.txt",
+            "pending-shares/\(UUID().uuidString)/",
+            "pending-shares/\(UUID().uuidString)/nested/file.txt"
+        ]
+        for path in invalidPaths {
+            let item = PendingShareItem(
+                id: UUID(), kind: .file, createdAt: Date(),
+                filePath: path, filename: "escaped.txt", mimeType: "text/plain"
+            )
+            XCTAssertNil(store.resolveFileURL(for: item))
+        }
     }
     func testRemoveDeletesStagedFileAndContainingDirectory() throws {
         let store = makeStore()
@@ -135,9 +134,7 @@ final class PendingShareStoreTests: XCTestCase {
             allowAppGroupFallback: false
         )
         let item = PendingShareItem(
-            id: UUID(), kind: .file,
-            createdAt: Date(),
-            filePath: "../outside.txt",
+            id: UUID(), kind: .file, createdAt: Date(), filePath: "../outside.txt",
             filename: "outside.txt", mimeType: "text/plain"
         )
 
@@ -185,6 +182,47 @@ final class PendingShareStoreTests: XCTestCase {
             XCTAssertFalse(FileManager.default.fileExists(atPath: stagedFileURL.path))
         }
     }
+    func testClearAllPreservesUnrelatedPendingShareRootContent() throws {
+        let (store, directory) = try makeIsolatedStore()
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let unrelated = root.appendingPathComponent("manual/keep.txt")
+        try FileManager.default.createDirectory(at: unrelated.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: unrelated)
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "sample.txt", mimeType: "text/plain", kind: .file
+        ))
+        let fileURL = try XCTUnwrap(store.resolveFileURL(for: item))
+
+        store.clearAll()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unrelated.path))
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+    func testCleanupPreservesUnrelatedAndNonEmptyPendingShareDirectories() throws {
+        let (store, directory) = try makeIsolatedStore()
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let manual = root.appendingPathComponent("manual")
+        let nonEmptyUUID = root.appendingPathComponent(UUID().uuidString)
+        let symlink = root.appendingPathComponent(UUID().uuidString)
+        let symlinkTarget = directory.appendingPathComponent("symlink-target")
+        try FileManager.default.createDirectory(at: manual, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: nonEmptyUUID, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: symlinkTarget, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: symlinkTarget)
+        try Data("keep".utf8).write(to: nonEmptyUUID.appendingPathComponent("keep.txt"))
+        let emptyUUID = root.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: emptyUUID, withIntermediateDirectories: true)
+        let oldDate = Date().addingTimeInterval(-2 * 24 * 60 * 60)
+        try FileManager.default.setAttributes([.creationDate: oldDate], ofItemAtPath: emptyUUID.path)
+
+        store.cleanup(olderThan: 1)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: manual.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: nonEmptyUUID.path))
+        XCTAssertNotNil(try? FileManager.default.destinationOfSymbolicLink(atPath: symlink.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: emptyUUID.path))
+    }
     func testLoadAllPreservesWebsiteQueueInsertionOrder() {
         let store = makeStore()
         _ = store.enqueueWebsite(url: "https://example.com/first")
@@ -201,12 +239,7 @@ final class PendingShareStoreTests: XCTestCase {
         )
     }
     func testPendingShareRoutingWebsiteSuccessDropsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: Date(),
-            url: "https://example.com"
-        )
+        let item = pendingWebsiteItem()
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -218,12 +251,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertFalse(keep)
     }
     func testPendingShareRoutingWebsiteFailureKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: Date(),
-            url: "https://example.com"
-        )
+        let item = pendingWebsiteItem()
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -235,12 +263,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingLegacyYouTubeSuccessDropsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .youtube,
-            createdAt: Date(),
-            url: "https://www.youtube.com/watch?v=abc123xyzAA"
-        )
+        let item = pendingYouTubeItem()
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -252,12 +275,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertFalse(keep)
     }
     func testPendingShareRoutingLegacyYouTubeFailureKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .youtube,
-            createdAt: Date(),
-            url: "https://www.youtube.com/watch?v=abc123xyzAA"
-        )
+        let item = pendingYouTubeItem()
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -269,12 +287,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingYouTubeOfflineKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .youtube,
-            createdAt: Date(),
-            url: "https://www.youtube.com/watch?v=abc123xyzAA"
-        )
+        let item = pendingYouTubeItem()
         var youTubeCalled = false
         let keep = await shouldKeepPendingShareItem(
             item,
@@ -288,11 +301,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertFalse(youTubeCalled)
     }
     func testPendingShareRoutingFileMissingPathKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .file,
-            createdAt: Date()
-        )
+        let item = PendingShareItem(id: UUID(), kind: .file, createdAt: Date())
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -304,12 +313,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingFileResolvedStartsUploadAndDropsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .file,
-            createdAt: Date(),
-            filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
-        )
+        let item = pendingFileItem()
         let expectedURL = URL(fileURLWithPath: "/tmp/test-upload")
         var startedUploads: [URL] = []
         let keep = await shouldKeepPendingShareItem(
@@ -324,12 +328,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(startedUploads, [expectedURL])
     }
     func testPendingShareRoutingFileOfflineKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .file,
-            createdAt: Date(),
-            filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
-        )
+        let item = pendingFileItem()
         var uploadCalled = false
         let keep = await shouldKeepPendingShareItem(
             item,
@@ -343,12 +342,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertFalse(uploadCalled)
     }
     func testPendingShareRoutingFileUploadFailureKeepsItem() async {
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .file,
-            createdAt: Date(),
-            filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
-        )
+        let item = pendingFileItem()
         let keep = await shouldKeepPendingShareItem(
             item,
             isOffline: { false },
@@ -385,13 +379,7 @@ extension PendingShareStoreTests {
     }
     func testNextPendingWebsiteRetryItemSchedulesBackoffAndIncrementsCount() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
-            retryCount: 1
-        )
+        let item = pendingWebsiteItem(createdAt: now, retryCount: 1)
         let retry = nextPendingWebsiteRetryItem(
             from: item,
             now: now,
@@ -404,19 +392,8 @@ extension PendingShareStoreTests {
     }
     func testNextPendingWebsiteRetryItemDropsOnTerminalOrRetryLimit() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let terminal = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com"
-        )
-        let capped = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
-            retryCount: 4
-        )
+        let terminal = pendingWebsiteItem(createdAt: now)
+        let capped = pendingWebsiteItem(createdAt: now, retryCount: 4)
         XCTAssertNil(
             nextPendingWebsiteRetryItem(
                 from: terminal,
@@ -434,13 +411,8 @@ extension PendingShareStoreTests {
     }
     func testFailedPendingWebsiteItemMarksQueueEntryAsManualRetryOnly() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
-            retryCount: 2,
-            nextRetryAt: now.addingTimeInterval(30)
+        let item = pendingWebsiteItem(
+            createdAt: now, retryCount: 2, nextRetryAt: now.addingTimeInterval(30)
         )
         let failed = failedPendingWebsiteItem(
             from: item,
@@ -453,19 +425,9 @@ extension PendingShareStoreTests {
     }
     func testIsPendingWebsiteFailedRequiresRetryLimitWithoutScheduledRetry() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let failed = PendingShareItem(
-            id: UUID(),
-            kind: .website,
+        let failed = pendingWebsiteItem(createdAt: now, retryCount: pendingWebsiteQueueMaxRetryCount)
+        let retrying = pendingWebsiteItem(
             createdAt: now,
-            url: "https://example.com",
-            retryCount: pendingWebsiteQueueMaxRetryCount,
-            nextRetryAt: nil
-        )
-        let retrying = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
             retryCount: pendingWebsiteQueueMaxRetryCount,
             nextRetryAt: now.addingTimeInterval(30)
         )
@@ -474,20 +436,8 @@ extension PendingShareStoreTests {
     }
     func testIsPendingWebsiteReadyForRetryHonorsNextRetryAt() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let ready = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
-            nextRetryAt: now.addingTimeInterval(-1)
-        )
-        let waiting = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: now,
-            url: "https://example.com",
-            nextRetryAt: now.addingTimeInterval(120)
-        )
+        let ready = pendingWebsiteItem(createdAt: now, nextRetryAt: now.addingTimeInterval(-1))
+        let waiting = pendingWebsiteItem(createdAt: now, nextRetryAt: now.addingTimeInterval(120))
         XCTAssertTrue(isPendingWebsiteReadyForRetry(ready, now: now))
         XCTAssertFalse(isPendingWebsiteReadyForRetry(waiting, now: now))
     }
@@ -497,4 +447,35 @@ private func makeStore() -> PendingShareStore {
     let defaults = UserDefaults(suiteName: pendingShareStoreTestSuiteName)
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
+}
+
+private func makeIsolatedStore() throws -> (PendingShareStore, URL) {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
+    return (PendingShareStore(baseDirectory: directory, userDefaults: defaults, allowAppGroupFallback: false), directory)
+}
+
+private func pendingWebsiteItem(
+    createdAt: Date = Date(),
+    retryCount: Int = 0,
+    nextRetryAt: Date? = nil
+) -> PendingShareItem {
+    PendingShareItem(
+        id: UUID(), kind: .website, createdAt: createdAt, url: "https://example.com",
+        retryCount: retryCount, nextRetryAt: nextRetryAt
+    )
+}
+
+private func pendingYouTubeItem() -> PendingShareItem {
+    PendingShareItem(
+        id: UUID(), kind: .youtube, createdAt: Date(),
+        url: "https://www.youtube.com/watch?v=abc123xyzAA"
+    )
+}
+
+private func pendingFileItem() -> PendingShareItem {
+    PendingShareItem(
+        id: UUID(), kind: .file, createdAt: Date(),
+        filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
+    )
 }

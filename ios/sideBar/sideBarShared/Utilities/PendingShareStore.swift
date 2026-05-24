@@ -295,10 +295,6 @@ public final class PendingShareStore {
                 defaults.removeObject(forKey: itemsKey)
                 defaults.synchronize()
             }
-            let root = rootDirectory?.appendingPathComponent(directoryName)
-            if let root {
-                try? fileManager.removeItem(at: root)
-            }
         }
     }
 
@@ -339,8 +335,7 @@ public final class PendingShareStore {
                 items.removeAll { removedIds.contains($0.id) }
                 replaceAll(items)
             }
-            cleanEmptyDirectories()
-            cleanOrphanedDirectories(olderThan: cutoff)
+            cleanValidatedEmptyItemDirectories(olderThan: cutoff)
         }
     }
 
@@ -406,36 +401,11 @@ public final class PendingShareStore {
         }
     }
 
-    private func cleanEmptyDirectories() {
+    private func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) {
         guard let baseDirectory = rootDirectory else { return }
-        let root = baseDirectory.appendingPathComponent(directoryName)
-        guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey]) else {
-            return
-        }
-        for case let url as URL in enumerator {
-            guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey]),
-                  values.isDirectory == true else { continue }
-            if (try? fileManager.contentsOfDirectory(atPath: url.path).isEmpty) == true {
-                try? fileManager.removeItem(at: url)
-            }
-        }
-    }
-
-    private func cleanOrphanedDirectories(olderThan cutoff: Date) {
-        guard let baseDirectory = rootDirectory else { return }
-        let root = baseDirectory.appendingPathComponent(directoryName)
-        guard let enumerator = fileManager.enumerator(
-            at: root,
-            includingPropertiesForKeys: [.isDirectoryKey, .creationDateKey]
-        ) else {
-            return
-        }
-        for case let url as URL in enumerator {
-            guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .creationDateKey]),
-                  values.isDirectory == true,
-                  let createdAt = values.creationDate,
-                  createdAt < cutoff else { continue }
-            try? fileManager.removeItem(at: url)
+        let resolver = makeFileResolver(baseDirectory: baseDirectory)
+        for directory in resolver.emptyItemDirectories(olderThan: cutoff) {
+            try? fileManager.removeItem(at: directory)
         }
     }
 
