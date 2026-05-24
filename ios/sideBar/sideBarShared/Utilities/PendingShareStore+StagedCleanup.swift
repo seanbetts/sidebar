@@ -15,8 +15,8 @@ extension PendingShareStore {
     }
 
     func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
-        guard let relativePath = item.filePath,
-              let baseDirectory = rootDirectory else { return true }
+        guard let relativePath = item.filePath else { return true }
+        guard let baseDirectory = rootDirectory else { return false }
         var didRun = false
         let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
             didRun = true

@@ -3,6 +3,21 @@ import XCTest
 @testable import sideBarShared
 
 extension PendingShareStoreTests {
+    func testClearAllPreservesFileMetadataWhenRootDirectoryIsUnavailable() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
+        let store = PendingShareStore(
+            baseDirectory: nil,
+            userDefaults: defaults,
+            allowAppGroupFallback: false
+        )
+        let item = pendingFileItem(filePath: "pending-shares/\(UUID().uuidString)/missing-root.txt")
+        store.writeMetadata([item])
+
+        store.clearAll()
+
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+    }
+
     func testRemoveUpdatesMetadataAfterPartialBatchCleanupFailure() throws {
         let (store, directory) = try makeIsolatedStore()
         let validItem = try XCTUnwrap(store.enqueueFile(

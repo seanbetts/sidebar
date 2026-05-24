@@ -329,7 +329,10 @@ public final class PendingShareStore {
         }
     }
 
-    /// Resolves the absolute file URL for a queued file item when available.
+    /// Validates and resolves a queued file URL for diagnostics, tests, or non-mutating inspection.
+    ///
+    /// Do not use this app-group URL for upload/read flows that require race-free access.
+    /// Use `prepareFileForUpload(for:)` or another locked operation instead.
     public func resolveFileURL(for item: PendingShareItem) -> URL? {
         withAccessLock {
             guard let filePath = item.filePath, let baseDirectory = rootDirectory else { return nil }
