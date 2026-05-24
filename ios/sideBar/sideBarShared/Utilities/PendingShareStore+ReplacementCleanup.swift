@@ -22,7 +22,6 @@ extension PendingShareStore {
     }
 
     private func stagedReferenceKey(for item: PendingShareItem) -> String? {
-        guard let filePath = stagedFilePath(for: item) else { return nil }
-        return "\(item.id.uuidString)|\(filePath)"
+        stagedFilePath(for: item)
     }
 }
