@@ -8,7 +8,7 @@ extension PendingShareStore {
         let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
             didRun = true
             let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
-            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return true }
+            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return false }
             guard removeStagedFile(at: fileURL) else { return false }
             return removeItemDirectoryIfEmpty(for: fileURL, relativePath: relativePath, resolver: resolver)
         }

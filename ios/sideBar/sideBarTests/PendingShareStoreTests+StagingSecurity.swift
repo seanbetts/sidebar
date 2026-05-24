@@ -157,7 +157,50 @@ extension PendingShareStoreTests {
         store.remove(ids: [item.id])
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+    }
+
+    func testReplaceAllPreservesMetadataWhenDroppedStagedPathIsRejected() throws {
+        let (store, directory) = try makeIsolatedStore()
+        let uuid = UUID().uuidString
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let target = root.appendingPathComponent("manual/replace-target.txt")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent(uuid), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: target)
+        try FileManager.default.createSymbolicLink(
+            at: root.appendingPathComponent("\(uuid)/link.txt"),
+            withDestinationURL: target
+        )
+        let item = pendingFileItem(filePath: "pending-shares/\(uuid)/link.txt")
+        store.replaceAll([item])
+
+        XCTAssertFalse(store.replaceAllCleaningRemovedStagedFiles([]))
+
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
+    }
+
+    func testConsumeAllPreservesMetadataWhenStagedPathIsRejected() throws {
+        let (store, directory) = try makeIsolatedStore()
+        let uuid = UUID().uuidString
+        let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+        let target = root.appendingPathComponent("manual/consume-target.txt")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent(uuid), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: target)
+        try FileManager.default.createSymbolicLink(
+            at: root.appendingPathComponent("\(uuid)/link.txt"),
+            withDestinationURL: target
+        )
+        let item = pendingFileItem(filePath: "pending-shares/\(uuid)/link.txt")
+        store.replaceAll([item])
+
+        let consumed = store.consumeAll()
+
+        XCTAssertTrue(consumed.isEmpty)
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
     }
 
     func testRemoveRejectsSymlinkStagedPathsWithoutDeletingTargets() throws {
