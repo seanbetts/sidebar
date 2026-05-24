@@ -125,6 +125,88 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertFalse(queue.isExecutingWrite)
     }
 
+    func testProcessQueueExecutorCancellationRestoresPendingWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = TestWriteExecutor(error: CancellationError())
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "cancel")
+        )
+
+        await queue.processQueue()
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 1)
+        XCTAssertEqual(writes.first?.attempts, 1)
+        XCTAssertEqual(writes.first?.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertNil(writes.first?.lastError)
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertFalse(queue.isExecutingWrite)
+    }
+
+    func testProcessRetriedWriteExecutorCancellationRestoresOriginalState() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = TestWriteExecutor(error: CancellationError())
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+        let writeId = UUID()
+        let originalLastAttemptAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let context = persistence.container.viewContext
+        let write = PendingWrite.insertNew(in: context)
+        write.id = writeId
+        write.operationType = WriteOperation.update.rawValue
+        write.entityType = WriteEntityType.note.rawValue
+        write.entityId = "note-1"
+        write.payload = try JSONEncoder().encode(Payload(value: "retry"))
+        write.createdAt = Date()
+        write.attempts = 3
+        write.status = WriteQueueStatus.pending.rawValue
+        write.lastAttemptAt = originalLastAttemptAt
+        try context.save()
+
+        await queue.processRetriedWrite(id: writeId)
+
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+        let writes = try persistence.container.viewContext.fetch(request)
+        let restored = try XCTUnwrap(writes.first)
+        XCTAssertEqual(restored.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertEqual(restored.attempts, 3)
+        XCTAssertEqual(restored.lastAttemptAt, originalLastAttemptAt)
+        XCTAssertNil(restored.lastError)
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertFalse(queue.isExecutingWrite)
+    }
+
     func testRetryAllWritesRequeuesFailedWriteAndProcessesIt() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(

@@ -175,11 +175,11 @@ public final class WriteQueue: ObservableObject {
 
         while true {
             try Task.checkCancellation()
-            let write = try await fetchNextPending()
-            guard let write else {
+            let fetchedWrite = try await fetchNextPending()
+            guard let fetchedWrite else {
                 break
             }
-            let shouldContinue = try await processWrite(write)
+            let shouldContinue = try await processWrite(fetchedWrite)
             if !shouldContinue {
                 break
             }
@@ -374,11 +374,11 @@ public final class WriteQueue: ObservableObject {
         defer { isProcessing = false }
 
         do {
-            guard let write = try await fetchPendingWrite(id: id) else {
+            guard let fetchedWrite = try await fetchPendingWrite(id: id) else {
                 await loadQueueCounts()
                 return
             }
-            _ = try await processWrite(write)
+            _ = try await processWrite(fetchedWrite)
         } catch is CancellationError {
             logger.info("Retried write processing cancelled")
         } catch {
@@ -391,10 +391,23 @@ public final class WriteQueue: ObservableObject {
 
 extension WriteQueue: SettingsWriteQueueEnqueuing {}
 
+private struct FetchedPendingWrite: Sendable {
+    let record: PendingWriteRecord
+    let recoveryState: PendingWriteRecoveryState
+    let restoresOriginalAttemptState: Bool
+}
+
+private struct PendingWriteRecoveryState: Sendable {
+    let status: String
+    let attempts: Int16
+    let lastAttemptAt: Date?
+}
+
 extension WriteQueue {
     // MARK: - Private
 
-    private func processWrite(_ write: PendingWriteRecord) async throws -> Bool {
+    private func processWrite(_ fetchedWrite: FetchedPendingWrite) async throws -> Bool {
+        let write = fetchedWrite.record
         do {
             try Task.checkCancellation()
             guard let executor else {
@@ -407,6 +420,7 @@ extension WriteQueue {
             try await deleteWrite(id: write.id)
             return true
         } catch is CancellationError {
+            await restoreFetchedWriteAfterCancellation(fetchedWrite)
             throw CancellationError()
         } catch {
             if let conflictError = error as? WriteQueueConflictError {
@@ -437,7 +451,7 @@ extension WriteQueue {
         return UInt64(seconds * 1_000_000_000)
     }
 
-    private func fetchNextPending() async throws -> PendingWriteRecord? {
+    private func fetchNextPending() async throws -> FetchedPendingWrite? {
         try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
@@ -446,22 +460,31 @@ extension WriteQueue {
             guard let write = try context.fetch(request).first else {
                 return nil
             }
+            let originalState = PendingWriteRecoveryState(
+                status: write.status,
+                attempts: write.attempts,
+                lastAttemptAt: write.lastAttemptAt
+            )
             write.status = WriteQueueStatus.inProgress.rawValue
             write.attempts += 1
             write.lastAttemptAt = Date()
-            return PendingWriteRecord(
-                id: write.id,
-                operationType: write.operationType,
-                entityType: write.entityType,
-                entityId: write.entityId,
-                payload: write.payload,
-                serverSnapshot: write.serverSnapshot,
-                attempts: write.attempts
+            return FetchedPendingWrite(
+                record: PendingWriteRecord(
+                    id: write.id,
+                    operationType: write.operationType,
+                    entityType: write.entityType,
+                    entityId: write.entityId,
+                    payload: write.payload,
+                    serverSnapshot: write.serverSnapshot,
+                    attempts: write.attempts
+                ),
+                recoveryState: originalState,
+                restoresOriginalAttemptState: false
             )
         }
     }
 
-    private func fetchPendingWrite(id: UUID) async throws -> PendingWriteRecord? {
+    private func fetchPendingWrite(id: UUID) async throws -> FetchedPendingWrite? {
         try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.fetchLimit = 1
@@ -473,17 +496,26 @@ extension WriteQueue {
             guard let write = try context.fetch(request).first else {
                 return nil
             }
+            let originalState = PendingWriteRecoveryState(
+                status: write.status,
+                attempts: write.attempts,
+                lastAttemptAt: write.lastAttemptAt
+            )
             write.status = WriteQueueStatus.inProgress.rawValue
             write.attempts += 1
             write.lastAttemptAt = Date()
-            return PendingWriteRecord(
-                id: write.id,
-                operationType: write.operationType,
-                entityType: write.entityType,
-                entityId: write.entityId,
-                payload: write.payload,
-                serverSnapshot: write.serverSnapshot,
-                attempts: write.attempts
+            return FetchedPendingWrite(
+                record: PendingWriteRecord(
+                    id: write.id,
+                    operationType: write.operationType,
+                    entityType: write.entityType,
+                    entityId: write.entityId,
+                    payload: write.payload,
+                    serverSnapshot: write.serverSnapshot,
+                    attempts: write.attempts
+                ),
+                recoveryState: originalState,
+                restoresOriginalAttemptState: true
             )
         }
     }
@@ -618,6 +650,25 @@ extension WriteQueue {
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
             guard let write = try context.fetch(request).first else { return }
             context.delete(write)
+        }
+    }
+
+    private func restoreFetchedWriteAfterCancellation(_ fetchedWrite: FetchedPendingWrite) async {
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(format: "id == %@", fetchedWrite.record.id as CVarArg)
+                guard let write = try context.fetch(request).first else { return }
+                write.status = fetchedWrite.recoveryState.status
+                write.lastError = nil
+                if fetchedWrite.restoresOriginalAttemptState {
+                    write.attempts = fetchedWrite.recoveryState.attempts
+                    write.lastAttemptAt = fetchedWrite.recoveryState.lastAttemptAt
+                }
+            }
+        } catch {
+            logger.error("Failed to restore cancelled write: \(error.localizedDescription, privacy: .public)")
         }
     }
 
