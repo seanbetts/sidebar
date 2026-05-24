@@ -52,7 +52,6 @@ public enum DiagnosticsMetadataSanitizer {
         "status_code",
         "surface",
         "total_count",
-        "url",
         "url_error_code",
         "widget_kinds"
     ]
@@ -61,7 +60,17 @@ public enum DiagnosticsMetadataSanitizer {
         metadata.reduce(into: [:]) { result, item in
             let key = normalizeKey(item.key)
             let value = item.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard key.isEmpty == false, value.isEmpty == false, allowedKeys.contains(key) else {
+            guard key.isEmpty == false, value.isEmpty == false else {
+                return
+            }
+            if key == "url" {
+                guard value == LogRedaction.redactedURLString(value) else {
+                    return
+                }
+                result[key] = value
+                return
+            }
+            guard allowedKeys.contains(key) else {
                 return
             }
             result[key] = value

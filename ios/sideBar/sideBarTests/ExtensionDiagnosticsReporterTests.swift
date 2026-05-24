@@ -102,6 +102,25 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
         XCTAssertNil(metadata["requestKind"])
         XCTAssertNil(metadata["statusCode"])
     }
+
+    func testSanitizerPreservesAlreadyRedactedURLMetadata() throws {
+        let logger = RecordingExtensionDiagnosticsLogger()
+        let store = RecordingExternalSurfaceDiagnosticsStore()
+        let reporter = ExtensionDiagnosticsReporter(
+            logger: logger,
+            store: store
+        )
+
+        reporter.recordBreadcrumb(
+            surface: "safari_extension",
+            stage: "begin_request",
+            message: "Safari request received.",
+            metadata: ["url": "https://example.com"]
+        )
+
+        let metadata = try XCTUnwrap(store.records.first?.metadata)
+        XCTAssertEqual(metadata["url"], "https://example.com")
+    }
 }
 
 private final class RecordingExtensionDiagnosticsLogger: ExtensionDiagnosticsLogging {
