@@ -18,6 +18,18 @@ final class LogRedactionTests: XCTestCase {
         XCTAssertEqual(LogRedaction.redactedURLString("not a url"), "invalid-url")
     }
 
+    func testRedactedURLRejectsEncodedQuestionMarkInHost() {
+        let url = URL(string: "https://example.com%3Ftoken=secret/path")
+
+        XCTAssertEqual(LogRedaction.redactedURLString(url), "invalid-url")
+    }
+
+    func testRedactedURLRejectsEncodedSlashInHost() {
+        let url = URL(string: "https://example.com%2Fprivate/path")
+
+        XCTAssertEqual(LogRedaction.redactedURLString(url), "invalid-url")
+    }
+
     func testPayloadSummaryDoesNotIncludeRawURL() {
         let summary = LogRedaction.safariPayloadSummary(
             action: "save_url",

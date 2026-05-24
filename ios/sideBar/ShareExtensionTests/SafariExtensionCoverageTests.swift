@@ -98,14 +98,14 @@ final class SafariExtensionCoverageTests: XCTestCase {
             request.userInfo = [
                 SFExtensionMessageKey: [
                     "action": "save_url",
-                    "url": "https://example.com"
+                    "url": "https://example.com/private/path?token=secret#fragment"
                 ]
             ]
         } else {
             request.userInfo = [
                 "message": [
                     "action": "save_url",
-                    "url": "https://example.com"
+                    "url": "https://example.com/private/path?token=secret#fragment"
                 ]
             ]
         }
@@ -124,6 +124,9 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("url=https://example.com"))
         XCTAssertFalse(export.contains("url=https://example.com/"))
         XCTAssertFalse(export.contains("url=https://example.com?"))
+        XCTAssertFalse(export.contains("private/path"))
+        XCTAssertFalse(export.contains("token=secret"))
+        XCTAssertFalse(export.contains("fragment"))
         XCTAssertTrue(export.contains("process_name="))
         XCTAssertFalse(export.contains("bundle_path="))
     }
