@@ -85,6 +85,68 @@ final class PendingShareStoreTests: XCTestCase {
         let storedData = try resolved.map { try Data(contentsOf: $0) }
         XCTAssertEqual(storedData, payload)
     }
+    func testResolveFileURLRejectsAbsoluteAndTraversalPaths() throws {
+        let store = makeStore()
+        let absolute = PendingShareItem(
+            id: UUID(), kind: .file,
+            createdAt: Date(),
+            filePath: "/tmp/escaped.txt",
+            filename: "escaped.txt", mimeType: "text/plain"
+        )
+        let traversal = PendingShareItem(
+            id: UUID(), kind: .file,
+            createdAt: Date(),
+            filePath: "pending-shares/\(UUID().uuidString)/../escaped.txt",
+            filename: "escaped.txt", mimeType: "text/plain"
+        )
+
+        XCTAssertNil(store.resolveFileURL(for: absolute))
+        XCTAssertNil(store.resolveFileURL(for: traversal))
+    }
+    func testRemoveDeletesStagedFileAndContainingDirectory() throws {
+        let store = makeStore()
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8),
+            filename: "sample.txt",
+            mimeType: "text/plain",
+            kind: .file
+        ))
+        let fileURL = try XCTUnwrap(store.resolveFileURL(for: item))
+        let itemDirectory = fileURL.deletingLastPathComponent()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: itemDirectory.path))
+
+        store.remove(ids: [item.id])
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: itemDirectory.path))
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+    func testRemoveDoesNotDeleteOutsidePendingShareRootForInvalidPath() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let outside = directory.appendingPathComponent("outside.txt")
+        try Data("do not delete".utf8).write(to: outside)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(suiteName).\(UUID().uuidString)"))
+        let store = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: defaults,
+            allowAppGroupFallback: false
+        )
+        let item = PendingShareItem(
+            id: UUID(), kind: .file,
+            createdAt: Date(),
+            filePath: "../outside.txt",
+            filename: "outside.txt", mimeType: "text/plain"
+        )
+
+        store.replaceAll([item])
+        store.remove(ids: [item.id])
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
     func testRemoveDeletesItem() {
         let store = makeStore()
         let first = store.enqueueWebsite(url: "https://example.com")

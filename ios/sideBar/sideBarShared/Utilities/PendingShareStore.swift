@@ -289,8 +289,7 @@ public final class PendingShareStore {
         withAccessLock {
             let items = loadAll()
             for item in items {
-                guard let fileURL = resolveFileURL(for: item) else { continue }
-                try? fileManager.removeItem(at: fileURL)
+                removeStagedFileIfPresent(for: item)
             }
             if let defaults {
                 defaults.removeObject(forKey: itemsKey)
@@ -307,9 +306,13 @@ public final class PendingShareStore {
     public func remove(ids: [UUID]) {
         withAccessLock {
             guard !ids.isEmpty else { return }
-            var items = loadAll()
-            items.removeAll { ids.contains($0.id) }
-            replaceAll(items)
+            let idsToRemove = Set(ids)
+            let items = loadAll()
+            let removedItems = items.filter { idsToRemove.contains($0.id) }
+            for item in removedItems {
+                removeStagedFileIfPresent(for: item)
+            }
+            replaceAll(items.filter { idsToRemove.contains($0.id) == false })
         }
     }
 
@@ -317,7 +320,7 @@ public final class PendingShareStore {
     public func resolveFileURL(for item: PendingShareItem) -> URL? {
         withAccessLock {
             guard let filePath = item.filePath, let baseDirectory = rootDirectory else { return nil }
-            return baseDirectory.appendingPathComponent(filePath)
+            return makeFileResolver(baseDirectory: baseDirectory).resolve(relativePath: filePath)
         }
     }
 
@@ -329,9 +332,7 @@ public final class PendingShareStore {
             var items = loadAll()
             var removedIds: [UUID] = []
             for item in items where item.createdAt < cutoff {
-                if let url = resolveFileURL(for: item) {
-                    try? fileManager.removeItem(at: url)
-                }
+                removeStagedFileIfPresent(for: item)
                 removedIds.append(item.id)
             }
             if !removedIds.isEmpty {
@@ -347,6 +348,25 @@ public final class PendingShareStore {
         var items = loadAll()
         items.append(item)
         replaceAll(items)
+    }
+
+    private func removeStagedFileIfPresent(for item: PendingShareItem) {
+        guard let fileURL = resolveFileURL(for: item),
+              let baseDirectory = rootDirectory else { return }
+        let resolver = makeFileResolver(baseDirectory: baseDirectory)
+        try? fileManager.removeItem(at: fileURL)
+        if let directory = resolver.itemDirectory(for: fileURL),
+           (try? fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true {
+            try? fileManager.removeItem(at: directory)
+        }
+    }
+
+    private func makeFileResolver(baseDirectory: URL) -> PendingShareFileResolver {
+        PendingShareFileResolver(
+            baseDirectory: baseDirectory,
+            directoryName: directoryName,
+            fileManager: fileManager
+        )
     }
 
     private func writeFile(data: Data, itemId: UUID, filename: String) -> String? {
