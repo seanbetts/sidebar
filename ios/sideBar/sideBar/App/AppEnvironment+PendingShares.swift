@@ -143,10 +143,19 @@ extension AppEnvironment {
             return
         }
 
-        let retainedItems = await processPendingShares(
-            pending,
-            replayStartSignal: replayStartSignal
-        )
+        let processingState = PendingShareProcessingState()
+        let retainedItems: [PendingShareItem]
+        do {
+            retainedItems = try await processPendingShares(
+                pending,
+                replayStartSignal: replayStartSignal,
+                state: processingState
+            )
+        } catch is CancellationError {
+            retainedItems = processingState.retainedItems + Array(pending[processingState.nextItemIndex...])
+        } catch {
+            retainedItems = processingState.retainedItems + Array(pending[processingState.nextItemIndex...])
+        }
         let reconciled = reconcilePendingShareResults(
             processedSnapshot: pending,
             retainedItems: retainedItems
@@ -220,16 +229,18 @@ extension AppEnvironment {
 
     private func processPendingShares(
         _ pending: [PendingShareItem],
-        replayStartSignal: PendingShareReplayStartSignal? = nil
-    ) async -> [PendingShareItem] {
+        replayStartSignal: PendingShareReplayStartSignal? = nil,
+        state: PendingShareProcessingState
+    ) async throws -> [PendingShareItem] {
         let now = Date()
-        var retainedItems: [PendingShareItem] = []
 
         for (index, item) in pending.enumerated() {
+            state.nextItemIndex = index
+            try Task.checkCancellation()
             if item.kind == .website {
                 let remaining = Array(pending[index...])
                 websitesViewModel.syncPendingWebsitesFromQueuedShares(
-                    retainedItems + remaining,
+                    state.retainedItems + remaining,
                     readingQueueItemId: item.id
                 )
             }
@@ -238,11 +249,12 @@ extension AppEnvironment {
                 now: now,
                 replayStartSignal: replayStartSignal
             ) {
-                retainedItems.append(retainedItem)
+                state.retainedItems.append(retainedItem)
             }
+            state.nextItemIndex = index + 1
         }
 
-        return retainedItems
+        return state.retainedItems
     }
 
     private func processPendingShare(
@@ -473,4 +485,9 @@ extension AppEnvironment {
         )
         return pruned
     }
+}
+
+private final class PendingShareProcessingState {
+    var retainedItems: [PendingShareItem] = []
+    var nextItemIndex = 0
 }

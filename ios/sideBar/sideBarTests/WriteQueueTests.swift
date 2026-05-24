@@ -82,6 +82,49 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testProcessQueueCancellationDuringRetrySleepDoesNotMarkAdditionalAttempts() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = TestWriteExecutor(error: MockError.forced)
+        let sleepProbe = WriteQueueSleepProbe()
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false,
+            retrySleep: sleepProbe.sleep
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "retry")
+        )
+
+        let task = Task { await queue.processQueue() }
+        while sleepProbe.sleepCallCount == 0 {
+            await Task.yield()
+        }
+        task.cancel()
+        sleepProbe.failSleepsWithCancellation()
+        await task.value
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 1)
+        XCTAssertEqual(writes.first?.attempts, 1)
+        XCTAssertEqual(writes.first?.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertFalse(queue.isExecutingWrite)
+    }
+
     func testRetryAllWritesRequeuesFailedWriteAndProcessesIt() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
@@ -553,10 +596,50 @@ final class WriteQueueTests: XCTestCase {
 
 private final class TestWriteExecutor: WriteQueueExecutor {
     private(set) var executedIds: [UUID] = []
+    private let error: Error?
+
+    init(error: Error? = nil) {
+        self.error = error
+    }
 
     func execute(write: PendingWriteRecord) async throws {
+        if let error {
+            throw error
+        }
         executedIds.append(write.id)
     }
+}
+
+private final class WriteQueueSleepProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuations: [CheckedContinuation<Void, Error>] = []
+    private(set) var sleepCallCount = 0
+
+    func sleep(nanoseconds: UInt64) async throws {
+        _ = nanoseconds
+        lock.lock()
+        sleepCallCount += 1
+        lock.unlock()
+        try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            continuations.append(continuation)
+            lock.unlock()
+        }
+    }
+
+    func failSleepsWithCancellation() {
+        lock.lock()
+        let continuations = continuations
+        self.continuations = []
+        lock.unlock()
+        for continuation in continuations {
+            continuation.resume(throwing: CancellationError())
+        }
+    }
+}
+
+private enum MockError: Error {
+    case forced
 }
 
 private final class AutoResolvingConflictExecutor: WriteQueueExecutor {

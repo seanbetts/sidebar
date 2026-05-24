@@ -17,6 +17,7 @@ public final class WriteQueue: ObservableObject {
     private let connectivityMonitor: ConnectivityMonitor
     private let executor: WriteQueueExecutor?
     private let autoProcessEnabled: Bool
+    private let retrySleep: WriteQueueSleep
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
     let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
@@ -46,20 +47,17 @@ public final class WriteQueue: ObservableObject {
         connectivityMonitor: ConnectivityMonitor,
         executor: WriteQueueExecutor? = nil,
         autoProcessEnabled: Bool = true,
-        maxPendingWrites: Int = 200
+        maxPendingWrites: Int = 200,
+        retrySleep: @escaping WriteQueueSleep = WriteQueueSleepFactory.live
     ) {
         self.container = container
         self.connectivityMonitor = connectivityMonitor
         self.executor = executor
         self.autoProcessEnabled = autoProcessEnabled
         self.maxPendingWrites = maxPendingWrites
+        self.retrySleep = retrySleep
         Task { [weak self] in
-            await self?.recoverStuckWritesIfNeeded()
-            await self?.recoverConflictWritesIfNeeded()
-            await self?.loadQueueCounts()
-            if let self, self.autoProcessEnabled, self.executor != nil, self.canAttemptServerWrite {
-                await self.processQueue()
-            }
+            await self?.startupRecoveryAndProcessing()
         }
         observeNetwork()
     }
@@ -135,31 +133,58 @@ public final class WriteQueue: ObservableObject {
 
     func processQueue() async {
         guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
-        await recoverStuckWritesIfNeeded()
-        await recoverConflictWritesIfNeeded()
-        await recoverRetryableFailedWrites()
         isProcessing = true
         defer { isProcessing = false }
 
-        while true {
-            let write: PendingWriteRecord?
-            do {
-                write = try await fetchNextPending()
-            } catch {
-                logger.error("Failed to fetch next pending write: \(error.localizedDescription, privacy: .public)")
-                break
+        do {
+            try await processQueueUntilDrained()
+        } catch is CancellationError {
+            logger.info("Write queue processing cancelled")
+        } catch {
+            logger.error("Write queue processing failed: \(error.localizedDescription, privacy: .public)")
+        }
+
+        await loadQueueCounts()
+    }
+
+    private func startupRecoveryAndProcessing() async {
+        do {
+            try Task.checkCancellation()
+            await recoverStuckWritesIfNeeded()
+            try Task.checkCancellation()
+            await recoverConflictWritesIfNeeded()
+            try Task.checkCancellation()
+            await loadQueueCounts()
+            if autoProcessEnabled, executor != nil, canAttemptServerWrite {
+                await processQueue()
             }
+        } catch is CancellationError {
+            return
+        } catch {
+            logger.error("Write queue startup recovery failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func processQueueUntilDrained() async throws {
+        try Task.checkCancellation()
+        await recoverStuckWritesIfNeeded()
+        try Task.checkCancellation()
+        await recoverConflictWritesIfNeeded()
+        try Task.checkCancellation()
+        await recoverRetryableFailedWrites()
+
+        while true {
+            try Task.checkCancellation()
+            let write = try await fetchNextPending()
             guard let write else {
                 break
             }
-            let shouldContinue = await processWrite(write)
+            let shouldContinue = try await processWrite(write)
             if !shouldContinue {
                 break
             }
             await Task.yield()
         }
-
-        await loadQueueCounts()
     }
 
     func fetchPendingWrites() async throws -> [PendingWriteSummary] {
@@ -353,7 +378,9 @@ public final class WriteQueue: ObservableObject {
                 await loadQueueCounts()
                 return
             }
-            _ = await processWrite(write)
+            _ = try await processWrite(write)
+        } catch is CancellationError {
+            logger.info("Retried write processing cancelled")
         } catch {
             logger.error("Failed to process retried write: \(error.localizedDescription, privacy: .public)")
         }
@@ -367,18 +394,21 @@ extension WriteQueue: SettingsWriteQueueEnqueuing {}
 extension WriteQueue {
     // MARK: - Private
 
-    private func processWrite(_ write: PendingWriteRecord) async -> Bool {
+    private func processWrite(_ write: PendingWriteRecord) async throws -> Bool {
         do {
+            try Task.checkCancellation()
             guard let executor else {
                 throw WriteQueueError.missingExecutor
             }
             isExecutingWrite = true
+            defer { isExecutingWrite = false }
             try await executor.execute(write: write)
-            isExecutingWrite = false
+            try Task.checkCancellation()
             try await deleteWrite(id: write.id)
             return true
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            isExecutingWrite = false
             if let conflictError = error as? WriteQueueConflictError {
                 await autoResolveConflict(write: write, error: conflictError)
                 return true
@@ -392,7 +422,7 @@ extension WriteQueue {
             await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetryWrite)
             if shouldRetryWrite {
                 let delay = backoffDelay(for: Int(write.attempts))
-                try? await Task.sleep(nanoseconds: delay)
+                try await retrySleep(delay)
             }
             return true
         }

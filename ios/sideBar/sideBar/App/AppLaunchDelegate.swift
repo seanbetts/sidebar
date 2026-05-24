@@ -240,7 +240,9 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
             return await environment.performBackgroundWebsiteContinuation()
         }
 
+        var didExpire = false
         task.expirationHandler = {
+            didExpire = true
             continuationTask.cancel()
         }
 
@@ -250,7 +252,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
                environment.hasPendingWebsiteBackgroundWork {
                 Self.scheduleWebsiteSaveContinuation()
             }
-            task.setTaskCompleted(success: success)
+            task.setTaskCompleted(success: success && didExpire == false && Task.isCancelled == false)
         }
     }
 
@@ -278,7 +280,9 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
             return await environment.performBackgroundWriteQueueFlush()
         }
 
+        var didExpire = false
         task.expirationHandler = {
+            didExpire = true
             flushTask.cancel()
         }
 
@@ -288,7 +292,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
                await environment.writeQueue.hasPendingWritesNeedingFlush() {
                 Self.scheduleWriteQueueFlush()
             }
-            task.setTaskCompleted(success: success)
+            task.setTaskCompleted(success: success && didExpire == false && Task.isCancelled == false)
         }
     }
 
