@@ -40,12 +40,18 @@ private func combinedFormSurfaceSource(
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .appendingPathComponent("sideBar")
+    let legacySecureFieldURL = sourceRoot.appendingPathComponent("Views/Auth/SecureFieldWithToggle.swift")
+    XCTAssertFalse(
+        FileManager.default.fileExists(atPath: legacySecureFieldURL.path),
+        "SecureFieldWithToggle.swift should remain removed.",
+        file: file,
+        line: line
+    )
     let sourceURLs = [
         sourceRoot.appendingPathComponent("Design/Components/FormField.swift"),
         sourceRoot.appendingPathComponent("Views/Auth/LoginAuthPresentation.swift"),
         sourceRoot.appendingPathComponent("Views/Auth/LoginView.swift"),
         sourceRoot.appendingPathComponent("Views/Auth/PasswordResetCompletionView.swift"),
-        sourceRoot.appendingPathComponent("Views/Auth/SecureFieldWithToggle.swift"),
         sourceRoot.appendingPathComponent("Views/Onboarding/AddApiKeyStepView.swift"),
         sourceRoot.appendingPathComponent("Views/Onboarding/CreateAccountStepView.swift"),
         sourceRoot.appendingPathComponent("Views/Onboarding/ProfileStepView.swift"),
