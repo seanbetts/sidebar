@@ -10,6 +10,7 @@ final class SupabaseAuthSignUpTests: XCTestCase {
         var currentSession: SupabaseSessionInfo?
         var signUpResult: Result<Void, Error>
         var verifyOTPResult: Result<SupabaseSessionInfo, Error>
+        private(set) var signedUpPasswords: [String] = []
 
         init(
             signUpResult: Result<Void, Error> = .success(()),
@@ -32,7 +33,7 @@ final class SupabaseAuthSignUpTests: XCTestCase {
 
         func signUp(email: String, password: String) async throws {
             _ = email
-            _ = password
+            signedUpPasswords.append(password)
             try signUpResult.get()
         }
 
@@ -76,6 +77,15 @@ final class SupabaseAuthSignUpTests: XCTestCase {
         try await adapter.signUp(email: "test@example.com", password: "StrongPass123!")
 
         XCTAssertEqual(adapter.pendingVerificationEmail, "test@example.com")
+    }
+
+    func testSignUpPreservesExactPasswordValue() async throws {
+        let authClient = FakeSupabaseAuthClient(signUpResult: .success(()))
+        let adapter = makeAdapter(authClient: authClient)
+
+        try await adapter.signUp(email: "test@example.com", password: "  StrongPass123!  ")
+
+        XCTAssertEqual(authClient.signedUpPasswords, ["  StrongPass123!  "])
     }
 
     func testSignUpRejectsWeakPassword() async {

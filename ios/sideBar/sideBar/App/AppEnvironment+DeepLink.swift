@@ -116,7 +116,7 @@ extension AppEnvironment {
             // Path format: /path/to/note.md
             let rawNoteId = String(path.dropFirst())
             let noteId = rawNoteId.removingPercentEncoding ?? rawNoteId
-            logger.info("Deep link to note: \(noteId, privacy: .public)")
+            logger.info("Deep link to note")
             Task {
                 await notesViewModel.loadNote(id: noteId)
             }
@@ -138,7 +138,7 @@ extension AppEnvironment {
         } else if !path.isEmpty && path != "/" {
             // Path format: /{websiteId}
             let websiteId = String(path.dropFirst())
-            logger.info("Deep link to website: \(websiteId, privacy: .public)")
+            logger.info("Deep link to website")
             Task {
                 await websitesViewModel.selectWebsite(id: websiteId)
             }
@@ -151,7 +151,7 @@ extension AppEnvironment {
         if !path.isEmpty && path != "/" {
             // Path format: /{fileId}
             let fileId = String(path.dropFirst())
-            logger.info("Deep link to file: \(fileId, privacy: .public)")
+            logger.info("Deep link to file")
             Task {
                 await ingestionViewModel.selectFile(fileId: fileId)
             }
@@ -169,7 +169,7 @@ extension AppEnvironment {
         } else if !path.isEmpty && path != "/" {
             // Path format: /{chatId}
             let chatId = String(path.dropFirst())
-            logger.info("Deep link to chat: \(chatId, privacy: .public)")
+            logger.info("Deep link to chat")
             Task {
                 await chatViewModel.selectConversation(id: chatId)
             }
