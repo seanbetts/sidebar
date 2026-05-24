@@ -186,13 +186,12 @@ struct SettingsPasswordChangeView: View {
     private func submit() async {
         errorMessage = nil
 
-        guard hasMinimumPasswordLength else {
-            errorMessage = "Password must be at least 8 characters."
-            return
-        }
-
-        guard passwordMismatchMessage == nil else {
-            errorMessage = passwordMismatchMessage
+        guard passwordValidation.canSubmit(isSubmitting: isSubmitting) else {
+            if !hasMinimumPasswordLength {
+                errorMessage = "Password must be at least 8 characters."
+            } else if let passwordMismatchMessage {
+                errorMessage = passwordMismatchMessage
+            }
             return
         }
 

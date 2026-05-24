@@ -33,4 +33,14 @@ final class PasswordFormValidationTests: XCTestCase {
 
         XCTAssertFalse(validation.canSubmit(isSubmitting: true))
     }
+
+    func testCanSubmitRequiresConfirmation() {
+        let validation = PasswordFormValidation(
+            newPassword: "StrongPass123!",
+            confirmPassword: ""
+        )
+
+        XCTAssertNil(validation.passwordMismatchMessage)
+        XCTAssertFalse(validation.canSubmit(isSubmitting: false))
+    }
 }
