@@ -39,6 +39,7 @@ extension WebsitesStore {
             )
         }
         updateWidgetData(from: items)
+        persistListCache()
     }
 
     private func sortPinnedWebsites(_ lhs: WebsiteItem, _ rhs: WebsiteItem) -> Bool {

@@ -440,6 +440,69 @@ extension NotesStoreTests {
         XCTAssertNil(movedNode?.pinnedOrder)
     }
 
+    func testRenameFolderNodeTreeUpdatesDirectFilesAndNestedDescendants() async {
+        let tree = FileTree(children: [
+            noteDirectory(
+                name: "Projects",
+                path: "/Projects",
+                children: [
+                    FileNode(
+                        name: "Brief.md",
+                        path: "/Projects/Brief.md",
+                        type: .file,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: false,
+                        pinnedOrder: nil,
+                        archived: false,
+                        folderMarker: nil
+                    ),
+                    noteDirectory(
+                        name: "Nested",
+                        path: "/Projects/Nested",
+                        children: [
+                            FileNode(
+                                name: "Plan.md",
+                                path: "/Projects/Nested/Plan.md",
+                                type: .file,
+                                size: nil,
+                                modified: nil,
+                                created: nil,
+                                children: nil,
+                                expanded: nil,
+                                pinned: false,
+                                pinnedOrder: nil,
+                                archived: false,
+                                folderMarker: nil
+                            )
+                        ]
+                    )
+                ]
+            )
+        ])
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let store = NotesStore(api: api, cache: TestCacheClient())
+        store.applyTreeUpdate(tree, persist: false)
+
+        let renamed = store.renameFolderNodeTree(
+            tree.children[0],
+            oldPath: "/Projects",
+            newPath: "/Archive",
+            newName: "Archive"
+        )
+
+        XCTAssertEqual(renamed.path, "folder:/Archive")
+        XCTAssertEqual(renamed.children?[0].path, "/Archive/Brief.md")
+        XCTAssertEqual(renamed.children?[1].path, "folder:/Archive/Nested")
+        XCTAssertEqual(renamed.children?[1].children?.first?.path, "/Archive/Nested/Plan.md")
+    }
+
     func testApplyPinnedOrderUpdatesPinnedNodesAcrossFoldersAndCanRestorePreviousOrder() async {
         let tree = makePinnedOrderTree()
         let api = NotesStoreTestsSupport.MockNotesAPI(

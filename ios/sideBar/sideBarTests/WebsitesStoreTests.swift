@@ -427,6 +427,38 @@ final class WebsitesStoreTests: XCTestCase {
 
 }
 
+extension WebsitesStoreTests {
+    func testApplyPinnedOrderPersistsListCache() async throws {
+        let cache = TestCacheClient()
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            widgetDataManager: makeWidgetDataManager()
+        )
+        store.updateListItem(
+            makeWebsiteItem(id: "w1", pinned: true, pinnedOrder: 0, savedAt: nil),
+            persist: false
+        )
+        store.updateListItem(
+            makeWebsiteItem(id: "w2", pinned: true, pinnedOrder: 1, savedAt: nil),
+            persist: false
+        )
+
+        store.applyPinnedOrder(["w2", "w1"])
+        try await waitUntilWebsitesStoreConditionMet(timeoutSeconds: 1.0) {
+            let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
+            return cached?.items.filter(\.pinned).sorted(by: self.byPinnedOrder).map(\.id) == ["w2", "w1"]
+        }
+
+        let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
+        XCTAssertEqual(cached?.items.filter(\.pinned).sorted(by: byPinnedOrder).map(\.id), ["w2", "w1"])
+    }
+}
+
 private extension WebsitesStoreTests {
     func byPinnedOrder(_ lhs: WebsiteItem, _ rhs: WebsiteItem) -> Bool {
         let leftOrder = lhs.pinnedOrder ?? Int.max

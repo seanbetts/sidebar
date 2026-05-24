@@ -256,10 +256,12 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
                 ttlSeconds: CachePolicy.conversationsList
             )
             let cacheKey = CacheKeys.conversation(id: id)
+            let messagesCacheKey = CacheKeys.conversationMessages(id: id)
             cache.remove(key: cacheKey)
+            cache.remove(key: messagesCacheKey)
             persistConversationListSnapshot(conversations)
             offlineStore?.remove(key: cacheKey)
-            offlineStore?.remove(key: CacheKeys.conversationMessages(id: id))
+            offlineStore?.remove(key: messagesCacheKey)
         }
     }
 

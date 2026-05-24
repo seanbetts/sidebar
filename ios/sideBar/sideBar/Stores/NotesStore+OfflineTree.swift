@@ -148,23 +148,60 @@ extension NotesStore {
         newName: String? = nil
     ) -> FileNode {
         let normalizedPath = normalizedFolderNodePath(node.path)
+        let normalizedOldPath = normalizedFolderNodePath(oldPath)
+        let normalizedNewPath = normalizedFolderNodePath(newPath)
         let replacedPath = normalizedPath.replacingOccurrences(
-            of: oldPath,
-            with: newPath,
+            of: normalizedOldPath,
+            with: normalizedNewPath,
             options: [.anchored]
         )
+        let renderedPath = newPath.hasPrefix("/") ? "/\(replacedPath)" : replacedPath
         let childNodes = node.children?.map {
-            $0.type == .directory ? renameFolderNodeTree($0, oldPath: oldPath, newPath: newPath) : $0
+            renamedFolderDescendant($0, oldPath: oldPath, newPath: newPath)
         }
-        let resolvedName = newName ?? replacedPath.split(separator: "/").last.map(String.init) ?? node.name
+        let resolvedName = newName ?? renderedPath.split(separator: "/").last.map(String.init) ?? node.name
         return FileNode(
             name: resolvedName,
-            path: "folder:\(replacedPath)",
+            path: "folder:\(renderedPath)",
             type: .directory,
             size: node.size,
             modified: node.modified,
             created: node.created,
             children: childNodes,
+            expanded: node.expanded,
+            pinned: node.pinned,
+            pinnedOrder: node.pinnedOrder,
+            archived: node.archived,
+            folderMarker: node.folderMarker
+        )
+    }
+
+    private func renamedFolderDescendant(
+        _ node: FileNode,
+        oldPath: String,
+        newPath: String
+    ) -> FileNode {
+        if node.type == .directory {
+            return renameFolderNodeTree(node, oldPath: oldPath, newPath: newPath)
+        }
+
+        let normalizedOldPath = normalizedFolderNodePath(oldPath)
+        let normalizedNewPath = normalizedFolderNodePath(newPath)
+        let oldPrefix = node.path.hasPrefix("/") ? "/\(normalizedOldPath)" : normalizedOldPath
+        let newPrefix = node.path.hasPrefix("/") ? "/\(normalizedNewPath)" : normalizedNewPath
+        let replacedPath = node.path.replacingOccurrences(
+            of: oldPrefix,
+            with: newPrefix,
+            options: [.anchored]
+        )
+        return FileNode(
+            name: node.name,
+            path: replacedPath,
+            type: node.type,
+            size: node.size,
+            modified: node.modified,
+            created: node.created,
+            children: node.children,
             expanded: node.expanded,
             pinned: node.pinned,
             pinnedOrder: node.pinnedOrder,

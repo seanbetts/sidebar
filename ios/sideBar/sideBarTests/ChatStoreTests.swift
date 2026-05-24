@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 import XCTest
@@ -405,6 +406,47 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(cached?.title, "Fresh")
         XCTAssertEqual(cached?.messageCount, 2)
         XCTAssertEqual(cached?.messages.map(\.id), ["m1"])
+    }
+}
+
+extension ChatStoreTests {
+    func testRemoveConversationClearsMessagesCache() async {
+        let cache = TestCacheClient()
+        let api = ChatStoreMockConversationsAPI(
+            listResult: .success([]),
+            getResult: .failure(ChatStoreMockError.forced)
+        )
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+        let detail = ConversationWithMessages(
+            id: "c1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-01",
+            messageCount: 1,
+            firstMessage: "Hello",
+            isArchived: false,
+            messages: [
+                Message(
+                    id: "m1",
+                    role: .user,
+                    content: "Hello",
+                    status: .complete,
+                    toolCalls: nil,
+                    needsNewline: nil,
+                    timestamp: "2024-01-01T00:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        store.upsertConversationDetail(detail, persist: true)
+
+        store.removeConversation(id: "c1")
+
+        let cachedMessages: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "c1"))
+        XCTAssertNil(store.conversationDetails["c1"])
+        XCTAssertNil(cachedMessages)
+        XCTAssertTrue(cache.removedKeysSnapshot().contains(CacheKeys.conversationMessages(id: "c1")))
     }
 }
 
