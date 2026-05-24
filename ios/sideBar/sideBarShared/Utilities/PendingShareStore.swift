@@ -265,7 +265,7 @@ public final class PendingShareStore {
         _ = replaceAllCleaningRemovedStagedFiles(items)
     }
 
-    private func writeMetadata(_ items: [PendingShareItem]) {
+    func writeMetadata(_ items: [PendingShareItem]) {
         withAccessLock {
             guard let defaults else { return }
             let encoder = Self.makeEncoder()
@@ -373,25 +373,13 @@ public final class PendingShareStore {
         }
     }
 
-    public func replaceAllCleaningRemovedStagedFiles(_ newItems: [PendingShareItem]) -> Bool {
-        withAccessLock {
-            let newIds = Set(newItems.map(\.id))
-            let removedItems = loadAll().filter { newIds.contains($0.id) == false }
-            for item in removedItems {
-                guard removeStagedFileIfPresent(for: item) else { return false }
-            }
-            writeMetadata(newItems)
-            return true
-        }
-    }
-
     private func append(_ item: PendingShareItem) {
         var items = loadAll()
         items.append(item)
         writeMetadata(items)
     }
 
-    private func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
+    func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
         guard let relativePath = item.filePath,
               let baseDirectory = rootDirectory else { return true }
         var didRun = false
@@ -490,7 +478,7 @@ public final class PendingShareStore {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
-    private func withAccessLock<T>(_ operation: () -> T) -> T {
+    func withAccessLock<T>(_ operation: () -> T) -> T {
         accessLock.lock()
         defer { accessLock.unlock() }
         return operation()

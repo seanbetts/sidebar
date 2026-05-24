@@ -197,6 +197,117 @@ extension PendingShareStoreTests {
         XCTAssertFalse(FileManager.default.fileExists(atPath: itemDirectory.path))
     }
 
+    func testReplaceAllCleansSameIDFileItemWhenFilePathIsRemoved() throws {
+        let (store, _) = try makeIsolatedStore()
+        let fileItem = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "nil-path.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: fileItem))
+        let replacement = PendingShareItem(
+            id: fileItem.id,
+            kind: .file,
+            createdAt: fileItem.createdAt,
+            filename: fileItem.filename,
+            mimeType: fileItem.mimeType
+        )
+
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([replacement]))
+
+        let loaded = try XCTUnwrap(store.loadAll().first)
+        XCTAssertEqual(loaded.id, replacement.id)
+        XCTAssertEqual(loaded.kind, replacement.kind)
+        XCTAssertNil(loaded.filePath)
+        XCTAssertEqual(loaded.filename, replacement.filename)
+        XCTAssertEqual(loaded.mimeType, replacement.mimeType)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.deletingLastPathComponent().path))
+    }
+
+    func testReplaceAllPreservesSameIDFileMetadataWhenChangedPathCleanupLockDoesNotRun() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
+        let writer = PendingShareStore(baseDirectory: directory, userDefaults: defaults, allowAppGroupFallback: false)
+        let fileItem = try XCTUnwrap(writer.enqueueFile(
+            data: Data("payload".utf8), filename: "locked.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(writer.resolveFileURL(for: fileItem))
+        let store = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: defaults,
+            allowAppGroupFallback: false,
+            stagedFileMutationLock: { _, _ in true }
+        )
+        let replacement = PendingShareItem(
+            id: fileItem.id,
+            kind: .file,
+            createdAt: fileItem.createdAt,
+            filePath: "pending-shares/\(UUID().uuidString)/changed.txt",
+            filename: "changed.txt",
+            mimeType: fileItem.mimeType
+        )
+
+        XCTAssertFalse(store.replaceAllCleaningRemovedStagedFiles([replacement]))
+
+        let loaded = try XCTUnwrap(store.loadAll().first)
+        XCTAssertEqual(loaded.id, fileItem.id)
+        XCTAssertEqual(loaded.kind, fileItem.kind)
+        XCTAssertEqual(loaded.filePath, fileItem.filePath)
+        XCTAssertEqual(loaded.filename, fileItem.filename)
+        XCTAssertEqual(loaded.mimeType, fileItem.mimeType)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
+    }
+
+    func testReplaceAllCleansSameIDFileItemWhenFilePathChanges() throws {
+        let (store, _) = try makeIsolatedStore()
+        let fileItem = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "old.txt", mimeType: "text/plain", kind: .file
+        ))
+        let oldURL = try XCTUnwrap(store.resolveFileURL(for: fileItem))
+        let replacement = PendingShareItem(
+            id: fileItem.id,
+            kind: .file,
+            createdAt: fileItem.createdAt,
+            filePath: "pending-shares/\(UUID().uuidString)/new.txt",
+            filename: "new.txt",
+            mimeType: fileItem.mimeType
+        )
+
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([replacement]))
+
+        let loaded = try XCTUnwrap(store.loadAll().first)
+        XCTAssertEqual(loaded.id, replacement.id)
+        XCTAssertEqual(loaded.kind, replacement.kind)
+        XCTAssertEqual(loaded.filePath, replacement.filePath)
+        XCTAssertEqual(loaded.filename, replacement.filename)
+        XCTAssertEqual(loaded.mimeType, replacement.mimeType)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldURL.deletingLastPathComponent().path))
+    }
+
+    func testReplaceAllCleansSameIDFileItemWhenKindChangesToWebsite() throws {
+        let (store, _) = try makeIsolatedStore()
+        let fileItem = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "kind.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: fileItem))
+        let replacement = PendingShareItem(
+            id: fileItem.id,
+            kind: .website,
+            createdAt: fileItem.createdAt,
+            url: "https://example.com"
+        )
+
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([replacement]))
+
+        let loaded = try XCTUnwrap(store.loadAll().first)
+        XCTAssertEqual(loaded.id, replacement.id)
+        XCTAssertEqual(loaded.kind, replacement.kind)
+        XCTAssertEqual(loaded.url, replacement.url)
+        XCTAssertNil(loaded.filePath)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.deletingLastPathComponent().path))
+    }
+
     func testConsumeAllDeletesQueuedFileStaging() throws {
         let store = makeStore()
         let item = try XCTUnwrap(store.enqueueFile(
