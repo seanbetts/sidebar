@@ -1,5 +1,4 @@
 import Foundation
-import Darwin
 import os.log
 
 /// Represents a queued share payload category persisted between extension and app.
@@ -76,7 +75,7 @@ public final class PendingShareStore {
     private let baseDirectory: URL?
     private let userDefaults: UserDefaults?
     private let allowAppGroupFallback: Bool
-    private let stagedFileMutationLock: (URL, @escaping () -> Void) -> Void
+    private let stagedFileMutationLock: (URL, @escaping () -> Bool) -> Bool
     private let accessLock = NSRecursiveLock()
 
     /// Creates a pending-share store with injectable storage dependencies for tests.
@@ -85,13 +84,13 @@ public final class PendingShareStore {
         userDefaults: UserDefaults? = nil,
         allowAppGroupFallback: Bool = true,
         fileManager: FileManager = .default,
-        stagedFileMutationLock: ((URL, @escaping () -> Void) -> Void)? = nil
+        stagedFileMutationLock: ((URL, @escaping () -> Bool) -> Bool)? = nil
     ) {
         self.baseDirectory = baseDirectory
         self.userDefaults = userDefaults
         self.allowAppGroupFallback = allowAppGroupFallback
         self.fileManager = fileManager
-        self.stagedFileMutationLock = stagedFileMutationLock ?? Self.withDefaultStagedFileMutationLock
+        self.stagedFileMutationLock = stagedFileMutationLock ?? PendingShareStagedFileOperations.withDefaultLock
     }
 
     /// Returns whether website/youtube queue metadata can be persisted.
@@ -293,7 +292,7 @@ public final class PendingShareStore {
         withAccessLock {
             let items = loadAll()
             for item in items {
-                removeStagedFileIfPresent(for: item)
+                guard removeStagedFileIfPresent(for: item) else { return }
             }
             if let defaults {
                 defaults.removeObject(forKey: itemsKey)
@@ -310,7 +309,7 @@ public final class PendingShareStore {
             let items = loadAll()
             let removedItems = items.filter { idsToRemove.contains($0.id) }
             for item in removedItems {
-                removeStagedFileIfPresent(for: item)
+                guard removeStagedFileIfPresent(for: item) else { return }
             }
             replaceAll(items.filter { idsToRemove.contains($0.id) == false })
         }
@@ -324,6 +323,30 @@ public final class PendingShareStore {
         }
     }
 
+    public func prepareFileForUpload(for item: PendingShareItem) -> URL? {
+        withAccessLock {
+            guard let relativePath = item.filePath,
+                  let baseDirectory = rootDirectory else { return nil }
+            var preparedURL: URL?
+            var didRun = false
+            let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
+                didRun = true
+                let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
+                guard let fileURL = resolver.resolve(relativePath: relativePath) else { return false }
+                let filename = self.sanitizeFilename(item.filename ?? fileURL.lastPathComponent)
+                preparedURL = PendingShareStagedFileOperations.copyPreparedUploadFile(from: fileURL, filename: filename)
+                return preparedURL != nil
+            }
+            guard didRun && didSucceed else {
+                if let preparedURL {
+                    try? FileManager.default.removeItem(at: preparedURL.deletingLastPathComponent())
+                }
+                return nil
+            }
+            return preparedURL
+        }
+    }
+
     /// Removes queued items and backing files older than the provided day count.
     public func cleanup(olderThan days: Int) {
         withAccessLock {
@@ -332,14 +355,26 @@ public final class PendingShareStore {
             var items = loadAll()
             var removedIds: [UUID] = []
             for item in items where item.createdAt < cutoff {
-                removeStagedFileIfPresent(for: item)
+                guard removeStagedFileIfPresent(for: item) else { return }
                 removedIds.append(item.id)
             }
             if !removedIds.isEmpty {
                 items.removeAll { removedIds.contains($0.id) }
                 replaceAll(items)
             }
-            cleanValidatedEmptyItemDirectories(olderThan: cutoff)
+            guard cleanValidatedEmptyItemDirectories(olderThan: cutoff) else { return }
+        }
+    }
+
+    public func replaceAllCleaningRemovedStagedFiles(_ newItems: [PendingShareItem]) -> Bool {
+        withAccessLock {
+            let newIds = Set(newItems.map(\.id))
+            let removedItems = loadAll().filter { newIds.contains($0.id) == false }
+            for item in removedItems {
+                guard removeStagedFileIfPresent(for: item) else { return false }
+            }
+            replaceAll(newItems)
+            return true
         }
     }
 
@@ -349,18 +384,22 @@ public final class PendingShareStore {
         replaceAll(items)
     }
 
-    private func removeStagedFileIfPresent(for item: PendingShareItem) {
+    private func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
         guard let relativePath = item.filePath,
-              let baseDirectory = rootDirectory else { return }
-        stagedFileMutationLock(baseDirectory) { [self] in
+              let baseDirectory = rootDirectory else { return true }
+        var didRun = false
+        let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
+            didRun = true
             let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
-            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return }
+            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return true }
             try? self.fileManager.removeItem(at: fileURL)
             if let directory = resolver.itemDirectory(for: fileURL, relativePath: relativePath),
                (try? self.fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true {
                 try? self.fileManager.removeItem(at: directory)
             }
+            return true
         }
+        return didRun && didSucceed
     }
 
     private func makeFileResolver(baseDirectory: URL) -> PendingShareFileResolver {
@@ -408,25 +447,18 @@ public final class PendingShareStore {
         }
     }
 
-    private func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) {
-        guard let baseDirectory = rootDirectory else { return }
-        stagedFileMutationLock(baseDirectory) { [self] in
+    private func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) -> Bool {
+        guard let baseDirectory = rootDirectory else { return true }
+        var didRun = false
+        let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
+            didRun = true
             let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
             for directory in resolver.emptyItemDirectories(olderThan: cutoff) {
                 try? self.fileManager.removeItem(at: directory)
             }
+            return true
         }
-    }
-
-    private static func withDefaultStagedFileMutationLock(baseDirectory: URL, operation: @escaping () -> Void) {
-        try? FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
-        let lockURL = baseDirectory.appendingPathComponent(".pending-share-staged-files.lock", isDirectory: false)
-        let descriptor = open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
-        guard descriptor >= 0 else { return }
-        defer { close(descriptor) }
-        guard flock(descriptor, LOCK_EX) == 0 else { return }
-        defer { flock(descriptor, LOCK_UN) }
-        operation()
+        return didRun && didSucceed
     }
 
     private func sanitizeFilename(_ filename: String) -> String {

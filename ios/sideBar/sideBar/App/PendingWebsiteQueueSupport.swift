@@ -154,7 +154,7 @@ func shouldKeepPendingShareItem(
     isOffline: @escaping () -> Bool,
     saveWebsite: @escaping (String) async -> Bool,
     ingestYouTube: @escaping (String) async -> String?,
-    resolveFileURL: @escaping (PendingShareItem) -> URL?,
+    prepareFileForUpload: @escaping (PendingShareItem) -> URL?,
     startUpload: @escaping (URL) -> Bool
 ) async -> Bool {
     switch item.kind {
@@ -169,7 +169,7 @@ func shouldKeepPendingShareItem(
         return error != nil
     case .file, .image:
         guard !isOffline() else { return true }
-        guard let fileURL = resolveFileURL(item) else {
+        guard let fileURL = prepareFileForUpload(item) else {
             return true
         }
         let started = startUpload(fileURL)

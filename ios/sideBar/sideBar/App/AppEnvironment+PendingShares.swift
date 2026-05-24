@@ -155,8 +155,11 @@ extension AppEnvironment {
             reconciled.items,
             context: "consumePendingShares.final"
         )
-        storage.pendingShareStore.replaceAll(prunedItems)
-        websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
+        if storage.pendingShareStore.replaceAllCleaningRemovedStagedFiles(prunedItems) {
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
+        } else {
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
+        }
         replayStartSignal?.markStarted()
     }
 
@@ -406,13 +409,12 @@ extension AppEnvironment {
                     showQueuedToast: false
                 )
             },
-            resolveFileURL: { [self] item in
-                self.storage.pendingShareStore.resolveFileURL(for: item)
+            prepareFileForUpload: { [self] item in
+                self.storage.pendingShareStore.prepareFileForUpload(for: item)
             },
             startUpload: { [weak self] fileURL in
                 guard let self else { return false }
-                self.ingestionViewModel.startUpload(url: fileURL)
-                return true
+                return self.ingestionViewModel.startPendingShareUpload(url: fileURL)
             }
         )
     }

@@ -3,31 +3,27 @@ import sideBarShared
 
 extension IngestionViewModel {
     func startUpload(url: URL) {
+        _ = startUpload(url: url, cleanupOnCompletion: nil)
+    }
+
+    func startPendingShareUpload(url: URL) -> Bool {
+        startUpload(url: url, cleanupOnCompletion: url)
+    }
+
+    private func startUpload(url: URL, cleanupOnCompletion: URL?) -> Bool {
         let filename = url.lastPathComponent
         let mimeType = mimeTypeFor(url: url)
         if let rejectionMessage = uploadValidationMessage(for: url, mimeType: mimeType) {
             toastCenter.show(message: rejectionMessage)
-            return
+            cleanupTemporaryPendingShareUpload(cleanupOnCompletion)
+            return false
         }
         if isOfflineForIngestion() {
-            let access = url.startAccessingSecurityScopedResource()
-            defer {
-                if access {
-                    url.stopAccessingSecurityScopedResource()
-                }
+            if cleanupOnCompletion != nil {
+                cleanupTemporaryPendingShareUpload(cleanupOnCompletion)
+                return false
             }
-            let queued = pendingShareStore.enqueueFile(
-                at: url,
-                filename: filename,
-                mimeType: mimeType,
-                kind: .file
-            )
-            if queued != nil {
-                toastCenter.show(message: "Saved for later", style: .success)
-            } else {
-                toastCenter.show(message: "Could not save for later")
-            }
-            return
+            return queueUserSelectedUploadForLater(url: url, filename: filename, mimeType: mimeType)
         }
         let tempId = "local-\(UUID().uuidString)"
         let access = url.startAccessingSecurityScopedResource()
@@ -78,8 +74,36 @@ extension IngestionViewModel {
                         sizeBytes: sizeBytes,
                         result: result
                     )
+                    self.cleanupTemporaryPendingShareUpload(cleanupOnCompletion)
                 }
             }
         )
+        return true
+    }
+
+    private func cleanupTemporaryPendingShareUpload(_ url: URL?) {
+        guard let url else { return }
+        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+    }
+
+    private func queueUserSelectedUploadForLater(url: URL, filename: String, mimeType: String) -> Bool {
+        let access = url.startAccessingSecurityScopedResource()
+        defer {
+            if access {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        let queued = pendingShareStore.enqueueFile(
+            at: url,
+            filename: filename,
+            mimeType: mimeType,
+            kind: .file
+        )
+        if queued != nil {
+            toastCenter.show(message: "Saved for later", style: .success)
+        } else {
+            toastCenter.show(message: "Could not save for later")
+        }
+        return queued != nil
     }
 }

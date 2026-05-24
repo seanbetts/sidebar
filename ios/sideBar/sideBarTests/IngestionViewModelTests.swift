@@ -1027,6 +1027,38 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(toastCenter.toast?.message, "That file type isn't supported yet.")
     }
 
+    func testStartPendingShareUploadDeletesTemporaryCopyOnCompletion() async throws {
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let uploadManager = MockIngestionUploadManager()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: uploadManager,
+            toastCenter: ToastCenter()
+        )
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pending-share-upload-test-\(UUID().uuidString)", isDirectory: true)
+        let fileURL = directory.appendingPathComponent("queued.txt")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("payload".utf8).write(to: fileURL)
+
+        XCTAssertTrue(viewModel.startPendingShareUpload(url: fileURL))
+        uploadManager.completions.first?(.failure(MockError.forced))
+        await waitUntilPolling {
+            FileManager.default.fileExists(atPath: directory.path) == false
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    }
+
     func testRetryAllFailedUploadsRetriesOnlyRetryableItems() async throws {
         let remoteFailed = makeListItem(id: "file-2", status: "failed", stage: "failed")
         let api = MockIngestionAPI(
@@ -2014,6 +2046,7 @@ private final class CountingIngestionAPI: IngestionProviding {
 private final class MockIngestionUploadManager: IngestionUploadManaging {
     private(set) var startedRequests: [UploadRequest] = []
     private(set) var canceledUploadIds: [String] = []
+    private(set) var completions: [(Result<String, Error>) -> Void] = []
 
     func startUpload(
         request: UploadRequest,
@@ -2021,8 +2054,8 @@ private final class MockIngestionUploadManager: IngestionUploadManaging {
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
         startedRequests.append(request)
+        completions.append(onCompletion)
         _ = onProgress
-        _ = onCompletion
     }
 
     func cancelUpload(uploadId: String) {

@@ -3,8 +3,6 @@ import XCTest
 @testable import sideBarShared
 @testable import sideBar
 
-private let pendingShareStoreTestSuiteName = "PendingShareStoreTests"
-
 @MainActor
 final class PendingShareStoreTests: XCTestCase {
     private let suiteName = pendingShareStoreTestSuiteName
@@ -154,8 +152,8 @@ final class PendingShareStoreTests: XCTestCase {
         try assertRemovalRejectsSymlinkedPath(makeRootSymlinkScenario)
     }
     func testRemoveValidatesAndDeletesInsideStagedFileCriticalSection() throws {
-        var operation: (() -> Void)?
-        let (store, directory) = try makeIsolatedStore(stagedFileMutationLock: { _, body in operation = body })
+        var operation: (() -> Bool)?
+        let (store, directory) = try makeIsolatedStore(stagedFileMutationLock: { _, body in operation = body; return true })
         let uuid = UUID().uuidString
         let fileURL = directory.appendingPathComponent("pending-shares/\(uuid)/payload.txt")
         let target = directory.appendingPathComponent("pending-shares/manual/target.txt")
@@ -169,11 +167,61 @@ final class PendingShareStoreTests: XCTestCase {
         store.remove(ids: [item.id])
         try FileManager.default.removeItem(at: fileURL)
         try FileManager.default.createSymbolicLink(at: fileURL, withDestinationURL: target)
-        operation?()
+        _ = operation?()
 
         XCTAssertNil(store.resolveFileURL(for: item))
         XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
         XCTAssertNotNil(try? FileManager.default.destinationOfSymbolicLink(atPath: fileURL.path))
+    }
+    func testPrepareFileForUploadCopiesWhileLockedToTemporaryURL() throws {
+        var copiedWhileLocked = false
+        let (store, _) = try makeIsolatedStore(stagedFileMutationLock: { _, body in
+            let result = body()
+            copiedWhileLocked = true
+            return result
+        })
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "sample.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: item))
+
+        let preparedURL = try XCTUnwrap(store.prepareFileForUpload(for: item))
+
+        XCTAssertTrue(copiedWhileLocked)
+        XCTAssertNotEqual(preparedURL.path, stagedURL.path)
+        XCTAssertFalse(preparedURL.path.contains("/pending-shares/"))
+        XCTAssertEqual(try Data(contentsOf: preparedURL), Data("payload".utf8))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
+        XCTAssertTrue(preparedURL.path.hasPrefix(FileManager.default.temporaryDirectory.path))
+    }
+    func testRemoveLeavesQueuedFileWhenStagedFileLockDoesNotRun() throws {
+        let (store, _) = try makeIsolatedStore(stagedFileMutationLock: { _, _ in true })
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "locked.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: item))
+
+        store.remove(ids: [item.id])
+
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
+    }
+    func testReplaceAllCleaningRemovedStagedFilesDeletesDroppedFileItem() throws {
+        let (store, _) = try makeIsolatedStore()
+        let fileItem = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "replayed.txt", mimeType: "text/plain", kind: .file
+        ))
+        let websiteItem = try XCTUnwrap(store.enqueueWebsite(url: "https://example.com"))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: fileItem))
+        let itemDirectory = stagedURL.deletingLastPathComponent()
+
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([websiteItem]))
+
+        let remaining = store.loadAll()
+        XCTAssertEqual(remaining.map(\.id), [websiteItem.id])
+        XCTAssertEqual(remaining.first?.url, websiteItem.url)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: itemDirectory.path))
     }
     func testRemoveDeletesItem() {
         let store = makeStore()
@@ -308,7 +356,7 @@ final class PendingShareStoreTests: XCTestCase {
         let expectedURL = URL(fileURLWithPath: "/tmp/test-upload")
         var startedUploads: [URL] = []
         let keep = await routePendingShareItem(
-            item, resolveFileURL: { _ in expectedURL }, startUpload: { startedUploads.append($0); return true }
+            item, prepareFileForUpload: { _ in expectedURL }, startUpload: { startedUploads.append($0); return true }
         )
         XCTAssertFalse(keep)
         XCTAssertEqual(startedUploads, [expectedURL])
@@ -319,7 +367,7 @@ final class PendingShareStoreTests: XCTestCase {
         let keep = await routePendingShareItem(
             item,
             isOffline: { true },
-            resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") },
+            prepareFileForUpload: { _ in URL(fileURLWithPath: "/tmp/test") },
             startUpload: { _ in uploadCalled = true; return true }
         )
         XCTAssertTrue(keep)
@@ -327,7 +375,7 @@ final class PendingShareStoreTests: XCTestCase {
     }
     func testPendingShareRoutingFileUploadFailureKeepsItem() async {
         let item = pendingFileItem()
-        let keep = await routePendingShareItem(item, resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") })
+        let keep = await routePendingShareItem(item, prepareFileForUpload: { _ in URL(fileURLWithPath: "/tmp/test") })
         XCTAssertTrue(keep)
     }
 
@@ -418,83 +466,4 @@ extension PendingShareStoreTests {
         XCTAssertTrue(isPendingWebsiteReadyForRetry(ready, now: now))
         XCTAssertFalse(isPendingWebsiteReadyForRetry(waiting, now: now))
     }
-}
-private func makeStore() -> PendingShareStore {
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    return PendingShareStore(baseDirectory: directory, userDefaults: UserDefaults(suiteName: pendingShareStoreTestSuiteName))
-}
-private func makeIsolatedStore(stagedFileMutationLock: ((URL, @escaping () -> Void) -> Void)? = nil) throws -> (PendingShareStore, URL) {
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
-    let store = PendingShareStore(
-        baseDirectory: directory, userDefaults: defaults, allowAppGroupFallback: false, stagedFileMutationLock: stagedFileMutationLock
-    )
-    return (store, directory)
-}
-private func assertRemovalRejectsSymlinkedPath(
-    _ makeScenario: (URL) throws -> (PendingShareItem, URL)
-) throws {
-    let (store, directory) = try makeIsolatedStore()
-    let (item, target) = try makeScenario(directory)
-    store.replaceAll([item])
-    store.remove(ids: [item.id])
-    XCTAssertNil(store.resolveFileURL(for: item))
-    XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
-}
-private func routePendingShareItem(
-    _ item: PendingShareItem,
-    isOffline: @escaping () -> Bool = { false },
-    saveWebsite: @escaping (String) async -> Bool = { _ in false },
-    ingestYouTube: @escaping (String) async -> String? = { _ in nil },
-    resolveFileURL: @escaping (PendingShareItem) -> URL? = { _ in nil },
-    startUpload: @escaping (URL) -> Bool = { _ in false }
-) async -> Bool {
-    await shouldKeepPendingShareItem(
-        item, isOffline: isOffline, saveWebsite: saveWebsite, ingestYouTube: ingestYouTube,
-        resolveFileURL: resolveFileURL, startUpload: startUpload
-    )
-}
-private func makeLeafSymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
-    let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
-    let uuid = UUID().uuidString
-    let target = root.appendingPathComponent("manual/leaf-target.txt")
-    try FileManager.default.createDirectory(at: root.appendingPathComponent(uuid), withIntermediateDirectories: true)
-    try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data("keep leaf".utf8).write(to: target)
-    try FileManager.default.createSymbolicLink(
-        at: root.appendingPathComponent("\(uuid)/link.txt"), withDestinationURL: target
-    )
-    return (pendingFileItem(filePath: "pending-shares/\(uuid)/link.txt"), target)
-}
-private func makeItemDirectorySymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
-    let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
-    let uuid = UUID().uuidString
-    let target = root.appendingPathComponent("manual")
-    let targetFile = target.appendingPathComponent("target.txt")
-    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
-    try Data("keep directory".utf8).write(to: targetFile)
-    try FileManager.default.createSymbolicLink(at: root.appendingPathComponent(uuid), withDestinationURL: target)
-    return (pendingFileItem(filePath: "pending-shares/\(uuid)/target.txt"), targetFile)
-}
-private func makeRootSymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
-    let target = directory.appendingPathComponent("root-target")
-    let uuid = UUID().uuidString
-    let targetFile = target.appendingPathComponent("\(uuid)/target.txt")
-    try FileManager.default.createDirectory(at: targetFile.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data("keep root".utf8).write(to: targetFile)
-    try FileManager.default.createSymbolicLink(
-        at: directory.appendingPathComponent("pending-shares"), withDestinationURL: target
-    )
-    return (pendingFileItem(filePath: "pending-shares/\(uuid)/target.txt"), targetFile)
-}
-private func pendingWebsiteItem(createdAt: Date = Date(), retryCount: Int = 0, nextRetryAt: Date? = nil) -> PendingShareItem {
-    PendingShareItem(
-        id: UUID(), kind: .website, createdAt: createdAt, url: "https://example.com", retryCount: retryCount, nextRetryAt: nextRetryAt
-    )
-}
-private func pendingYouTubeItem() -> PendingShareItem {
-    PendingShareItem(id: UUID(), kind: .youtube, createdAt: Date(), url: "https://www.youtube.com/watch?v=abc123xyzAA")
-}
-private func pendingFileItem(filePath: String = "pending-shares/\(UUID().uuidString)/file.pdf") -> PendingShareItem {
-    PendingShareItem(id: UUID(), kind: .file, createdAt: Date(), filePath: filePath)
 }
