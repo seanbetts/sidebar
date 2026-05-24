@@ -70,12 +70,12 @@ public final class PendingShareStore {
     static let log = OSLog(subsystem: "ai.sidebar.sidebar", category: "PendingShareStore")
 
     private let itemsKey = "pendingShareItems"
-    private let directoryName = "pending-shares"
-    private let fileManager: FileManager
+    let directoryName = "pending-shares"
+    let fileManager: FileManager
     private let baseDirectory: URL?
     private let userDefaults: UserDefaults?
     private let allowAppGroupFallback: Bool
-    private let stagedFileMutationLock: (URL, @escaping () -> Bool) -> Bool
+    let stagedFileMutationLock: (URL, @escaping () -> Bool) -> Bool
     private let accessLock = NSRecursiveLock()
 
     /// Creates a pending-share store with injectable storage dependencies for tests.
@@ -379,25 +379,7 @@ public final class PendingShareStore {
         writeMetadata(items)
     }
 
-    func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
-        guard let relativePath = item.filePath,
-              let baseDirectory = rootDirectory else { return true }
-        var didRun = false
-        let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
-            didRun = true
-            let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
-            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return true }
-            try? self.fileManager.removeItem(at: fileURL)
-            if let directory = resolver.itemDirectory(for: fileURL, relativePath: relativePath),
-               (try? self.fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true {
-                try? self.fileManager.removeItem(at: directory)
-            }
-            return true
-        }
-        return didRun && didSucceed
-    }
-
-    private func makeFileResolver(baseDirectory: URL) -> PendingShareFileResolver {
+    func makeFileResolver(baseDirectory: URL) -> PendingShareFileResolver {
         PendingShareFileResolver(
             baseDirectory: baseDirectory,
             directoryName: directoryName,
@@ -433,20 +415,6 @@ public final class PendingShareStore {
                 fileManager: fileManager
             ) != nil
         } ? "\(directoryName)/\(itemId.uuidString)/\(safeFilename)" : nil
-    }
-
-    private func cleanValidatedEmptyItemDirectories(olderThan cutoff: Date) -> Bool {
-        guard let baseDirectory = rootDirectory else { return true }
-        var didRun = false
-        let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
-            didRun = true
-            let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
-            for directory in resolver.emptyItemDirectories(olderThan: cutoff) {
-                try? self.fileManager.removeItem(at: directory)
-            }
-            return true
-        }
-        return didRun && didSucceed
     }
 
     private func sanitizeFilename(_ filename: String) -> String {

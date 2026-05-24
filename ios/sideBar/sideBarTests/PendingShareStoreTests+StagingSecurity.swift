@@ -3,6 +3,17 @@ import XCTest
 @testable import sideBarShared
 @testable import sideBar
 
+private final class FailingRemoveFileManager: FileManager {
+    var failingRemovePath: String?
+
+    override func removeItem(at URL: URL) throws {
+        if URL.path == failingRemovePath {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        try super.removeItem(at: URL)
+    }
+}
+
 @MainActor
 extension PendingShareStoreTests {
     func testEnqueueFileFailsWhenPendingShareRootIsSymlink() throws {
@@ -162,6 +173,44 @@ extension PendingShareStoreTests {
 
         XCTAssertEqual(store.loadAll().map(\.id), [item.id])
         XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
+    }
+
+    func testRemovePreservesMetadataWhenStagedFileDeletionFailsAfterLockRuns() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "\(pendingShareStoreTestSuiteName).\(UUID().uuidString)"))
+        let fileManager = FailingRemoveFileManager()
+        let store = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: defaults,
+            allowAppGroupFallback: false,
+            fileManager: fileManager
+        )
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "cannot-delete.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: item))
+        fileManager.failingRemovePath = stagedURL.path
+
+        store.remove(ids: [item.id])
+
+        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedURL.path))
+    }
+
+    func testRemoveDropsMetadataWhenSafeStagedPathIsAlreadyGone() throws {
+        let (store, _) = try makeIsolatedStore()
+        let item = try XCTUnwrap(store.enqueueFile(
+            data: Data("payload".utf8), filename: "already-gone.txt", mimeType: "text/plain", kind: .file
+        ))
+        let stagedURL = try XCTUnwrap(store.resolveFileURL(for: item))
+        let itemDirectory = stagedURL.deletingLastPathComponent()
+        try FileManager.default.removeItem(at: stagedURL)
+
+        store.remove(ids: [item.id])
+
+        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagedURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: itemDirectory.path))
     }
 
     func testReplaceAllRemovesDroppedFileItemStagedFile() throws {
