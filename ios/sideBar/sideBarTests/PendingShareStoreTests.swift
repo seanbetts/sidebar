@@ -144,6 +144,11 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
         XCTAssertTrue(store.loadAll().isEmpty)
     }
+    func testRemoveRejectsSymlinkStagedPathsWithoutDeletingTargets() throws {
+        try assertRemovalRejectsSymlinkedPath(makeLeafSymlinkScenario)
+        try assertRemovalRejectsSymlinkedPath(makeItemDirectorySymlinkScenario)
+        try assertRemovalRejectsSymlinkedPath(makeRootSymlinkScenario)
+    }
     func testRemoveDeletesItem() {
         let store = makeStore()
         let first = store.enqueueWebsite(url: "https://example.com")
@@ -240,89 +245,44 @@ final class PendingShareStoreTests: XCTestCase {
     }
     func testPendingShareRoutingWebsiteSuccessDropsItem() async {
         let item = pendingWebsiteItem()
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in true },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
-        )
+        let keep = await routePendingShareItem(item, saveWebsite: { _ in true })
         XCTAssertFalse(keep)
     }
     func testPendingShareRoutingWebsiteFailureKeepsItem() async {
         let item = pendingWebsiteItem()
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
-        )
+        let keep = await routePendingShareItem(item)
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingLegacyYouTubeSuccessDropsItem() async {
         let item = pendingYouTubeItem()
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
-        )
+        let keep = await routePendingShareItem(item)
         XCTAssertFalse(keep)
     }
     func testPendingShareRoutingLegacyYouTubeFailureKeepsItem() async {
         let item = pendingYouTubeItem()
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in "Failed" },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
-        )
+        let keep = await routePendingShareItem(item, ingestYouTube: { _ in "Failed" })
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingYouTubeOfflineKeepsItem() async {
         let item = pendingYouTubeItem()
         var youTubeCalled = false
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { true },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in youTubeCalled = true; return nil },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
+        let keep = await routePendingShareItem(
+            item, isOffline: { true }, ingestYouTube: { _ in youTubeCalled = true; return nil }
         )
         XCTAssertTrue(keep)
         XCTAssertFalse(youTubeCalled)
     }
     func testPendingShareRoutingFileMissingPathKeepsItem() async {
         let item = PendingShareItem(id: UUID(), kind: .file, createdAt: Date())
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in nil },
-            startUpload: { _ in true }
-        )
+        let keep = await routePendingShareItem(item)
         XCTAssertTrue(keep)
     }
     func testPendingShareRoutingFileResolvedStartsUploadAndDropsItem() async {
         let item = pendingFileItem()
         let expectedURL = URL(fileURLWithPath: "/tmp/test-upload")
         var startedUploads: [URL] = []
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in expectedURL },
-            startUpload: { startedUploads.append($0); return true }
+        let keep = await routePendingShareItem(
+            item, resolveFileURL: { _ in expectedURL }, startUpload: { startedUploads.append($0); return true }
         )
         XCTAssertFalse(keep)
         XCTAssertEqual(startedUploads, [expectedURL])
@@ -330,11 +290,9 @@ final class PendingShareStoreTests: XCTestCase {
     func testPendingShareRoutingFileOfflineKeepsItem() async {
         let item = pendingFileItem()
         var uploadCalled = false
-        let keep = await shouldKeepPendingShareItem(
+        let keep = await routePendingShareItem(
             item,
             isOffline: { true },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
             resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") },
             startUpload: { _ in uploadCalled = true; return true }
         )
@@ -343,14 +301,7 @@ final class PendingShareStoreTests: XCTestCase {
     }
     func testPendingShareRoutingFileUploadFailureKeepsItem() async {
         let item = pendingFileItem()
-        let keep = await shouldKeepPendingShareItem(
-            item,
-            isOffline: { false },
-            saveWebsite: { _ in false },
-            ingestYouTube: { _ in nil },
-            resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") },
-            startUpload: { _ in false }
-        )
+        let keep = await routePendingShareItem(item, resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") })
         XCTAssertTrue(keep)
     }
 
@@ -444,9 +395,10 @@ extension PendingShareStoreTests {
 }
 
 private func makeStore() -> PendingShareStore {
-    let defaults = UserDefaults(suiteName: pendingShareStoreTestSuiteName)
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
+    PendingShareStore(
+        baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+        userDefaults: UserDefaults(suiteName: pendingShareStoreTestSuiteName)
+    )
 }
 
 private func makeIsolatedStore() throws -> (PendingShareStore, URL) {
@@ -455,6 +407,66 @@ private func makeIsolatedStore() throws -> (PendingShareStore, URL) {
     return (PendingShareStore(baseDirectory: directory, userDefaults: defaults, allowAppGroupFallback: false), directory)
 }
 
+private func assertRemovalRejectsSymlinkedPath(
+    _ makeScenario: (URL) throws -> (PendingShareItem, URL)
+) throws {
+    let (store, directory) = try makeIsolatedStore()
+    let (item, target) = try makeScenario(directory)
+    store.replaceAll([item])
+    store.remove(ids: [item.id])
+    XCTAssertNil(store.resolveFileURL(for: item))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
+}
+private func routePendingShareItem(
+    _ item: PendingShareItem,
+    isOffline: @escaping () -> Bool = { false },
+    saveWebsite: @escaping (String) async -> Bool = { _ in false },
+    ingestYouTube: @escaping (String) async -> String? = { _ in nil },
+    resolveFileURL: @escaping (PendingShareItem) -> URL? = { _ in nil },
+    startUpload: @escaping (URL) -> Bool = { _ in false }
+) async -> Bool {
+    await shouldKeepPendingShareItem(
+        item,
+        isOffline: isOffline,
+        saveWebsite: saveWebsite,
+        ingestYouTube: ingestYouTube,
+        resolveFileURL: resolveFileURL,
+        startUpload: startUpload
+    )
+}
+private func makeLeafSymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
+    let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+    let uuid = UUID().uuidString
+    let target = root.appendingPathComponent("manual/leaf-target.txt")
+    try FileManager.default.createDirectory(at: root.appendingPathComponent(uuid), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("keep leaf".utf8).write(to: target)
+    try FileManager.default.createSymbolicLink(
+        at: root.appendingPathComponent("\(uuid)/link.txt"), withDestinationURL: target
+    )
+    return (pendingFileItem(filePath: "pending-shares/\(uuid)/link.txt"), target)
+}
+private func makeItemDirectorySymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
+    let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
+    let uuid = UUID().uuidString
+    let target = root.appendingPathComponent("manual")
+    let targetFile = target.appendingPathComponent("target.txt")
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    try Data("keep directory".utf8).write(to: targetFile)
+    try FileManager.default.createSymbolicLink(at: root.appendingPathComponent(uuid), withDestinationURL: target)
+    return (pendingFileItem(filePath: "pending-shares/\(uuid)/target.txt"), targetFile)
+}
+private func makeRootSymlinkScenario(directory: URL) throws -> (PendingShareItem, URL) {
+    let target = directory.appendingPathComponent("root-target")
+    let uuid = UUID().uuidString
+    let targetFile = target.appendingPathComponent("\(uuid)/target.txt")
+    try FileManager.default.createDirectory(at: targetFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("keep root".utf8).write(to: targetFile)
+    try FileManager.default.createSymbolicLink(
+        at: directory.appendingPathComponent("pending-shares"), withDestinationURL: target
+    )
+    return (pendingFileItem(filePath: "pending-shares/\(uuid)/target.txt"), targetFile)
+}
 private func pendingWebsiteItem(
     createdAt: Date = Date(),
     retryCount: Int = 0,
@@ -473,9 +485,11 @@ private func pendingYouTubeItem() -> PendingShareItem {
     )
 }
 
-private func pendingFileItem() -> PendingShareItem {
+private func pendingFileItem(
+    filePath: String = "pending-shares/\(UUID().uuidString)/file.pdf"
+) -> PendingShareItem {
     PendingShareItem(
         id: UUID(), kind: .file, createdAt: Date(),
-        filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
+        filePath: filePath
     )
 }

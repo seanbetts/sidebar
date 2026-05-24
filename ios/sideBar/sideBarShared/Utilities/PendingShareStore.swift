@@ -346,11 +346,12 @@ public final class PendingShareStore {
     }
 
     private func removeStagedFileIfPresent(for item: PendingShareItem) {
-        guard let fileURL = resolveFileURL(for: item),
+        guard let relativePath = item.filePath,
+              let fileURL = resolveFileURL(for: item),
               let baseDirectory = rootDirectory else { return }
         let resolver = makeFileResolver(baseDirectory: baseDirectory)
         try? fileManager.removeItem(at: fileURL)
-        if let directory = resolver.itemDirectory(for: fileURL),
+        if let directory = resolver.itemDirectory(for: fileURL, relativePath: relativePath),
            (try? fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true {
             try? fileManager.removeItem(at: directory)
         }

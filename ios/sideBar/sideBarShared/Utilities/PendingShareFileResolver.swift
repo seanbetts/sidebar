@@ -6,31 +6,32 @@ struct PendingShareFileResolver {
     let fileManager: FileManager
 
     func resolve(relativePath: String) -> URL? {
-        guard relativePath.hasPrefix("\(directoryName)/") else { return nil }
-        guard relativePath.first != "/" else { return nil }
+        guard let components = pathComponents(for: relativePath) else { return nil }
+        let root = pathStandardizedURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
+        guard isDirectory(root), isSymlink(root) == false else { return nil }
 
-        let parts = relativePath.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
-        guard parts.count == 3 else { return nil }
-        guard parts[0] == directoryName else { return nil }
-        guard UUID(uuidString: parts[1]) != nil else { return nil }
-        guard !parts[2].isEmpty else { return nil }
-        guard parts.allSatisfy({ $0 != "." && $0 != ".." }) else { return nil }
+        let directory = root.appendingPathComponent(components.uuid, isDirectory: true)
+        guard isDirectory(directory), isSymlink(directory) == false else { return nil }
 
-        let root = standardizedDirectoryURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
-        let candidate = standardizedFileURL(baseDirectory.appendingPathComponent(relativePath, isDirectory: false))
+        let candidate = pathStandardizedURL(directory.appendingPathComponent(components.filename, isDirectory: false))
         guard candidate.path.hasPrefix(root.path + "/") else { return nil }
+        guard isSymlink(candidate) == false else { return nil }
         return candidate
     }
 
-    func itemDirectory(for fileURL: URL) -> URL? {
-        let root = standardizedDirectoryURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
-        let directory = standardizedDirectoryURL(fileURL.deletingLastPathComponent())
+    func itemDirectory(for fileURL: URL, relativePath: String) -> URL? {
+        guard let components = pathComponents(for: relativePath) else { return nil }
+        let root = pathStandardizedURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
+        let directory = pathStandardizedURL(fileURL.deletingLastPathComponent())
         guard directory.deletingLastPathComponent().path == root.path else { return nil }
+        guard directory.lastPathComponent == components.uuid else { return nil }
+        guard isDirectory(directory), isSymlink(directory) == false else { return nil }
         return directory
     }
 
     func emptyItemDirectories(olderThan cutoff: Date) -> [URL] {
-        let root = standardizedDirectoryURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
+        let root = pathStandardizedURL(baseDirectory.appendingPathComponent(directoryName, isDirectory: true))
+        guard isDirectory(root), isSymlink(root) == false else { return [] }
         guard let directories = try? fileManager.contentsOfDirectory(
             at: root,
             includingPropertiesForKeys: [.creationDateKey, .isDirectoryKey, .isSymbolicLinkKey],
@@ -45,7 +46,7 @@ struct PendingShareFileResolver {
               values.isDirectory == true,
               let createdAt = values.creationDate,
               createdAt < cutoff else { return nil }
-        let directory = standardizedDirectoryURL(url)
+        let directory = pathStandardizedURL(url)
         guard directory.deletingLastPathComponent().path == root.path else { return nil }
         guard UUID(uuidString: directory.lastPathComponent) != nil else { return nil }
         guard (try? fileManager.contentsOfDirectory(atPath: directory.path).isEmpty) == true else {
@@ -54,11 +55,27 @@ struct PendingShareFileResolver {
         return directory
     }
 
-    private func standardizedDirectoryURL(_ url: URL) -> URL {
-        url.standardizedFileURL.resolvingSymlinksInPath()
+    private func pathComponents(for relativePath: String) -> (uuid: String, filename: String)? {
+        guard relativePath.hasPrefix("\(directoryName)/") else { return nil }
+        guard relativePath.first != "/" else { return nil }
+        let parts = relativePath.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count == 3 else { return nil }
+        guard parts[0] == directoryName else { return nil }
+        guard UUID(uuidString: parts[1]) != nil else { return nil }
+        guard !parts[2].isEmpty else { return nil }
+        guard parts.allSatisfy({ $0 != "." && $0 != ".." }) else { return nil }
+        return (parts[1], parts[2])
     }
 
-    private func standardizedFileURL(_ url: URL) -> URL {
-        url.standardizedFileURL.resolvingSymlinksInPath()
+    private func isDirectory(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
+    private func isSymlink(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+    }
+
+    private func pathStandardizedURL(_ url: URL) -> URL {
+        url.standardizedFileURL
     }
 }
