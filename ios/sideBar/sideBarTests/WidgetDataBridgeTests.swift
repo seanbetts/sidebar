@@ -93,6 +93,46 @@ final class WidgetDataBridgeTests: XCTestCase {
         XCTAssertEqual(pending.first?.action, .complete)
     }
 
+    func testConcurrentPendingOperationRecordsAndRemovesPreserveExpectedOperations() async {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+        let removableOperations = (0..<50).map { index in
+            WidgetPendingOperation(itemId: "remove-\(index)", action: TaskWidgetAction.complete)
+        }
+
+        for operation in removableOperations {
+            bridge.recordPendingOperation(operation, for: .tasks)
+        }
+
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<50 {
+                let operationId = removableOperations[index].id
+                group.addTask {
+                    bridge.removePendingOperation(
+                        withId: operationId,
+                        for: .tasks,
+                        actionType: TaskWidgetAction.self
+                    )
+                }
+                group.addTask {
+                    let operation = WidgetPendingOperation(
+                        itemId: "record-\(index)",
+                        action: TaskWidgetAction.complete
+                    )
+                    bridge.recordPendingOperation(operation, for: .tasks)
+                }
+            }
+        }
+
+        let pending = bridge.loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+        let itemIds = Set(pending.map(\.itemId))
+
+        XCTAssertEqual(itemIds.count, 50)
+        XCTAssertTrue(itemIds.isDisjoint(with: Set(removableOperations.map(\.itemId))))
+        XCTAssertEqual(itemIds, Set((0..<50).map { "record-\($0)" }))
+    }
+
     func testHasStoredSnapshotReturnsTrueAfterStoringEmptyPayload() {
         let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
