@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import UniformTypeIdentifiers
 import sideBarShared
 
@@ -7,6 +8,75 @@ enum ShareExtensionPayloadSizePolicy {
 
     static func acceptsInMemoryPayload(byteCount: Int) -> Bool {
         byteCount <= maxInMemoryPayloadBytes
+    }
+}
+
+struct SharePreparedUploadFile {
+    let fileURL: URL
+    let filename: String
+    let mimeType: String
+}
+
+enum ShareImageFilePreparer {
+    static let maxUploadPixelSize = 2_048
+    private static let compressionQuality = 0.86
+
+    static func downsampledUploadImage(from sourceURL: URL, filename: String) -> SharePreparedUploadFile? {
+        let sourceOptions = [
+            kCGImageSourceShouldCache: false
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(sourceURL as CFURL, sourceOptions),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, sourceOptions) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              max(width, height) > maxUploadPixelSize else {
+            return nil
+        }
+
+        let thumbnailOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxUploadPixelSize
+        ] as CFDictionary
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions) else {
+            return nil
+        }
+
+        let preparedURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("share-image-\(UUID().uuidString)")
+            .appendingPathExtension("jpg")
+        guard let destination = CGImageDestinationCreateWithURL(
+            preparedURL as CFURL,
+            UTType.jpeg.identifier as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        let destinationProperties = [
+            kCGImageDestinationLossyCompressionQuality: compressionQuality
+        ] as CFDictionary
+        CGImageDestinationAddImage(destination, thumbnail, destinationProperties)
+        guard CGImageDestinationFinalize(destination) else {
+            try? FileManager.default.removeItem(at: preparedURL)
+            return nil
+        }
+
+        return SharePreparedUploadFile(
+            fileURL: preparedURL,
+            filename: jpegFilename(for: filename),
+            mimeType: "image/jpeg"
+        )
+    }
+
+    private static func jpegFilename(for filename: String) -> String {
+        let url = URL(fileURLWithPath: filename)
+        let baseName = url.deletingPathExtension().lastPathComponent
+        guard !baseName.isEmpty else {
+            return "shared_image.jpg"
+        }
+        return "\(baseName).jpg"
     }
 }
 
@@ -147,8 +217,16 @@ extension ShareViewController {
             itemProvider: itemProvider,
             fallbackExtension: isImage ? "jpg" : "bin"
         )
-        let mimeType = mimeTypeForFilename(filename)
-        await uploadFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
+        let preparedImage = isImage
+            ? ShareImageFilePreparer.downsampledUploadImage(from: fileURL, filename: filename)
+            : nil
+        let uploadURL = preparedImage?.fileURL ?? fileURL
+        let uploadFilename = preparedImage?.filename ?? filename
+        let mimeType = preparedImage?.mimeType ?? mimeTypeForFilename(filename)
+        await uploadFile(at: uploadURL, filename: uploadFilename, mimeType: mimeType, isImage: isImage)
+        if preparedImage != nil {
+            try? FileManager.default.removeItem(at: uploadURL)
+        }
         try? FileManager.default.removeItem(at: fileURL)
     }
 

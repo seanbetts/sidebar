@@ -1,8 +1,10 @@
 import Foundation
+import ImageIO
 import XCTest
 @testable import ShareExtension
 import sideBarShared
 import UniformTypeIdentifiers
+import UIKit
 
 final class ShareViewControllerCoverageTests: XCTestCase {
     func testExtractFirstURLFindsURLInPlainText() {
@@ -118,6 +120,28 @@ final class ShareViewControllerCoverageTests: XCTestCase {
         )
     }
 
+    func testShareExtensionDownsamplesFileBackedImagesBeforeUpload() throws {
+        let sourceURL = try makeTemporaryPNGURL(size: CGSize(width: 2_600, height: 1_800))
+
+        let prepared = try XCTUnwrap(
+            ShareImageFilePreparer.downsampledUploadImage(
+                from: sourceURL,
+                filename: "large.png"
+            )
+        )
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: prepared.fileURL)
+        }
+
+        XCTAssertEqual(prepared.filename, "large.jpg")
+        XCTAssertEqual(prepared.mimeType, "image/jpeg")
+        XCTAssertNotEqual(prepared.fileURL, sourceURL)
+        XCTAssertLessThanOrEqual(
+            try maxPixelDimension(of: prepared.fileURL),
+            ShareImageFilePreparer.maxUploadPixelSize
+        )
+    }
+
     func testProcessSharedContentRecordsEntryDiagnosticsBeforeProviderParsing() {
         ExternalSurfaceDiagnosticsStore.shared.clear()
         defer { ExternalSurfaceDiagnosticsStore.shared.clear() }
@@ -155,6 +179,33 @@ final class ShareViewControllerCoverageTests: XCTestCase {
             candidate.deleteLastPathComponent()
         }
         throw NSError(domain: "ShareExtensionCoverageTests", code: 1)
+    }
+
+    private func makeTemporaryPNGURL(size: CGSize) throws -> URL {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let data = renderer.pngData { context in
+            UIColor.systemGreen.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        try data.write(to: url)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: url)
+        }
+        return url
+    }
+
+    private func maxPixelDimension(of url: URL) throws -> Int {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int else {
+            XCTFail("Expected readable image properties for \(url.path)")
+            return 0
+        }
+        return max(width, height)
     }
 }
 
