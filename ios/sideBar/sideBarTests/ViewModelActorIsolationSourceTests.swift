@@ -1,6 +1,13 @@
 import XCTest
 
 final class ViewModelActorIsolationSourceTests: XCTestCase {
+    func testStaleTaskProviderCompatibilityAliasIsAbsent() throws {
+        let sourceRoot = try sideBarSourceRoot()
+        let taskProviderURL = sourceRoot.appendingPathComponent("ViewModels/TaskProvider.swift")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: taskProviderURL.path))
+    }
+
     func testPublicViewModelsKeepMainActorOnDeclarationLine() throws {
         let sourceRoot = try sideBarSourceRoot()
         let viewModels = [
