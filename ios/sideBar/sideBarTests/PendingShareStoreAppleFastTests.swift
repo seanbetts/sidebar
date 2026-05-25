@@ -89,7 +89,7 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    func testCleanupFailureAndResolverRejectionRetainMetadata() throws {
+    func testCleanupFailureRetainsMetadataAndResolverRejectionDropsMetadata() throws {
         let failingFileManager = AppleFastFailingRemoveFileManager()
         let writerFixture = try makeStore()
         let writer = writerFixture.store
@@ -114,7 +114,7 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
 
         store.remove(ids: [removable.id, rejected.item.id])
 
-        XCTAssertEqual(store.loadAll().map(\.id), [removable.id, rejected.item.id])
+        XCTAssertEqual(store.loadAll().map(\.id), [removable.id])
         XCTAssertTrue(FileManager.default.fileExists(atPath: removableURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: rejected.target.path))
     }
@@ -229,7 +229,7 @@ final class PendingShareStoreAppleFastTests: XCTestCase {
 
         store.remove(ids: [valid.id, invalid.item.id])
 
-        XCTAssertEqual(store.loadAll().map(\.id), [invalid.item.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertFalse(FileManager.default.fileExists(atPath: validURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: invalid.target.path))
     }
