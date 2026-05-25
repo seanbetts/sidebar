@@ -9,6 +9,15 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class FileViewerMountedIOSTests: XCTestCase {
+    func testPlatformImageFileLoaderDownsamplesLargeImage() async throws {
+        let url = try makeTemporaryPNGURL(size: CGSize(width: 1200, height: 800))
+
+        let loadedImage = await PlatformImageFileLoader.loadImage(url: url, maxPixelSize: 240)
+        let image = try XCTUnwrap(loadedImage)
+
+        XCTAssertLessThanOrEqual(max(image.size.width, image.size.height), 240)
+    }
+
     func testMountedPDFViewerShrinksWhenParentWorkspaceNarrows() throws {
         let url = try makeTemporaryPDFURL()
         let widthModel = FileViewerWidthModel(width: 960)
@@ -101,6 +110,22 @@ final class FileViewerMountedIOSTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("pdf")
+        try data.write(to: url)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: url)
+        }
+        return url
+    }
+
+    private func makeTemporaryPNGURL(size: CGSize) throws -> URL {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let data = renderer.pngData { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
         try data.write(to: url)
         addTeardownBlock {
             try? FileManager.default.removeItem(at: url)

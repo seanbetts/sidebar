@@ -1,12 +1,12 @@
 import Foundation
 import sideBarShared
 
-public struct TemporaryFileStore {
+public struct TemporaryFileStore: Sendable {
     public static let shared = TemporaryFileStore()
 
     private let directory: URL
 
-    public init(directory: URL? = nil) {
+    public nonisolated init(directory: URL? = nil) {
         if let directory {
             self.directory = directory
         } else {
@@ -16,25 +16,25 @@ public struct TemporaryFileStore {
         }
     }
 
-    public func store(data: Data, filename: String) throws -> URL {
+    public nonisolated func store(data: Data, filename: String) throws -> URL {
         let url = try makeURL(filename: filename)
         try ensureDirectory()
         try data.write(to: url, options: .atomic)
         return url
     }
 
-    public func store(text: String, filename: String) throws -> URL {
+    public nonisolated func store(text: String, filename: String) throws -> URL {
         let data = Data(text.utf8)
         return try store(data: data, filename: filename)
     }
 
-    private func ensureDirectory() throws {
+    private nonisolated func ensureDirectory() throws {
         if !FileManager.default.fileExists(atPath: directory.path) {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         }
     }
 
-    private func makeURL(filename: String) throws -> URL {
+    private nonisolated func makeURL(filename: String) throws -> URL {
         let trimmed = filename.trimmed
         let safeName = trimmed.isEmpty ? "file" : trimmed
         let unique = "\(UUID().uuidString)-\(safeName)"

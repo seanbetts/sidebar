@@ -227,19 +227,29 @@ public struct IngestionDerivative: Codable {
 }
 
 /// Represents a spreadsheet payload struct.
-public struct SpreadsheetPayload: Codable {
+public struct SpreadsheetPayload: Codable, Sendable {
     /// The sheets value.
     public let sheets: [SpreadsheetSheet]
+
+    public nonisolated init(sheets: [SpreadsheetSheet]) {
+        self.sheets = sheets
+    }
 }
 
 /// Represents a spreadsheet sheet struct.
-public struct SpreadsheetSheet: Codable {
+public struct SpreadsheetSheet: Codable, Sendable {
     /// The name value.
     public let name: String
     /// The rows value.
     public let rows: [[String]]
     /// The header row value.
     public let headerRow: Int?
+
+    public nonisolated init(name: String, rows: [[String]], headerRow: Int?) {
+        self.name = name
+        self.rows = rows
+        self.headerRow = headerRow
+    }
 
     enum CodingKeys: String, CodingKey {
         case name

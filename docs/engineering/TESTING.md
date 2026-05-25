@@ -160,6 +160,13 @@ xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   -destination 'platform=macOS' -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 
+# iOS - Coverage lane (manual, no simulator)
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarLogicHost -testPlan AppleCoverage \
+  -destination 'platform=macOS' -parallel-testing-enabled NO \
+  -enableCodeCoverage YES \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+
 # iOS - Full suite (needs iOS simulator)
 xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   -scheme sideBar -testPlan AppleStateful \

@@ -2,6 +2,7 @@ import Combine
 import sideBarShared
 import Foundation
 import UniformTypeIdentifiers
+
 // MARK: - IngestionViewModel+Private
 extension IngestionViewModel {
     static let fileJobTerminalStatuses = FileJobStatusPolicy.terminalStatuses
@@ -273,58 +274,26 @@ extension IngestionViewModel {
         meta: IngestionMetaResponse,
         derivative: IngestionDerivative
     ) async {
-        let inferredKind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
-        let kind = overrideKindIfMarkdown(
-            inferredKind: inferredKind,
-            filename: meta.file.filenameOriginal,
-            mimeType: derivative.mime
-        )
-        let filename = makeFilename(
-            base: meta.file.filenameOriginal,
+        var payload = await IngestionDerivativeViewerPayloadPreparer.prepare(
+            data: data,
+            originalFilename: meta.file.filenameOriginal,
             mimeType: derivative.mime,
-            fallback: derivative.kind
+            derivativeKind: derivative.kind,
+            temporaryStore: temporaryStore
         )
         let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
-        switch kind {
-        case .markdown, .text, .json:
-            let rawText = String(bytes: data, encoding: .utf8) ?? ""
-            let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
-            let text = shouldStrip ? MarkdownRendering.stripFrontmatter(rawText) : rawText
-            let fileURL = try? temporaryStore.store(data: data, filename: filename)
-            viewerState = FileViewerState(
-                title: meta.file.filenameOriginal,
-                kind: kind,
-                text: text,
-                fileURL: fileURL,
-                spreadsheet: nil,
-                youtubeEmbedURL: youtubeEmbedURL
-            )
-        case .spreadsheet:
-            let spreadsheet = try? JSONDecoder().decode(SpreadsheetPayload.self, from: data)
-            let fileURL = try? temporaryStore.store(data: data, filename: filename)
-            viewerState = FileViewerState(
-                title: meta.file.filenameOriginal,
-                kind: .spreadsheet,
-                text: nil,
-                fileURL: fileURL,
-                spreadsheet: spreadsheet,
-                youtubeEmbedURL: youtubeEmbedURL
-            )
-        default:
-            let fileURL = try? temporaryStore.store(data: data, filename: filename)
-            let transcript = await transcriptForVideoIfAvailable(
+
+        if payload.kind == .video {
+            payload.text = await transcriptForVideoIfAvailable(
                 meta: meta,
-                kind: kind
-            )
-            viewerState = FileViewerState(
-                title: meta.file.filenameOriginal,
-                kind: kind,
-                text: transcript,
-                fileURL: fileURL,
-                spreadsheet: nil,
-                youtubeEmbedURL: youtubeEmbedURL
+                kind: payload.kind
             )
         }
+
+        viewerState = payload.viewerState(
+            title: meta.file.filenameOriginal,
+            youtubeEmbedURL: youtubeEmbedURL
+        )
     }
 
     private func jobPollingDelayNanoseconds(fileId: String, consecutiveFailures: Int) -> UInt64 {

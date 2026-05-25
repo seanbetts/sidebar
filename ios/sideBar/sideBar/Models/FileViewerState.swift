@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a file viewer kind enum.
-public enum FileViewerKind: String {
+public enum FileViewerKind: String, Sendable {
     case pdf
     case image
     case video
@@ -12,7 +12,7 @@ public enum FileViewerKind: String {
     case spreadsheet
     case quickLook
 
-    public static func infer(path: String?, mimeType: String?, derivativeKind: String?) -> FileViewerKind {
+    public nonisolated static func infer(path: String?, mimeType: String?, derivativeKind: String?) -> FileViewerKind {
         if let kind = inferFromDerivative(derivativeKind) {
             return kind
         }
@@ -25,7 +25,7 @@ public enum FileViewerKind: String {
         return .quickLook
     }
 
-    private static func inferFromDerivative(_ derivativeKind: String?) -> FileViewerKind? {
+    private nonisolated static func inferFromDerivative(_ derivativeKind: String?) -> FileViewerKind? {
         guard let derivativeKind else { return nil }
         switch derivativeKind {
         case "viewer_pdf":
@@ -47,7 +47,7 @@ public enum FileViewerKind: String {
         }
     }
 
-    private static func inferFromMimeType(_ mimeType: String?) -> FileViewerKind? {
+    private nonisolated static func inferFromMimeType(_ mimeType: String?) -> FileViewerKind? {
         guard let mimeType else { return nil }
         let normalized = mimeType.lowercased()
         if normalized == "application/pdf" {
@@ -74,7 +74,7 @@ public enum FileViewerKind: String {
         return nil
     }
 
-    private static func inferFromPath(_ path: String?) -> FileViewerKind? {
+    private nonisolated static func inferFromPath(_ path: String?) -> FileViewerKind? {
         guard let path else { return nil }
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
         switch ext {

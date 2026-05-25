@@ -120,12 +120,20 @@ xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   -scheme sideBarLogicHost -testPlan AppleFast \
   -destination 'platform=macOS' -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+
+# Coverage lane (manual, no simulator)
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarLogicHost -testPlan AppleCoverage \
+  -destination 'platform=macOS' -parallel-testing-enabled NO \
+  -enableCodeCoverage YES \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 ```
 
 CI workflow (`.github/workflows/ios-ci.yml`):
 
 - Runs on a self-hosted Mac runner.
 - `dev` branch: SwiftLint + doc comments + AppleFast logic tests on macOS (no simulator).
+- Manual dispatch can run the AppleCoverage plan and upload the `.xcresult` bundle without slowing normal pushes.
 - `main` branch: AppleFast logic tests on macOS + AppleUI + AppleExtensions on iOS simulator.
 - Manual dispatch available for any lane combination.
 

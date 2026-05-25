@@ -1,12 +1,71 @@
 import PDFKit
 import AVKit
+import ImageIO
 #if os(macOS)
+import AppKit
 import QuickLook
 import QuickLookUI
 #elseif canImport(QuickLook)
+import UIKit
 import QuickLook
 #endif
 import SwiftUI
+
+#if os(macOS)
+typealias FileViewerPlatformImage = NSImage
+#else
+typealias FileViewerPlatformImage = UIImage
+#endif
+
+private struct PlatformImageLoadKey: Hashable {
+    let url: URL
+    let maxPixelSize: Int
+}
+
+private struct PlatformImageLoadResult: @unchecked Sendable {
+    let cgImage: CGImage
+}
+
+enum PlatformImageFileLoader {
+    @MainActor
+    static func loadImage(url: URL, maxPixelSize: Int) async -> FileViewerPlatformImage? {
+        let task = Task.detached(priority: .userInitiated) {
+            loadThumbnail(url: url, maxPixelSize: maxPixelSize)
+        }
+        guard let result = await task.value else {
+            return nil
+        }
+
+        #if os(macOS)
+        return NSImage(
+            cgImage: result.cgImage,
+            size: NSSize(width: result.cgImage.width, height: result.cgImage.height)
+        )
+        #else
+        return UIImage(cgImage: result.cgImage)
+        #endif
+    }
+
+    private nonisolated static func loadThumbnail(url: URL, maxPixelSize: Int) -> PlatformImageLoadResult? {
+        let options = [
+            kCGImageSourceShouldCache: false
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, options) else {
+            return nil
+        }
+
+        let thumbnailOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(maxPixelSize, 1)
+        ] as CFDictionary
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions) else {
+            return nil
+        }
+        return PlatformImageLoadResult(cgImage: image)
+    }
+}
 
 #if os(macOS)
 struct NativeVideoPlayer: NSViewRepresentable {
@@ -119,16 +178,53 @@ struct PDFKitView: NSViewRepresentable {
 struct PlatformImageView: View {
     let url: URL
     let size: CGSize
+    @Environment(\.displayScale) private var displayScale
+    @State private var image: FileViewerPlatformImage?
+    @State private var didFail = false
 
     var body: some View {
-        if let image = NSImage(contentsOf: url) {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: size.width, maxHeight: size.height)
-                .padding(DesignTokens.Spacing.sm)
-        } else {
+        content
+            .task(id: loadKey) {
+                await loadImage()
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let image {
+            platformImage(image)
+        } else if didFail {
             PlaceholderView(title: "Unable to load image")
+        } else {
+            ProgressView()
+        }
+    }
+
+    private var loadKey: PlatformImageLoadKey {
+        PlatformImageLoadKey(url: url, maxPixelSize: maxPixelSize)
+    }
+
+    private var maxPixelSize: Int {
+        let visiblePixels = max(size.width, size.height) * displayScale
+        return max(Int(ceil(visiblePixels)), 1)
+    }
+
+    private func platformImage(_ image: FileViewerPlatformImage) -> some View {
+        Image(nsImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: size.width, maxHeight: size.height)
+            .padding(DesignTokens.Spacing.sm)
+    }
+
+    @MainActor
+    private func loadImage() async {
+        image = nil
+        didFail = false
+        if let loaded = await PlatformImageFileLoader.loadImage(url: url, maxPixelSize: maxPixelSize) {
+            image = loaded
+        } else {
+            didFail = true
         }
     }
 }
@@ -290,16 +386,53 @@ struct PDFKitView: UIViewRepresentable {
 struct PlatformImageView: View {
     let url: URL
     let size: CGSize
+    @Environment(\.displayScale) private var displayScale
+    @State private var image: FileViewerPlatformImage?
+    @State private var didFail = false
 
     var body: some View {
-        if let image = UIImage(contentsOfFile: url.path) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: size.width, maxHeight: size.height)
-                .padding(DesignTokens.Spacing.sm)
-        } else {
+        content
+            .task(id: loadKey) {
+                await loadImage()
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let image {
+            platformImage(image)
+        } else if didFail {
             PlaceholderView(title: "Unable to load image")
+        } else {
+            ProgressView()
+        }
+    }
+
+    private var loadKey: PlatformImageLoadKey {
+        PlatformImageLoadKey(url: url, maxPixelSize: maxPixelSize)
+    }
+
+    private var maxPixelSize: Int {
+        let visiblePixels = max(size.width, size.height) * displayScale
+        return max(Int(ceil(visiblePixels)), 1)
+    }
+
+    private func platformImage(_ image: FileViewerPlatformImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: size.width, maxHeight: size.height)
+            .padding(DesignTokens.Spacing.sm)
+    }
+
+    @MainActor
+    private func loadImage() async {
+        image = nil
+        didFail = false
+        if let loaded = await PlatformImageFileLoader.loadImage(url: url, maxPixelSize: maxPixelSize) {
+            image = loaded
+        } else {
+            didFail = true
         }
     }
 }

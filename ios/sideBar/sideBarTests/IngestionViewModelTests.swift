@@ -104,6 +104,45 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
+    func testDerivativePayloadPreparerStripsMarkdownFrontmatterAndStoresFile() async throws {
+        let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let payload = await IngestionDerivativeViewerPayloadPreparer.prepare(
+            data: Data("---\ntitle: Draft\n---\n# Body".utf8),
+            originalFilename: "draft.md",
+            mimeType: "text/markdown",
+            derivativeKind: "ai_md",
+            temporaryStore: TemporaryFileStore(directory: tempDirectory)
+        )
+
+        XCTAssertEqual(payload.kind, .markdown)
+        XCTAssertEqual(payload.text, "# Body")
+        let fileURL = try XCTUnwrap(payload.fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
+    func testDerivativePayloadPreparerDecodesSpreadsheetOffMainPayload() async throws {
+        let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let data = Data(
+            """
+            {"sheets":[{"name":"Sheet 1","rows":[["A","B"],["1","2"]],"header_row":0}]}
+            """.utf8
+        )
+
+        let payload = await IngestionDerivativeViewerPayloadPreparer.prepare(
+            data: data,
+            originalFilename: "report",
+            mimeType: "application/json",
+            derivativeKind: "viewer_json",
+            temporaryStore: TemporaryFileStore(directory: tempDirectory)
+        )
+
+        XCTAssertEqual(payload.kind, .spreadsheet)
+        XCTAssertEqual(payload.spreadsheet?.sheets.first?.name, "Sheet 1")
+        XCTAssertEqual(payload.spreadsheet?.sheets.first?.rows[1], ["1", "2"])
+        let fileURL = try XCTUnwrap(payload.fileURL)
+        XCTAssertEqual(fileURL.pathExtension, "json")
+    }
+
     func testSelectingDifferentFileClearsStaleActiveMetaBeforeOfflineUnavailableFailure() async {
         let existingFile = makeFile(id: "file-existing")
         let unavailableFile = makeFile(id: "file-unavailable")

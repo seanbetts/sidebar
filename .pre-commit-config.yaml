@@ -87,6 +87,12 @@ repos:
         language: system
         files: ^(ios/sideBar/Config/SideBar\.xcconfig|ios/sideBar/sideBar\.xcodeproj/project\.pbxproj|scripts/check_ios_extension_config_resolution\.py)$
         pass_filenames: false
+      - id: safari-extension-parity
+        name: safari-extension-parity
+        entry: python3 scripts/check_safari_extension_parity.py
+        language: system
+        files: ^(ios/sideBar/sideBar Safari Extension/|ios/sideBar/sideBar Safari Extension \(macOS\) Extension/|scripts/check_safari_extension_parity\.py$)
+        pass_filenames: false
       - id: check-cert-pins
         name: check-cert-pins
         entry: bash ios/check-cert-pins.sh

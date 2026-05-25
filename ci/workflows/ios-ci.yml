@@ -7,9 +7,17 @@ on:
       - "ios/**"
       - "scripts/check_ios_doc_comments.py"
       - "scripts/check_ios_extension_config_resolution.py"
+      - "scripts/check_safari_extension_parity.py"
       - "scripts/check_notes_runtime_boundary.py"
       - ".swiftlint.yml"
       - ".github/workflows/ios-ci.yml"
+  workflow_dispatch:
+    inputs:
+      run_coverage:
+        description: "Run the AppleCoverage test plan and upload the xcresult bundle"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ios-ci-dev-${{ github.ref }}
@@ -27,6 +35,8 @@ jobs:
         working-directory: ios/sideBar
       - name: Doc comment coverage
         run: python3 scripts/check_ios_doc_comments.py
+      - name: Safari extension parity
+        run: python3 scripts/check_safari_extension_parity.py
 
   ios_test_logic:
     needs: [ios_quality]
@@ -53,3 +63,38 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=
+
+  ios_test_coverage:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_coverage }}
+    needs: [ios_quality]
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Resolve packages
+        run: |
+          xcodebuild -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBarLogicHost \
+            -destination 'platform=macOS' \
+            -resolvePackageDependencies \
+            -onlyUsePackageVersionsFromResolvedFile
+      - name: Run coverage tests (macOS, no simulator)
+        run: |
+          mkdir -p "${{ runner.temp }}/ios-coverage"
+          xcodebuild test \
+            -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBarLogicHost \
+            -testPlan AppleCoverage \
+            -destination 'platform=macOS' \
+            -parallel-testing-enabled NO \
+            -enableCodeCoverage YES \
+            -resultBundlePath "${{ runner.temp }}/ios-coverage/AppleCoverage.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=
+      - name: Upload coverage result bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppleCoverage.xcresult
+          path: ${{ runner.temp }}/ios-coverage/AppleCoverage.xcresult
