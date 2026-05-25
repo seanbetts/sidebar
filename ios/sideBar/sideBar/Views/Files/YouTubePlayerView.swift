@@ -102,8 +102,8 @@ public struct YouTubePlayerView: NSViewRepresentable {
             for navigationAction: WKNavigationAction,
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
-            if let url = navigationAction.request.url {
-                openExternally(url)
+            if let externalURL = externalURL(for: navigationAction) {
+                openExternally(externalURL)
             }
             return nil
         }
@@ -132,6 +132,7 @@ public struct YouTubePlayerView: NSViewRepresentable {
             let isNewWindow = navigationAction.targetFrame == nil
             guard isLinkActivation || isNewWindow else { return nil }
             guard let url = navigationAction.request.url,
+                  url.scheme?.lowercased() == "https",
                   let host = url.host?.lowercased(),
                   YouTubeURLPolicy.isYouTubeHost(host) else {
                 return nil
@@ -317,8 +318,8 @@ public struct YouTubePlayerView: UIViewRepresentable {
             for navigationAction: WKNavigationAction,
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
-            if let url = navigationAction.request.url {
-                openExternally(url)
+            if let externalURL = externalURL(for: navigationAction) {
+                openExternally(externalURL)
             }
             return nil
         }
@@ -347,6 +348,7 @@ public struct YouTubePlayerView: UIViewRepresentable {
             let isNewWindow = navigationAction.targetFrame == nil
             guard isLinkActivation || isNewWindow else { return nil }
             guard let url = navigationAction.request.url,
+                  url.scheme?.lowercased() == "https",
                   let host = url.host?.lowercased(),
                   YouTubeURLPolicy.isYouTubeHost(host) else {
                 return nil

@@ -151,8 +151,8 @@ extension TikTokEmbedView {
             for navigationAction: WKNavigationAction,
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
-            if let url = navigationAction.request.url {
-                openExternally(url)
+            if let externalURL = externalURL(for: navigationAction) {
+                openExternally(externalURL)
             }
             return nil
         }
@@ -181,6 +181,7 @@ extension TikTokEmbedView {
             let isNewWindow = navigationAction.targetFrame == nil
             guard isLinkActivation || isNewWindow else { return nil }
             guard let url = navigationAction.request.url,
+                  url.scheme?.lowercased() == "https",
                   let host = url.host?.lowercased(),
                   host == "www.tiktok.com" || host == "tiktok.com" else {
                 return nil
