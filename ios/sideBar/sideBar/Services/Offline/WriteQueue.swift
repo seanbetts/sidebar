@@ -554,9 +554,7 @@ extension WriteQueue {
     }
 
     private func coalesceTaskNotesUpdate(entityId: String, payload: Data) async throws -> Bool {
-        let decoder = JSONDecoder()
-        guard let incoming = try? decoder.decode(TaskOperationPayload.self, from: payload),
-              incoming.op.lowercased() == "notes" else { return false }
+        guard WriteQueueCoalescingPolicy.isTaskNotesUpdate(payload) else { return false }
         return try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(
@@ -567,8 +565,7 @@ extension WriteQueue {
             request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
             request.fetchLimit = 1
             guard let write = try context.fetch(request).first,
-                  let existing = try? decoder.decode(TaskOperationPayload.self, from: write.payload),
-                  existing.op.lowercased() == "notes" else { return false }
+                  WriteQueueCoalescingPolicy.isTaskNotesUpdate(write.payload) else { return false }
             write.payload = payload; write.createdAt = Date(); write.status = WriteQueueStatus.pending.rawValue
             write.attempts = 0; write.lastError = nil; write.lastAttemptAt = nil
             return true
@@ -576,9 +573,8 @@ extension WriteQueue {
     }
 
     private func coalesceSettingsUpdate(payload: Data) async throws -> Bool {
-        let decoder = JSONDecoder()
-        guard let incoming = try? decoder.decode(SettingsMutationPayload.self, from: payload),
-              incoming.kind == .settingsPatch else { return false }
+        let incoming = try? JSONDecoder().decode(SettingsMutationPayload.self, from: payload)
+        guard let incoming, incoming.kind == .settingsPatch else { return false }
         return try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(
@@ -592,10 +588,11 @@ extension WriteQueue {
             request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
             request.fetchLimit = 1
             guard let write = try context.fetch(request).first,
-                  let existing = try? decoder.decode(SettingsMutationPayload.self, from: write.payload),
-                  existing.kind == .settingsPatch else { return false }
-            let merged = existing.mergingSettingsPatch(with: incoming)
-            write.payload = try JSONEncoder().encode(merged)
+                  let merged = WriteQueueCoalescingPolicy.mergedSettingsPatch(
+                    existing: write.payload,
+                    incoming: payload
+                  ) else { return false }
+            write.payload = merged
             write.createdAt = Date()
             write.status = WriteQueueStatus.pending.rawValue
             write.attempts = 0
@@ -844,26 +841,5 @@ extension WriteQueue {
         } catch {
             logger.error("Failed to auto-resolve write conflict: \(error.localizedDescription, privacy: .public)")
         }
-    }
-}
-
-private extension SettingsMutationPayload {
-    func mergingSettingsPatch(with incoming: SettingsMutationPayload) -> SettingsMutationPayload {
-        SettingsMutationPayload(
-            communicationStyle: incoming.communicationStyle ?? communicationStyle,
-            workingRelationship: incoming.workingRelationship ?? workingRelationship,
-            name: incoming.name ?? name,
-            jobTitle: incoming.jobTitle ?? jobTitle,
-            employer: incoming.employer ?? employer,
-            dateOfBirth: incoming.includeDateOfBirth ? incoming.dateOfBirth : dateOfBirth,
-            gender: incoming.gender ?? gender,
-            pronouns: incoming.pronouns ?? pronouns,
-            location: incoming.location ?? location,
-            notificationPreferences: incoming.notificationPreferences ?? notificationPreferences,
-            assistantIdentity: incoming.assistantIdentity ?? assistantIdentity,
-            aiPrimaryProvider: incoming.aiPrimaryProvider ?? aiPrimaryProvider,
-            enabledSkills: incoming.enabledSkills ?? enabledSkills,
-            includeDateOfBirth: includeDateOfBirth || incoming.includeDateOfBirth
-        )
     }
 }
