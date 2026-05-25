@@ -86,11 +86,10 @@ extension SettingsStore {
             serverSnapshot: nil
         )
 
-        let removedPrimaryProviderKey = current.aiPrimaryProvider == provider
         return ProviderKeyStatusResponse(
             provider: provider,
-            hasKey: removedPrimaryProviderKey ? false : true,
-            keyLast4: removedPrimaryProviderKey ? nil : current.aiPrimaryProviderKeyLast4
+            hasKey: false,
+            keyLast4: nil
         )
     }
 

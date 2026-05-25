@@ -159,6 +159,37 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(api.updateSettingsCallCount, 0)
     }
 
+    func testCommitProviderKeyDeleteReportsDeletedProviderStatus() async throws {
+        let initialSettings = makeSettings(
+            name: "Initial",
+            aiPrimaryProvider: "openai",
+            aiPrimaryProviderHasKey: true,
+            aiPrimaryProviderKeyLast4: "1234"
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let api = SettingsStoreAPISpy(getSettingsResult: .success(initialSettings))
+        let writeQueue = SettingsWriteQueueSpy()
+        let store = SettingsStore(
+            settingsAPI: api,
+            cache: SettingsPersistenceSpy(),
+            offlineStore: OfflineStore(container: persistence.container),
+            writeQueue: writeQueue
+        )
+        store.replace(initialSettings, persist: true)
+
+        let status = try await store.commitProviderKeyDelete(provider: "google")
+
+        XCTAssertEqual(status.provider, "google")
+        XCTAssertFalse(status.hasKey)
+        XCTAssertNil(status.keyLast4)
+        XCTAssertEqual(store.settings?.aiPrimaryProvider, "openai")
+        XCTAssertEqual(store.settings?.aiPrimaryProviderKeyLast4, "1234")
+        let queuedWrite = try XCTUnwrap(writeQueue.enqueuedWrites.first)
+        let payload = try JSONDecoder().decode(SettingsMutationPayload.self, from: queuedWrite.payload)
+        XCTAssertEqual(payload.kind, .providerKeyDelete)
+        XCTAssertEqual(payload.provider, "google")
+    }
+
     func testCommitProfileImageUploadCachesDataAndEnqueuesAssetReference() async throws {
         let initialSettings = makeSettings(name: "Initial")
         let persistence = PersistenceController(inMemory: true)

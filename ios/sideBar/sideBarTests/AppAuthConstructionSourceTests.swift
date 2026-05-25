@@ -17,6 +17,19 @@ final class AppAuthConstructionSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("#ifDEBUGletseededSession=UITestAuthBootstrap.makeSeededSession"))
         XCTAssertTrue(normalized.contains("#ifDEBUGletinitialPasswordResetState:PasswordResetState?="))
     }
+
+    func testLegacyNetworkMonitorSourceIsRemoved() throws {
+        let fileURL = URL(fileURLWithPath: "\(#filePath)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("App")
+            .appendingPathComponent("NetworkMonitor.swift")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sourceURL.path))
+    }
 }
 
 private func sideBarAppSource(
