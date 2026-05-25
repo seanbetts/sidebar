@@ -15,6 +15,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
     }
 
     override func tearDown() {
+        WidgetFaviconURLProtocolMock.requestHandler = nil
         clearWidgetStorage()
         ExternalSurfaceDiagnosticsStore.shared.clear()
         super.tearDown()
@@ -552,6 +553,28 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(secondTimeline.entries.first?.faviconDataByWebsiteId["site-a"], Data([0xA, 0xB, 0xC]))
     }
 
+    func testSavedSitesFaviconFetchRejectsOversizedDownloads() async {
+        let url = URL(string: "https://example.com/favicon.png")!
+        let session = makeFaviconSession(
+            data: Data(repeating: 0xA, count: 512_001),
+            mimeType: "image/png"
+        )
+
+        let fetched = await SavedSitesProvider.fetchFaviconData(from: url, session: session)
+
+        XCTAssertNil(fetched)
+    }
+
+    func testSavedSitesFaviconFetchLoadsSmallImageDownloads() async {
+        let url = URL(string: "https://example.com/favicon.png")!
+        let payload = Data([0x1, 0x2, 0x3])
+        let session = makeFaviconSession(data: payload, mimeType: "image/png")
+
+        let fetched = await SavedSitesProvider.fetchFaviconData(from: url, session: session)
+
+        XCTAssertEqual(fetched, payload)
+    }
+
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
         _ = try await OpenScratchpadIntent().perform()
         _ = try await StartChatIntent().perform()
@@ -682,6 +705,24 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(source.contains("privatevarstandByTaskListView:someView"))
         XCTAssertTrue(source.contains("privatevarstandByEmptyStateView:someView"))
     }
+
+    private func makeFaviconSession(data: Data, mimeType: String) -> URLSession {
+        WidgetFaviconURLProtocolMock.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": mimeType,
+                    "Content-Length": "\(data.count)"
+                ]
+            )!
+            return (response, data)
+        }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [WidgetFaviconURLProtocolMock.self]
+        return URLSession(configuration: configuration)
+    }
 }
 
 private actor TaskCompletionSyncProbe {
@@ -734,6 +775,36 @@ private actor CallCounter {
 }
 
 private func assertOpensIntent<Result: OpensIntent>(_: Result) {}
+
+private final class WidgetFaviconURLProtocolMock: URLProtocol {
+    static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override static func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = Self.requestHandler else {
+            client?.urlProtocol(self, didFailWithError: NSError(domain: "WidgetFaviconURLProtocolMock", code: 0))
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
 
 private func normalizedWidgetSource(
     named fileName: String,

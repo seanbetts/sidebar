@@ -29,6 +29,7 @@ struct SavedSitesEntry: TimelineEntry {
 struct SavedSitesProvider: AppIntentTimelineProvider {
     typealias Intent = WebsitesWidgetConfigurationIntent
     typealias Entry = SavedSitesEntry
+    static let maxFaviconDataBytes = 512_000
 
     private let dataManager: WidgetDataManager
     private let now: () -> Date
@@ -193,18 +194,34 @@ struct SavedSitesProvider: AppIntentTimelineProvider {
         }
     }
 
-    private static func fetchFaviconData(from url: URL) async -> Data? {
+    static func fetchFaviconData(from url: URL, session: URLSession = .shared) async -> Data? {
+        guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            return nil
+        }
+
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            let (temporaryURL, response) = try await session.download(from: url)
+            defer { try? FileManager.default.removeItem(at: temporaryURL) }
             guard let httpResponse = response as? HTTPURLResponse,
                   (200..<300).contains(httpResponse.statusCode),
-                  data.count <= 512_000 else {
+                  httpResponse.isImageResponse,
+                  httpResponse.expectedContentLength <= maxFaviconDataBytes else {
                 return nil
             }
-            return data
+
+            let fileSize = try fileSize(at: temporaryURL)
+            guard fileSize <= maxFaviconDataBytes else {
+                return nil
+            }
+            return try Data(contentsOf: temporaryURL, options: .mappedIfSafe)
         } catch {
             return nil
         }
+    }
+
+    private static func fileSize(at url: URL) throws -> Int64 {
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        return (attributes[.size] as? NSNumber)?.int64Value ?? 0
     }
 
     private static func candidateSites(for websites: [WidgetWebsite]) -> [WidgetWebsite] {
@@ -245,5 +262,14 @@ struct SavedSitesProvider: AppIntentTimelineProvider {
             faviconDataByWebsiteId: [:],
             selection: selection
         )
+    }
+}
+
+private extension HTTPURLResponse {
+    var isImageResponse: Bool {
+        guard let mimeType = mimeType?.lowercased() else {
+            return true
+        }
+        return mimeType.hasPrefix("image/")
     }
 }
