@@ -56,6 +56,13 @@ final class SearchFieldTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".appFont(.body)"))
         XCTAssertFalse(normalized.contains(".appFont(.subheading)"))
     }
+
+    func testSearchFieldClearButtonHasAccessibilityLabel() throws {
+        let normalized = try searchFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Clearsearch\")"))
+    }
 }
 
 private func searchFieldSource(

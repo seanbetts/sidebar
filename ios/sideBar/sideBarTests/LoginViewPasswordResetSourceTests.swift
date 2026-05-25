@@ -19,6 +19,14 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("DesignTokens.Colors.actionPrimary"))
     }
 
+    func testLoginClearButtonsHaveAccessibilityLabels() throws {
+        let normalized = try combinedLoginSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Clearemail\")"))
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Clearpassword\")"))
+    }
+
     func testSignedOutAuthFlowIncludesResetCompletionSurface() throws {
         let normalized = try combinedLoginSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

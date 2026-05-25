@@ -172,6 +172,7 @@ public struct LoginView: View {
                         .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear email")
                 .transition(.scale.combined(with: .opacity))
             }
         }
@@ -198,6 +199,7 @@ public struct LoginView: View {
                         .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear password")
                 .transition(.scale.combined(with: .opacity))
             }
         }

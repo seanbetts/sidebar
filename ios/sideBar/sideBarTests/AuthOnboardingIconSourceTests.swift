@@ -87,6 +87,7 @@ final class AuthOnboardingIconSourceTests: XCTestCase {
         XCTAssertFalse(createAccount.contains("Image(systemName:\"person.crop.circle\")"))
 
         XCTAssertTrue(verifyEmail.contains("Image(appIcon:AppIcon.Onboarding.emailVerification)"))
+        XCTAssertTrue(verifyEmail.contains(".accessibilityLabel(\"Verificationcodedigit\\(index+1)\")"))
         XCTAssertFalse(verifyEmail.contains("Image(systemName:\"envelope.badge\")"))
 
         XCTAssertTrue(profile.contains("Image(appIcon:AppIcon.Settings.profileAdd)"))

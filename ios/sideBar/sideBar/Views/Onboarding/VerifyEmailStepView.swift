@@ -49,6 +49,7 @@ struct VerifyEmailStepView: View {
                             .frame(width: 44, height: 52)
                             .background(DesignTokens.Colors.surface)
                             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
+                            .accessibilityLabel("Verification code digit \(index + 1)")
                             .focused($focusedIndex, equals: index)
                             .onChange(of: otpDigits[index]) { _, newValue in
                                 handleDigitChange(at: index, value: newValue)

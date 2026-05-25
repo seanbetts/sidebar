@@ -42,6 +42,14 @@ final class TaskRowTests: XCTestCase {
             "Send proposal, completed, due Today, repeats Weekly, has notes"
         )
     }
+
+    func testTaskRowIconActionsHaveAccessibilityLabels() throws {
+        let normalized = try taskRowSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Deletecompletedtask\")"))
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"Taskactions\")"))
+    }
 }
 
 private func taskRowSource(

@@ -210,6 +210,7 @@ struct TaskRow<MenuContent: View>: View {
                                 .frame(width: 24, height: 24)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Delete completed task")
                     } else {
                         Menu {
                             menuContent()
@@ -220,6 +221,7 @@ struct TaskRow<MenuContent: View>: View {
                                 .frame(width: 24, height: 24)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Task actions")
                         .disabled(task.isPreview)
                     }
                 }
