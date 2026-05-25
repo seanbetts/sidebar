@@ -2,6 +2,14 @@ import Foundation
 import UniformTypeIdentifiers
 import sideBarShared
 
+enum ShareExtensionPayloadSizePolicy {
+    static let maxInMemoryPayloadBytes = 25 * 1024 * 1024
+
+    static func acceptsInMemoryPayload(byteCount: Int) -> Bool {
+        byteCount <= maxInMemoryPayloadBytes
+    }
+}
+
 extension ShareViewController {
     // MARK: - Image Handling
 
@@ -45,6 +53,12 @@ extension ShareViewController {
         guard let data = imageData else {
             await MainActor.run { [weak self] in
                 self?.showError(ExtensionUserMessageCatalog.message(for: .imageProcessFailed))
+            }
+            return
+        }
+        guard ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(byteCount: data.count) else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .sharedPayloadTooLarge))
             }
             return
         }
@@ -97,6 +111,12 @@ extension ShareViewController {
             filename = "\(suggestedName).\(ext)"
         }
         let mimeType = mimeTypeForFilename(filename)
+        guard ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(byteCount: data.count) else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .sharedPayloadTooLarge))
+            }
+            return
+        }
 
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
     }
@@ -156,6 +176,13 @@ extension ShareViewController {
     // MARK: - Upload
 
     func uploadFile(data: Data, filename: String, mimeType: String, isImage: Bool) async {
+        guard ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(byteCount: data.count) else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .sharedPayloadTooLarge))
+            }
+            return
+        }
+
         guard let environment else {
             await MainActor.run { [weak self] in
                 self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)

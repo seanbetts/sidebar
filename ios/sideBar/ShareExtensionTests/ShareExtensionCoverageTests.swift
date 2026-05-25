@@ -242,6 +242,7 @@ final class ShareExtensionCoverageTests: XCTestCase {
 
         XCTAssertLessThan(fileRepresentationRange.lowerBound, decodeRange.lowerBound)
         XCTAssertTrue(source.contains("awaituploadFileFromURL(fileURL,itemProvider:itemProvider,isImage:true)"))
+        XCTAssertTrue(source.contains("ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(byteCount:data.count)"))
     }
 
     func testWidgetProvidersClassifyRefreshFailuresAsWidgetRefreshRequests() throws {

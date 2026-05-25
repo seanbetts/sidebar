@@ -104,6 +104,20 @@ final class ShareViewControllerCoverageTests: XCTestCase {
         XCTAssertEqual(controller.mimeTypeForFilename("unknown.custom"), "application/octet-stream")
     }
 
+    func testShareExtensionRejectsOversizedInMemoryProviderFallbacks() {
+        XCTAssertTrue(ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(byteCount: 1024))
+        XCTAssertTrue(
+            ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(
+                byteCount: ShareExtensionPayloadSizePolicy.maxInMemoryPayloadBytes
+            )
+        )
+        XCTAssertFalse(
+            ShareExtensionPayloadSizePolicy.acceptsInMemoryPayload(
+                byteCount: ShareExtensionPayloadSizePolicy.maxInMemoryPayloadBytes + 1
+            )
+        )
+    }
+
     func testProcessSharedContentRecordsEntryDiagnosticsBeforeProviderParsing() {
         ExternalSurfaceDiagnosticsStore.shared.clear()
         defer { ExternalSurfaceDiagnosticsStore.shared.clear() }

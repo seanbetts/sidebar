@@ -24,6 +24,7 @@ public enum ExtensionMessageCode: String, CaseIterable {
     case imageProcessFailed = "image_process_failed"
     case fileLoadFailed = "file_load_failed"
     case fileReadFailed = "file_read_failed"
+    case sharedPayloadTooLarge = "shared_payload_too_large"
     case uploadFailed = "upload_failed"
     case networkError = "network_error"
     case unknownFailure = "unknown_failure"
@@ -55,6 +56,7 @@ public enum ExtensionUserMessageCatalog {
         .imageProcessFailed: "Could not process the image.",
         .fileLoadFailed: "Could not load the file.",
         .fileReadFailed: "Could not read the file.",
+        .sharedPayloadTooLarge: "This shared item is too large to process in the extension. Open sideBar to upload it directly.",
         .uploadFailed: "Upload failed. Please try again.",
         .networkError: "Network error. Please try again.",
         .unknownFailure: "Something went wrong. Please try again."
