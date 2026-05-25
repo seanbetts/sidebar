@@ -100,6 +100,22 @@ final class CertificatePinningDelegateTests: XCTestCase {
         XCTAssertNil(CertificatePinningDelegate.notAfterDate(for: cert))
     }
 
+    func testDERNotAfterDateParsesBundledCertificate() throws {
+        let certData = try bundledCertificateData(named: "sidebar-api")
+        let expiry = try XCTUnwrap(CertificatePinningDelegate.notAfterDate(fromDER: certData))
+        let components = Calendar(identifier: .gregorian).dateComponents(
+            in: TimeZone(secondsFromGMT: 0)!,
+            from: expiry
+        )
+
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 7)
+        XCTAssertEqual(components.day, 23)
+        XCTAssertEqual(components.hour, 23)
+        XCTAssertEqual(components.minute, 32)
+        XCTAssertEqual(components.second, 18)
+    }
+
     func testInitWithEmptyCertsDoesNotCrash() {
         // Ensure the delegate can be constructed with no certs without crashing.
         let delegate = CertificatePinningDelegate(pinnedCertificates: [])
@@ -132,6 +148,14 @@ final class CertificatePinningDelegateTests: XCTestCase {
         clock.advance(by: 0.1)
         XCTAssertFalse(registry.wasCancelled(host: "api.trysidebar.ai"))
     }
+}
+
+private func bundledCertificateData(named name: String) throws -> Data {
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar/Resources/\(name).cer")
+    return try Data(contentsOf: url)
 }
 
 private final class TestRegistryClock {
