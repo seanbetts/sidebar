@@ -173,6 +173,7 @@ xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
 # iOS - UI smoke tests
+SIDEBAR_RUN_LIVE_UI_TESTS=1 \
 xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   -scheme sideBarUI -testPlan AppleUI \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
@@ -197,8 +198,10 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 |------|--------|---------------|-------------------|
 | AppleFast | sideBarLogicHost | Pure logic, parsers, formatters, state machines, API mocks | No (runs on macOS) |
 | AppleStateful | sideBar | Mounted views, app environment, persistence, integration | Yes |
-| AppleUI | sideBarUI | End-to-end smoke (login, messaging, notes) | Yes |
+| AppleUI | sideBarUI | Quarantined live end-to-end smoke, skipped unless `SIDEBAR_RUN_LIVE_UI_TESTS=1` is set | Yes |
 | AppleExtensions | sideBarExtensions | Share sheet, widgets, Safari extension | Yes |
+
+`AppleUI` is intentionally a live smoke lane. It talks to the configured backend and Supabase project, so every test in `SideBarUITests` must call `requireLiveUITestsEnabled()` before reading credentials or launching the app. Routine UI assertions should live in deterministic logic, stateful, extension, or protocol-level tests instead of this lane.
 
 Current lane split for the website-save checkpoint:
 

@@ -36,6 +36,7 @@ Choose the lowest appropriate Apple test layer first.
 - default new Apple tests to `logic`
 - choose `surface` only when the logic layer cannot prove the behavior
 - choose `ui_smoke` only for true end-to-end coverage
+- gate live UI smoke tests with `SIDEBAR_RUN_LIVE_UI_TESTS=1` before reading credentials or launching the app
 
 Support files, harnesses, fixtures, and helpers may live beside tests, but they are not test cases.
 

@@ -36,6 +36,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testLoginSuccessNavigatesToSignedInHome() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = launchApp(with: config)
         attemptLogin(
@@ -57,6 +58,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testLoginFailureShowsErrorAndStaysSignedOut() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = launchApp(with: config)
         attemptLogin(
@@ -84,6 +86,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testSendMessageInSeededConversationShowsStreamingReply() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -118,6 +121,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testCreateEditDeleteNoteInSeededAccount() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -463,6 +467,7 @@ enum SideBarUITestConstants {
     static let uiTestSupabaseAnonKey = "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"
     static let uiTestAccessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
     static let uiTestUserIdKey = "SIDEBAR_UI_TEST_USER_ID"
+    static let runLiveUITestsKey = "SIDEBAR_RUN_LIVE_UI_TESTS"
 }
 
 struct UITestCredentials {

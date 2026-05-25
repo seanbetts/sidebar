@@ -57,6 +57,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
           SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
+          SIDEBAR_RUN_LIVE_UI_TESTS: "1"
         run: |
           xcodebuild test \
             -project ios/sideBar/sideBar.xcodeproj \

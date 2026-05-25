@@ -9,6 +9,16 @@ import Foundation
 import XCTest
 
 extension SideBarUITests {
+    func requireLiveUITestsEnabled() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment[SideBarUITestConstants.runLiveUITestsKey] == "1" else {
+            throw XCTSkip(
+                "Live UI smoke tests are quarantined. Set " +
+                "\(SideBarUITestConstants.runLiveUITestsKey)=1 with seeded backend credentials to run them."
+            )
+        }
+    }
+
     func resolveSeededConversationRow(in app: XCUIApplication) -> XCUIElement {
         let title = seededConversationTitle()
         let titleCandidates = [
@@ -66,6 +76,7 @@ extension SideBarUITests {
 
     @MainActor
     func testStreamingReplyKeepsBottomAnchorVisible() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -105,6 +116,7 @@ extension SideBarUITests {
 
     @MainActor
     func testIPadTasksWorkspaceDoesNotShowFloatingDock() throws {
+        try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
