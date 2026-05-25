@@ -9,6 +9,7 @@ import UIKit
 
 public struct SiteHeaderBar: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -121,7 +122,7 @@ public struct SiteHeaderBar: View {
             }
             headerStatusCluster
         }
-        .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
+        .animation(shouldAnimateSidebar ? sidebarAnimation : nil, value: isLeftPanelExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
             if isCompact {
@@ -160,6 +161,10 @@ public struct SiteHeaderBar: View {
 
     private var barBackground: Color {
         DesignTokens.Colors.background
+    }
+
+    private var sidebarAnimation: Animation? {
+        Motion.standard(reduceMotion: reduceMotion)
     }
 
     private var isCompact: Bool {

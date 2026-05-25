@@ -397,12 +397,8 @@ private extension LoginView {
             lastSignInEmail = trimmedEmail
             environment.refreshAuthState()
             Haptics.notification(.success)
-            if reduceMotion {
+            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
                 showSuccess = true
-            } else {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    showSuccess = true
-                }
             }
             Task {
                 try? await Task.sleep(for: .seconds(0.7))

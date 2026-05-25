@@ -71,9 +71,11 @@ extension ContentView {
             }
             return .handled
         })
-        content = AnyView(content.animation(.easeInOut(duration: 0.2), value: environment.isMacSettingsPresented))
+        content = AnyView(
+            content.animation(Motion.quick(reduceMotion: reduceMotion), value: environment.isMacSettingsPresented)
+        )
         #endif
-        content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
+        content = AnyView(content.animation(Motion.quick(reduceMotion: reduceMotion), value: environment.toastCenter.toast))
         content = AnyView(content.onChange(of: scenePhase) { _, newValue in
             if newValue == .inactive || newValue == .background {
                 Task {

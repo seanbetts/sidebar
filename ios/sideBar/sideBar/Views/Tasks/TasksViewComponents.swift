@@ -118,7 +118,7 @@ struct TaskRow<MenuContent: View>: View {
                         guard !isCompleting else { return }
                         switch completionAction {
                         case .complete:
-                            withAnimation(.easeInOut(duration: 0.15)) {
+                            withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
                                 isCompleting = true
                             }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -336,14 +336,8 @@ struct TaskRow<MenuContent: View>: View {
             : .opacity.combined(with: .move(edge: .top))
     }
 
-    private var expandAnimation: Animation {
-        if reduceMotion {
-            return .easeOut(duration: 0.15)
-        }
-        if #available(iOS 17.0, macOS 14.0, *) {
-            return .snappy(duration: 0.22, extraBounce: 0.0)
-        }
-        return .spring(response: 0.28, dampingFraction: 0.9, blendDuration: 0.1)
+    private var expandAnimation: Animation? {
+        Motion.quick(reduceMotion: reduceMotion)
     }
 
     private var showsDuePill: Bool {

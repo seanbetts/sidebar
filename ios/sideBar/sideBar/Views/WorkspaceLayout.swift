@@ -40,6 +40,7 @@ enum WorkspaceSidebarSwipePolicy {
 // MARK: - WorkspaceLayout
 
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
     @Binding private var isRightSidebarCollapsed: Bool
@@ -190,7 +191,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
+            .animation(shouldAnimateSidebar ? sidebarAnimation : nil, value: isLeftPanelExpanded)
         }
     }
 
@@ -350,7 +351,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         guard action != .none else { return }
 
         if shouldAnimateSidebar {
-            withAnimation(.smooth(duration: 0.3)) {
+            withAnimation(sidebarAnimation) {
                 applyLeftPanelSwipeAction(action)
             }
         } else {
@@ -383,6 +384,10 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         #else
         false
         #endif
+    }
+
+    private var sidebarAnimation: Animation? {
+        Motion.standard(reduceMotion: reduceMotion)
     }
 
     private var panelBackground: Color {
