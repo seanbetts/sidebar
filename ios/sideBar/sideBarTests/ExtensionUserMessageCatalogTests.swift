@@ -181,6 +181,24 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         }
     }
 
+    func testSafariManifestUsesActiveTabWithoutBroadHostPermissions() throws {
+        for resources in [
+            extensionResourcesDirectory(targetDirectory: "sideBar Safari Extension/Resources"),
+            extensionResourcesDirectory(targetDirectory: "sideBar Safari Extension (macOS) Extension/Resources")
+        ] {
+            let manifestText = try resourceText(in: resources, filename: "manifest.json")
+            let manifestData = Data(manifestText.utf8)
+            let manifest = try XCTUnwrap(
+                try JSONSerialization.jsonObject(with: manifestData, options: []) as? [String: Any]
+            )
+            let permissions = try XCTUnwrap(manifest["permissions"] as? [String])
+
+            XCTAssertTrue(permissions.contains("activeTab"))
+            XCTAssertNil(manifest["host_permissions"])
+            XCTAssertFalse(manifestText.contains("<all_urls>"))
+        }
+    }
+
     func testSafariManifestIconsFillTheirCanvasWithoutTransparentPadding() throws {
         for iconDirectory in [
             repositoryDirectory().appendingPathComponent("assets/safari-extension"),
