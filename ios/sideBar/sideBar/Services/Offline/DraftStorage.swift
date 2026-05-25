@@ -107,19 +107,15 @@ final class DraftStorage {
 
     func clearAllDrafts() throws {
         let context = container.newBackgroundContext()
+        let shouldBatchDelete = supportsBatchDelete
+        let viewContext = container.viewContext
         var capturedError: Error?
         context.performAndWait {
             do {
-                let request = NSFetchRequest<NSFetchRequestResult>(entityName: "LocalDraft")
-                let deleteRequest = NSBatchDeleteRequest(fetchRequest: request)
-                deleteRequest.resultType = .resultTypeObjectIDs
-                let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
-                if let deletedObjectIDs = result?.result as? [NSManagedObjectID], !deletedObjectIDs.isEmpty {
-                    let changes: [AnyHashable: Any] = [NSDeletedObjectsKey: deletedObjectIDs]
-                    NSManagedObjectContext.mergeChanges(
-                        fromRemoteContextSave: changes,
-                        into: [container.viewContext]
-                    )
+                if shouldBatchDelete {
+                    try Self.batchDeleteAllDrafts(in: context, viewContext: viewContext)
+                } else {
+                    try Self.fetchAndDeleteAllDrafts(in: context, viewContext: viewContext)
                 }
             } catch {
                 capturedError = error
@@ -128,5 +124,50 @@ final class DraftStorage {
         if let capturedError {
             throw capturedError
         }
+    }
+
+    private var supportsBatchDelete: Bool {
+        let stores = container.persistentStoreCoordinator.persistentStores
+        return !stores.isEmpty && stores.allSatisfy { $0.type == NSSQLiteStoreType }
+    }
+
+    nonisolated private static func batchDeleteAllDrafts(
+        in context: NSManagedObjectContext,
+        viewContext: NSManagedObjectContext
+    ) throws {
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: "LocalDraft")
+        let deleteRequest = NSBatchDeleteRequest(fetchRequest: request)
+        deleteRequest.resultType = .resultTypeObjectIDs
+        let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
+        if let deletedObjectIDs = result?.result as? [NSManagedObjectID] {
+            mergeDeletedDrafts(deletedObjectIDs, into: viewContext)
+        }
+    }
+
+    nonisolated private static func fetchAndDeleteAllDrafts(
+        in context: NSManagedObjectContext,
+        viewContext: NSManagedObjectContext
+    ) throws {
+        let request = NSFetchRequest<LocalDraft>(entityName: "LocalDraft")
+        request.includesPropertyValues = false
+        let drafts = try context.fetch(request)
+        let deletedObjectIDs = drafts.map(\.objectID)
+        drafts.forEach { context.delete($0) }
+        if context.hasChanges {
+            try context.save()
+        }
+        mergeDeletedDrafts(deletedObjectIDs, into: viewContext)
+    }
+
+    nonisolated private static func mergeDeletedDrafts(
+        _ deletedObjectIDs: [NSManagedObjectID],
+        into viewContext: NSManagedObjectContext
+    ) {
+        guard !deletedObjectIDs.isEmpty else { return }
+        let changes: [AnyHashable: Any] = [NSDeletedObjectsKey: deletedObjectIDs]
+        NSManagedObjectContext.mergeChanges(
+            fromRemoteContextSave: changes,
+            into: [viewContext]
+        )
     }
 }
