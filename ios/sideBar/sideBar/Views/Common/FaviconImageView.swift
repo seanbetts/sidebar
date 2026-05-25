@@ -7,6 +7,8 @@ import AppKit
 #endif
 
 struct FaviconImageView: View {
+    private static let maxFaviconDataBytes: Int64 = 512_000
+
     @EnvironmentObject private var environment: AppEnvironment
     let faviconUrl: String?
     let faviconR2Key: String?
@@ -142,15 +144,14 @@ struct FaviconImageView: View {
                 "favicon.load.network.start",
                 details: details
             )
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            guard let data = try await BoundedRemoteImageDataLoader.load(
+                url: url,
+                maxBytes: Self.maxFaviconDataBytes
+            ) else {
                 let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
                 clearImageAndLog(
-                    "favicon.load.network.bad-status",
+                    "favicon.load.network.rejected-image",
                     details: details + [
-                        "status_code=\(statusCode)",
                         "elapsed_ms=\(elapsedMs)"
                     ]
                 )
