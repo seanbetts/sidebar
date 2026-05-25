@@ -193,20 +193,7 @@ import OSLog
                 NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
             ]
             let writes = try context.fetch(request)
-            return writes.map { write in
-                PendingWriteSummary(
-                    id: write.id,
-                    operationType: write.operationType,
-                    entityType: write.entityType,
-                    entityId: write.entityId,
-                    status: write.status,
-                    attempts: write.attempts,
-                    lastError: write.lastError,
-                    conflictReason: write.conflictReason,
-                    createdAt: write.createdAt,
-                    lastAttemptAt: write.lastAttemptAt
-                )
-            }
+            return writes.map(PendingWriteQueueMapper.summary)
         }
     }
 
@@ -237,18 +224,7 @@ import OSLog
                 NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
             ]
             guard let write = try context.fetch(request).first else { return nil }
-            return PendingWriteSummary(
-                id: write.id,
-                operationType: write.operationType,
-                entityType: write.entityType,
-                entityId: write.entityId,
-                status: write.status,
-                attempts: write.attempts,
-                lastError: write.lastError,
-                conflictReason: write.conflictReason,
-                createdAt: write.createdAt,
-                lastAttemptAt: write.lastAttemptAt
-            )
+            return PendingWriteQueueMapper.summary(from: write)
         }
     }
 
@@ -473,15 +449,7 @@ extension WriteQueue {
             write.attempts += 1
             write.lastAttemptAt = Date()
             return FetchedPendingWrite(
-                record: PendingWriteRecord(
-                    id: write.id,
-                    operationType: write.operationType,
-                    entityType: write.entityType,
-                    entityId: write.entityId,
-                    payload: write.payload,
-                    serverSnapshot: write.serverSnapshot,
-                    attempts: write.attempts
-                ),
+                record: PendingWriteQueueMapper.record(from: write),
                 recoveryState: originalState,
                 restoresOriginalAttemptState: false
             )
@@ -512,15 +480,7 @@ extension WriteQueue {
             write.attempts += 1
             write.lastAttemptAt = Date()
             return FetchedPendingWrite(
-                record: PendingWriteRecord(
-                    id: write.id,
-                    operationType: write.operationType,
-                    entityType: write.entityType,
-                    entityId: write.entityId,
-                    payload: write.payload,
-                    serverSnapshot: write.serverSnapshot,
-                    attempts: write.attempts
-                ),
+                record: PendingWriteQueueMapper.record(from: write),
                 recoveryState: originalState,
                 restoresOriginalAttemptState: true
             )
@@ -716,20 +676,7 @@ extension WriteQueue {
 
                 let pendingCount = try context.count(for: queuedRequest)
                 let failedWrites = try context.fetch(failedRequest)
-                let failedRows = failedWrites.map { write in
-                    PendingWriteSummary(
-                        id: write.id,
-                        operationType: write.operationType,
-                        entityType: write.entityType,
-                        entityId: write.entityId,
-                        status: write.status,
-                        attempts: write.attempts,
-                        lastError: write.lastError,
-                        conflictReason: write.conflictReason,
-                        createdAt: write.createdAt,
-                        lastAttemptAt: write.lastAttemptAt
-                    )
-                }
+                let failedRows = failedWrites.map(PendingWriteQueueMapper.summary)
 
                 return (pendingCount, failedRows)
             }

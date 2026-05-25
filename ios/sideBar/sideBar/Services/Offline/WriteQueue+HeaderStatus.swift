@@ -64,20 +64,7 @@ extension WriteQueue {
             request.sortDescriptors = [
                 NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
             ]
-            return try context.fetch(request).map { write in
-                return PendingWriteSummary(
-                    id: write.id,
-                    operationType: write.operationType,
-                    entityType: write.entityType,
-                    entityId: write.entityId,
-                    status: write.status,
-                    attempts: write.attempts,
-                    lastError: write.lastError,
-                    conflictReason: write.conflictReason,
-                    createdAt: write.createdAt,
-                    lastAttemptAt: write.lastAttemptAt
-                )
-            }
+            return try context.fetch(request).map(PendingWriteQueueMapper.summary)
         }
     }
 
@@ -160,20 +147,7 @@ extension WriteQueue {
 
                 let queuedCount = try context.count(for: queuedRequest)
                 let failedWrites = try context.fetch(failedRequest)
-                let failedRows = failedWrites.map { write in
-                    return PendingWriteSummary(
-                        id: write.id,
-                        operationType: write.operationType,
-                        entityType: write.entityType,
-                        entityId: write.entityId,
-                        status: write.status,
-                        attempts: write.attempts,
-                        lastError: write.lastError,
-                        conflictReason: write.conflictReason,
-                        createdAt: write.createdAt,
-                        lastAttemptAt: write.lastAttemptAt
-                    )
-                }
+                let failedRows = failedWrites.map(PendingWriteQueueMapper.summary)
 
                 return HeaderQueueState(
                     pendingCount: queuedCount,

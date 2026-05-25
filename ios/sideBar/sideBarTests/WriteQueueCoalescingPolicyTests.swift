@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class WriteQueueCoalescingPolicyTests: XCTestCase {
     func testRecognizesTaskNotesUpdatesOnly() throws {
         let notesPayload = try JSONEncoder().encode(TaskOperationPayload(
