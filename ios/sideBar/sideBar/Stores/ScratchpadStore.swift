@@ -13,8 +13,7 @@ public nonisolated final class ScratchpadStore: ObservableObject {
     public init() {
     }
 
-    @MainActor
-    public func bump() {
+    @MainActor public func bump() {
         version += 1
     }
 }

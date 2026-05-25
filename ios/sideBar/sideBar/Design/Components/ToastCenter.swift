@@ -1,8 +1,7 @@
 import SwiftUI
 import Combine
 
-@MainActor
-public final class ToastCenter: ObservableObject {
+@MainActor public final class ToastCenter: ObservableObject {
     @Published public private(set) var toast: ToastMessage?
     private var dismissTask: Task<Void, Never>?
     private let sleep: @MainActor @Sendable (UInt64) async -> Void

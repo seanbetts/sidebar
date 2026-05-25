@@ -11,8 +11,7 @@ public nonisolated final class NavigationState: ObservableObject {
     @MainActor @AppStorage(AppStorageKeys.lastSelectedSection) public var lastSectionRaw: String = AppSection.chat.rawValue
     @MainActor @AppStorage(AppStorageKeys.sidebarWidth) public var sidebarWidth: Double = 280
 
-    @MainActor
-    public init(userDefaults: UserDefaults? = nil) {
+    @MainActor public init(userDefaults: UserDefaults? = nil) {
         _lastSectionRaw = AppStorage(
             wrappedValue: AppSection.chat.rawValue,
             AppStorageKeys.lastSelectedSection,
@@ -25,8 +24,7 @@ public nonisolated final class NavigationState: ObservableObject {
         )
     }
 
-    @MainActor
-    public var lastSection: AppSection {
+    @MainActor public var lastSection: AppSection {
         get { AppSection(rawValue: lastSectionRaw) ?? .chat }
         set { lastSectionRaw = newValue.rawValue }
     }

@@ -2,9 +2,8 @@ import Combine
 import Foundation
 import sideBarShared
 
-@MainActor
 /// Canonical owner of the active user settings snapshot and local persistence wiring.
-public final class SettingsStore: ObservableObject {
+@MainActor public final class SettingsStore: ObservableObject {
     @Published public internal(set) var settings: UserSettings?
 
     let settingsAPI: any SettingsProviding
