@@ -76,6 +76,26 @@ public final class PersistenceController {
         }
 
         do {
+            try preflightLegacyDuplicateCleanupIfNeeded(for: container)
+        } catch {
+            let cleanupError = error as NSError
+            logger("Preflight cache/offline duplicate cleanup failed: \(cleanupError)")
+            if !inMemory {
+                do {
+                    configureInMemoryStore(for: container)
+                    try storeLoader(container)
+                    prepareLoadedStore(in: container, logger: logger)
+                    logger("Recovered Core Data by switching to in-memory fallback store after preflight cleanup failure")
+                    return .recoveredWithInMemoryFallback
+                } catch {
+                    let fallbackError = error as NSError
+                    logger("In-memory fallback recovery failed after preflight cleanup failure: \(fallbackError)")
+                }
+            }
+            fatalError("Unrecoverable Core Data preflight cleanup failure")
+        }
+
+        do {
             try storeLoader(container)
             prepareLoadedStore(in: container, logger: logger)
             return .none
@@ -189,6 +209,66 @@ public final class PersistenceController {
         context.processPendingChanges()
         if context.hasChanges {
             try context.save()
+        }
+    }
+
+    nonisolated private static func preflightLegacyDuplicateCleanupIfNeeded(
+        for container: NSPersistentContainer
+    ) throws {
+        for description in container.persistentStoreDescriptions {
+            guard description.type != NSInMemoryStoreType,
+                  description.type == NSSQLiteStoreType,
+                  let storeURL = description.url,
+                  FileManager.default.fileExists(atPath: storeURL.path) else {
+                continue
+            }
+
+            let metadata: [String: Any]
+            do {
+                metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
+                    ofType: NSSQLiteStoreType,
+                    at: storeURL,
+                    options: nil
+                )
+            } catch {
+                continue
+            }
+            let constrainedModel = container.managedObjectModel
+            if constrainedModel.isConfiguration(withName: nil, compatibleWithStoreMetadata: metadata) {
+                continue
+            }
+
+            guard let legacyModel = constrainedModel.copy() as? NSManagedObjectModel else {
+                throw NSError(
+                    domain: "sideBar.PersistenceController",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to copy Core Data model for duplicate preflight"]
+                )
+            }
+            legacyModel.entitiesByName["CacheEntry"]?.uniquenessConstraints = []
+            legacyModel.entitiesByName["OfflineEntry"]?.uniquenessConstraints = []
+            guard legacyModel.isConfiguration(withName: nil, compatibleWithStoreMetadata: metadata) else {
+                continue
+            }
+
+            let legacyContainer = NSPersistentContainer(
+                name: container.name,
+                managedObjectModel: legacyModel
+            )
+            let legacyDescription = NSPersistentStoreDescription(url: storeURL)
+            legacyDescription.type = NSSQLiteStoreType
+            legacyDescription.shouldMigrateStoreAutomatically = false
+            legacyDescription.shouldInferMappingModelAutomatically = false
+            legacyContainer.persistentStoreDescriptions = [legacyDescription]
+
+            try loadPersistentStoresSynchronously(container: legacyContainer)
+            let context = legacyContainer.viewContext
+            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+            try removeDuplicateEntries(in: context)
+            context.reset()
+            for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+                try legacyContainer.persistentStoreCoordinator.remove(store)
+            }
         }
     }
 

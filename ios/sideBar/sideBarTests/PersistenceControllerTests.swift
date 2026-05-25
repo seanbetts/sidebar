@@ -119,6 +119,59 @@ final class PersistenceControllerTests: XCTestCase {
         XCTAssertEqual(cacheEntries.first?.payload, Data("newer-cache".utf8))
     }
 
+    func testLoadStoresWithRecoveryPreflightsLegacySQLiteDuplicatesBeforeMigration() throws {
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("sqlite")
+        var loadedContainer: NSPersistentContainer?
+        defer {
+            if let loadedContainer {
+                try? Self.unloadStores(loadedContainer)
+            }
+            Self.removeSQLiteStoreFiles(at: storeURL)
+        }
+        let olderDate = Date(timeIntervalSince1970: 100)
+        let newerDate = Date(timeIntervalSince1970: 200)
+        try Self.makeLegacySQLiteStore(
+            at: storeURL,
+            olderDate: olderDate,
+            newerDate: newerDate
+        )
+
+        let container = Self.makeSQLiteContainer(storeURL: storeURL)
+        var didResetStore = false
+        let state = PersistenceController.loadStoresWithRecovery(
+            inMemory: false,
+            container: container,
+            storeLoader: Self.loadStores,
+            storeResetter: { _, _ in didResetStore = true },
+            logger: { _ in }
+        )
+        loadedContainer = container
+
+        XCTAssertEqual(state, .none)
+        XCTAssertFalse(didResetStore)
+
+        let cacheRequest = CacheEntry.fetchRequest()
+        cacheRequest.predicate = NSPredicate(format: "key == %@", "cache-key")
+        let cacheEntries = try container.viewContext.fetch(cacheRequest)
+        XCTAssertEqual(cacheEntries.count, 1)
+        XCTAssertEqual(cacheEntries.first?.payload, Data("newer-cache".utf8))
+        XCTAssertEqual(cacheEntries.first?.updatedAt, newerDate)
+
+        let offlineRequest = OfflineEntry.fetchRequest()
+        offlineRequest.predicate = NSPredicate(format: "key == %@", "offline-key")
+        let offlineEntries = try container.viewContext.fetch(offlineRequest)
+        XCTAssertEqual(offlineEntries.count, 1)
+        XCTAssertEqual(offlineEntries.first?.payload, Data("newer-offline".utf8))
+        XCTAssertEqual(offlineEntries.first?.updatedAt, newerDate)
+
+        let draftRequest = LocalDraft.fetchRequest()
+        let drafts = try container.viewContext.fetch(draftRequest)
+        XCTAssertEqual(drafts.count, 1)
+        XCTAssertEqual(drafts.first?.content, "unrelated")
+    }
+
     func testRecoveryStateIsNoneWhenLoadSucceedsImmediately() {
         var loadCallCount = 0
         var didResetStore = false
@@ -224,6 +277,14 @@ final class PersistenceControllerTests: XCTestCase {
         return container
     }
 
+    private static func makeSQLiteContainer(storeURL: URL) -> NSPersistentContainer {
+        let container = NSPersistentContainer(name: "SideBarCache")
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        container.persistentStoreDescriptions = [description]
+        return container
+    }
+
     private static func makeInMemoryContainer(model: NSManagedObjectModel) -> NSPersistentContainer {
         let container = NSPersistentContainer(name: "SideBarCache", managedObjectModel: model)
         let description = NSPersistentStoreDescription()
@@ -239,6 +300,63 @@ final class PersistenceControllerTests: XCTestCase {
         model.entitiesByName["CacheEntry"]?.uniquenessConstraints = []
         model.entitiesByName["OfflineEntry"]?.uniquenessConstraints = []
         return model
+    }
+
+    private static func makeLegacySQLiteStore(
+        at storeURL: URL,
+        olderDate: Date,
+        newerDate: Date
+    ) throws {
+        let container = NSPersistentContainer(
+            name: "SideBarCache",
+            managedObjectModel: try makeModelWithoutCacheAndOfflineConstraints()
+        )
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        container.persistentStoreDescriptions = [description]
+        try loadStores(container)
+
+        let context = container.viewContext
+        let olderCache = NSEntityDescription.insertNewObject(
+            forEntityName: "CacheEntry",
+            into: context
+        )
+        let olderCacheEntry = try XCTUnwrap(olderCache as? CacheEntry)
+        olderCacheEntry.key = "cache-key"
+        olderCacheEntry.payload = Data("older-cache".utf8)
+        olderCacheEntry.updatedAt = olderDate
+
+        let newerCache = NSEntityDescription.insertNewObject(
+            forEntityName: "CacheEntry",
+            into: context
+        )
+        let newerCacheEntry = try XCTUnwrap(newerCache as? CacheEntry)
+        newerCacheEntry.key = "cache-key"
+        newerCacheEntry.payload = Data("newer-cache".utf8)
+        newerCacheEntry.updatedAt = newerDate
+
+        let olderOffline = OfflineEntry.insertNew(in: context)
+        olderOffline.id = UUID()
+        olderOffline.key = "offline-key"
+        olderOffline.entityType = "note"
+        olderOffline.payload = Data("older-offline".utf8)
+        olderOffline.updatedAt = olderDate
+
+        let newerOffline = OfflineEntry.insertNew(in: context)
+        newerOffline.id = UUID()
+        newerOffline.key = "offline-key"
+        newerOffline.entityType = "note"
+        newerOffline.payload = Data("newer-offline".utf8)
+        newerOffline.updatedAt = newerDate
+
+        let draft = LocalDraft.insertNew(in: context)
+        draft.id = UUID()
+        draft.entityType = "note"
+        draft.entityId = "note-1"
+        draft.content = "unrelated"
+        draft.savedAt = newerDate
+        try context.save()
+        try unloadStores(container)
     }
 
     private static func loadStores(_ container: NSPersistentContainer) throws {
@@ -265,6 +383,25 @@ final class PersistenceControllerTests: XCTestCase {
         semaphore.wait()
         if let capturedError {
             throw capturedError
+        }
+    }
+
+    private static func unloadStores(_ container: NSPersistentContainer) throws {
+        container.viewContext.reset()
+        let coordinator = container.persistentStoreCoordinator
+        for store in coordinator.persistentStores {
+            try coordinator.remove(store)
+        }
+    }
+
+    private static func removeSQLiteStoreFiles(at storeURL: URL) {
+        let urls = [
+            storeURL,
+            URL(fileURLWithPath: "\(storeURL.path)-shm"),
+            URL(fileURLWithPath: "\(storeURL.path)-wal")
+        ]
+        for url in urls {
+            try? FileManager.default.removeItem(at: url)
         }
     }
 }
