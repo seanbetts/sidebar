@@ -79,6 +79,19 @@ def _build_settings_for_config(
     return config_match.group("body")
 
 
+def _shell_script_build_phase(*, pbxproj_text: str, phase_name: str) -> str:
+    """Return the PBXShellScriptBuildPhase block for one named phase."""
+    pattern = re.compile(
+        rf"\t\t[A-F0-9]+ /\* {re.escape(phase_name)} \*/ = \{{\n"
+        r"\t\t\tisa = PBXShellScriptBuildPhase;\n"
+        r"(?P<body>.*?\t\t\};)",
+        re.DOTALL,
+    )
+    match = pattern.search(pbxproj_text)
+    assert match is not None, f"Missing PBXShellScriptBuildPhase for {phase_name}"
+    return match.group(0)
+
+
 def test_app_targets_do_not_link_redundant_supabase_subproducts() -> None:
     """The app-style targets should not link Supabase and its subproducts together."""
     pbxproj_text = _pbxproj_text()
@@ -142,3 +155,12 @@ def test_share_extension_tests_link_extension_debug_dylibs() -> None:
             'sideBar\\\\ Safari\\\\ Extension.debug.dylib"'
             in build_settings
         )
+
+
+def test_swiftlint_build_phase_includes_share_extension_tests() -> None:
+    """Xcode SwiftLint should cover extension tests as well as app tests."""
+    pbxproj_text = _pbxproj_text()
+    swiftlint_phase = _shell_script_build_phase(pbxproj_text=pbxproj_text, phase_name="SwiftLint")
+
+    assert '"$(SRCROOT)/ShareExtensionTests"' in swiftlint_phase
+    assert '\\"${SRCROOT}/ShareExtensionTests\\"' in swiftlint_phase
