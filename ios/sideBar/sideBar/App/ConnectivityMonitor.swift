@@ -38,6 +38,14 @@ final class ConnectivityMonitor: ObservableObject {
     private var consecutiveServerFailures = 0
     private var consecutiveServerSuccesses = 0
 
+    var isHealthProbeSchedulingEnabled: Bool {
+        allowsHealthProbes
+    }
+
+    var hasScheduledHealthProbe: Bool {
+        probeTask != nil || schedulerTask != nil
+    }
+
     init(
         baseUrl: URL,
         startMonitoring: Bool = !EnvironmentConfig.isRunningTestsOrPreviews(),

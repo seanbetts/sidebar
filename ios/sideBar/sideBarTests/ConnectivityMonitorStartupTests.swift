@@ -16,8 +16,8 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
         )
         XCTAssertNotNil(monitor)
 
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
+        XCTAssertFalse(monitor?.isHealthProbeSchedulingEnabled ?? true)
+        XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
         XCTAssertEqual(ProbeURLProtocol.requestCount, 0)
         monitor = nil
         session.invalidateAndCancel()
@@ -36,8 +36,8 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
         )
         XCTAssertNotNil(monitor)
 
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
+        XCTAssertFalse(monitor?.isHealthProbeSchedulingEnabled ?? true)
+        XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
         XCTAssertEqual(ProbeURLProtocol.requestCount, 0)
         monitor = nil
         session.invalidateAndCancel()
@@ -62,8 +62,9 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
             userInfo: ["error": URLError(.cannotConnectToHost)]
         )
         await waitForMainQueueDrain()
-        try? await Task.sleep(nanoseconds: 200_000_000)
 
+        XCTAssertFalse(monitor?.isHealthProbeSchedulingEnabled ?? true)
+        XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
         XCTAssertEqual(ProbeURLProtocol.requestCount, 0)
         monitor = nil
         session.invalidateAndCancel()
