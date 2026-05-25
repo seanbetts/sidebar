@@ -74,17 +74,21 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
             )
         )
 
-        let sut = makeSUT(api: api, networkAvailable: true)
+        let sleepProbe = ToastDismissSleepProbe()
+        let sut = makeSUT(api: api, networkAvailable: true, toastSleep: sleepProbe.sleep(nanoseconds:))
         await sut.viewModel.load(selection: .today)
 
         await sut.viewModel.completeTask(task: task)
         await eventually {
             sut.toastCenter.toast != nil
         }
-
-        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        await eventually {
+            sleepProbe.requestedNanoseconds == [4_000_000_000]
+        }
 
         XCTAssertNotNil(sut.toastCenter.toast)
+        XCTAssertEqual(sleepProbe.requestedNanoseconds, [4_000_000_000])
+        sleepProbe.completeSleeps()
     }
 
     private struct SUT {
@@ -95,7 +99,10 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
     private func makeSUT(
         api: TasksViewModelAPIStub,
         networkAvailable: Bool,
-        serverReachable: Bool = true
+        serverReachable: Bool = true,
+        toastSleep: @escaping @MainActor (UInt64) async -> Void = { nanoseconds in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+        }
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -110,7 +117,7 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
             offlineStore: offlineStore,
             networkStatus: networkStatus
         )
-        let toastCenter = ToastCenter()
+        let toastCenter = ToastCenter(sleep: toastSleep)
         let viewModel = TasksViewModel(
             api: api,
             store: store,
@@ -140,6 +147,27 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
             } else {
                 try? await Task.sleep(nanoseconds: pollNanoseconds)
             }
+        }
+    }
+}
+
+@MainActor
+private final class ToastDismissSleepProbe {
+    private(set) var requestedNanoseconds: [UInt64] = []
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func sleep(nanoseconds: UInt64) async {
+        requestedNanoseconds.append(nanoseconds)
+        await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func completeSleeps() {
+        let continuations = self.continuations
+        self.continuations = []
+        for continuation in continuations {
+            continuation.resume()
         }
     }
 }

@@ -5,14 +5,24 @@ import Combine
 public final class ToastCenter: ObservableObject {
     @Published public private(set) var toast: ToastMessage?
     private var dismissTask: Task<Void, Never>?
+    private let sleep: @MainActor @Sendable (UInt64) async -> Void
+
+    public init(
+        sleep: @escaping @MainActor @Sendable (UInt64) async -> Void = { nanoseconds in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+        }
+    ) {
+        self.sleep = sleep
+    }
 
     public func show(message: String, style: ToastStyle = .error, duration: TimeInterval = 2.5) {
         dismissTask?.cancel()
         let toast = ToastMessage(message: message, style: style)
+        let sleep = self.sleep
         self.toast = toast
         Haptics.notification(style.hapticType)
-        dismissTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+        dismissTask = Task { [weak self, sleep] in
+            await sleep(UInt64(duration * 1_000_000_000))
             await MainActor.run {
                 if self?.toast?.id == toast.id {
                     self?.toast = nil
