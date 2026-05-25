@@ -28,7 +28,7 @@ extension WriteQueue {
     }
 
     func retryWrite(id: UUID) async throws {
-        try await runHeaderBackgroundTask { context in
+        try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -46,7 +46,7 @@ extension WriteQueue {
     }
 
     func cancelWrite(id: UUID) async throws {
-        try await runHeaderBackgroundTask { context in
+        try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -58,7 +58,7 @@ extension WriteQueue {
     }
 
     func fetchFailedHeaderRows() async throws -> [PendingWriteSummary] {
-        try await runHeaderBackgroundTask { context in
+        try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
             request.sortDescriptors = [
@@ -137,7 +137,7 @@ extension WriteQueue {
 
     private func refreshHeaderState() async {
         do {
-            let snapshot = try await runHeaderBackgroundTask { context -> HeaderQueueState in
+            let snapshot = try await performBackgroundTask { context -> HeaderQueueState in
                 let queuedRequest = PendingWrite.fetchRequest()
                 let failedRequest = PendingWrite.fetchRequest()
                 failedRequest.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
@@ -164,25 +164,6 @@ extension WriteQueue {
         } catch {
             applyHeaderQueueState(pendingCount: 0, failedCount: 0, failedHeaderRows: [])
             logger.error("Failed to refresh header state: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
-    private func runHeaderBackgroundTask<T>(
-        _ work: @escaping (NSManagedObjectContext) throws -> T
-    ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            container.performBackgroundTask { context in
-                context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-                do {
-                    let result = try work(context)
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
         }
     }
 }
