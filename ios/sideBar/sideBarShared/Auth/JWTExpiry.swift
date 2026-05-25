@@ -1,6 +1,8 @@
 import Foundation
 
+/// Reads JWT expiry timestamps without validating token signatures.
 public enum JWTExpiry {
+    /// Returns whether an access token is missing, invalid, or inside the refresh lead time.
     public static func shouldRefreshAccessToken(
         _ accessToken: String,
         now: Date = Date(),

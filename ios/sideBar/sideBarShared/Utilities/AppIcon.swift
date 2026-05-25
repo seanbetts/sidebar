@@ -1,14 +1,18 @@
 import Foundation
 
+/// Names a system symbol through the shared sideBar icon vocabulary.
 public struct AppIcon: RawRepresentable, Hashable, Sendable {
+    /// System symbol name for the icon.
     public let rawValue: String
 
+    /// Creates an icon from a system symbol name.
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
 }
 
 public extension AppIcon {
+    /// Command and mutation icons.
     enum Action {
         public static let add = AppIcon(rawValue: "plus")
         public static let addCircleFilled = AppIcon(rawValue: "plus.circle.fill")
@@ -43,6 +47,7 @@ public extension AppIcon {
         public static let signOut = AppIcon(rawValue: "rectangle.portrait.and.arrow.right")
     }
 
+    /// Top-level product area icons.
     enum Domain {
         public static let chat = AppIcon(rawValue: "bubble")
         public static let notes = AppIcon(rawValue: "text.document")
@@ -55,6 +60,7 @@ public extension AppIcon {
         public static let memoriesFilled = AppIcon(rawValue: "bookmark.fill")
     }
 
+    /// Task taxonomy and status icons.
     enum Tasks {
         public static let today = AppIcon(rawValue: "calendar")
         public static let upcoming = AppIcon(rawValue: "calendar.badge.clock")
@@ -65,6 +71,7 @@ public extension AppIcon {
         public static let recurrence = AppIcon(rawValue: "repeat")
     }
 
+    /// Navigation and disclosure icons.
     enum Navigation {
         public static let back = AppIcon(rawValue: "chevron.left")
         public static let forward = AppIcon(rawValue: "chevron.right")
@@ -78,6 +85,7 @@ public extension AppIcon {
         public static let collapseWorkspace = AppIcon(rawValue: "arrow.down.left.and.arrow.up.right")
     }
 
+    /// State, status, and feedback icons.
     enum State {
         public static let infoFilled = AppIcon(rawValue: "info.circle.fill")
         public static let success = AppIcon(rawValue: "checkmark")
@@ -98,6 +106,7 @@ public extension AppIcon {
         public static let weather = AppIcon(rawValue: "cloud.sun")
     }
 
+    /// Authentication form icons.
     enum Auth {
         public static let email = AppIcon(rawValue: "envelope")
         public static let password = AppIcon(rawValue: "lock")
@@ -106,6 +115,7 @@ public extension AppIcon {
         public static let passwordHidden = AppIcon(rawValue: "eye.slash.fill")
     }
 
+    /// Generic content and file-type icons.
     enum Content {
         public static let note = AppIcon(rawValue: "note.text")
         public static let textDocument = AppIcon(rawValue: "doc.text")
@@ -123,6 +133,7 @@ public extension AppIcon {
         public static let presentation = AppIcon(rawValue: "rectangle.on.rectangle.angled")
     }
 
+    /// Media viewer and playback icons.
     enum Media {
         public static let video = AppIcon(rawValue: "play.rectangle")
         public static let videoFile = AppIcon(rawValue: "video")
@@ -133,11 +144,13 @@ public extension AppIcon {
         public static let captions = AppIcon(rawValue: "captions.bubble")
     }
 
+    /// Markdown rendering icons.
     enum Markdown {
         public static let taskCompleted = AppIcon(rawValue: "checkmark.square.fill")
         public static let taskIncomplete = AppIcon(rawValue: "square")
     }
 
+    /// Note editor and formatting icons.
     enum Notes {
         public static let formatting = AppIcon(rawValue: "textformat")
         public static let unsavedChanges = AppIcon(rawValue: "pencil.circle.fill")
@@ -153,12 +166,14 @@ public extension AppIcon {
         public static let blockquote = AppIcon(rawValue: "text.quote")
     }
 
+    /// Spreadsheet viewer icons.
     enum Spreadsheet {
         public static let filterRows = AppIcon(rawValue: "line.3.horizontal.decrease.circle")
         public static let sortAscending = AppIcon(rawValue: "arrowtriangle.up.fill")
         public static let sortDescending = AppIcon(rawValue: "arrowtriangle.down.fill")
     }
 
+    /// PDF viewer icons.
     enum PDF {
         public static let fitPage = AppIcon(rawValue: "doc.viewfinder")
         public static let zoomIn = AppIcon(rawValue: "plus.magnifyingglass")
@@ -167,6 +182,7 @@ public extension AppIcon {
         public static let fitHeight = AppIcon(rawValue: "distribute.vertical")
     }
 
+    /// Settings section icons.
     enum Settings {
         public static let profile = AppIcon(rawValue: "person.crop.circle")
         public static let profileFilled = AppIcon(rawValue: "person.crop.circle.fill")
@@ -182,6 +198,7 @@ public extension AppIcon {
         public static let theme = AppIcon(rawValue: "paintpalette")
     }
 
+    /// Onboarding step icons.
     enum Onboarding {
         public static let emailVerification = AppIcon(rawValue: "envelope.badge")
         public static let assistantBrain = AppIcon(rawValue: "brain")
@@ -191,6 +208,7 @@ public extension AppIcon {
         public static let notificationsPermission = AppIcon(rawValue: "bell.badge.fill")
     }
 
+    /// Agent workspace surface icons.
     enum Workspace {
         public static let surface = AppIcon(rawValue: "rectangle.on.rectangle")
         public static let openEntityFallback = AppIcon(rawValue: "arrow.up.forward.app")
@@ -202,6 +220,7 @@ public extension AppIcon {
         public static let actionPanelSurface = AppIcon(rawValue: "slider.horizontal.3")
     }
 
+    /// Widget presentation icons.
     enum Widget {
         public static let taskStack = AppIcon(rawValue: "square.stack.3d.up")
         public static let pinnedNote = AppIcon(rawValue: "pin.fill")
@@ -216,6 +235,7 @@ public extension AppIcon {
         public static let canceledBadge = AppIcon(rawValue: "xmark")
     }
 
+    /// Keyboard shortcut icons.
     enum Shortcut {
         public static let showShortcuts = AppIcon(rawValue: "command")
         public static let toggleSidebar = AppIcon(rawValue: "sidebar.left")
@@ -225,6 +245,7 @@ public extension AppIcon {
         public static let createFolder = AppIcon(rawValue: "folder.badge.plus")
     }
 
+    /// Skills store and skill category icons.
     enum Skills {
         public static let fallback = AppIcon(rawValue: "puzzlepiece.extension")
         public static let categoryAll = AppIcon(rawValue: "square.grid.2x2")

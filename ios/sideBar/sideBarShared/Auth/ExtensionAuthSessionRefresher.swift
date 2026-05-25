@@ -1,11 +1,13 @@
 import Foundation
 import Supabase
 
+/// Refreshes Supabase auth sessions for app extensions using shared keychain state.
 public final class ExtensionAuthSessionRefresher {
     private let keychain: KeychainAuthStateStore
     private let supabase: SupabaseClient
     private let refreshLeadTime: TimeInterval = 300
 
+    /// Creates a refresher from extension configuration stored in the bundle.
     public init?(keychain: KeychainAuthStateStore, bundle: Bundle = .main) {
         guard let config = Self.loadConfig(from: bundle) else {
             return nil
@@ -22,6 +24,7 @@ public final class ExtensionAuthSessionRefresher {
         )
     }
 
+    /// Ensures the stored access token is present and refreshed when near expiry.
     public func ensureValidSession(forceRefresh: Bool = false) async -> Bool {
         let accessToken: String
         do {
@@ -47,6 +50,7 @@ public final class ExtensionAuthSessionRefresher {
         return true
     }
 
+    /// Returns whether a JWT should be refreshed before use.
     public static func shouldRefreshAccessToken(
         _ accessToken: String,
         now: Date = Date(),

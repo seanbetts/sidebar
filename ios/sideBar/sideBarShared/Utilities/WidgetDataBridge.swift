@@ -1,5 +1,6 @@
 import Foundation
 
+/// Reads and writes widget snapshots and pending operations in shared app-group storage.
 public final class WidgetDataBridge {
     private let userDefaultsProvider: () -> UserDefaults?
     private let appGroupResolutionProvider: () -> WidgetBridgeAppGroupResolution
@@ -7,6 +8,7 @@ public final class WidgetDataBridge {
     private let timelineReloader: (WidgetContentType) -> Void
     private let pendingOperationStore: WidgetPendingOperationStore
 
+    /// Creates a bridge with explicit storage, diagnostics, timeline, and pending-operation dependencies.
     public init(
         userDefaultsProvider: @escaping () -> UserDefaults?,
         appGroupResolutionProvider: @escaping () -> WidgetBridgeAppGroupResolution,
@@ -24,6 +26,7 @@ public final class WidgetDataBridge {
         )
     }
 
+    /// Loads the stored widget snapshot for a content type or returns the container's empty value.
     public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
         let resolution = appGroupResolutionProvider()
         guard let defaults = userDefaultsProvider() else {
@@ -72,11 +75,13 @@ public final class WidgetDataBridge {
         return decoded ?? T.empty
     }
 
+    /// Returns whether a snapshot key exists for a content type.
     public func hasStoredSnapshot(for contentType: WidgetContentType) -> Bool {
         guard let defaults = userDefaultsProvider() else { return false }
         return defaults.object(forKey: contentType.dataKey) != nil
     }
 
+    /// Stores a widget snapshot and asks WidgetKit to reload matching timelines.
     public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
         let resolution = appGroupResolutionProvider()
         guard let defaults = userDefaultsProvider() else {
@@ -111,6 +116,7 @@ public final class WidgetDataBridge {
         timelineReloader(contentType)
     }
 
+    /// Records a pending widget operation for later app-side reconciliation.
     public func recordPendingOperation<A: Codable & Equatable>(
         _ operation: WidgetPendingOperation<A>,
         for contentType: WidgetContentType
@@ -129,6 +135,7 @@ public final class WidgetDataBridge {
         )
     }
 
+    /// Consumes all pending operations for a widget content type.
     public func consumePendingOperations<A: Codable & Equatable>(
         for contentType: WidgetContentType,
         actionType: A.Type
@@ -151,6 +158,7 @@ public final class WidgetDataBridge {
         return pending
     }
 
+    /// Consumes pending operations that match a predicate and keeps nonmatching operations stored.
     public func consumePendingOperations<A: Codable & Equatable>(
         for contentType: WidgetContentType,
         actionType: A.Type,
@@ -176,6 +184,7 @@ public final class WidgetDataBridge {
         return result.matched
     }
 
+    /// Loads pending operations without removing them from shared storage.
     public func loadPendingOperations<A: Codable & Equatable>(
         for contentType: WidgetContentType,
         actionType: A.Type
@@ -183,6 +192,7 @@ public final class WidgetDataBridge {
         pendingOperationStore.load(key: contentType.pendingKey, actionType: actionType)
     }
 
+    /// Removes one pending operation by identifier.
     public func removePendingOperation<A: Codable & Equatable>(
         withId operationId: String,
         for contentType: WidgetContentType,

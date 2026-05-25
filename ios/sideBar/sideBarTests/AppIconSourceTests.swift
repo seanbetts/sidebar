@@ -7,7 +7,8 @@ final class AppIconSourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("publicstructAppIcon:RawRepresentable,Hashable,Sendable"))
         XCTAssertTrue(normalized.contains("publicletrawValue:String"))
-        XCTAssertTrue(normalized.contains("publicextensionAppIcon{enumAction"))
+        XCTAssertTrue(normalized.contains("publicextensionAppIcon{"))
+        XCTAssertTrue(normalized.contains("enumAction{"))
         XCTAssertTrue(normalized.contains("publicstaticletadd=AppIcon(rawValue:\"plus\")"))
         XCTAssertTrue(normalized.contains("publicstaticletmore=AppIcon(rawValue:\"ellipsis\")"))
         XCTAssertTrue(normalized.contains("publicstaticletdelete=AppIcon(rawValue:\"trash\")"))

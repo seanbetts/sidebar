@@ -1,8 +1,11 @@
 import Foundation
 
+/// Builds the app-version HTTP header shared by app and extension requests.
 public enum AppVersionHeader {
+    /// Header name used for app-version request metadata.
     public static let fieldName = "X-App-Version"
 
+    /// Returns the current bundle version value formatted for request headers.
     public static func currentValue(bundle: Bundle = .main) -> String? {
         let shortVersion = (
             bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
