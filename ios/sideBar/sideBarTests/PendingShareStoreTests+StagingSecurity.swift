@@ -157,10 +157,10 @@ extension PendingShareStoreTests {
         store.remove(ids: [item.id])
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
-        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    func testReplaceAllPreservesMetadataWhenDroppedStagedPathIsRejected() throws {
+    func testReplaceAllDropsMetadataWhenDroppedStagedPathIsRejected() throws {
         let (store, directory) = try makeIsolatedStore()
         let uuid = UUID().uuidString
         let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
@@ -175,13 +175,13 @@ extension PendingShareStoreTests {
         let item = pendingFileItem(filePath: "pending-shares/\(uuid)/link.txt")
         store.replaceAll([item])
 
-        XCTAssertFalse(store.replaceAllCleaningRemovedStagedFiles([]))
+        XCTAssertTrue(store.replaceAllCleaningRemovedStagedFiles([]))
 
-        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
     }
 
-    func testConsumeAllPreservesMetadataWhenStagedPathIsRejected() throws {
+    func testConsumeAllDropsMetadataWhenStagedPathIsRejected() throws {
         let (store, directory) = try makeIsolatedStore()
         let uuid = UUID().uuidString
         let root = directory.appendingPathComponent("pending-shares", isDirectory: true)
@@ -199,7 +199,7 @@ extension PendingShareStoreTests {
         let consumed = store.consumeAll()
 
         XCTAssertTrue(consumed.isEmpty)
-        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
     }
 

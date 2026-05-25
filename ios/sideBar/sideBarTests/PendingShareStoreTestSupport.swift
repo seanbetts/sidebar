@@ -35,7 +35,7 @@ func assertRemovalRejectsSymlinkedPath(
     store.remove(ids: [item.id])
     XCTAssertNil(store.resolveFileURL(for: item))
     XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))
-    XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+    XCTAssertTrue(store.loadAll().isEmpty)
 }
 
 func routePendingShareItem(

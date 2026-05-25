@@ -1,44 +1,54 @@
 import Foundation
 
 extension PendingShareStore {
-    func stagedCleanupResults(for items: [PendingShareItem]) -> (succeeded: Set<UUID>, failed: [PendingShareItem]) {
-        var succeeded = Set<UUID>()
-        var failed: [PendingShareItem] = []
-        var resultsByStagedReference: [String: Bool] = [:]
+    func stagedCleanupResults(for items: [PendingShareItem]) -> PendingShareStagedCleanupResults {
+        var results = PendingShareStagedCleanupResults()
+        var resultsByStagedReference: [String: PendingShareStagedCleanupResult] = [:]
         for item in items {
             guard let stagedReference = stagedCleanupReference(for: item) else {
-                succeeded.insert(item.id)
+                results.succeeded.insert(item.id)
                 continue
             }
-            let didSucceed: Bool
+            let result: PendingShareStagedCleanupResult
             if let existingResult = resultsByStagedReference[stagedReference] {
-                didSucceed = existingResult
+                result = existingResult
             } else {
-                didSucceed = removeStagedFileIfPresent(for: item)
-                resultsByStagedReference[stagedReference] = didSucceed
+                result = removeStagedFileIfPresent(for: item)
+                resultsByStagedReference[stagedReference] = result
             }
-            if didSucceed {
-                succeeded.insert(item.id)
-            } else {
-                failed.append(item)
+            switch result {
+            case .succeeded:
+                results.succeeded.insert(item.id)
+            case .invalidMetadata:
+                results.droppedInvalid.insert(item.id)
+            case .failed:
+                results.failed.append(item)
             }
         }
-        return (succeeded, failed)
+        return results
     }
 
-    func removeStagedFileIfPresent(for item: PendingShareItem) -> Bool {
-        guard item.kind == .file || item.kind == .image else { return true }
-        guard let relativePath = item.filePath else { return true }
-        guard let baseDirectory = rootDirectory else { return false }
+    func removeStagedFileIfPresent(for item: PendingShareItem) -> PendingShareStagedCleanupResult {
+        guard item.kind == .file || item.kind == .image else { return .succeeded }
+        guard let relativePath = item.filePath else { return .succeeded }
+        guard let baseDirectory = rootDirectory else { return .failed }
         var didRun = false
+        var cleanupResult = PendingShareStagedCleanupResult.failed
         let didSucceed = stagedFileMutationLock(baseDirectory) { [self] in
             didRun = true
             let resolver = self.makeFileResolver(baseDirectory: baseDirectory)
-            guard let fileURL = resolver.resolve(relativePath: relativePath) else { return false }
+            guard let fileURL = resolver.resolve(relativePath: relativePath) else {
+                cleanupResult = .invalidMetadata
+                return true
+            }
             guard removeStagedFile(at: fileURL) else { return false }
-            return removeItemDirectoryIfEmpty(for: fileURL, relativePath: relativePath, resolver: resolver)
+            guard removeItemDirectoryIfEmpty(for: fileURL, relativePath: relativePath, resolver: resolver) else {
+                return false
+            }
+            cleanupResult = .succeeded
+            return true
         }
-        return didRun && didSucceed
+        return didRun && didSucceed ? cleanupResult : .failed
     }
 
     private func stagedCleanupReference(for item: PendingShareItem) -> String? {
@@ -94,4 +104,16 @@ extension PendingShareStore {
         }
         return true
     }
+}
+
+enum PendingShareStagedCleanupResult {
+    case succeeded
+    case invalidMetadata
+    case failed
+}
+
+struct PendingShareStagedCleanupResults {
+    var succeeded = Set<UUID>()
+    var droppedInvalid = Set<UUID>()
+    var failed: [PendingShareItem] = []
 }

@@ -18,7 +18,7 @@ extension PendingShareStoreTests {
         XCTAssertEqual(store.loadAll().map(\.id), [item.id])
     }
 
-    func testRemoveUpdatesMetadataAfterPartialBatchCleanupFailure() throws {
+    func testRemoveDropsInvalidMetadataAfterPartialBatchCleanupFailure() throws {
         let (store, directory) = try makeIsolatedStore()
         let validItem = try XCTUnwrap(store.enqueueFile(
             data: Data("payload".utf8), filename: "valid.txt", mimeType: "text/plain", kind: .file
@@ -29,7 +29,7 @@ extension PendingShareStoreTests {
 
         store.remove(ids: [validItem.id, invalidItem.id])
 
-        XCTAssertEqual(store.loadAll().map(\.id), [invalidItem.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertFalse(FileManager.default.fileExists(atPath: validURL.path))
         XCTAssertNil(store.resolveFileURL(for: invalidItem))
         XCTAssertTrue(FileManager.default.fileExists(atPath: target.path))

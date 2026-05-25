@@ -19,7 +19,7 @@ extension PendingShareStoreTests {
         XCTAssertNil(store.prepareFileForUpload(for: item))
         store.remove(ids: [item.id])
 
-        XCTAssertEqual(store.loadAll().map(\.id), [item.id])
+        XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: payloadDirectory.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: keepFile.path))
         XCTAssertEqual(pendingShareUploadTempDirectories(), tempUploadDirectoriesBefore)

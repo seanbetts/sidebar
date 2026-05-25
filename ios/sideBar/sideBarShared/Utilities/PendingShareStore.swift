@@ -326,8 +326,9 @@ public final class PendingShareStore {
             let items = loadAll()
             let removedItems = items.filter { idsToRemove.contains($0.id) }
             let cleanup = stagedCleanupResults(for: removedItems)
+            let removedIds = cleanup.succeeded.union(cleanup.droppedInvalid)
             let remaining = items.filter { item in
-                idsToRemove.contains(item.id) == false || cleanup.succeeded.contains(item.id) == false
+                idsToRemove.contains(item.id) == false || removedIds.contains(item.id) == false
             }
             writeMetadata(remaining)
         }
@@ -375,7 +376,7 @@ public final class PendingShareStore {
             let cutoff = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
             var items = loadAll()
             let cleanup = stagedCleanupResults(for: items.filter { $0.createdAt < cutoff })
-            let removedIds = cleanup.succeeded
+            let removedIds = cleanup.succeeded.union(cleanup.droppedInvalid)
             if !removedIds.isEmpty {
                 items.removeAll { removedIds.contains($0.id) }
                 writeMetadata(items)
