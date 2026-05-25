@@ -32,9 +32,128 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(tasksAreSleeping)
 
         viewModel = nil
-        await Task.yield()
+        let canceled = await waitForCondition {
+            sleepProbe.cancellationCount == 2
+        }
 
-        XCTAssertEqual(sleepProbe.cancellationCount, 2)
+        XCTAssertTrue(canceled)
+    }
+
+    func testWebsiteViewModelDeinitCancelsRealJobPollingTask() async {
+        let sleepProbe = WebsitesPollingSleepProbe()
+        let api = MockWebsitesAPI()
+        var viewModel: WebsitesViewModel? = WebsitesViewModel(
+            api: api,
+            store: WebsitesStore(api: api, cache: InMemoryCacheClient()),
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: AsyncJobProgressCoordinator(),
+            jobPollingSleep: sleepProbe.sleep
+        )
+        let weakViewModel = WeakReference(viewModel)
+
+        viewModel?.startWebsiteJobPollingIfAllowed(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        let taskStarted = await waitForCondition {
+            sleepProbe.sleepingTaskCount == 1
+        }
+        XCTAssertTrue(taskStarted)
+
+        viewModel = nil
+        let deallocatedAndCanceled = await waitForCondition {
+            weakViewModel.value == nil && sleepProbe.cancellationCount == 1
+        }
+
+        XCTAssertTrue(deallocatedAndCanceled)
+        if let leakedViewModel = weakViewModel.value {
+            leakedViewModel.jobPollingTasks["job-1"]?.cancel()
+            leakedViewModel.clearWebsiteJobPolling(jobId: "job-1")
+        }
+    }
+
+    func testWebsiteViewModelDeinitCancelsRealTranscriptPollingTask() async {
+        let sleepProbe = WebsitesPollingSleepProbe()
+        let api = MockWebsitesAPI()
+        let videoId = "video-1"
+        var viewModel: WebsitesViewModel? = WebsitesViewModel(
+            api: api,
+            store: WebsitesStore(api: api, cache: InMemoryCacheClient()),
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: AsyncJobProgressCoordinator(),
+            transcriptPollInterval: 60,
+            transcriptPollMinimumInterval: 60,
+            transcriptPollingSleep: sleepProbe.sleep
+        )
+        let weakViewModel = WeakReference(viewModel)
+
+        viewModel?.startTranscriptPollingIfNeeded(websiteId: "site-1", videoId: videoId)
+        let taskStarted = await waitForCondition {
+            sleepProbe.sleepingTaskCount == 1
+        }
+        XCTAssertTrue(taskStarted)
+
+        viewModel = nil
+        let deallocatedAndCanceled = await waitForCondition {
+            weakViewModel.value == nil && sleepProbe.cancellationCount == 1
+        }
+
+        XCTAssertTrue(deallocatedAndCanceled)
+        if let leakedViewModel = weakViewModel.value {
+            let key = WebsitesViewModel.transcriptPollingKey(websiteId: "site-1", videoId: videoId)
+            leakedViewModel.stopTranscriptPolling(key: key)
+        }
+    }
+
+    func testWebsiteJobExternalTerminalRefreshCancelsPollingTaskBeforeClearing() async {
+        let sleepProbe = WebsitesPollingSleepProbe()
+        let api = MockWebsitesAPI(
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "completed",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: WebsitesStore(api: api, cache: InMemoryCacheClient()),
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            jobProgressCoordinator: AsyncJobProgressCoordinator(),
+            jobPollingSleep: sleepProbe.sleep
+        )
+
+        viewModel.startWebsiteJobPollingIfAllowed(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        let taskStarted = await waitForCondition {
+            sleepProbe.sleepingTaskCount == 1
+        }
+        XCTAssertTrue(taskStarted)
+
+        let terminal = await viewModel.refreshWebsiteJobStatus(
+            jobId: "job-1",
+            pendingURL: URL(string: "https://example.com")!,
+            previousSelectedId: nil,
+            shouldSelectOnCompletion: false
+        )
+        let canceled = await waitForCondition {
+            sleepProbe.cancellationCount == 1
+        }
+
+        XCTAssertTrue(terminal)
+        XCTAssertTrue(canceled)
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
     func testLoadUsesCacheOnFailure() async {
@@ -2552,6 +2671,14 @@ extension WebsitesViewModelTests {
 
 private enum MockError: Error {
     case forced
+}
+
+private final class WeakReference<Value: AnyObject> {
+    weak var value: Value?
+
+    init(_ value: Value?) {
+        self.value = value
+    }
 }
 
 private final class WebsitesPollingSleepProbe: @unchecked Sendable {

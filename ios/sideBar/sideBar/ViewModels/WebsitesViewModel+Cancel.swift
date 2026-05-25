@@ -24,8 +24,7 @@ extension WebsitesViewModel {
             return
         }
 
-        jobPollingTasks[jobId]?.cancel()
-        clearWebsiteJobPolling(jobId: jobId)
+        cancelWebsiteJobPolling(jobId: jobId)
         jobProgressCoordinator.cancel(jobId: jobId)
         removePendingWebsite(id: pending.id)
         if selectedWebsiteId == pending.id {

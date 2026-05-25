@@ -136,8 +136,7 @@ extension WebsitesViewModel {
         updatePendingWebsiteStatus(for: normalized.absoluteString, status: .retrying)
 
         if let jobId = pending.jobId {
-            jobPollingTasks[jobId]?.cancel()
-            clearWebsiteJobPolling(jobId: jobId)
+            cancelWebsiteJobPolling(jobId: jobId)
             jobProgressCoordinator.cancel(jobId: jobId)
         }
 
@@ -396,7 +395,7 @@ extension WebsitesViewModel {
         }
 
         let shouldSelectDetail = selectedWebsiteId == pending.id && pending.source == .directSave
-        clearWebsiteJobPolling(jobId: jobId)
+        cancelWebsiteJobPolling(jobId: jobId)
         removePendingWebsite(id: pending.id)
         saveErrorMessage = nil
         if pending.source == .directSave {
@@ -448,20 +447,29 @@ extension WebsitesViewModel {
             return
         }
         guard transcriptPollingTasks[key] == nil else { return }
+        let transcriptPollingSleep = transcriptPollingSleep
+        let pollIntervalNanoseconds = transcriptPollIntervalNanoseconds
+        let pollMaxIntervalNanoseconds = transcriptPollMaxIntervalNanoseconds
+        let pollJitterWindowNanoseconds = transcriptPollJitterWindowNanoseconds
+        let pollMaxConsecutiveFailures = transcriptPollMaxConsecutiveFailures
         transcriptPollingTasks[key] = Task { [weak self] in
             var consecutiveFailures = 0
             while !Task.isCancelled {
-                guard let self else { return }
                 do {
-                    try await Task.sleep(
-                        nanoseconds: self.transcriptPollingDelayNanoseconds(
+                    try await transcriptPollingSleep(
+                        Self.transcriptPollingDelayNanoseconds(
                             key: key,
-                            consecutiveFailures: consecutiveFailures
+                            consecutiveFailures: consecutiveFailures,
+                            pollIntervalNanoseconds: pollIntervalNanoseconds,
+                            pollMaxIntervalNanoseconds: pollMaxIntervalNanoseconds,
+                            pollJitterWindowNanoseconds: pollJitterWindowNanoseconds
                         )
                     )
                 } catch {
                     return
                 }
+                guard !Task.isCancelled else { return }
+                guard let self else { return }
                 switch await self.pollTranscriptStatus(
                     websiteId: websiteId,
                     videoId: videoId,
@@ -473,7 +481,7 @@ extension WebsitesViewModel {
                     consecutiveFailures = 0
                 case .retryableFailure:
                     consecutiveFailures += 1
-                    guard consecutiveFailures >= self.transcriptPollMaxConsecutiveFailures else {
+                    guard consecutiveFailures >= pollMaxConsecutiveFailures else {
                         continue
                     }
                     self.markTranscriptPollingFailed(websiteId: websiteId, videoId: videoId, key: key)
@@ -579,25 +587,28 @@ extension WebsitesViewModel {
         }
     }
 
-    private func transcriptPollingDelayNanoseconds(
+    private static func transcriptPollingDelayNanoseconds(
         key: String,
-        consecutiveFailures: Int
+        consecutiveFailures: Int,
+        pollIntervalNanoseconds: UInt64,
+        pollMaxIntervalNanoseconds: UInt64,
+        pollJitterWindowNanoseconds: UInt64
     ) -> UInt64 {
         let exponent = min(max(consecutiveFailures, 0), 4)
-        let base = Double(transcriptPollIntervalNanoseconds)
-        let maxValue = Double(transcriptPollMaxIntervalNanoseconds)
+        let base = Double(pollIntervalNanoseconds)
+        let maxValue = Double(pollMaxIntervalNanoseconds)
         let scaled = min(base * pow(2, Double(exponent)), maxValue)
         let jitter = Double(
             deterministicJitter(
                 seed: "transcript:\(key)",
                 attempt: consecutiveFailures,
-                maxValue: transcriptPollJitterWindowNanoseconds
+                maxValue: pollJitterWindowNanoseconds
             )
         )
         return UInt64(scaled + jitter)
     }
 
-    private func deterministicJitter(seed: String, attempt: Int, maxValue: UInt64) -> UInt64 {
+    private static func deterministicJitter(seed: String, attempt: Int, maxValue: UInt64) -> UInt64 {
         guard maxValue > 0 else { return 0 }
         var hash: UInt64 = 14_695_981_039_346_656_037
         for byte in "\(seed):\(attempt)".utf8 {

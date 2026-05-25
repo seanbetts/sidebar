@@ -40,6 +40,8 @@ import OSLog
 /// await viewModel.selectWebsite(id: websiteId)
 /// ```
 public final class WebsitesViewModel: ObservableObject {
+    typealias PollingSleep = @Sendable (UInt64) async throws -> Void
+
     @Published public internal(set) var items: [WebsiteItem] = []
     @Published public internal(set) var active: WebsiteDetail?
     @Published public internal(set) var selectedWebsiteId: String?
@@ -70,6 +72,8 @@ public final class WebsitesViewModel: ObservableObject {
     let transcriptPollMaxIntervalNanoseconds: UInt64
     let transcriptPollMaxConsecutiveFailures: Int
     let transcriptPollJitterWindowNanoseconds: UInt64
+    let jobPollingSleep: PollingSleep
+    let transcriptPollingSleep: PollingSleep
     let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
     @Published var inFlightTranscriptRequests: [String: Set<String>] = [:]
     var pendingTranscriptJobs: [String: Set<String>] = [:]
@@ -127,7 +131,13 @@ public final class WebsitesViewModel: ObservableObject {
         transcriptPollMaxInterval: TimeInterval = 20,
         transcriptPollMaxConsecutiveFailures: Int = 6,
         transcriptPollJitterWindow: TimeInterval = 0.4,
-        transcriptPollMinimumInterval: TimeInterval = 0.25
+        transcriptPollMinimumInterval: TimeInterval = 0.25,
+        jobPollingSleep: @escaping PollingSleep = { nanoseconds in
+            try await Task.sleep(nanoseconds: nanoseconds)
+        },
+        transcriptPollingSleep: @escaping PollingSleep = { nanoseconds in
+            try await Task.sleep(nanoseconds: nanoseconds)
+        }
     ) {
         self.api = api
         self.store = store
@@ -135,6 +145,8 @@ public final class WebsitesViewModel: ObservableObject {
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
         self.jobProgressCoordinator = jobProgressCoordinator
+        self.jobPollingSleep = jobPollingSleep
+        self.transcriptPollingSleep = transcriptPollingSleep
         let minimumPollInterval = max(transcriptPollMinimumInterval, 0)
         let clampedPollInterval = max(transcriptPollInterval, minimumPollInterval)
         self.transcriptPollIntervalNanoseconds = UInt64(clampedPollInterval * 1_000_000_000)
