@@ -2,10 +2,8 @@
 import Combine
 import SwiftUI
 
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
 /// View model for editing and styling native note content.
-public final class NativeNoteEditorViewModel: ObservableObject {
+@available(iOS 26.0, macOS 26.0, *) @MainActor public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public var attributedContent: AttributedString = AttributedString() {
         didSet {
             if suppressNextRenderGenerationIncrement {

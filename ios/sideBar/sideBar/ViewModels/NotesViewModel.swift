@@ -4,7 +4,6 @@ import Combine
 
 // MARK: - NotesViewModel
 
-@MainActor
 /// Manages the notes file tree, note selection, and search functionality.
 ///
 /// This ViewModel acts as a coordinator between the UI and the `NotesStore`, providing:
@@ -33,7 +32,7 @@ import Combine
 /// await viewModel.selectNote(id: "note-id")
 /// await viewModel.createBlankNote()
 /// ```
-public final class NotesViewModel: ObservableObject {
+@MainActor public final class NotesViewModel: ObservableObject {
     @Published public internal(set) var tree: FileTree?
     @Published public internal(set) var archivedTree: FileTree?
     @Published public internal(set) var activeNote: NotePayload?

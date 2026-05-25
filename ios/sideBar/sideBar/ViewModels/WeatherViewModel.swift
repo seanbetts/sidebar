@@ -4,9 +4,8 @@ import MapKit
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
-@MainActor
 /// Loads weather data and formats related state.
-public final class WeatherViewModel: LoadableViewModel {
+@MainActor public final class WeatherViewModel: LoadableViewModel {
     @Published public private(set) var weather: WeatherResponse?
     @Published public private(set) var locationName: String?
 

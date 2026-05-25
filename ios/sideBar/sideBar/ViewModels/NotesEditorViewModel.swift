@@ -7,9 +7,8 @@ import UIKit
 #endif
 // swiftlint:disable file_length
 // MARK: - NotesEditorViewModel
-@MainActor
 /// Manages note display state.
-public final class NotesEditorViewModel: ObservableObject {
+@MainActor public final class NotesEditorViewModel: ObservableObject {
     /// Presentation mode for an open note.
     public enum PresentationMode: Equatable {
         case read

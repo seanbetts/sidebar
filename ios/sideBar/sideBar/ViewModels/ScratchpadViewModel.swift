@@ -3,9 +3,8 @@ import Combine
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
-@MainActor
 /// Manages scratchpad content and updates.
-public final class ScratchpadViewModel: ObservableObject {
+@MainActor public final class ScratchpadViewModel: ObservableObject {
     @Published public private(set) var scratchpad: ScratchpadResponse?
     @Published public private(set) var errorMessage: String?
     @Published public private(set) var refreshVersion: Int = 0

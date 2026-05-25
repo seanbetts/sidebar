@@ -5,9 +5,8 @@ import SwiftUI
 import UIKit
 #endif
 
-@MainActor
 /// Observable state and actions for the Phase 1 onboarding wizard.
-public final class OnboardingViewModel: ObservableObject {
+@MainActor public final class OnboardingViewModel: ObservableObject {
     @Published public var currentStep: OnboardingStep = .welcome
     @Published public var isLoading = false
     @Published public var errorMessage: String?

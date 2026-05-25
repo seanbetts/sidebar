@@ -3,9 +3,8 @@ import Combine
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
-@MainActor
 /// Manages places autocomplete and reverse geocoding state.
-public final class PlacesViewModel: LoadableViewModel {
+@MainActor public final class PlacesViewModel: LoadableViewModel {
     @Published public private(set) var predictions: [PlacePrediction] = []
     @Published public private(set) var reverseLabel: String?
 

@@ -5,7 +5,6 @@ import OSLog
 
 // MARK: - WebsitesViewModel
 
-@MainActor
 /// Manages saved websites list, detail views, and website saving functionality.
 ///
 /// This ViewModel coordinates website operations including:
@@ -39,7 +38,7 @@ import OSLog
 /// let success = await viewModel.saveWebsite(url: "https://example.com")
 /// await viewModel.selectWebsite(id: websiteId)
 /// ```
-public final class WebsitesViewModel: ObservableObject {
+@MainActor public final class WebsitesViewModel: ObservableObject {
     typealias PollingSleep = @Sendable (UInt64) async throws -> Void
 
     @Published public internal(set) var items: [WebsiteItem] = []

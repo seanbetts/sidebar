@@ -4,9 +4,8 @@ import sideBarShared
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
-@MainActor
 /// Manages user settings, skills, and profile image state.
-public final class SettingsViewModel: LoadableViewModel {
+@MainActor public final class SettingsViewModel: LoadableViewModel {
     static let defaultAssistantDisplayName = "sideBar"
 
     @Published public private(set) var settings: UserSettings?

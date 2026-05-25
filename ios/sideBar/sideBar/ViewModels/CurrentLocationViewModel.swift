@@ -2,9 +2,8 @@ import Combine
 import CoreLocation
 import Foundation
 
-@MainActor
 /// Coordinates live location authorization, updates, and reverse-geocoded labels.
-public final class CurrentLocationViewModel: ObservableObject {
+@MainActor public final class CurrentLocationViewModel: ObservableObject {
     /// Latest location authorization status.
     @Published public private(set) var authorizationStatus: CLAuthorizationStatus
     /// Latest live location label, for example "Tignes, France".

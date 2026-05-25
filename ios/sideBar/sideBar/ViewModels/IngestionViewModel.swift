@@ -33,7 +33,6 @@ private final class IngestionViewModelTeardownBag {
     }
 }
 
-@MainActor
 /// Manages file ingestion, upload tracking, and file viewer state.
 ///
 /// This ViewModel handles the complete file ingestion lifecycle:
@@ -69,7 +68,7 @@ private final class IngestionViewModelTeardownBag {
 /// await viewModel.ingestFiles(urls: selectedURLs)
 /// await viewModel.selectFile(id: fileId)
 /// ```
-public final class IngestionViewModel: ObservableObject {
+@MainActor public final class IngestionViewModel: ObservableObject {
     public typealias JobPollingSleep = @Sendable (UInt64) async throws -> Void
 
     @Published public var items: [IngestionListItem] = []

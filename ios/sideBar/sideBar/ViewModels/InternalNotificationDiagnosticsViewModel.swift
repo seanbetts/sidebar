@@ -1,9 +1,8 @@
 import Combine
 import Foundation
 
-@MainActor
 /// Drives the internal notification diagnostics screen for Apple settings surfaces.
-public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
+@MainActor public final class InternalNotificationDiagnosticsViewModel: ObservableObject {
     @Published public private(set) var snapshot: InternalNotificationDiagnosticsSnapshot?
     @Published public private(set) var isLoading = false
     @Published public private(set) var isSendingTestPush = false

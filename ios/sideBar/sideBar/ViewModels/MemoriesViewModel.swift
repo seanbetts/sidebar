@@ -3,9 +3,8 @@ import Combine
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
-@MainActor
 /// Manages memory list and selection state.
-public final class MemoriesViewModel: LoadableViewModel {
+@MainActor public final class MemoriesViewModel: LoadableViewModel {
     @Published public private(set) var items: [MemoryItem] = []
     @Published public private(set) var active: MemoryItem?
     @Published public private(set) var selectedMemoryId: String?

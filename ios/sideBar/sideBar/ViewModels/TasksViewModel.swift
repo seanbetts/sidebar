@@ -2,9 +2,8 @@ import Foundation
 import Combine
 import sideBarShared
 
-@MainActor
 /// Manages tasks state, networking, and user actions for the tasks UI.
-public final class TasksViewModel: ObservableObject {
+@MainActor public final class TasksViewModel: ObservableObject {
     @Published var localErrorMessage: String?
     @Published public var searchQuery: String = ""
     @Published public var newTaskDraft: TaskDraft?
