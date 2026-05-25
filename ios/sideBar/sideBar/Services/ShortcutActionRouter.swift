@@ -1,9 +1,8 @@
 #if os(iOS)
 import Foundation
 
-@MainActor
 /// Routes shortcut actions to view models.
-public final class ShortcutActionRouter {
+@MainActor public final class ShortcutActionRouter {
     public init() {}
 
     public func handle(_ shortcut: KeyboardShortcut, environment: AppEnvironment) {

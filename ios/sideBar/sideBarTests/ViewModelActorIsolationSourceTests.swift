@@ -41,6 +41,23 @@ final class ViewModelActorIsolationSourceTests: XCTestCase {
             )
         }
     }
+
+    func testPublicAppServiceAndUtilityTypesKeepMainActorOnDeclarationLine() throws {
+        let sourceRoot = try sideBarSourceRoot()
+        let folders = ["App", "Services", "Utilities"]
+        let violations = try folders.flatMap { folder in
+            try publicMainActorDeclarationViolations(
+                in: sourceRoot.appendingPathComponent(folder),
+                sourceRoot: sourceRoot
+            )
+        }
+
+        XCTAssertTrue(
+            violations.isEmpty,
+            "Public @MainActor declarations should place @MainActor on the declaration line:\n"
+                + violations.joined(separator: "\n")
+        )
+    }
 }
 
 private func sideBarSourceRoot(file: StaticString = #filePath) throws -> URL {
@@ -52,4 +69,42 @@ private func sideBarSourceRoot(file: StaticString = #filePath) throws -> URL {
 
 private func sourceText(in sourceRoot: URL, relativePath: String) throws -> String {
     try String(contentsOf: sourceRoot.appendingPathComponent(relativePath), encoding: .utf8)
+}
+
+private func publicMainActorDeclarationViolations(
+    in folder: URL,
+    sourceRoot: URL
+) throws -> [String] {
+    let fileManager = FileManager.default
+    guard let enumerator = fileManager.enumerator(
+        at: folder,
+        includingPropertiesForKeys: nil
+    ) else {
+        return []
+    }
+
+    var violations: [String] = []
+    for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
+        let lines = try String(contentsOf: fileURL, encoding: .utf8)
+            .components(separatedBy: .newlines)
+        for (index, line) in lines.enumerated() where line.trimmingCharacters(in: .whitespaces) == "@MainActor" {
+            var declarationIndex = index + 1
+            while declarationIndex < lines.count {
+                let nextLine = lines[declarationIndex].trimmingCharacters(in: .whitespaces)
+                if nextLine.isEmpty || nextLine.hasPrefix("///") {
+                    declarationIndex += 1
+                    continue
+                }
+                if nextLine.hasPrefix("public ") {
+                    let relativePath = fileURL.path.replacingOccurrences(
+                        of: sourceRoot.path + "/",
+                        with: ""
+                    )
+                    violations.append("\(relativePath):\(index + 1) -> \(nextLine)")
+                }
+                break
+            }
+        }
+    }
+    return violations.sorted()
 }

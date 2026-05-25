@@ -3,9 +3,8 @@ import Combine
 import CoreData
 import Foundation
 import OSLog
-@MainActor
 /// Queues offline write operations and retries them when online.
-public final class WriteQueue: ObservableObject {
+@MainActor public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var failedCount: Int = 0
     @Published private(set) var failedHeaderRows: [PendingWriteSummary] = []

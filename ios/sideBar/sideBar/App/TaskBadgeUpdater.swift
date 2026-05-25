@@ -5,8 +5,7 @@ import UserNotifications
 import AppKit
 #endif
 
-@MainActor
-public protocol TaskBadgeUpdating {
+@MainActor public protocol TaskBadgeUpdating {
     func update(count: Int)
 }
 

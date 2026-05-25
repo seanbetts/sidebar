@@ -1,9 +1,8 @@
 import Combine
 import Foundation
 
-@MainActor
 /// Central coordinator for cross-feature navigation and deep-link state.
-public final class NavigationCoordinator: ObservableObject {
+@MainActor public final class NavigationCoordinator: ObservableObject {
     @Published public var commandSelection: AppSection?
     @Published public var activeSection: AppSection?
     @Published public var focusedSection: AppSection?

@@ -20,9 +20,8 @@ public protocol CurrentLocationProviding: AnyObject {
     func stopUpdatingLocation()
 }
 
-@MainActor
 /// CoreLocation-backed location provider.
-public final class CoreLocationProvider: NSObject, CurrentLocationProviding {
+@MainActor public final class CoreLocationProvider: NSObject, CurrentLocationProviding {
     private let manager: CLLocationManager
     private let authorizationStatusSubject: CurrentValueSubject<CLAuthorizationStatus, Never>
     private let locationSubject = PassthroughSubject<CLLocation, Never>()

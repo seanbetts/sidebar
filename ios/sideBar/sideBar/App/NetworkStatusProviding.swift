@@ -1,7 +1,6 @@
 import Foundation
 
-@MainActor
-public protocol NetworkStatusProviding {
+@MainActor public protocol NetworkStatusProviding {
     var isNetworkAvailable: Bool { get }
     var isOffline: Bool { get }
     var isServerReachable: Bool { get }

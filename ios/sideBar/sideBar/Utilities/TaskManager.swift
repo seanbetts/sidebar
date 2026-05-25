@@ -1,8 +1,7 @@
 import Foundation
 
 /// Manages a single cancellable task.
-@MainActor
-public final class ManagedTask {
+@MainActor public final class ManagedTask {
     private var task: Task<Void, Never>?
 
     public init() {

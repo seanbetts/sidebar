@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Maps workspace descriptors to concrete SwiftUI renderers.
-@MainActor
-public struct WorkspaceRendererRegistry {
+@MainActor public struct WorkspaceRendererRegistry {
     public typealias EmptyRenderer = () -> AnyView
     public typealias BuiltInRenderer = (AppSection) -> AnyView
     public typealias AgentSurfaceRenderer = (AgentWorkspaceSurfaceDescriptor) -> AnyView

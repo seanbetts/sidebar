@@ -1,8 +1,7 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class ThemeManager: ObservableObject {
+@MainActor public final class ThemeManager: ObservableObject {
     @Published public var mode: ThemeMode {
         didSet {
             userDefaults.set(mode.rawValue, forKey: AppStorageKeys.themeMode)

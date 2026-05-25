@@ -1,9 +1,8 @@
 import Foundation
 @preconcurrency import sideBarShared
 
-@MainActor
 /// Builds the product-facing auth session used by app composition.
-public protocol AuthSessionFactory {
+@MainActor public protocol AuthSessionFactory {
     func makeAuthSession(
         config: EnvironmentConfig,
         useInMemoryStateStore: Bool,
@@ -11,9 +10,8 @@ public protocol AuthSessionFactory {
     ) -> AuthSession
 }
 
-@MainActor
 /// Production auth factory that hides provider-specific session construction.
-public struct DefaultAuthSessionFactory: AuthSessionFactory {
+@MainActor public struct DefaultAuthSessionFactory: AuthSessionFactory {
     public init() {
     }
 

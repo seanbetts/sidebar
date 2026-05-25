@@ -1,8 +1,7 @@
 import Foundation
 
-@MainActor
 /// Updates a password for an already authenticated session.
-public protocol PasswordChanging: AnyObject {
+@MainActor public protocol PasswordChanging: AnyObject {
     /// Changes the password for the current authenticated user.
     func changePassword(newPassword: String) async throws
 }

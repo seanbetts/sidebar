@@ -1,9 +1,8 @@
 import Foundation
 import sideBarShared
 
-@MainActor
 /// Replays queued settings mutations against the settings API and local staging stores.
-public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
+@MainActor public final class SettingsWriteQueueExecutor: WriteQueueExecutor {
     private let api: any SettingsProviding
     private let store: (any SettingsWriteQueueApplying)?
     private let pendingSecretStore: any SettingsPendingSecretStoring

@@ -7,24 +7,21 @@ import UIKit
 import AppKit
 #endif
 
-@MainActor
 /// Provides onboarding-specific access to the current location permission state.
-public protocol LocationPermissionRequesting: AnyObject {
+@MainActor public protocol LocationPermissionRequesting: AnyObject {
     var currentState: OnboardingPermissionState { get }
     func requestPermission() async -> OnboardingPermissionState
 }
 
-@MainActor
 /// Provides onboarding-specific access to the current notifications permission state.
-public protocol NotificationPermissionRequesting: AnyObject {
+@MainActor public protocol NotificationPermissionRequesting: AnyObject {
     var currentState: OnboardingPermissionState { get }
     func refreshCurrentState() async -> OnboardingPermissionState
     func requestPermission() async -> OnboardingPermissionState
 }
 
-@MainActor
 /// Requests and maps the system location permission for onboarding.
-public final class LocationPermissionRequester: NSObject, LocationPermissionRequesting {
+@MainActor public final class LocationPermissionRequester: NSObject, LocationPermissionRequesting {
     private let manager: CLLocationManager
     private var continuation: CheckedContinuation<OnboardingPermissionState, Never>?
 
@@ -85,9 +82,8 @@ extension LocationPermissionRequester: CLLocationManagerDelegate {
     }
 }
 
-@MainActor
 /// Requests and maps the system notifications permission for onboarding.
-public final class NotificationPermissionRequester: NotificationPermissionRequesting {
+@MainActor public final class NotificationPermissionRequester: NotificationPermissionRequesting {
     private let center: UNUserNotificationCenter
     private let requestOptions: UNAuthorizationOptions
     private let registerForRemoteNotifications: @MainActor @Sendable () -> Void

@@ -7,9 +7,8 @@ import UIKit
 import AppKit
 #endif
 
-@MainActor
 /// Observes biometric availability and state changes.
-public final class BiometricMonitor: ObservableObject {
+@MainActor public final class BiometricMonitor: ObservableObject {
     @Published public private(set) var biometryType: LABiometryType = .none
     @Published public private(set) var isAvailable: Bool = false
 

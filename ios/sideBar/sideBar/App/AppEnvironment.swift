@@ -34,9 +34,8 @@ public struct AppEnvironmentStorage {
         self.taskBadgeUpdater = taskBadgeUpdater ?? LiveTaskBadgeUpdater()
     }
 }
-@MainActor
 /// Coordinates app-wide stores, view models, and lifecycle wiring for the signed-in experience.
-public final class AppEnvironment: ObservableObject {
+@MainActor public final class AppEnvironment: ObservableObject {
     #if os(iOS) || os(macOS)
     /// Shared process-wide environment reference for app and extension handoff paths.
     public static weak var shared: AppEnvironment?

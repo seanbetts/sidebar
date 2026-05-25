@@ -1,9 +1,8 @@
 import Combine
 import Foundation
 
-@MainActor
 /// Runtime boundary for notes list/editor state and note-context shaping.
-public final class NotesRuntime: ObservableObject {
+@MainActor public final class NotesRuntime: ObservableObject {
     /// Notes list and selection coordinator.
     public let viewModel: NotesViewModel
     /// Notes editor coordinator.
