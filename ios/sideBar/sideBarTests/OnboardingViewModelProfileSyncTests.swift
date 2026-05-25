@@ -42,6 +42,27 @@ final class OnboardingViewModelProfileSyncTests: XCTestCase {
         XCTAssertEqual(capturedSettings?.name, "Sean")
     }
 
+    func testSaveProfileKeepsProfileStepAndSurfacesErrorWhenSettingsSaveFails() async {
+        let settingsAPI = OnboardingMockSettingsAPI()
+        settingsAPI.updateSettingsResult = .failure(APIClientError.requestFailed(503))
+        let onboardingAPI = MockOnboardingAPI()
+
+        let viewModel = OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: onboardingAPI,
+            settingsAPI: settingsAPI,
+            userDefaults: makeUserDefaults()
+        )
+        viewModel.currentStep = .profile
+        viewModel.displayName = "Sean"
+
+        await viewModel.saveProfile()
+
+        XCTAssertEqual(viewModel.currentStep, .profile)
+        XCTAssertEqual(viewModel.errorMessage, "Server is busy right now. Please try again.")
+        XCTAssertTrue(onboardingAPI.updates.isEmpty)
+    }
+
     func testValidateAndSaveApiKeyPublishesUpdatedSettingsResponse() async {
         let settingsAPI = OnboardingMockSettingsAPI()
         let publishedSettings = expectation(description: "Published settings response")

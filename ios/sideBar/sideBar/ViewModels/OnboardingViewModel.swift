@@ -166,28 +166,34 @@ import UIKit
 
     public func saveProfile() async {
         guard currentStep == .profile else { return }
+        guard !isLoading else { return }
 
+        errorMessage = nil
         let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         let profileBasicsTimestamp = Self.isoFormatter.string(from: Date())
 
-        advance(from: .profile)
+        guard !trimmedName.isEmpty else {
+            advance(from: .profile)
+            return
+        }
 
-        if !trimmedName.isEmpty {
-            let settingsAPI = settingsAPI
-            let onboardingAPI = onboardingAPI
-            let onSettingsUpdated = onSettingsUpdated
-            Task { @MainActor in
-                if let response = try? await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName)) {
-                    onSettingsUpdated?(response)
-                }
-                _ = try? await onboardingAPI.updateOnboarding(
-                    OnboardingUpdate(
-                        milestones: OnboardingMilestonesUpdate(
-                            profileBasicsSet: profileBasicsTimestamp
-                        )
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let settings = try await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName))
+            onSettingsUpdated?(settings)
+            let state = try await onboardingAPI.updateOnboarding(
+                OnboardingUpdate(
+                    milestones: OnboardingMilestonesUpdate(
+                        profileBasicsSet: profileBasicsTimestamp
                     )
                 )
-            }
+            )
+            onOnboardingUpdated?(state)
+            advance(from: .profile)
+        } catch {
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 

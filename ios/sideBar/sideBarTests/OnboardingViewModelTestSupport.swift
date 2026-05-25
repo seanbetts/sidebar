@@ -149,6 +149,7 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
         keyLast4: nil
     )
     var shortcutsToken = ShortcutsTokenResponse(token: "shortcuts-token")
+    var updateSettingsResult: Result<UserSettings, Error>?
     var upsertProviderKeyResult: Result<ProviderKeyStatusResponse, Error>?
     private(set) var updates: [SettingsUpdate] = []
 
@@ -158,6 +159,10 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
         updates.append(update)
+        if let updateSettingsResult {
+            settings = try updateSettingsResult.get()
+            return settings
+        }
         settings = UserSettings(
             userId: settings.userId,
             communicationStyle: update.communicationStyle ?? settings.communicationStyle,

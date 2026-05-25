@@ -377,7 +377,7 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .chooseProvider)
     }
 
-    func testSaveProfileAdvancesImmediatelyWhileBackgroundSaveIsInFlight() async {
+    func testSaveProfileWaitsForProfileSaveBeforeAdvancing() async {
         let onboardingAPI = MockOnboardingAPI()
         let settingsAPI = DelayedProfileSettingsAPI()
         settingsAPI.updateDelayNanoseconds = 2_000_000_000
@@ -402,9 +402,12 @@ final class OnboardingViewModelTests: XCTestCase {
         let saveTask = Task { await viewModel.saveProfile() }
 
         await fulfillment(of: [updateStarted], timeout: 1.0)
-        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+        XCTAssertEqual(viewModel.currentStep, .profile)
+        XCTAssertTrue(viewModel.isLoading)
         await saveTask.value
         await fulfillment(of: [updateCompleted], timeout: 3.0)
+        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+        XCTAssertFalse(viewModel.isLoading)
     }
 
     func testCompleteOnboardingDoesNotPersistBackendCompletionFromFinalWizardStep() async {
