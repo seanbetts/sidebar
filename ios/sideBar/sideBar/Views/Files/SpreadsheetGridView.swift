@@ -125,7 +125,9 @@ final class SpreadsheetGridLayout: UICollectionViewLayout {
     var minColumnWidth: CGFloat
     var containerWidth: CGFloat = 0
 
-    private var cachedAttributes: [IndexPath: UICollectionViewLayoutAttributes] = [:]
+    private var columnCount = 0
+    private var rowCount = 0
+    private var fittedColumnWidth: CGFloat = 0
     private var contentSize: CGSize = .zero
 
     init(columnWidth: CGFloat, rowHeight: CGFloat, headerHeight: CGFloat, minColumnWidth: CGFloat) {
@@ -146,43 +148,15 @@ final class SpreadsheetGridLayout: UICollectionViewLayout {
 
     override func prepare() {
         guard let collectionView = collectionView else { return }
-        cachedAttributes.removeAll()
 
-        let columnCount = collectionView.numberOfItems(inSection: 0)
-        let rowCount = collectionView.numberOfItems(inSection: 1) / max(columnCount, 1)
-        let fittedWidth = max(
+        columnCount = collectionView.numberOfItems(inSection: 0)
+        rowCount = collectionView.numberOfItems(inSection: 1) / max(columnCount, 1)
+        fittedColumnWidth = max(
             minColumnWidth,
             containerWidth > 0 ? containerWidth / max(CGFloat(columnCount), 1) : columnWidth
         )
 
-        for column in 0..<columnCount {
-            let indexPath = IndexPath(item: column, section: 0)
-            let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
-            attributes.frame = CGRect(
-                x: CGFloat(column) * fittedWidth,
-                y: 0,
-                width: fittedWidth,
-                height: headerHeight
-            )
-            attributes.zIndex = 2
-            cachedAttributes[indexPath] = attributes
-        }
-
-        for row in 0..<rowCount {
-            for column in 0..<columnCount {
-                let indexPath = IndexPath(item: row * columnCount + column, section: 1)
-                let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
-                attributes.frame = CGRect(
-                    x: CGFloat(column) * fittedWidth,
-                    y: headerHeight + CGFloat(row) * rowHeight,
-                    width: fittedWidth,
-                    height: rowHeight
-                )
-                cachedAttributes[indexPath] = attributes
-            }
-        }
-
-        let width = CGFloat(columnCount) * fittedWidth
+        let width = CGFloat(columnCount) * fittedColumnWidth
         let height = headerHeight + CGFloat(rowCount) * rowHeight
         contentSize = CGSize(width: width, height: height)
     }
@@ -194,24 +168,83 @@ final class SpreadsheetGridLayout: UICollectionViewLayout {
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
         guard let collectionView = collectionView else { return nil }
         let offsetY = collectionView.contentOffset.y
-        return cachedAttributes.values.compactMap { attributes in
-            if attributes.frame.intersects(rect) {
-                if attributes.indexPath.section == 0 {
-                    guard let adjusted = attributes.copy() as? UICollectionViewLayoutAttributes else {
-                        return attributes
-                    }
-                    adjusted.frame.origin.y = offsetY
-                    adjusted.zIndex = 3
-                    return adjusted
-                }
-                return attributes
+        var attributes: [UICollectionViewLayoutAttributes] = []
+
+        for column in visibleColumns(in: rect) {
+            let headerAttributes = makeHeaderAttributes(column: column, offsetY: offsetY)
+            if headerAttributes.frame.intersects(rect) {
+                attributes.append(headerAttributes)
             }
-            return nil
         }
+
+        for row in visibleRows(in: rect) {
+            for column in visibleColumns(in: rect) {
+                attributes.append(makeBodyAttributes(row: row, column: column))
+            }
+        }
+
+        return attributes
+    }
+
+    override func layoutAttributesForItem(at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
+        guard let collectionView = collectionView else { return nil }
+        if indexPath.section == 0 {
+            guard indexPath.item >= 0, indexPath.item < columnCount else { return nil }
+            return makeHeaderAttributes(column: indexPath.item, offsetY: collectionView.contentOffset.y)
+        }
+
+        guard indexPath.section == 1, columnCount > 0 else { return nil }
+        let row = indexPath.item / columnCount
+        let column = indexPath.item % columnCount
+        guard row >= 0, row < rowCount, column >= 0, column < columnCount else { return nil }
+        return makeBodyAttributes(row: row, column: column)
     }
 
     override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
         true
+    }
+
+    private func visibleColumns(in rect: CGRect) -> Range<Int> {
+        guard columnCount > 0, fittedColumnWidth > 0 else { return 0..<0 }
+        let start = max(0, Int(floor(rect.minX / fittedColumnWidth)))
+        let end = min(columnCount - 1, Int(floor(max(rect.minX, rect.maxX - 1) / fittedColumnWidth)))
+        guard start <= end else { return 0..<0 }
+        return start..<(end + 1)
+    }
+
+    private func visibleRows(in rect: CGRect) -> Range<Int> {
+        guard rowCount > 0, rowHeight > 0, rect.maxY >= headerHeight else { return 0..<0 }
+        let bodyMinY = max(0, rect.minY - headerHeight)
+        let bodyMaxY = max(0, rect.maxY - headerHeight - 1)
+        let start = max(0, Int(floor(bodyMinY / rowHeight)))
+        let end = min(rowCount - 1, Int(floor(bodyMaxY / rowHeight)))
+        guard start <= end else { return 0..<0 }
+        return start..<(end + 1)
+    }
+
+    private func makeHeaderAttributes(column: Int, offsetY: CGFloat) -> UICollectionViewLayoutAttributes {
+        let indexPath = IndexPath(item: column, section: 0)
+        let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
+        attributes.frame = CGRect(
+            x: CGFloat(column) * fittedColumnWidth,
+            y: offsetY,
+            width: fittedColumnWidth,
+            height: headerHeight
+        )
+        attributes.zIndex = 3
+        return attributes
+    }
+
+    private func makeBodyAttributes(row: Int, column: Int) -> UICollectionViewLayoutAttributes {
+        let indexPath = IndexPath(item: row * columnCount + column, section: 1)
+        let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
+        attributes.frame = CGRect(
+            x: CGFloat(column) * fittedColumnWidth,
+            y: headerHeight + CGFloat(row) * rowHeight,
+            width: fittedColumnWidth,
+            height: rowHeight
+        )
+        return attributes
     }
 }
 

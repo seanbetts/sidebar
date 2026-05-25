@@ -47,6 +47,13 @@ final class FilesViewerIconSourceTests: XCTestCase {
         XCTAssertFalse(spreadsheetViewer.contains(".appFont(.subheading).padding(.horizontal,DesignTokens.Spacing.sm)"))
     }
 
+    func testSpreadsheetGridLayoutAvoidsPrecomputingEveryCellAttribute() throws {
+        let spreadsheetGrid = try normalizedSource(at: ["sideBar", "Views", "Files", "SpreadsheetGridView.swift"])
+
+        XCTAssertFalse(spreadsheetGrid.contains("cachedAttributes"))
+        XCTAssertFalse(spreadsheetGrid.contains("forrowin0..<rowCount{forcolumnin0..<columnCount"))
+    }
+
     private func normalizedSource(
         at pathComponents: [String],
         file: StaticString = #filePath,
