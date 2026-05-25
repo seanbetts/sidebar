@@ -7,6 +7,11 @@
         <attribute name="payload" optional="YES" attributeType="Binary"/>
         <attribute name="typeName" optional="YES" attributeType="String"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="key"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="PendingWrite" representedClassName="PendingWrite" syncable="YES">
         <attribute name="attempts" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="NO"/>
@@ -29,6 +34,11 @@
         <attribute name="lastSyncAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="payload" attributeType="Binary"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="key"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="LocalDraft" representedClassName="LocalDraft" syncable="YES">
         <attribute name="content" attributeType="String"/>

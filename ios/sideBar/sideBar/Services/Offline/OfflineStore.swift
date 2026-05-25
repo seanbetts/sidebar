@@ -165,6 +165,7 @@ public final class OfflineStore {
         let context = container.newBackgroundContext()
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         context.performAndWait {
+            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
             do {
                 let request = OfflineEntry.fetchRequest()
                 request.fetchLimit = 1

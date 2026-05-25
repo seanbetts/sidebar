@@ -77,6 +77,7 @@ public final class PersistenceController {
 
         do {
             try storeLoader(container)
+            prepareLoadedStore(in: container, logger: logger)
             return .none
         } catch {
             let loadError = error as NSError
@@ -88,6 +89,7 @@ public final class PersistenceController {
                 do {
                     try storeResetter(container, storeURL)
                     try storeLoader(container)
+                    prepareLoadedStore(in: container, logger: logger)
                     logger("Recovered Core Data by resetting persistent store at \(storeURL.path)")
                     return .recoveredFromStoreReset
                 } catch {
@@ -100,6 +102,7 @@ public final class PersistenceController {
                 do {
                     configureInMemoryStore(for: container)
                     try storeLoader(container)
+                    prepareLoadedStore(in: container, logger: logger)
                     logger("Recovered Core Data by switching to in-memory fallback store")
                     return .recoveredWithInMemoryFallback
                 } catch {
@@ -125,9 +128,67 @@ public final class PersistenceController {
 
     nonisolated private static func configureInMemoryStore(for container: NSPersistentContainer) {
         container.persistentStoreDescriptions.forEach { description in
-            description.url = URL(
-                fileURLWithPath: NSTemporaryDirectory()
-            ).appendingPathComponent(UUID().uuidString)
+            description.type = NSInMemoryStoreType
+            description.url = URL(fileURLWithPath: "/dev/null/\(UUID().uuidString)")
+        }
+    }
+
+    nonisolated private static func prepareLoadedStore(
+        in container: NSPersistentContainer,
+        logger: RecoveryLogger
+    ) {
+        let context = container.viewContext
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        do {
+            try removeDuplicateEntries(in: context)
+        } catch {
+            logger("Duplicate cache/offline cleanup failed: \(error as NSError)")
+        }
+    }
+
+    nonisolated static func removeDuplicateEntries(in context: NSManagedObjectContext) throws {
+        var capturedError: Error?
+        context.performAndWait {
+            do {
+                try removeDuplicates(entityName: "CacheEntry", keyName: "key", dateName: "updatedAt", in: context)
+                try removeDuplicates(entityName: "OfflineEntry", keyName: "key", dateName: "updatedAt", in: context)
+            } catch {
+                capturedError = error
+            }
+        }
+        if let capturedError {
+            throw capturedError
+        }
+    }
+
+    nonisolated private static func removeDuplicates(
+        entityName: String,
+        keyName: String,
+        dateName: String,
+        in context: NSManagedObjectContext
+    ) throws {
+        let request = NSFetchRequest<NSManagedObject>(entityName: entityName)
+        request.sortDescriptors = [
+            NSSortDescriptor(key: keyName, ascending: true),
+            NSSortDescriptor(key: dateName, ascending: false)
+        ]
+        let entries = try context.fetch(request)
+        let groupedEntries = Dictionary(grouping: entries) { entry in
+            entry.value(forKey: keyName) as? String ?? ""
+        }
+        for duplicates in groupedEntries.values where duplicates.count > 1 {
+            let sortedDuplicates = duplicates.sorted { first, second in
+                let firstDate = first.value(forKey: dateName) as? Date ?? .distantPast
+                let secondDate = second.value(forKey: dateName) as? Date ?? .distantPast
+                return firstDate > secondDate
+            }
+            for duplicate in sortedDuplicates.dropFirst() {
+                context.delete(duplicate)
+            }
+        }
+        context.processPendingChanges()
+        if context.hasChanges {
+            try context.save()
         }
     }
 
