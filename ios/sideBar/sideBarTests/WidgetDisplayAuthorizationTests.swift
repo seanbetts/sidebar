@@ -5,28 +5,40 @@ import sideBarShared
 final class WidgetDisplayAuthorizationTests: XCTestCase {
     func testAllowsDisplayingCachedSnapshotWhenAuthStateIsUnavailable() {
         XCTAssertTrue(
-            WidgetDisplayAuthorization.canDisplayContent(
-                isAuthenticated: false,
-                hasCachedSnapshot: true
-            )
+            WidgetDisplayAuthorization.canDisplayContent(for: .transientlyUnavailable)
         )
     }
 
     func testHidesContentWhenSignedOutAndNoCachedSnapshotExists() {
         XCTAssertFalse(
-            WidgetDisplayAuthorization.canDisplayContent(
-                isAuthenticated: false,
-                hasCachedSnapshot: false
-            )
+            WidgetDisplayAuthorization.canDisplayContent(for: .signedOut)
+        )
+    }
+
+    func testHidesContentWhenReauthenticationIsRequired() {
+        XCTAssertFalse(
+            WidgetDisplayAuthorization.canDisplayContent(for: .reauthenticationRequired)
         )
     }
 
     func testAllowsDisplayingContentWhenAuthenticatedWithoutCachedSnapshot() {
         XCTAssertTrue(
-            WidgetDisplayAuthorization.canDisplayContent(
-                isAuthenticated: true,
-                hasCachedSnapshot: false
-            )
+            WidgetDisplayAuthorization.canDisplayContent(for: .authenticated)
+        )
+    }
+
+    func testDerivesDisplayStateFromLegacyAuthAndCacheInputs() {
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(isAuthenticated: true, hasCachedSnapshot: false),
+            .authenticated
+        )
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(isAuthenticated: false, hasCachedSnapshot: true),
+            .transientlyUnavailable
+        )
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(isAuthenticated: false, hasCachedSnapshot: false),
+            .signedOut
         )
     }
 }
