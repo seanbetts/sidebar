@@ -436,11 +436,11 @@ extension WriteQueue {
             if case .unknownEntityType = (error as? WriteQueueError) {
                 shouldRetryWrite = false
             } else {
-                shouldRetryWrite = shouldRetry(attempts: write.attempts)
+                shouldRetryWrite = WriteQueueRetryPolicy.shouldRetry(attempts: write.attempts)
             }
             await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetryWrite)
             if shouldRetryWrite {
-                let delay = backoffDelay(for: Int(write.attempts))
+                let delay = WriteQueueRetryPolicy.backoffDelayNanoseconds(forAttempt: Int(write.attempts))
                 do {
                     try await retrySleep(delay)
                 } catch is CancellationError {
@@ -450,15 +450,6 @@ extension WriteQueue {
             }
             return true
         }
-    }
-
-    private func shouldRetry(attempts: Int16) -> Bool {
-        attempts < 5
-    }
-
-    private func backoffDelay(for attempt: Int) -> UInt64 {
-        let seconds = min(pow(2.0, Double(max(attempt - 1, 0))), 16.0)
-        return UInt64(seconds * 1_000_000_000)
     }
 
     private func fetchNextPending() async throws -> FetchedPendingWrite? {
@@ -785,7 +776,10 @@ extension WriteQueue {
                 request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
                 let writes = try context.fetch(request)
                 var recoveredCount = 0
-                for write in writes where self.shouldReplayFailedWrite(write) {
+                for write in writes where WriteQueueRetryPolicy.shouldReplayFailedWrite(
+                    lastError: write.lastError,
+                    conflictReason: write.conflictReason
+                ) {
                     write.status = WriteQueueStatus.pending.rawValue
                     write.attempts = 0
                     write.lastError = nil
@@ -800,58 +794,6 @@ extension WriteQueue {
         } catch {
             logger.error("Failed to recover retryable failed writes: \(error.localizedDescription, privacy: .public)")
         }
-    }
-
-    private func shouldReplayFailedWrite(_ write: PendingWrite) -> Bool {
-        guard write.conflictReason == nil, let lastError = write.lastError else {
-            return false
-        }
-
-        if let statusCode = retryableHTTPStatusCode(from: lastError) {
-            return statusCode == 408 || statusCode == 429 || statusCode >= 500
-        }
-
-        guard let urlErrorCode = urlErrorCode(from: lastError) else {
-            return false
-        }
-
-        switch urlErrorCode {
-        case URLError.notConnectedToInternet.rawValue,
-             URLError.networkConnectionLost.rawValue,
-             URLError.timedOut.rawValue,
-             URLError.cannotFindHost.rawValue,
-             URLError.cannotConnectToHost.rawValue,
-             URLError.dnsLookupFailed.rawValue:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func retryableHTTPStatusCode(from errorDescription: String) -> Int? {
-        let prefix = "requestFailed("
-        guard let range = errorDescription.range(of: prefix) else {
-            return nil
-        }
-        let suffix = errorDescription[range.upperBound...]
-        guard let endIndex = suffix.firstIndex(of: ")") else {
-            return nil
-        }
-        return Int(suffix[..<endIndex])
-    }
-
-    private func urlErrorCode(from errorDescription: String) -> Int? {
-        let marker = "Code="
-        guard errorDescription.contains("NSURLErrorDomain"),
-              let codeRange = errorDescription.range(of: marker) else {
-            return nil
-        }
-        let suffix = errorDescription[codeRange.upperBound...]
-        let numericPrefix = suffix.prefix { $0 == "-" || $0.isNumber }
-        guard !numericPrefix.isEmpty else {
-            return nil
-        }
-        return Int(numericPrefix)
     }
 
     func performBackgroundTask<T>(
