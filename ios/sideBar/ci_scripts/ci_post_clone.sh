@@ -19,7 +19,7 @@
 #   - SENTRY_AUTH_TOKEN
 #   - SENTRY_ORG
 #   - SENTRY_PROJECT
-# Optional (pins the best-effort sentry-cli install, defaults to 2.58.2):
+# Optional (pins the verified sentry-cli install, defaults to 2.58.2):
 #   - SENTRY_CLI_VERSION
 
 set -euo pipefail
@@ -43,7 +43,7 @@ else
 fi
 
 ensure_sentry_cli() {
-    echo "=== ci_post_clone.sh: Ensuring sentry-cli is available (best effort) ==="
+    echo "=== ci_post_clone.sh: Ensuring sentry-cli is available ==="
 
     if [[ -z "${SENTRY_AUTH_TOKEN:-}" || -z "${SENTRY_ORG:-}" || -z "${SENTRY_PROJECT:-}" ]]; then
         echo "Sentry dSYM upload disabled; set SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT to enable it"
@@ -65,18 +65,93 @@ ensure_sentry_cli() {
     fi
 
     if ! command -v curl >/dev/null 2>&1; then
-        echo "warning: curl not found; unable to install sentry-cli automatically"
-        return 0
+        echo "error: curl not found; unable to install sentry-cli while dSYM upload is enabled"
+        return 1
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "error: python3 not found; unable to verify sentry-cli release metadata"
+        return 1
+    fi
+
+    if ! command -v shasum >/dev/null 2>&1; then
+        echo "error: shasum not found; unable to verify sentry-cli checksum"
+        return 1
     fi
 
     mkdir -p "$install_dir"
-    export INSTALL_DIR="$install_dir"
-    export SENTRY_CLI_VERSION="$cli_version"
-    if curl -sL https://sentry.io/get-cli/ | bash; then
-        echo "Installed sentry-cli ${cli_version} to $install_dir/sentry-cli"
-    else
-        echo "warning: Unable to install sentry-cli automatically; dSYM upload build phase will require sentry-cli on PATH or SENTRY_CLI_PATH"
+
+    local asset_name
+    case "$(uname -s)" in
+        Darwin)
+            asset_name="sentry-cli-Darwin-universal"
+            ;;
+        *)
+            echo "error: unsupported sentry-cli install platform: $(uname -s)"
+            return 1
+            ;;
+    esac
+
+    local tmp_dir
+    tmp_dir="$(mktemp -d)"
+    local registry_path="$tmp_dir/release-registry.json"
+    local download_path="$tmp_dir/$asset_name"
+    local registry_url="https://release-registry.services.sentry.io/apps/sentry-cli/$cli_version"
+
+    echo "Downloading sentry-cli release metadata for ${cli_version}"
+    curl -fsSL "$registry_url" > "$registry_path"
+
+    local asset_metadata
+    if ! asset_metadata="$(python3 - "$registry_path" "$asset_name" <<'PY'
+import json
+import sys
+
+registry_path = sys.argv[1]
+asset_name = sys.argv[2]
+
+with open(registry_path, "r", encoding="utf-8") as handle:
+    registry = json.load(handle)
+
+try:
+    asset = registry["files"][asset_name]
+    checksum = asset["checksums"]["sha256-hex"]
+    url = asset["url"]
+except KeyError as exc:
+    raise SystemExit(f"missing sentry-cli registry field: {exc}") from exc
+
+if not checksum or not url:
+    raise SystemExit("missing sentry-cli URL or checksum")
+
+print(url)
+print(checksum)
+PY
+)"; then
+        rm -rf "$tmp_dir"
+        echo "error: unable to read sentry-cli release metadata"
+        return 1
     fi
+
+    local asset_url
+    local expected_sha
+    asset_url="$(printf '%s\n' "$asset_metadata" | sed -n '1p')"
+    expected_sha="$(printf '%s\n' "$asset_metadata" | sed -n '2p')"
+
+    echo "Downloading ${asset_name}"
+    curl -fsSL -o "$download_path" "$asset_url"
+
+    local actual_sha
+    actual_sha="$(shasum -a 256 "$download_path" | awk '{print $1}')"
+    if [[ "$actual_sha" != "$expected_sha" ]]; then
+        rm -rf "$tmp_dir"
+        echo "error: sentry-cli checksum mismatch for ${asset_name}"
+        echo "error: expected ${expected_sha}, got ${actual_sha}"
+        return 1
+    fi
+
+    mv "$download_path" "$install_dir/sentry-cli"
+    chmod +x "$install_dir/sentry-cli"
+    rm -rf "$tmp_dir"
+    echo "Installed verified sentry-cli ${cli_version} to $install_dir/sentry-cli"
 }
 
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
