@@ -31,6 +31,23 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertFalse(appSource.contains("consumeWidgetAddTask"))
     }
 
+    func testOpenTaskIntentTargetsTaskScopedDeepLink() throws {
+        let taskIntentSource = try normalizedWidgetTaskIntentsSource()
+        guard let intentStart = taskIntentSource.range(of: "structOpenTaskIntent:AppIntent")?.lowerBound,
+              let nextDeclaration = taskIntentSource.range(
+                of: "structSideBarShortcutsProvider:",
+                range: intentStart..<taskIntentSource.endIndex
+              )?.lowerBound
+        else {
+            XCTFail("OpenTaskIntent declaration not found")
+            return
+        }
+
+        let openTaskIntentSource = String(taskIntentSource[intentStart..<nextDeclaration])
+        XCTAssertTrue(openTaskIntentSource.contains("sidebar://tasks/task/\\(encodedTaskId)"))
+        XCTAssertFalse(openTaskIntentSource.contains("sidebar://tasks/today"))
+    }
+
     func testCreateNoteIntentTargetsOpenNewNoteDeepLink() throws {
         let widgetSource = try normalizedWidgetNoteIntentsSource()
         let appSource = try normalizedSideBarAppSource()

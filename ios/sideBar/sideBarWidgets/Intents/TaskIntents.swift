@@ -399,7 +399,8 @@ struct OpenTaskIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        guard let url = URL(string: "sidebar://tasks/today") else {
+        let encodedTaskId = taskId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? taskId
+        guard let url = URL(string: "sidebar://tasks/task/\(encodedTaskId)") else {
             return .result()
         }
         return .result(opensIntent: OpenURLIntent(url))
