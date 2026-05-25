@@ -111,4 +111,50 @@ extension WriteQueue {
             return
         }
     }
+
+    func countQueuedWrites() async throws -> Int {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "status == %@ OR status == %@",
+                WriteQueueStatus.pending.rawValue,
+                WriteQueueStatus.failed.rawValue
+            )
+            return try context.count(for: request)
+        }
+    }
+
+    func loadQueueCounts() async {
+        do {
+            let snapshot = try await performBackgroundTask { context in
+                let queuedRequest = PendingWrite.fetchRequest()
+                queuedRequest.predicate = NSPredicate(
+                    format: "status == %@ OR status == %@",
+                    WriteQueueStatus.pending.rawValue,
+                    WriteQueueStatus.failed.rawValue
+                )
+
+                let failedRequest = PendingWrite.fetchRequest()
+                failedRequest.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+                failedRequest.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+                ]
+
+                let pendingCount = try context.count(for: queuedRequest)
+                let failedWrites = try context.fetch(failedRequest)
+                let failedRows = failedWrites.map(PendingWriteQueueMapper.summary)
+
+                return (pendingCount, failedRows)
+            }
+
+            applyHeaderQueueState(
+                pendingCount: snapshot.0,
+                failedCount: snapshot.1.count,
+                failedHeaderRows: snapshot.1
+            )
+        } catch {
+            logger.error("Failed to load queue counts: \(error.localizedDescription, privacy: .public)")
+            applyHeaderQueueState(pendingCount: 0, failedCount: 0, failedHeaderRows: [])
+        }
+    }
 }

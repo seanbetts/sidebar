@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Combine
 import CoreData
 import Foundation
@@ -200,39 +199,6 @@ import OSLog
     }
 
     func setConflictPauseState(_ isPaused: Bool) { isPausedForConflict = isPaused }
-    func resolveConflict(id: UUID, resolution: WriteQueueConflictResolution) async {
-        do {
-            try await performBackgroundTask { context in
-                let request = PendingWrite.fetchRequest()
-                request.fetchLimit = 1
-                request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-                guard let write = try context.fetch(request).first else { return }
-                switch resolution {
-                case .keepServer:
-                    context.delete(write)
-                case .keepLocal:
-                    if let rebasedPayload = rebaseConflictPayload(
-                        entityType: write.entityType,
-                        payloadData: write.payload,
-                        serverSnapshot: write.serverSnapshot
-                    ) {
-                        write.payload = rebasedPayload
-                    }
-                    write.status = WriteQueueStatus.pending.rawValue
-                    write.attempts = 0
-                    write.lastError = nil
-                    write.lastAttemptAt = nil
-                    write.conflictReason = nil
-                    write.serverSnapshot = nil
-                }
-            }
-        } catch {
-            logger.error("Failed to resolve write conflict: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-        await loadQueueCounts()
-        resumeProcessing()
-    }
 
     func processRetriedWrite(id: UUID) async {
         guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
@@ -379,83 +345,6 @@ extension WriteQueue {
         }
     }
 
-    private func coalesceNoteUpdate(entityId: String, payload: Data) async throws -> Bool {
-        try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.predicate = NSPredicate(
-                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
-                WriteOperation.update.rawValue,
-                WriteEntityType.note.rawValue,
-                entityId,
-                WriteQueueStatus.pending.rawValue,
-                WriteQueueStatus.failed.rawValue
-            )
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
-            request.fetchLimit = 1
-            guard let write = try context.fetch(request).first else {
-                return false
-            }
-            write.payload = payload
-            write.createdAt = Date()
-            write.status = WriteQueueStatus.pending.rawValue
-            write.attempts = 0
-            write.lastError = nil
-            write.lastAttemptAt = nil
-            return true
-        }
-    }
-
-    private func coalesceTaskNotesUpdate(entityId: String, payload: Data) async throws -> Bool {
-        guard WriteQueueCoalescingPolicy.isTaskNotesUpdate(payload) else { return false }
-        return try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.predicate = NSPredicate(
-                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
-                WriteOperation.update.rawValue, WriteEntityType.task.rawValue, entityId,
-                WriteQueueStatus.pending.rawValue, WriteQueueStatus.failed.rawValue
-            )
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
-            request.fetchLimit = 1
-            guard let write = try context.fetch(request).first,
-                  WriteQueueCoalescingPolicy.isTaskNotesUpdate(write.payload) else { return false }
-            write.payload = payload; write.createdAt = Date(); write.status = WriteQueueStatus.pending.rawValue
-            write.attempts = 0; write.lastError = nil; write.lastAttemptAt = nil
-            return true
-        }
-    }
-
-    private func coalesceSettingsUpdate(payload: Data) async throws -> Bool {
-        let incoming = try? JSONDecoder().decode(SettingsMutationPayload.self, from: payload)
-        guard let incoming, incoming.kind == .settingsPatch else { return false }
-        return try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.predicate = NSPredicate(
-                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
-                WriteOperation.update.rawValue,
-                WriteEntityType.settings.rawValue,
-                incoming.entityId,
-                WriteQueueStatus.pending.rawValue,
-                WriteQueueStatus.failed.rawValue
-            )
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
-            request.fetchLimit = 1
-            guard let write = try context.fetch(request).first,
-                  let merged = WriteQueueCoalescingPolicy.mergedSettingsPatch(
-                    existing: write.payload,
-                    incoming: payload
-                  ) else { return false }
-            write.payload = merged
-            write.createdAt = Date()
-            write.status = WriteQueueStatus.pending.rawValue
-            write.attempts = 0
-            write.lastError = nil
-            write.lastAttemptAt = nil
-            write.conflictReason = nil
-            write.serverSnapshot = nil
-            return true
-        }
-    }
-
     private func retryFailedWrites() async {
         do {
             try await performBackgroundTask { context in
@@ -530,60 +419,6 @@ extension WriteQueue {
         }
     }
 
-    private func countQueuedWrites() async throws -> Int {
-        try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.predicate = NSPredicate(
-                format: "status == %@ OR status == %@",
-                WriteQueueStatus.pending.rawValue,
-                WriteQueueStatus.failed.rawValue
-            )
-            return try context.count(for: request)
-        }
-    }
-
-    private func countFailedWrites() async throws -> Int {
-        try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
-            return try context.count(for: request)
-        }
-    }
-
-    func loadQueueCounts() async {
-        do {
-            let snapshot = try await performBackgroundTask { context in
-                let queuedRequest = PendingWrite.fetchRequest()
-                queuedRequest.predicate = NSPredicate(
-                    format: "status == %@ OR status == %@",
-                    WriteQueueStatus.pending.rawValue,
-                    WriteQueueStatus.failed.rawValue
-                )
-
-                let failedRequest = PendingWrite.fetchRequest()
-                failedRequest.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
-                failedRequest.sortDescriptors = [
-                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
-                ]
-
-                let pendingCount = try context.count(for: queuedRequest)
-                let failedWrites = try context.fetch(failedRequest)
-                let failedRows = failedWrites.map(PendingWriteQueueMapper.summary)
-
-                return (pendingCount, failedRows)
-            }
-
-            applyHeaderQueueState(
-                pendingCount: snapshot.0,
-                failedCount: snapshot.1.count,
-                failedHeaderRows: snapshot.1
-            )
-        } catch {
-            logger.error("Failed to load queue counts: \(error.localizedDescription, privacy: .public)")
-            applyHeaderQueueState(pendingCount: 0, failedCount: 0, failedHeaderRows: [])
-        }
-    }
-
     private func observeNetwork() {
         connectivityMonitor.offlineCapabilityPolicyPublisher
             .filter(\.canAttemptServerWrite)
@@ -651,34 +486,4 @@ extension WriteQueue {
         }
     }
 
-    private func autoResolveConflict(write: PendingWriteRecord, error: WriteQueueConflictError) async {
-        let rebasedPayload = rebaseConflictPayload(
-            entityType: write.entityType,
-            payloadData: write.payload,
-            serverSnapshot: error.serverSnapshot ?? write.serverSnapshot
-        )
-
-        do {
-            try await performBackgroundTask { context in
-                let request = PendingWrite.fetchRequest()
-                request.fetchLimit = 1
-                request.predicate = NSPredicate(format: "id == %@", write.id as CVarArg)
-                guard let pendingWrite = try context.fetch(request).first else { return }
-                if let rebasedPayload {
-                    pendingWrite.payload = rebasedPayload
-                    pendingWrite.status = WriteQueueStatus.pending.rawValue
-                    pendingWrite.attempts = 0
-                    pendingWrite.lastError = nil
-                    pendingWrite.lastAttemptAt = nil
-                } else {
-                    pendingWrite.status = WriteQueueStatus.failed.rawValue
-                    pendingWrite.lastError = "Automatic conflict resolution failed: \(error.reason)"
-                }
-                pendingWrite.conflictReason = nil
-                pendingWrite.serverSnapshot = nil
-            }
-        } catch {
-            logger.error("Failed to auto-resolve write conflict: \(error.localizedDescription, privacy: .public)")
-        }
-    }
 }
