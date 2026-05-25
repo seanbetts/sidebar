@@ -24,26 +24,64 @@ private enum SettingsSaveDiagnostics {
         operation: String,
         message: String
     ) -> String {
+        let diagnosticCode = diagnosticCode(for: error)
+        let diagnosticStatus = diagnosticStatus(for: error) ?? "none"
         let failureMessage =
-            "Settings save failed operation=\(operation) error=\(message)"
+            "Settings save failed operation=\(operation) " +
+            "code=\(diagnosticCode) status=\(diagnosticStatus)"
         logger.error(
             "\(failureMessage, privacy: .public)"
         )
-        if let apiError = error as? APIClientError {
-            let apiErrorMessage =
-                "Settings save API error operation=\(operation) detail=\(String(describing: apiError))"
-            logger.error(
-                "\(apiErrorMessage, privacy: .public)"
-            )
-        } else {
-            let nsError = error as NSError
-            let underlyingMessage =
-                "Settings save underlying error operation=\(operation) domain=\(nsError.domain) code=\(nsError.code)"
-            logger.error(
-                "\(underlyingMessage, privacy: .public)"
-            )
-        }
         return message
+    }
+
+    private static func diagnosticCode(for error: Error) -> String {
+        if let apiError = error as? APIClientError {
+            return diagnosticCode(for: apiError)
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            return "url_error"
+        }
+        return "unknown_error"
+    }
+
+    private static func diagnosticCode(for apiError: APIClientError) -> String {
+        switch apiError {
+        case .invalidUrl:
+            return "invalid_url"
+        case .missingToken:
+            return "missing_token"
+        case .requestFailed:
+            return "request_failed"
+        case .apiError:
+            return "api_error"
+        case .appError(let appError):
+            return "app_error_\(appError.category.rawValue)"
+        case .decodingFailed:
+            return "decoding_failed"
+        case .unknown:
+            return "unknown_api_error"
+        }
+    }
+
+    private static func diagnosticStatus(for error: Error) -> String? {
+        if let apiError = error as? APIClientError {
+            return diagnosticStatus(for: apiError)
+        }
+        return nil
+    }
+
+    private static func diagnosticStatus(for apiError: APIClientError) -> String? {
+        switch apiError {
+        case .requestFailed(let status):
+            return String(status)
+        case .appError(let appError):
+            return appError.diagnostics["statusCode"]
+        case .invalidUrl, .missingToken, .apiError, .decodingFailed, .unknown:
+            return nil
+        }
     }
 }
 
