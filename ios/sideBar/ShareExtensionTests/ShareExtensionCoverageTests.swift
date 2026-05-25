@@ -225,6 +225,25 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(source.contains("session.upload(for:"))
     }
 
+    func testShareExtensionImageHandlingPrefersFileRepresentationBeforeDecoding() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let sourceURL = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/ShareExtension/ShareViewController+MediaHandling.swift"
+        )
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        let fileRepresentationRange = try XCTUnwrap(
+            source.range(
+                of: "letfileURLResult=awaitloadFileURLResult(from:itemProvider,typeIdentifier:UTType.image.identifier)"
+            )
+        )
+        let decodeRange = try XCTUnwrap(source.range(of: "letimageResult=awaitloadImageResult(from:itemProvider)"))
+
+        XCTAssertLessThan(fileRepresentationRange.lowerBound, decodeRange.lowerBound)
+        XCTAssertTrue(source.contains("awaituploadFileFromURL(fileURL,itemProvider:itemProvider,isImage:true)"))
+    }
+
     func testWidgetProvidersClassifyRefreshFailuresAsWidgetRefreshRequests() throws {
         let repositoryRoot = try findRepositoryRoot()
         let providerPaths = [

@@ -14,6 +14,12 @@ extension ShareViewController {
         let filename: String
         let mimeType: String
 
+        let fileURLResult = await loadFileURLResult(from: itemProvider, typeIdentifier: UTType.image.identifier)
+        if let fileURL = fileURLResult.value {
+            await uploadFileFromURL(fileURL, itemProvider: itemProvider, isImage: true)
+            return
+        }
+
         let imageResult = await loadImageResult(from: itemProvider)
         if let image = imageResult.value,
            let encodedImageData = shareJPEGData(from: image, compressionQuality: 0.9) {
@@ -28,7 +34,7 @@ extension ShareViewController {
                 filename = suggestedName.contains(".") ? suggestedName : "\(suggestedName).jpg"
                 mimeType = mimeTypeForFilename(filename)
             } else {
-                let sourceError = imageResult.error ?? dataResult.error
+                let sourceError = fileURLResult.error ?? imageResult.error ?? dataResult.error
                 await MainActor.run { [weak self] in
                     self?.showProviderLoadError(sourceError, fallback: .imageLoadFailed)
                 }
@@ -115,11 +121,36 @@ extension ShareViewController {
         }
     }
 
-    func uploadFileFromURL(_ fileURL: URL, itemProvider: NSItemProvider) async {
-        let filename = itemProvider.suggestedName ?? fileURL.lastPathComponent
+    func uploadFileFromURL(_ fileURL: URL, itemProvider: NSItemProvider, isImage: Bool = false) async {
+        let filename = filenameForSharedFileURL(
+            fileURL,
+            itemProvider: itemProvider,
+            fallbackExtension: isImage ? "jpg" : "bin"
+        )
         let mimeType = mimeTypeForFilename(filename)
-        await uploadFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: false)
+        await uploadFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
         try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    func filenameForSharedFileURL(
+        _ fileURL: URL,
+        itemProvider: NSItemProvider,
+        fallbackExtension: String
+    ) -> String {
+        let fallbackName = fileURL.lastPathComponent.isEmpty ? "shared_file" : fileURL.lastPathComponent
+        let suggestedName = itemProvider.suggestedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let suggestedName, !suggestedName.isEmpty else {
+            return fallbackName
+        }
+        guard !suggestedName.contains(".") else {
+            return suggestedName
+        }
+
+        let fileExtension = fileURL.pathExtension.isEmpty ? fallbackExtension : fileURL.pathExtension
+        guard !fileExtension.isEmpty else {
+            return suggestedName
+        }
+        return "\(suggestedName).\(fileExtension)"
     }
 
     // MARK: - Upload
