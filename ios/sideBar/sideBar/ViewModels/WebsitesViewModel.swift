@@ -73,12 +73,21 @@ public final class WebsitesViewModel: ObservableObject {
     let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
     @Published var inFlightTranscriptRequests: [String: Set<String>] = [:]
     var pendingTranscriptJobs: [String: Set<String>] = [:]
-    var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
-    var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    var transcriptPollingTasks: [String: Task<Void, Never>] = [:] {
+        didSet {
+            teardownBag.setTranscriptPollingTasks(transcriptPollingTasks)
+        }
+    }
+    var jobPollingTasks: [String: Task<Void, Never>] = [:] {
+        didSet {
+            teardownBag.setJobPollingTasks(jobPollingTasks)
+        }
+    }
     var jobPollingTaskTokens: [String: UUID] = [:]
     var allowsFallbackPolling: @MainActor (AppSection, Bool) -> Bool = { _, _ in true }
     var onJobTerminalState: @MainActor (DomainSyncChange) async -> Void = { _ in }
     var cancellables = Set<AnyCancellable>()
+    private let teardownBag = WebsitesViewModelTeardownBag()
 
     public convenience init(
         api: any WebsitesProviding,

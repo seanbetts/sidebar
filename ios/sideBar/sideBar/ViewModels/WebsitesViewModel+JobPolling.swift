@@ -16,7 +16,10 @@ extension WebsitesViewModel {
         shouldSelectOnCompletion: Bool
     ) {
         guard allowsFallbackPolling(.websites, true) else { return }
-        jobPollingTasks[jobId]?.cancel()
+        if let existingTask = jobPollingTasks[jobId] {
+            existingTask.cancel()
+            clearWebsiteJobPolling(jobId: jobId)
+        }
         let token = UUID()
         jobPollingTaskTokens[jobId] = token
         jobPollingTasks[jobId] = Task { [weak self] in

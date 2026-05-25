@@ -7,6 +7,36 @@ import sideBarShared
 @MainActor
 // swiftlint:disable:next type_body_length
 final class WebsitesViewModelTests: XCTestCase {
+    func testWebsiteViewModelDeinitCancelsPollingTasks() async {
+        let sleepProbe = WebsitesPollingSleepProbe()
+        let api = MockWebsitesAPI()
+        var viewModel: WebsitesViewModel? = WebsitesViewModel(
+            api: api,
+            store: WebsitesStore(api: api, cache: InMemoryCacheClient()),
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            transcriptPollInterval: 60,
+            transcriptPollMinimumInterval: 60
+        )
+
+        viewModel?.transcriptPollingTasks["site-1::video-1"] = Task {
+            try? await sleepProbe.sleep(nanoseconds: 60_000_000_000)
+        }
+        viewModel?.jobPollingTasks["job-1"] = Task {
+            try? await sleepProbe.sleep(nanoseconds: 60_000_000_000)
+        }
+
+        let tasksAreSleeping = await waitForCondition {
+            sleepProbe.sleepingTaskCount == 2
+        }
+        XCTAssertTrue(tasksAreSleeping)
+
+        viewModel = nil
+        await Task.yield()
+
+        XCTAssertEqual(sleepProbe.cancellationCount, 2)
+    }
+
     func testLoadUsesCacheOnFailure() async {
         let cached = WebsitesResponse(items: [makeItem(id: "cached")])
         let cache = InMemoryCacheClient()
@@ -2522,6 +2552,44 @@ extension WebsitesViewModelTests {
 
 private enum MockError: Error {
     case forced
+}
+
+private final class WebsitesPollingSleepProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuations: [UUID: CheckedContinuation<Void, Error>] = [:]
+    private var cancellationTotal = 0
+
+    var sleepingTaskCount: Int {
+        lock.lock()
+        let count = continuations.count
+        lock.unlock()
+        return count
+    }
+
+    var cancellationCount: Int {
+        lock.lock()
+        let count = cancellationTotal
+        lock.unlock()
+        return count
+    }
+
+    func sleep(nanoseconds: UInt64) async throws {
+        _ = nanoseconds
+        let sleepId = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.lock()
+                continuations[sleepId] = continuation
+                lock.unlock()
+            }
+        } onCancel: {
+            lock.lock()
+            cancellationTotal += 1
+            let continuation = continuations.removeValue(forKey: sleepId)
+            lock.unlock()
+            continuation?.resume(throwing: CancellationError())
+        }
+    }
 }
 
 @MainActor

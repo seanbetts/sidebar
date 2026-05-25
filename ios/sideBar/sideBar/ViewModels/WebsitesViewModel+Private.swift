@@ -551,13 +551,13 @@ extension WebsitesViewModel {
     ) {
         if let key {
             transcriptPollingTasks[key]?.cancel()
-            transcriptPollingTasks[key] = nil
+            transcriptPollingTasks.removeValue(forKey: key)
             return
         }
         if let websiteId, let videoId {
             let entryKey = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
             transcriptPollingTasks[entryKey]?.cancel()
-            transcriptPollingTasks[entryKey] = nil
+            transcriptPollingTasks.removeValue(forKey: entryKey)
             return
         }
         for task in transcriptPollingTasks.values {
