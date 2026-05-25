@@ -23,9 +23,15 @@ final class CachedMarkdownRemoteImageLoader: ObservableObject {
     #endif
 
     private static let imageCache = NSCache<NSURL, PlatformImage>()
-
     @Published private(set) var phase: CachedMarkdownRemoteImagePhase = .empty
     private var currentURL: URL?
+    private let session: URLSession
+    private let maxImageDataBytes: Int64
+
+    init(session: URLSession = .shared, maxImageDataBytes: Int64 = 5_000_000) {
+        self.session = session
+        self.maxImageDataBytes = maxImageDataBytes
+    }
 
     func load(url: URL?) async {
         guard let url else {
@@ -44,18 +50,21 @@ final class CachedMarkdownRemoteImageLoader: ObservableObject {
             return
         }
 
+        guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            phase = .failure
+            return
+        }
+
         let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 30)
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (temporaryURL, response) = try await session.download(for: request)
+            defer { try? FileManager.default.removeItem(at: temporaryURL) }
             guard currentURL == url else { return }
-            if let http = response as? HTTPURLResponse,
-               !(200..<300).contains(http.statusCode) {
-                phase = .failure
-                return
+            guard let data = try validatedImageData(at: temporaryURL, response: response) else {
+                return failCurrentURL(url)
             }
             guard let platformImage = Self.makePlatformImage(from: data) else {
-                phase = .failure
-                return
+                return failCurrentURL(url)
             }
             Self.imageCache.setObject(platformImage, forKey: url as NSURL)
             phase = .success(Self.makeImage(from: platformImage))
@@ -63,6 +72,35 @@ final class CachedMarkdownRemoteImageLoader: ObservableObject {
             guard currentURL == url else { return }
             phase = .failure
         }
+    }
+
+    private func validatedImageData(at temporaryURL: URL, response: URLResponse) throws -> Data? {
+        guard Self.isSupportedImageResponse(response),
+              response.expectedContentLength <= maxImageDataBytes else {
+            return nil
+        }
+        let fileSize = try Self.fileSize(at: temporaryURL)
+        guard fileSize <= maxImageDataBytes else {
+            return nil
+        }
+        return try Data(contentsOf: temporaryURL, options: .mappedIfSafe)
+    }
+
+    private func failCurrentURL(_ url: URL) {
+        guard currentURL == url else { return }
+        phase = .failure
+    }
+
+    private static func isSupportedImageResponse(_ response: URLResponse) -> Bool {
+        guard let http = response as? HTTPURLResponse else {
+            return true
+        }
+        return (200..<300).contains(http.statusCode) && http.isImageResponse
+    }
+
+    private static func fileSize(at url: URL) throws -> Int64 {
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        return (attributes[.size] as? NSNumber)?.int64Value ?? 0
     }
 
     private static func makePlatformImage(from data: Data) -> PlatformImage? {
@@ -79,6 +117,15 @@ final class CachedMarkdownRemoteImageLoader: ObservableObject {
         #elseif os(macOS)
         return Image(nsImage: image)
         #endif
+    }
+}
+
+private extension HTTPURLResponse {
+    var isImageResponse: Bool {
+        guard let mimeType = mimeType?.lowercased() else {
+            return true
+        }
+        return mimeType.hasPrefix("image/")
     }
 }
 
