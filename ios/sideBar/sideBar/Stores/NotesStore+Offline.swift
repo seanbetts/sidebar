@@ -332,6 +332,11 @@ extension NotesStore {
         guard !normalizedPath.isEmpty else { return }
         let parent = parentFolderPath(normalizedPath)
         let updatedPath = parent.isEmpty ? newName : "\(parent)/\(newName)"
+        let notePathRenames = renamedNotePathPairs(
+            in: sourceTree.children,
+            oldPath: normalizedPath,
+            newPath: updatedPath
+        )
         let updatedChildren = renamingFolderNodes(
             in: sourceTree.children,
             oldPath: normalizedPath,
@@ -339,6 +344,13 @@ extension NotesStore {
             newName: newName
         )
         persistLocalTree(makeTree(children: updatedChildren))
+        for notePathRename in notePathRenames {
+            updateCachedNotePath(
+                from: notePathRename.oldPath,
+                to: notePathRename.newPath,
+                newName: nil
+            )
+        }
     }
 
     private func applyLocalDeleteFolder(path: String) {

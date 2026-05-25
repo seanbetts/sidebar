@@ -503,6 +503,92 @@ extension NotesStoreTests {
         XCTAssertEqual(renamed.children?[1].children?.first?.path, "/Archive/Nested/Plan.md")
     }
 
+    func testRenamingFolderUpdatesCachedDirectAndNestedNotePayloadPaths() async {
+        let directNote = NotePayload(
+            id: "note-direct",
+            name: "Brief.md",
+            content: "Brief",
+            path: "/Projects/Brief.md",
+            modified: nil,
+            created: nil
+        )
+        let nestedNote = NotePayload(
+            id: "note-nested",
+            name: "Plan.md",
+            content: "Plan",
+            path: "/Projects/Nested/Plan.md",
+            modified: nil,
+            created: nil
+        )
+        let tree = FileTree(children: [
+            noteDirectory(
+                name: "Projects",
+                path: "/Projects",
+                children: [
+                    FileNode(
+                        name: directNote.name,
+                        path: directNote.path,
+                        type: .file,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: false,
+                        pinnedOrder: nil,
+                        archived: false,
+                        folderMarker: nil
+                    ),
+                    noteDirectory(
+                        name: "Nested",
+                        path: "/Projects/Nested",
+                        children: [
+                            FileNode(
+                                name: nestedNote.name,
+                                path: nestedNote.path,
+                                type: .file,
+                                size: nil,
+                                modified: nil,
+                                created: nil,
+                                children: nil,
+                                expanded: nil,
+                                pinned: false,
+                                pinnedOrder: nil,
+                                archived: false,
+                                folderMarker: nil
+                            )
+                        ]
+                    )
+                ]
+            )
+        ])
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(tree, persist: false)
+        cache.set(key: CacheKeys.note(id: directNote.path), value: directNote, ttlSeconds: CachePolicy.noteContent)
+        cache.set(key: CacheKeys.note(id: nestedNote.path), value: nestedNote, ttlSeconds: CachePolicy.noteContent)
+
+        store.applyOptimisticRenameFolder(path: "folder:/Projects", newName: "Archive")
+
+        let directByOldPath: NotePayload? = cache.get(key: CacheKeys.note(id: "/Projects/Brief.md"))
+        let nestedByOldPath: NotePayload? = cache.get(key: CacheKeys.note(id: "/Projects/Nested/Plan.md"))
+        let directByNewPath: NotePayload? = cache.get(key: CacheKeys.note(id: "/Archive/Brief.md"))
+        let nestedByNewPath: NotePayload? = cache.get(key: CacheKeys.note(id: "/Archive/Nested/Plan.md"))
+        let directById: NotePayload? = cache.get(key: CacheKeys.note(id: directNote.id))
+        let nestedById: NotePayload? = cache.get(key: CacheKeys.note(id: nestedNote.id))
+
+        XCTAssertNil(directByOldPath)
+        XCTAssertNil(nestedByOldPath)
+        XCTAssertEqual(directByNewPath?.path, "/Archive/Brief.md")
+        XCTAssertEqual(nestedByNewPath?.path, "/Archive/Nested/Plan.md")
+        XCTAssertEqual(directById?.path, "/Archive/Brief.md")
+        XCTAssertEqual(nestedById?.path, "/Archive/Nested/Plan.md")
+    }
+
     func testApplyPinnedOrderUpdatesPinnedNodesAcrossFoldersAndCanRestorePreviousOrder() async {
         let tree = makePinnedOrderTree()
         let api = NotesStoreTestsSupport.MockNotesAPI(

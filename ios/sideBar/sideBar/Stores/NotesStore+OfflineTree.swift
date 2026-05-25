@@ -210,6 +210,37 @@ extension NotesStore {
         )
     }
 
+    func renamedNotePathPairs(
+        in nodes: [FileNode],
+        oldPath: String,
+        newPath: String
+    ) -> [(oldPath: String, newPath: String)] {
+        nodes.flatMap { node -> [(oldPath: String, newPath: String)] in
+            if node.type == .directory {
+                return renamedNotePathPairs(
+                    in: node.children ?? [],
+                    oldPath: oldPath,
+                    newPath: newPath
+                )
+            }
+
+            guard node.type == .file else { return [] }
+            let normalizedOldPath = normalizedFolderNodePath(oldPath)
+            let normalizedNewPath = normalizedFolderNodePath(newPath)
+            let oldPrefix = node.path.hasPrefix("/") ? "/\(normalizedOldPath)" : normalizedOldPath
+            guard node.path == oldPrefix || node.path.hasPrefix("\(oldPrefix)/") else {
+                return []
+            }
+            let newPrefix = node.path.hasPrefix("/") ? "/\(normalizedNewPath)" : normalizedNewPath
+            let updatedPath = node.path.replacingOccurrences(
+                of: oldPrefix,
+                with: newPrefix,
+                options: [.anchored]
+            )
+            return [(oldPath: node.path, newPath: updatedPath)]
+        }
+    }
+
     func insertNodeIntoFolder(_ nodes: [FileNode], node: FileNode, folder: String) -> [FileNode] {
         let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !normalizedFolder.isEmpty else {
