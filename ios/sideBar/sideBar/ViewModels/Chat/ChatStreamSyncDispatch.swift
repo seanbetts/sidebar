@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import sideBarShared
+
+private let primitiveSyncLogger = Logger(subsystem: "sideBar", category: "ChatViewModelRealtime")
 
 extension ChatViewModel {
     func makeTransportStreamEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
@@ -75,7 +78,10 @@ extension ChatViewModel {
     }
 
     private func handleEntityChanged(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseEntityChanged(event.data) else {
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseEntityChangedResult(event.data),
+            event: event
+        ) else {
             return
         }
         if handleConversationEntityChanged(payload) {
@@ -223,7 +229,10 @@ extension ChatViewModel {
     }
 
     private func handleEntityDeleted(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseEntityDeleted(event.data) else {
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseEntityDeletedResult(event.data),
+            event: event
+        ) else {
             return
         }
 
@@ -241,7 +250,10 @@ extension ChatViewModel {
     }
 
     private func handleCollectionInvalidated(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseCollectionInvalidated(event.data) else {
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseCollectionInvalidatedResult(event.data),
+            event: event
+        ) else {
             return
         }
 
@@ -321,8 +333,10 @@ extension ChatViewModel {
     }
 
     private func handleToolStatus(_ event: ChatStreamEvent) {
-        let payload = ChatStreamSyncPayloadParser.parseToolStatus(event.data)
-        guard let payload else {
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseToolStatusResult(event.data),
+            event: event
+        ) else {
             return
         }
         clearActiveToolTask?.cancel()
@@ -354,7 +368,10 @@ extension ChatViewModel {
     }
 
     private func handleToolConfirmationRequested(_ event: ChatStreamEvent) {
-        let payload = ChatStreamSyncPayloadParser.parseToolConfirmationRequested(event.data)
+        let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseToolConfirmationRequestedResult(event.data),
+            event: event
+        )
         let targetMessageId = targetMessageIdForToolActionEvent
         guard let payload,
               let messageId = targetMessageId else {
@@ -377,8 +394,10 @@ extension ChatViewModel {
     }
 
     private func handleToolConfirmationResolved(_ event: ChatStreamEvent) {
-        let payload = ChatStreamSyncPayloadParser.parseToolConfirmationResolved(event.data)
-        guard let payload else {
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseToolConfirmationResolvedResult(event.data),
+            event: event
+        ) else {
             return
         }
         updateToolAction(id: payload.confirmationId) { action in
@@ -399,7 +418,10 @@ extension ChatViewModel {
     }
 
     private func handleUndoAvailable(_ event: ChatStreamEvent) {
-        guard let payload = ChatStreamSyncPayloadParser.parseUndoAvailable(event.data),
+        guard let payload = payloadOrHandleFailure(
+            ChatStreamSyncPayloadParser.parseUndoAvailableResult(event.data),
+            event: event
+        ),
               let messageId = targetMessageIdForToolActionEvent else {
             return
         }
@@ -416,5 +438,47 @@ extension ChatViewModel {
             status: .pending
         )
         upsertToolAction(action, messageId: messageId)
+    }
+
+    private func payloadOrHandleFailure<Payload>(
+        _ result: ChatStreamSyncPayloadParseResult<Payload>,
+        event: ChatStreamEvent
+    ) -> Payload? {
+        switch result {
+        case .success(let payload):
+            return payload
+        case .failure(let failure):
+            handleMalformedPrimitiveSyncPayload(event, failure: failure)
+            return nil
+        }
+    }
+
+    private func handleMalformedPrimitiveSyncPayload(
+        _ event: ChatStreamEvent,
+        failure: ChatStreamSyncPayloadParseFailure
+    ) {
+        let keys = failure.payloadKeys.joined(separator: ",")
+        primitiveSyncLogger.warning(
+            """
+            Malformed primitive chat stream event: type=\(event.type.rawValue, privacy: .public) \
+            reason=\(failure.reason, privacy: .public) keys=\(keys, privacy: .public)
+            """
+        )
+        schedulePrimitiveDecodeFailureRefresh()
+    }
+
+    private func schedulePrimitiveDecodeFailureRefresh() {
+        Task { [weak self] in
+            guard let self else { return }
+            guard let refreshCoordinator,
+                  let context = currentRefreshContextProvider?() else {
+                await refreshConversations(silent: true)
+                return
+            }
+            await refreshCoordinator.scheduleDecodeFailureRefresh(
+                section: context.visibleSection ?? .chat,
+                context: context
+            )
+        }
     }
 }
