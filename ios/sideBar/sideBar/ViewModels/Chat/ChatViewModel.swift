@@ -10,6 +10,7 @@ private final class ChatViewModelTeardownBag {
     private var clearActiveToolTask: Task<Void, Never>?
     private var typingRevealTask: Task<Void, Never>?
     private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
+    private var toolActionTasks: [String: Task<Void, Never>] = [:]
 
     func setStreamClient(_ streamClient: any ChatStreamClient) {
         lock.lock()
@@ -41,6 +42,12 @@ private final class ChatViewModelTeardownBag {
         lock.unlock()
     }
 
+    func setToolActionTasks(_ tasks: [String: Task<Void, Never>]) {
+        lock.lock()
+        toolActionTasks = tasks
+        lock.unlock()
+    }
+
     deinit {
         lock.lock()
         let streamClient = streamClient
@@ -48,6 +55,7 @@ private final class ChatViewModelTeardownBag {
         let clearActiveToolTask = clearActiveToolTask
         let typingRevealTask = typingRevealTask
         let attachmentPollTasks = attachmentPollTasks
+        let toolActionTasks = toolActionTasks
         lock.unlock()
 
         streamClient?.disconnect()
@@ -55,6 +63,7 @@ private final class ChatViewModelTeardownBag {
         clearActiveToolTask?.cancel()
         typingRevealTask?.cancel()
         attachmentPollTasks.values.forEach { $0.cancel() }
+        toolActionTasks.values.forEach { $0.cancel() }
     }
 }
 
@@ -184,6 +193,11 @@ private final class ChatViewModelTeardownBag {
     @Published var toolActionsByMessageId: [String: [ChatToolAction]] = [:]
     var activeToolActionMessageId: String?
     var noteIdsClosedForUndoReopen = Set<String>()
+    var toolActionTasks: [String: Task<Void, Never>] = [:] {
+        didSet {
+            teardownBag.setToolActionTasks(toolActionTasks)
+        }
+    }
     var assistantInitiatedStreamTask: Task<Void, Never>? {
         didSet {
             teardownBag.setAssistantInitiatedStreamTask(assistantInitiatedStreamTask)
@@ -363,6 +377,9 @@ private final class ChatViewModelTeardownBag {
         retryStateBeforeReplay = nil
         clearActiveToolTask?.cancel()
         clearActiveToolTask = nil
+        cancelToolActionTasks()
+        toolActionsByMessageId = [:]
+        activeToolActionMessageId = nil
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         clearAttachments()
     }

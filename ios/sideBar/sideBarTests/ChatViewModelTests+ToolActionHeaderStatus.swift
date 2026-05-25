@@ -131,6 +131,57 @@ extension ChatViewModelTests {
 
         XCTAssertEqual(chatAPI.undoCalls, ["undo-1", "undo-1"])
     }
+
+    func testRunningConfirmationIgnoresDuplicateSubmissions() async {
+        let chatAPI = ToolActionAPISpy(
+            resolveResults: [
+                .success(makeConfirmationAcceptedResponse(confirmationId: "confirm-1")),
+                .success(makeConfirmationAcceptedResponse(confirmationId: "confirm-1"))
+            ],
+            resolveDelayNanoseconds: 50_000_000
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient(),
+            chatAPI: chatAPI
+        )
+        viewModel.messages = [makeToolActionMessage(content: "Please confirm.")]
+        viewModel.toolActionsByMessageId["assistant-1"] = [makeConfirmationAction()]
+
+        viewModel.handleToolAction(viewModel.toolActions(for: "assistant-1")[0], decision: .accept)
+        viewModel.handleToolAction(viewModel.toolActions(for: "assistant-1")[0], decision: .accept)
+
+        await chatAPI.waitForResolveCallCount(1)
+        await settleMainActorWork()
+
+        XCTAssertEqual(chatAPI.resolveCalls.count, 1)
+    }
+
+    func testResetCancelsRunningConfirmationWithoutApplyingFailure() async {
+        let chatAPI = ToolActionAPISpy(
+            resolveResults: [.success(makeConfirmationAcceptedResponse(confirmationId: "confirm-1"))],
+            resolveDelayNanoseconds: 1_000_000_000
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient(),
+            chatAPI: chatAPI
+        )
+        viewModel.messages = [makeToolActionMessage(content: "Please confirm.")]
+        viewModel.toolActionsByMessageId["assistant-1"] = [makeConfirmationAction()]
+
+        viewModel.handleToolAction(viewModel.toolActions(for: "assistant-1")[0], decision: .accept)
+        await chatAPI.waitForResolveCallCount(1)
+        viewModel.reset()
+
+        await chatAPI.waitForResolveCancellation()
+        await settleMainActorWork()
+
+        XCTAssertTrue(chatAPI.didCancelResolve)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.activeTool)
+        XCTAssertTrue(viewModel.toolActionsByMessageId.isEmpty)
+    }
 }
 
 @MainActor
@@ -142,15 +193,19 @@ private final class ToolActionAPISpy: ChatAPIProviding {
 
     private var resolveResults: [Result<ChatToolActionResponse, Error>]
     private var undoResults: [Result<ChatToolUndoResponse, Error>]
+    private let resolveDelayNanoseconds: UInt64?
     private(set) var resolveCalls: [ResolveCall] = []
     private(set) var undoCalls: [String] = []
+    private(set) var didCancelResolve = false
 
     init(
         resolveResults: [Result<ChatToolActionResponse, Error>] = [],
-        undoResults: [Result<ChatToolUndoResponse, Error>] = []
+        undoResults: [Result<ChatToolUndoResponse, Error>] = [],
+        resolveDelayNanoseconds: UInt64? = nil
     ) {
         self.resolveResults = resolveResults
         self.undoResults = undoResults
+        self.resolveDelayNanoseconds = resolveDelayNanoseconds
     }
 
     func generateTitle(conversationId: String) async throws -> ChatTitleResponse {
@@ -163,6 +218,14 @@ private final class ToolActionAPISpy: ChatAPIProviding {
         decision: ChatToolActionDecision
     ) async throws -> ChatToolActionResponse {
         resolveCalls.append(ResolveCall(confirmationId: confirmationId, decision: decision))
+        if let resolveDelayNanoseconds {
+            do {
+                try await Task.sleep(nanoseconds: resolveDelayNanoseconds)
+            } catch {
+                didCancelResolve = true
+                throw error
+            }
+        }
         guard !resolveResults.isEmpty else {
             throw ChatViewModelTestsSupport.MockError.forced
         }
@@ -185,6 +248,10 @@ private final class ToolActionAPISpy: ChatAPIProviding {
         await waitUntil { self.undoCalls.count >= count }
     }
 
+    func waitForResolveCancellation() async {
+        await waitUntil { self.didCancelResolve }
+    }
+
     private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async {
         for _ in 0..<20 {
             if condition() {
@@ -194,6 +261,38 @@ private final class ToolActionAPISpy: ChatAPIProviding {
             try? await Task.sleep(nanoseconds: 25_000_000)
         }
     }
+}
+
+private func makeToolActionMessage(content: String) -> Message {
+    Message(
+        id: "assistant-1",
+        role: .assistant,
+        content: content,
+        status: .complete,
+        toolCalls: nil,
+        needsNewline: nil,
+        timestamp: "",
+        error: nil
+    )
+}
+
+private func makeConfirmationAction(
+    status: ChatToolActionStatus = .pending,
+    decision: ChatToolActionDecision? = nil
+) -> ChatToolAction {
+    ChatToolAction(
+        id: "confirm-1",
+        kind: .confirmation,
+        summary: "Delete note note-1?",
+        toolName: "Delete Note",
+        guardReason: "destructive_action",
+        undoSupported: true,
+        expiresAt: nil,
+        entityType: nil,
+        entityId: nil,
+        status: status,
+        decision: decision
+    )
 }
 
 private func makeConfirmationAcceptedResponse(confirmationId: String) -> ChatToolActionResponse {
@@ -210,6 +309,13 @@ private func makeConfirmationAcceptedResponse(confirmationId: String) -> ChatToo
             )
         ]
     )
+}
+
+@MainActor
+private func settleMainActorWork() async {
+    for _ in 0..<5 {
+        await Task.yield()
+    }
 }
 
 @MainActor

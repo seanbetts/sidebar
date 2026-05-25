@@ -38,6 +38,9 @@ extension ChatViewModel {
     }
 
     func handleToolAction(_ action: ChatToolAction, decision: ChatToolActionDecision? = nil) {
+        guard canDispatchToolAction(action) else {
+            return
+        }
         switch action.kind {
         case .confirmation:
             guard let decision = decision ?? action.decision else {
@@ -57,25 +60,8 @@ extension ChatViewModel {
         updateToolAction(id: action.id) { existing in
             toolAction(existing, status: .running, decision: decision)
         }
-        Task {
-            do {
-                activeToolActionMessageId = messageId
-                let response = try await chatAPI.resolveToolConfirmation(
-                    confirmationId: action.id,
-                    decision: decision
-                )
-                applyToolActionResponse(response)
-                await refreshSelectedConversationFromServer()
-                updateToolActionHeaderStatus(action, status: .success)
-                activeToolActionMessageId = nil
-            } catch {
-                activeToolActionMessageId = nil
-                updateToolAction(id: action.id) { existing in
-                    toolAction(existing, status: .failed)
-                }
-                updateToolActionHeaderStatus(action, status: .error)
-                errorMessage = ErrorMapping.message(for: error)
-            }
+        toolActionTasks[action.id] = Task { [weak self] in
+            await self?.performToolConfirmation(action, decision: decision, messageId: messageId)
         }
     }
 
@@ -85,20 +71,84 @@ extension ChatViewModel {
         updateToolAction(id: action.id) { existing in
             toolAction(existing, status: .running)
         }
-        Task {
-            do {
-                _ = try await chatAPI.undoToolAction(undoToken: action.id)
-                handleSuccessfulUndo(action, messageId: messageId)
-                await refreshSelectedConversationFromServer()
-                updateToolActionHeaderStatus(action, status: .success)
-            } catch {
-                updateToolAction(id: action.id) { existing in
-                    toolAction(existing, status: .failed)
-                }
-                updateToolActionHeaderStatus(action, status: .error)
-                errorMessage = ErrorMapping.message(for: error)
-            }
+        toolActionTasks[action.id] = Task { [weak self] in
+            await self?.performToolUndo(action, messageId: messageId)
         }
+    }
+
+    private func canDispatchToolAction(_ action: ChatToolAction) -> Bool {
+        guard toolActionTasks[action.id] == nil else {
+            return false
+        }
+        return action.status == .pending || action.status == .failed
+    }
+
+    private func performToolConfirmation(
+        _ action: ChatToolAction,
+        decision: ChatToolActionDecision,
+        messageId: String
+    ) async {
+        activeToolActionMessageId = messageId
+        defer {
+            if activeToolActionMessageId == messageId {
+                activeToolActionMessageId = nil
+            }
+            toolActionTasks[action.id] = nil
+        }
+        do {
+            let response = try await chatAPI.resolveToolConfirmation(
+                confirmationId: action.id,
+                decision: decision
+            )
+            guard !Task.isCancelled else {
+                return
+            }
+            applyToolActionResponse(response)
+            await refreshSelectedConversationFromServer()
+            guard !Task.isCancelled else {
+                return
+            }
+            updateToolActionHeaderStatus(action, status: .success)
+        } catch is CancellationError {
+            return
+        } catch {
+            updateToolAction(id: action.id) { existing in
+                toolAction(existing, status: .failed)
+            }
+            updateToolActionHeaderStatus(action, status: .error)
+            errorMessage = ErrorMapping.message(for: error)
+        }
+    }
+
+    private func performToolUndo(_ action: ChatToolAction, messageId: String?) async {
+        defer {
+            toolActionTasks[action.id] = nil
+        }
+        do {
+            _ = try await chatAPI.undoToolAction(undoToken: action.id)
+            guard !Task.isCancelled else {
+                return
+            }
+            handleSuccessfulUndo(action, messageId: messageId)
+            await refreshSelectedConversationFromServer()
+            guard !Task.isCancelled else {
+                return
+            }
+            updateToolActionHeaderStatus(action, status: .success)
+        } catch is CancellationError {
+            return
+        } catch {
+            updateToolAction(id: action.id) { existing in
+                toolAction(existing, status: .failed)
+            }
+            updateToolActionHeaderStatus(action, status: .error)
+            errorMessage = ErrorMapping.message(for: error)
+        }
+    }
+
+    func cancelToolActionTasks() {
+        toolActionTasks.values.forEach { $0.cancel() }
+        toolActionTasks = [:]
     }
 
     func handleSuccessfulUndo(_ action: ChatToolAction, messageId: String? = nil) {
