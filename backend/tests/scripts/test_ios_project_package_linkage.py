@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import json
+import xml.etree.ElementTree as ET
 
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 PBXPROJ_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj" / "project.pbxproj"
+XCODE_SHARED_DATA_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj" / "xcshareddata"
 
 
 def _pbxproj_text() -> str:
@@ -164,3 +167,24 @@ def test_swiftlint_build_phase_includes_share_extension_tests() -> None:
 
     assert '"$(SRCROOT)/ShareExtensionTests"' in swiftlint_phase
     assert '\\"${SRCROOT}/ShareExtensionTests\\"' in swiftlint_phase
+
+
+def test_logic_host_exposes_dedicated_coverage_test_plan() -> None:
+    """Coverage reporting should use a separate Apple test plan, not the fast local plan."""
+    plan_path = XCODE_SHARED_DATA_PATH / "xctestplans" / "AppleCoverage.xctestplan"
+    fast_plan_path = XCODE_SHARED_DATA_PATH / "xctestplans" / "AppleFast.xctestplan"
+    scheme_path = XCODE_SHARED_DATA_PATH / "xcschemes" / "sideBarLogicHost.xcscheme"
+
+    coverage_plan = json.loads(plan_path.read_text())
+    fast_plan = json.loads(fast_plan_path.read_text())
+    scheme = ET.parse(scheme_path)
+
+    assert fast_plan["defaultOptions"]["codeCoverage"] is False
+    assert coverage_plan["defaultOptions"]["codeCoverage"] is True
+    assert coverage_plan["testTargets"] == fast_plan["testTargets"]
+
+    references = [
+        element.attrib["reference"]
+        for element in scheme.findall(".//TestPlanReference")
+    ]
+    assert "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleCoverage.xctestplan" in references

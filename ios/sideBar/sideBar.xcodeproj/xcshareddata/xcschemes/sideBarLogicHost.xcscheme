@@ -33,6 +33,9 @@
             reference = "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleFast.xctestplan"
             default = "YES">
          </TestPlanReference>
+         <TestPlanReference
+            reference = "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleCoverage.xctestplan">
+         </TestPlanReference>
       </TestPlans>
       <Testables>
          <TestableReference
