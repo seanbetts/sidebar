@@ -6,20 +6,41 @@ extension SideBarUITests {
     private static var authenticatedSessionCache: [String: UITestSeededSession] = [:]
 
     @MainActor
+    func launchApp(with config: UITestLaunchConfig) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.applyUITestLaunchEnvironment(
+            credentials: config.credentials,
+            backend: config.backend
+        )
+        app.launch()
+        dismissSystemAlertsIfPresent(in: app, timeout: 4)
+        return app
+    }
+
+    @MainActor
     func launchAuthenticatedApp(with config: UITestLaunchConfig) throws -> XCUIApplication {
         let session = try authenticatedSession(for: config)
         let app = XCUIApplication()
-        app.launchEnvironment[SideBarUITestConstants.uiTestEmailKey] = config.credentials.email
-        app.launchEnvironment[SideBarUITestConstants.uiTestPasswordKey] = config.credentials.password
-        app.launchEnvironment["API_BASE_URL"] = config.backend.apiBaseUrl
-        app.launchEnvironment["SUPABASE_URL"] = config.backend.supabaseUrl
-        app.launchEnvironment["SUPABASE_ANON_KEY"] = config.backend.supabaseAnonKey
-        app.launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
-        app.launchEnvironment[SideBarUITestConstants.uiTestBootstrapAuthKey] = "1"
-        app.launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
-        app.launchEnvironment[SideBarUITestConstants.uiTestForceCompletedOnboardingKey] = "1"
+        app.applyUITestLaunchEnvironment(
+            credentials: config.credentials,
+            backend: config.backend
+        )
         app.launchEnvironment[SideBarUITestConstants.uiTestAccessTokenKey] = session.accessToken
         app.launchEnvironment[SideBarUITestConstants.uiTestUserIdKey] = session.userId
+        app.launch()
+        dismissSystemAlertsIfPresent(in: app, timeout: 4)
+        return app
+    }
+
+    @MainActor
+    func launchLocallyAuthenticatedApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.applyUITestLaunchEnvironment(
+            credentials: .localFixture,
+            backend: .localFixture
+        )
+        app.launchEnvironment[SideBarUITestConstants.uiTestAccessTokenKey] = "local-ui-test-token"
+        app.launchEnvironment[SideBarUITestConstants.uiTestUserIdKey] = "00000000-0000-4000-8000-000000000001"
         app.launch()
         dismissSystemAlertsIfPresent(in: app, timeout: 4)
         return app
@@ -115,6 +136,68 @@ extension SideBarUITests {
 
         wait(for: [expectation], timeout: 30)
         return try state.result.get()
+    }
+}
+
+enum SideBarUITestConstants {
+    static let uiTestEmailKey = "SIDEBAR_UI_TEST_EMAIL"
+    static let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
+    static let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
+    static let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+    static let uiTestBootstrapAuthKey = "SIDEBAR_UI_TEST_BOOTSTRAP_AUTH"
+    static let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
+    static let uiTestForceCompletedOnboardingKey = "SIDEBAR_UI_TEST_FORCE_COMPLETED_ONBOARDING"
+    static let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
+    static let uiTestApiBaseUrlKey = "SIDEBAR_UI_TEST_API_BASE_URL"
+    static let uiTestSupabaseUrlKey = "SIDEBAR_UI_TEST_SUPABASE_URL"
+    static let uiTestSupabaseAnonKey = "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"
+    static let uiTestAccessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
+    static let uiTestUserIdKey = "SIDEBAR_UI_TEST_USER_ID"
+    static let runLiveUITestsKey = "SIDEBAR_RUN_LIVE_UI_TESTS"
+    static let runExtendedLiveUITestsKey = "SIDEBAR_RUN_EXTENDED_LIVE_UI_TESTS"
+}
+
+struct UITestCredentials {
+    let email: String
+    let password: String
+
+    static let localFixture = UITestCredentials(
+        email: "local-ui@example.test",
+        password: "local-ui-password"
+    )
+}
+
+struct UITestBackendConfig {
+    let apiBaseUrl: String
+    let supabaseUrl: String
+    let supabaseAnonKey: String
+
+    static let localFixture = UITestBackendConfig(
+        apiBaseUrl: "http://127.0.0.1:9/api/v1",
+        supabaseUrl: "http://127.0.0.1:9",
+        supabaseAnonKey: "local-ui-test-anon-key"
+    )
+}
+
+struct UITestLaunchConfig {
+    let credentials: UITestCredentials
+    let backend: UITestBackendConfig
+}
+
+extension XCUIApplication {
+    func applyUITestLaunchEnvironment(
+        credentials: UITestCredentials,
+        backend: UITestBackendConfig
+    ) {
+        launchEnvironment[SideBarUITestConstants.uiTestEmailKey] = credentials.email
+        launchEnvironment[SideBarUITestConstants.uiTestPasswordKey] = credentials.password
+        launchEnvironment["API_BASE_URL"] = backend.apiBaseUrl
+        launchEnvironment["SUPABASE_URL"] = backend.supabaseUrl
+        launchEnvironment["SUPABASE_ANON_KEY"] = backend.supabaseAnonKey
+        launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
+        launchEnvironment[SideBarUITestConstants.uiTestBootstrapAuthKey] = "1"
+        launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
+        launchEnvironment[SideBarUITestConstants.uiTestForceCompletedOnboardingKey] = "1"
     }
 }
 

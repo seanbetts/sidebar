@@ -35,6 +35,20 @@ final class SideBarUITests: XCTestCase {
     }
 
     @MainActor
+    func testLocalAuthenticatedLaunchShowsSignedInHome() throws {
+        let app = launchLocallyAuthenticatedApp()
+
+        XCTAssertTrue(
+            waitForSignedInHome(in: app, timeout: 20),
+            "Signed-in shell did not appear with local authenticated UI fixture."
+        )
+        XCTAssertFalse(
+            resolveSignInButton(in: app).exists,
+            "Sign In button should not be visible for a local authenticated fixture."
+        )
+    }
+
+    @MainActor
     func testLoginSuccessNavigatesToSignedInHome() throws {
         try requireLiveUITestsEnabled()
         let config = try loadLaunchConfig()
@@ -58,7 +72,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testLoginFailureShowsErrorAndStaysSignedOut() throws {
-        try requireLiveUITestsEnabled()
+        try requireExtendedLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = launchApp(with: config)
         attemptLogin(
@@ -86,7 +100,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testSendMessageInSeededConversationShowsStreamingReply() throws {
-        try requireLiveUITestsEnabled()
+        try requireExtendedLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -121,7 +135,7 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testCreateEditDeleteNoteInSeededAccount() throws {
-        try requireLiveUITestsEnabled()
+        try requireExtendedLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -319,22 +333,6 @@ final class SideBarUITests: XCTestCase {
         )
     }
 
-    @MainActor
-    func launchApp(with config: UITestLaunchConfig) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchEnvironment[SideBarUITestConstants.uiTestEmailKey] = config.credentials.email
-        app.launchEnvironment[SideBarUITestConstants.uiTestPasswordKey] = config.credentials.password
-        app.launchEnvironment["API_BASE_URL"] = config.backend.apiBaseUrl
-        app.launchEnvironment["SUPABASE_URL"] = config.backend.supabaseUrl
-        app.launchEnvironment["SUPABASE_ANON_KEY"] = config.backend.supabaseAnonKey
-        app.launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
-        app.launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
-        app.launchEnvironment[SideBarUITestConstants.uiTestForceCompletedOnboardingKey] = "1"
-        app.launch()
-        dismissSystemAlertsIfPresent(in: app, timeout: 4)
-        return app
-    }
-
     func attemptLogin(
         in app: XCUIApplication,
         email: String,
@@ -450,38 +448,4 @@ final class SideBarUITests: XCTestCase {
         }
         return false
     }
-
-}
-
-enum SideBarUITestConstants {
-    static let uiTestEmailKey = "SIDEBAR_UI_TEST_EMAIL"
-    static let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
-    static let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
-    static let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
-    static let uiTestBootstrapAuthKey = "SIDEBAR_UI_TEST_BOOTSTRAP_AUTH"
-    static let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
-    static let uiTestForceCompletedOnboardingKey = "SIDEBAR_UI_TEST_FORCE_COMPLETED_ONBOARDING"
-    static let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
-    static let uiTestApiBaseUrlKey = "SIDEBAR_UI_TEST_API_BASE_URL"
-    static let uiTestSupabaseUrlKey = "SIDEBAR_UI_TEST_SUPABASE_URL"
-    static let uiTestSupabaseAnonKey = "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"
-    static let uiTestAccessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
-    static let uiTestUserIdKey = "SIDEBAR_UI_TEST_USER_ID"
-    static let runLiveUITestsKey = "SIDEBAR_RUN_LIVE_UI_TESTS"
-}
-
-struct UITestCredentials {
-    let email: String
-    let password: String
-}
-
-struct UITestBackendConfig {
-    let apiBaseUrl: String
-    let supabaseUrl: String
-    let supabaseAnonKey: String
-}
-
-struct UITestLaunchConfig {
-    let credentials: UITestCredentials
-    let backend: UITestBackendConfig
 }

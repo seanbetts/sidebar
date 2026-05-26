@@ -30,24 +30,47 @@ final class AppAuthConstructionSourceTests: XCTestCase {
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: sourceURL.path))
     }
+
+    func testAppleUILiveBackendCoverageStaysQuarantined() throws {
+        let uiTests = try source(at: ["sideBarUITests", "sideBarUITests.swift"])
+        let uiHelpers = try source(at: ["sideBarUITests", "sideBarUITests+Helpers.swift"])
+
+        let defaultLiveCalls = uiTests.components(
+            separatedBy: "try requireLiveUITestsEnabled()"
+        ).count - 1
+
+        XCTAssertEqual(defaultLiveCalls, 1)
+        XCTAssertTrue(uiTests.contains("func testLoginSuccessNavigatesToSignedInHome()"))
+        XCTAssertTrue(uiTests.contains("func testLocalAuthenticatedLaunchShowsSignedInHome()"))
+        XCTAssertTrue(uiHelpers.contains("func requireExtendedLiveUITestsEnabled()"))
+        XCTAssertTrue(uiHelpers.contains("let app = launchLocallyAuthenticatedApp()"))
+    }
 }
 
 private func sideBarAppSource(
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> String {
+    try source(at: ["sideBar", "sideBarApp.swift"], file: file, line: line)
+}
+
+private func source(
+    at components: [String],
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
     let fileURL = URL(fileURLWithPath: "\(file)")
-    let sideBarRoot = fileURL
+    var sourceURL = fileURL
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let sourceURL = sideBarRoot
-        .appendingPathComponent("sideBar")
-        .appendingPathComponent("sideBarApp.swift")
+    for component in components {
+        sourceURL.appendPathComponent(component)
+    }
 
     do {
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
-        XCTFail("Failed to read sideBarApp.swift: \(error)", file: file, line: line)
+        XCTFail("Failed to read \(sourceURL.lastPathComponent): \(error)", file: file, line: line)
         throw error
     }
 }

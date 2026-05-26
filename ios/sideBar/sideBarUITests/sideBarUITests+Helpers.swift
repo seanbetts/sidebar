@@ -13,10 +13,21 @@ extension SideBarUITests {
         let environment = ProcessInfo.processInfo.environment
         guard environment[SideBarUITestConstants.runLiveUITestsKey] == "1" else {
             throw XCTSkip(
-                "Live UI smoke tests are quarantined. Set " +
+                "The live UI login smoke test is quarantined. Set " +
                 "\(SideBarUITestConstants.runLiveUITestsKey)=1 with seeded backend credentials to run them."
             )
         }
+    }
+
+    func requireExtendedLiveUITestsEnabled() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment[SideBarUITestConstants.runExtendedLiveUITestsKey] == "1" else {
+            throw XCTSkip(
+                "Extended live UI diagnostics are manual-only. Set " +
+                "\(SideBarUITestConstants.runExtendedLiveUITestsKey)=1 with seeded backend credentials to run them."
+            )
+        }
+        try requireLiveUITestsEnabled()
     }
 
     func resolveSeededConversationRow(in app: XCUIApplication) -> XCUIElement {
@@ -76,7 +87,7 @@ extension SideBarUITests {
 
     @MainActor
     func testStreamingReplyKeepsBottomAnchorVisible() throws {
-        try requireLiveUITestsEnabled()
+        try requireExtendedLiveUITestsEnabled()
         let config = try loadLaunchConfig()
         let app = try launchAuthenticatedApp(with: config)
 
@@ -116,12 +127,10 @@ extension SideBarUITests {
 
     @MainActor
     func testIPadTasksWorkspaceDoesNotShowFloatingDock() throws {
-        try requireLiveUITestsEnabled()
-        let config = try loadLaunchConfig()
-        let app = try launchAuthenticatedApp(with: config)
+        let app = launchLocallyAuthenticatedApp()
 
         XCTAssertTrue(
-            waitForSignedInHome(in: app, timeout: 45),
+            waitForSignedInHome(in: app, timeout: 20),
             "Signed-in shell did not appear after login."
         )
 
