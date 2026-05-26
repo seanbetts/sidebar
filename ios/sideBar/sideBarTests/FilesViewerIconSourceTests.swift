@@ -2,12 +2,16 @@ import XCTest
 
 final class FilesViewerIconSourceTests: XCTestCase {
     func testFilesViewerControlsRouteIconsThroughAppIcon() throws {
-        let appIcon = try normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
-        let fileViewer = try normalizedSource(at: ["sideBar", "Views", "Files", "FileViewerView.swift"])
-        let fileViewerComponents = try normalizedSource(
+        let appIcon = try StaticSourceGuard.normalizedSource(at: ["sideBarShared", "Utilities", "AppIcon.swift"])
+        let fileViewer = try StaticSourceGuard.normalizedSource(
+            at: ["sideBar", "Views", "Files", "FileViewerView.swift"]
+        )
+        let fileViewerComponents = try StaticSourceGuard.normalizedSource(
             at: ["sideBar", "Views", "Files", "FileViewerComponents.swift"]
         )
-        let spreadsheetViewer = try normalizedSource(at: ["sideBar", "Views", "Files", "SpreadsheetViewer.swift"])
+        let spreadsheetViewer = try StaticSourceGuard.normalizedSource(
+            at: ["sideBar", "Views", "Files", "SpreadsheetViewer.swift"]
+        )
 
         XCTAssertTrue(appIcon.contains("publicstaticletopenExternal=AppIcon(rawValue:\"arrow.up.right.square\")"))
         XCTAssertTrue(appIcon.contains("publicstaticletplayFilled=AppIcon(rawValue:\"play.circle.fill\")"))
@@ -39,7 +43,9 @@ final class FilesViewerIconSourceTests: XCTestCase {
     }
 
     func testSpreadsheetFilterFieldUsesBodyTypography() throws {
-        let spreadsheetViewer = try normalizedSource(at: ["sideBar", "Views", "Files", "SpreadsheetViewer.swift"])
+        let spreadsheetViewer = try StaticSourceGuard.normalizedSource(
+            at: ["sideBar", "Views", "Files", "SpreadsheetViewer.swift"]
+        )
 
         XCTAssertTrue(
             spreadsheetViewer.contains("TextField(\"Filterrows\",text:$filterText).textFieldStyle(.plain).appFont(.body)")
@@ -48,37 +54,11 @@ final class FilesViewerIconSourceTests: XCTestCase {
     }
 
     func testSpreadsheetGridLayoutAvoidsPrecomputingEveryCellAttribute() throws {
-        let spreadsheetGrid = try normalizedSource(at: ["sideBar", "Views", "Files", "SpreadsheetGridView.swift"])
+        let spreadsheetGrid = try StaticSourceGuard.normalizedSource(
+            at: ["sideBar", "Views", "Files", "SpreadsheetGridView.swift"]
+        )
 
         XCTAssertFalse(spreadsheetGrid.contains("cachedAttributes"))
         XCTAssertFalse(spreadsheetGrid.contains("forrowin0..<rowCount{forcolumnin0..<columnCount"))
-    }
-
-    private func normalizedSource(
-        at pathComponents: [String],
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) throws -> String {
-        let source = try source(at: pathComponents, file: file, line: line)
-        return source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-    }
-
-    private func source(
-        at pathComponents: [String],
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) throws -> String {
-        let fileURL = URL(fileURLWithPath: "\(file)")
-        let sideBarRoot = fileURL.deletingLastPathComponent().deletingLastPathComponent()
-        let sourceURL = pathComponents.reduce(sideBarRoot) { url, component in
-            url.appendingPathComponent(component)
-        }
-
-        do {
-            return try String(contentsOf: sourceURL, encoding: .utf8)
-        } catch {
-            XCTFail("Failed to read \(sourceURL.path): \(error)", file: file, line: line)
-            throw error
-        }
     }
 }

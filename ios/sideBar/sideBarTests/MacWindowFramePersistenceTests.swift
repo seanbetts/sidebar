@@ -237,8 +237,9 @@ final class MacWindowFramePersistenceTests: XCTestCase {
     }
 
     func testPersistWindowFrameHelperIsDefined() throws {
-        let source = try macWindowFramePersistenceSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let source = try StaticSourceGuard.normalizedSource(
+            at: ["sideBar", "App", "MacWindowFramePersistence.swift"]
+        )
 
         XCTAssertTrue(source.contains("staticfuncautosaveKey(forautosaveName:String)->String"))
         XCTAssertTrue(source.contains("staticfuncsavedWindowFrame("))
@@ -249,27 +250,6 @@ final class MacWindowFramePersistenceTests: XCTestCase {
         XCTAssertTrue(source.contains("window.saveFrame(usingName:autosave)"))
         XCTAssertTrue(source.contains("window.setFrameAutosaveName(autosave)"))
         XCTAssertTrue(source.contains("staticfuncshouldRestoreSavedWindowFrame("))
-    }
-}
-
-private func macWindowFramePersistenceSource(
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws -> String {
-    let fileURL = URL(fileURLWithPath: "\(file)")
-    let sideBarRoot = fileURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-    let sourceURL = sideBarRoot
-        .appendingPathComponent("sideBar")
-        .appendingPathComponent("App")
-        .appendingPathComponent("MacWindowFramePersistence.swift")
-
-    do {
-        return try String(contentsOf: sourceURL, encoding: .utf8)
-    } catch {
-        XCTFail("Failed to read MacWindowFramePersistence.swift: \(error)", file: file, line: line)
-        throw error
     }
 }
 #endif

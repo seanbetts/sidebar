@@ -3,7 +3,6 @@ import XCTest
 final class FormFieldAdoptionSourceTests: XCTestCase {
     func testLegacyFormWrapperStructsAreRetired() throws {
         let normalized = try combinedFormSurfaceSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(normalized.contains("structProfileIOSFieldRow<Content:View>:View"))
         XCTAssertFalse(normalized.contains("structSettingsMacFieldRow<Content:View>:View"))
@@ -13,7 +12,6 @@ final class FormFieldAdoptionSourceTests: XCTestCase {
 
     func testAuthAndOnboardingCredentialFieldsUseUnifiedFormField() throws {
         let normalized = try combinedFormSurfaceSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(normalized.contains("LoginFieldRow("))
         XCTAssertFalse(normalized.contains("SecureFieldWithToggle("))
@@ -35,39 +33,28 @@ private func combinedFormSurfaceSource(
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> String {
-    let fileURL = URL(fileURLWithPath: "\(file)")
-    let sourceRoot = fileURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appendingPathComponent("sideBar")
-    let legacySecureFieldURL = sourceRoot.appendingPathComponent("Views/Auth/SecureFieldWithToggle.swift")
-    XCTAssertFalse(
-        FileManager.default.fileExists(atPath: legacySecureFieldURL.path),
-        "SecureFieldWithToggle.swift should remain removed.",
+    StaticSourceGuard.assertFileDoesNotExist(
+        at: ["sideBar", "Views", "Auth", "SecureFieldWithToggle.swift"],
+        message: "SecureFieldWithToggle.swift should remain removed.",
         file: file,
         line: line
     )
-    let sourceURLs = [
-        sourceRoot.appendingPathComponent("Design/Components/FormField.swift"),
-        sourceRoot.appendingPathComponent("Views/Auth/LoginAuthPresentation.swift"),
-        sourceRoot.appendingPathComponent("Views/Auth/LoginView.swift"),
-        sourceRoot.appendingPathComponent("Views/Auth/PasswordResetCompletionView.swift"),
-        sourceRoot.appendingPathComponent("Views/Onboarding/AddApiKeyStepView.swift"),
-        sourceRoot.appendingPathComponent("Views/Onboarding/CreateAccountStepView.swift"),
-        sourceRoot.appendingPathComponent("Views/Onboarding/ProfileStepView.swift"),
-        sourceRoot.appendingPathComponent("Views/Settings/ProfileIOSFieldRow.swift"),
-        sourceRoot.appendingPathComponent("Views/Settings/SettingsMacStyles.swift"),
-        sourceRoot.appendingPathComponent("Views/Settings/SettingsPasswordChangeView.swift"),
-        sourceRoot.appendingPathComponent("Views/Settings/SettingsSections.swift"),
-        sourceRoot.appendingPathComponent("Views/Settings/SettingsSections+SystemMac.swift")
-    ]
-
-    do {
-        return try sourceURLs
-            .map { try String(contentsOf: $0, encoding: .utf8) }
-            .joined(separator: "\n")
-    } catch {
-        XCTFail("Failed to read form field adoption sources: \(error)", file: file, line: line)
-        throw error
-    }
+    return try StaticSourceGuard.combinedNormalizedSource(
+        at: [
+            ["sideBar", "Design", "Components", "FormField.swift"],
+            ["sideBar", "Views", "Auth", "LoginAuthPresentation.swift"],
+            ["sideBar", "Views", "Auth", "LoginView.swift"],
+            ["sideBar", "Views", "Auth", "PasswordResetCompletionView.swift"],
+            ["sideBar", "Views", "Onboarding", "AddApiKeyStepView.swift"],
+            ["sideBar", "Views", "Onboarding", "CreateAccountStepView.swift"],
+            ["sideBar", "Views", "Onboarding", "ProfileStepView.swift"],
+            ["sideBar", "Views", "Settings", "ProfileIOSFieldRow.swift"],
+            ["sideBar", "Views", "Settings", "SettingsMacStyles.swift"],
+            ["sideBar", "Views", "Settings", "SettingsPasswordChangeView.swift"],
+            ["sideBar", "Views", "Settings", "SettingsSections.swift"],
+            ["sideBar", "Views", "Settings", "SettingsSections+SystemMac.swift"]
+        ],
+        file: file,
+        line: line
+    )
 }
