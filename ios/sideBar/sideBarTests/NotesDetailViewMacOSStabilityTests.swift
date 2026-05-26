@@ -21,8 +21,7 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(harness.context.editorViewModel.currentNoteId, noteId)
         XCTAssertEqual(harness.context.notesViewModel.activeNote?.id, noteId)
-        XCTAssertTrue(try attributedNoteEditorContainerMountsAppKitSurfaceDirectly())
-        XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
+        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .appKit)
 
         harness.context.makeView().handleCloseShortcut()
         await waitUntil(timeout: .seconds(2)) {

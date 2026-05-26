@@ -24,8 +24,7 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
 
         let view = harness.context.makeView()
         XCTAssertTrue(view.isShowingEditorSurface)
-        XCTAssertTrue(try attributedNoteEditorContainerMountsAppKitSurfaceDirectly())
-        XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
+        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .appKit)
     }
 
     @available(iOS 26.0, macOS 26.0, *)

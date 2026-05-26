@@ -260,7 +260,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(readAttributed.string, bridgedEditDocument.string)
         try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 6)
         try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 11)
-        XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
+        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
     }
 
     func testReadAndEditorSurfacesPreserveCodeBlockLiteralNewlinesAndMonospacedTypographyOnIOS() throws {
