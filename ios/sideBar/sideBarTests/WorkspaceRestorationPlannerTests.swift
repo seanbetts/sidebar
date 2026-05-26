@@ -157,6 +157,39 @@ final class WorkspaceRestorationPlannerTests: XCTestCase {
         XCTAssertFalse(plan.isWorkspaceExpanded)
     }
 
+    func testDueTodayLaunchOverridePlanForPhoneUsesCompactTasksRoute() {
+        let plan = WorkspaceRestorationPlanner.makeDueTodayLaunchOverridePlan(
+            isPhone: true,
+            taskRouteId: "today"
+        )
+
+        XCTAssertEqual(plan.sidebarSelection, .tasks)
+        XCTAssertEqual(plan.phoneSelection, .tasks)
+        XCTAssertEqual(plan.phoneTaskRouteId, "today")
+        XCTAssertEqual(plan.layout, .compact)
+        XCTAssertNil(plan.primaryDescriptor)
+        XCTAssertNil(plan.secondaryDescriptor)
+        XCTAssertNil(plan.focusedPane)
+        XCTAssertNil(plan.isLeftPanelExpanded)
+        XCTAssertNil(plan.isWorkspaceExpanded)
+    }
+
+    func testDueTodayLaunchOverridePlanForWorkspaceUsesSplitTasksPrimary() {
+        let plan = WorkspaceRestorationPlanner.makeDueTodayLaunchOverridePlan(
+            isPhone: false
+        )
+
+        XCTAssertEqual(plan.sidebarSelection, .tasks)
+        XCTAssertNil(plan.phoneSelection)
+        XCTAssertNil(plan.phoneTaskRouteId)
+        XCTAssertEqual(plan.layout, .split)
+        XCTAssertEqual(plan.primaryDescriptor, .builtIn(.tasks))
+        XCTAssertEqual(plan.secondaryDescriptor, .builtIn(.chat))
+        XCTAssertEqual(plan.focusedPane, .primary)
+        XCTAssertEqual(plan.isLeftPanelExpanded, true)
+        XCTAssertEqual(plan.isWorkspaceExpanded, false)
+    }
+
     func testPhoneValidationFailurePlanFallsBackToSectionList() {
         let route = PhoneWorkspaceRoute(section: .notes, detail: .note(id: "missing"))
 

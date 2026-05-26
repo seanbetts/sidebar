@@ -163,24 +163,40 @@ extension ContentView {
             userId: currentRestorationUserId,
             localDateKey: localDateKey
         )
+        let plan = WorkspaceRestorationPlanner.makeDueTodayLaunchOverridePlan(
+            isPhone: isPhoneIdiom
+        )
         #if os(iOS)
         if isPhoneIdiom {
-            phoneSelection = .tasks
-            sidebarSelection = .tasks
-            environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
-            environment.workspaceStore.dispatch(.setLayout(.compact), source: "due_today_launch_override")
-            environment.workspaceStore.dispatch(.selectSection(.tasks), source: "due_today_launch_override")
+            phoneSelection = plan.phoneSelection ?? plan.sidebarSelection
+            sidebarSelection = plan.sidebarSelection
+            environment.tasksPhoneDetailRouteId = plan.phoneTaskRouteId
+            environment.workspaceStore.dispatch(.setLayout(plan.layout), source: "due_today_launch_override")
+            environment.workspaceStore.dispatch(.selectSection(plan.sidebarSelection), source: "due_today_launch_override")
             return true
         }
         #endif
-        sidebarSelection = .tasks
-        isLeftPanelExpanded = true
-        isWorkspaceExpanded = false
-        environment.focusedWorkspacePane = .primary
-        environment.workspaceStore.dispatch(.setLayout(.split), source: "due_today_launch_override")
-        environment.workspaceStore.dispatch(.setPrimaryContent(.builtIn(.tasks)), source: "due_today_launch_override")
-        environment.workspaceStore.dispatch(.setSecondaryContent(.builtIn(.chat)), source: "due_today_launch_override")
-        environment.workspaceStore.dispatch(.selectSection(.tasks), source: "due_today_launch_override")
+        sidebarSelection = plan.sidebarSelection
+        isLeftPanelExpanded = plan.isLeftPanelExpanded ?? isLeftPanelExpanded
+        isWorkspaceExpanded = plan.isWorkspaceExpanded ?? isWorkspaceExpanded
+        environment.focusedWorkspacePane = plan.focusedPane ?? environment.focusedWorkspacePane
+        environment.workspaceStore.dispatch(.setLayout(plan.layout), source: "due_today_launch_override")
+        if let primaryDescriptor = plan.primaryDescriptor {
+            environment.workspaceStore.dispatch(
+                .setPrimaryContent(primaryDescriptor),
+                source: "due_today_launch_override"
+            )
+        }
+        if let secondaryDescriptor = plan.secondaryDescriptor {
+            environment.workspaceStore.dispatch(
+                .setSecondaryContent(secondaryDescriptor),
+                source: "due_today_launch_override"
+            )
+        }
+        environment.workspaceStore.dispatch(
+            .selectSection(plan.sidebarSelection),
+            source: "due_today_launch_override"
+        )
         return true
     }
 

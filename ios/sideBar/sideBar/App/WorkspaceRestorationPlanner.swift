@@ -18,6 +18,18 @@ struct SplitWorkspaceRestorationPlan: Equatable {
     var isWorkspaceExpanded: Bool
 }
 
+struct DueTodayLaunchOverridePlan: Equatable {
+    var sidebarSelection: AppSection
+    var phoneSelection: AppSection?
+    var phoneTaskRouteId: String?
+    var layout: WorkspaceLayoutMode
+    var primaryDescriptor: WorkspaceContentDescriptor?
+    var secondaryDescriptor: WorkspaceContentDescriptor?
+    var focusedPane: WorkspacePane?
+    var isLeftPanelExpanded: Bool?
+    var isWorkspaceExpanded: Bool?
+}
+
 enum InitialLaunchDestination: Equatable {
     case externalIntent
     case dueTodayTasks
@@ -151,6 +163,37 @@ enum WorkspaceRestorationPlanner {
             focusedPane: snapshot.focusedPane,
             isLeftPanelExpanded: snapshot.isLeftPanelExpanded,
             isWorkspaceExpanded: snapshot.isWorkspaceExpanded
+        )
+    }
+
+    static func makeDueTodayLaunchOverridePlan(
+        isPhone: Bool,
+        taskRouteId: String = TaskSelection.today.cacheKey
+    ) -> DueTodayLaunchOverridePlan {
+        if isPhone {
+            return DueTodayLaunchOverridePlan(
+                sidebarSelection: .tasks,
+                phoneSelection: .tasks,
+                phoneTaskRouteId: taskRouteId,
+                layout: .compact,
+                primaryDescriptor: nil,
+                secondaryDescriptor: nil,
+                focusedPane: nil,
+                isLeftPanelExpanded: nil,
+                isWorkspaceExpanded: nil
+            )
+        }
+
+        return DueTodayLaunchOverridePlan(
+            sidebarSelection: .tasks,
+            phoneSelection: nil,
+            phoneTaskRouteId: nil,
+            layout: .split,
+            primaryDescriptor: .builtIn(.tasks),
+            secondaryDescriptor: .builtIn(.chat),
+            focusedPane: .primary,
+            isLeftPanelExpanded: true,
+            isWorkspaceExpanded: false
         )
     }
 
