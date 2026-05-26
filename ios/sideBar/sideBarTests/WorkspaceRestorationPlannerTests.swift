@@ -2,6 +2,86 @@ import XCTest
 @testable import sideBar
 
 final class WorkspaceRestorationPlannerTests: XCTestCase {
+    func testDeviceSnapshotForPhoneKeepsOnlyPhoneRoute() {
+        let route = PhoneWorkspaceRoute(section: .notes, detail: .note(id: "note-1"))
+        let split = SplitWorkspaceSnapshot(
+            sidebarSelection: .tasks,
+            primaryDescriptor: .builtIn(.tasks),
+            secondaryDescriptor: .builtIn(.chat),
+            focusedPane: .primary,
+            isLeftPanelExpanded: true,
+            isWorkspaceExpanded: false
+        )
+        let updatedAt = Date(timeIntervalSince1970: 1_000)
+
+        let snapshot = WorkspaceRestorationPlanner.makeDeviceSnapshot(
+            family: .phone,
+            userId: "user-1",
+            phoneRoute: route,
+            splitWorkspace: split,
+            updatedAt: updatedAt
+        )
+
+        XCTAssertEqual(snapshot.schemaVersion, DeviceWorkspaceSnapshot.currentSchemaVersion)
+        XCTAssertEqual(snapshot.userId, "user-1")
+        XCTAssertEqual(snapshot.family, .phone)
+        XCTAssertEqual(snapshot.updatedAt, updatedAt)
+        XCTAssertEqual(snapshot.phoneRoute, route)
+        XCTAssertNil(snapshot.splitWorkspace)
+    }
+
+    func testDeviceSnapshotForWorkspaceKeepsOnlySplitWorkspace() {
+        let route = PhoneWorkspaceRoute(section: .notes, detail: .note(id: "note-1"))
+        let split = SplitWorkspaceSnapshot(
+            sidebarSelection: .tasks,
+            primaryDescriptor: .builtIn(.tasks),
+            secondaryDescriptor: .builtIn(.chat),
+            focusedPane: .primary,
+            isLeftPanelExpanded: true,
+            isWorkspaceExpanded: false
+        )
+        let updatedAt = Date(timeIntervalSince1970: 2_000)
+
+        let snapshot = WorkspaceRestorationPlanner.makeDeviceSnapshot(
+            family: .workspace,
+            userId: "user-1",
+            phoneRoute: route,
+            splitWorkspace: split,
+            updatedAt: updatedAt
+        )
+
+        XCTAssertEqual(snapshot.schemaVersion, DeviceWorkspaceSnapshot.currentSchemaVersion)
+        XCTAssertEqual(snapshot.userId, "user-1")
+        XCTAssertEqual(snapshot.family, .workspace)
+        XCTAssertEqual(snapshot.updatedAt, updatedAt)
+        XCTAssertNil(snapshot.phoneRoute)
+        XCTAssertEqual(snapshot.splitWorkspace, split)
+    }
+
+    func testSplitSnapshotSanitizesAgentSurfacesBeforePersistence() {
+        let agentSurface = AgentWorkspaceSurfaceDescriptor(
+            type: "preview",
+            surfaceId: "surface-1",
+            title: "Preview"
+        )
+
+        let snapshot = WorkspaceRestorationPlanner.makeSplitSnapshot(
+            sidebarSelection: .files,
+            primaryDescriptor: .agentSurface(agentSurface),
+            secondaryDescriptor: .builtIn(.chat),
+            focusedPane: nil,
+            isLeftPanelExpanded: false,
+            isWorkspaceExpanded: true
+        )
+
+        XCTAssertEqual(snapshot.sidebarSelection, .files)
+        XCTAssertEqual(snapshot.primaryDescriptor, .empty)
+        XCTAssertEqual(snapshot.secondaryDescriptor, .builtIn(.chat))
+        XCTAssertEqual(snapshot.focusedPane, .primary)
+        XCTAssertFalse(snapshot.isLeftPanelExpanded)
+        XCTAssertTrue(snapshot.isWorkspaceExpanded)
+    }
+
     func testPhonePlanRestoresListRoute() {
         let route = PhoneWorkspaceRoute(section: .notes, detail: nil)
 

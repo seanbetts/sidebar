@@ -34,27 +34,13 @@ extension ContentView {
         guard environment.isAuthenticated else { return }
 
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
-        let snapshot: DeviceWorkspaceSnapshot
-        switch family {
-        case .phone:
-            snapshot = DeviceWorkspaceSnapshot(
-                schemaVersion: DeviceWorkspaceSnapshot.currentSchemaVersion,
-                userId: currentRestorationUserId,
-                family: .phone,
-                updatedAt: Date(),
-                phoneRoute: currentPhoneWorkspaceRoute(),
-                splitWorkspace: nil
-            )
-        case .workspace:
-            snapshot = DeviceWorkspaceSnapshot(
-                schemaVersion: DeviceWorkspaceSnapshot.currentSchemaVersion,
-                userId: currentRestorationUserId,
-                family: .workspace,
-                updatedAt: Date(),
-                phoneRoute: nil,
-                splitWorkspace: currentSplitWorkspaceSnapshot()
-            )
-        }
+        let snapshot = WorkspaceRestorationPlanner.makeDeviceSnapshot(
+            family: family,
+            userId: currentRestorationUserId,
+            phoneRoute: family == .phone ? currentPhoneWorkspaceRoute() : nil,
+            splitWorkspace: family == .workspace ? currentSplitWorkspaceSnapshot() : nil,
+            updatedAt: Date()
+        )
         environment.workspaceRestorationStore.save(snapshot)
     }
 
@@ -72,15 +58,11 @@ extension ContentView {
     }
 
     func currentSplitWorkspaceSnapshot() -> SplitWorkspaceSnapshot {
-        SplitWorkspaceSnapshot(
+        WorkspaceRestorationPlanner.makeSplitSnapshot(
             sidebarSelection: sidebarSelection,
-            primaryDescriptor: WorkspaceDescriptorSnapshot(
-                descriptor: primaryWorkspaceDescriptor
-            ),
-            secondaryDescriptor: WorkspaceDescriptorSnapshot(
-                descriptor: secondaryWorkspaceDescriptor
-            ),
-            focusedPane: environment.focusedWorkspacePane ?? .primary,
+            primaryDescriptor: primaryWorkspaceDescriptor,
+            secondaryDescriptor: secondaryWorkspaceDescriptor,
+            focusedPane: environment.focusedWorkspacePane,
             isLeftPanelExpanded: isLeftPanelExpanded,
             isWorkspaceExpanded: isWorkspaceExpanded
         )

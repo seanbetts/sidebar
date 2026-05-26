@@ -26,6 +26,57 @@ enum InitialLaunchDestination: Equatable {
 }
 
 enum WorkspaceRestorationPlanner {
+    static func makeDeviceSnapshot(
+        family: DeviceWorkspaceFamily,
+        userId: String?,
+        phoneRoute: PhoneWorkspaceRoute?,
+        splitWorkspace: SplitWorkspaceSnapshot?,
+        updatedAt: Date
+    ) -> DeviceWorkspaceSnapshot {
+        switch family {
+        case .phone:
+            return DeviceWorkspaceSnapshot(
+                schemaVersion: DeviceWorkspaceSnapshot.currentSchemaVersion,
+                userId: userId,
+                family: .phone,
+                updatedAt: updatedAt,
+                phoneRoute: phoneRoute,
+                splitWorkspace: nil
+            )
+        case .workspace:
+            return DeviceWorkspaceSnapshot(
+                schemaVersion: DeviceWorkspaceSnapshot.currentSchemaVersion,
+                userId: userId,
+                family: .workspace,
+                updatedAt: updatedAt,
+                phoneRoute: nil,
+                splitWorkspace: splitWorkspace
+            )
+        }
+    }
+
+    static func makeSplitSnapshot(
+        sidebarSelection: AppSection?,
+        primaryDescriptor: WorkspaceContentDescriptor,
+        secondaryDescriptor: WorkspaceContentDescriptor,
+        focusedPane: WorkspacePane?,
+        isLeftPanelExpanded: Bool,
+        isWorkspaceExpanded: Bool
+    ) -> SplitWorkspaceSnapshot {
+        SplitWorkspaceSnapshot(
+            sidebarSelection: sidebarSelection,
+            primaryDescriptor: WorkspaceDescriptorSnapshot(
+                descriptor: primaryDescriptor
+            ),
+            secondaryDescriptor: WorkspaceDescriptorSnapshot(
+                descriptor: secondaryDescriptor
+            ),
+            focusedPane: focusedPane ?? .primary,
+            isLeftPanelExpanded: isLeftPanelExpanded,
+            isWorkspaceExpanded: isWorkspaceExpanded
+        )
+    }
+
     static func makePhoneRoute(
         section: AppSection,
         selectedConversationId: String?,
