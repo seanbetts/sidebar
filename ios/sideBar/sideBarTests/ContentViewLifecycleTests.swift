@@ -552,8 +552,10 @@ final class ContentViewLifecycleTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(normalized.contains("staticvarisApplyingWorkspaceRestoration"))
-        XCTAssertTrue(normalized.contains("policy.shouldSuppressSave()"))
-        XCTAssertTrue(normalized.contains("isApplying=true"))
+        XCTAssertTrue(normalized.contains("workspaceRestorationCoordinator.saveSnapshot("))
+        XCTAssertTrue(normalized.contains("applyWithWorkspaceRestorationSaveSuppression(operation)"))
+        XCTAssertTrue(normalized.contains("policy.beginLaunchApplication()"))
+        XCTAssertTrue(normalized.contains("policy.finishLaunchApplication()"))
         XCTAssertTrue(normalized.contains("pendingWorkspaceRestorationSaveSuppressions"))
     }
 

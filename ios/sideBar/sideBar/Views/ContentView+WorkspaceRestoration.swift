@@ -24,24 +24,26 @@ extension ContentView {
             || !environment.chatViewModel.attachments.isEmpty
     }
 
+    var workspaceRestorationCoordinator: WorkspaceRestorationCoordinator {
+        WorkspaceRestorationCoordinator(store: environment.workspaceRestorationStore)
+    }
+
     func saveCurrentWorkspaceRestorationSnapshot() {
         var policy = saveSuppressionPolicy
-        guard !policy.shouldSuppressSave() else {
-            saveSuppressionPolicy = policy
-            return
-        }
-        saveSuppressionPolicy = policy
-        guard environment.isAuthenticated else { return }
-
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
-        let snapshot = WorkspaceRestorationPlanner.makeDeviceSnapshot(
+        let request = WorkspaceRestorationSaveRequest(
+            isAuthenticated: environment.isAuthenticated,
             family: family,
             userId: currentRestorationUserId,
             phoneRoute: family == .phone ? currentPhoneWorkspaceRoute() : nil,
             splitWorkspace: family == .workspace ? currentSplitWorkspaceSnapshot() : nil,
             updatedAt: Date()
         )
-        environment.workspaceRestorationStore.save(snapshot)
+        workspaceRestorationCoordinator.saveSnapshot(
+            request: request,
+            saveSuppressionPolicy: &policy
+        )
+        saveSuppressionPolicy = policy
     }
 
     func currentPhoneWorkspaceRoute() -> PhoneWorkspaceRoute {
@@ -99,73 +101,60 @@ extension ContentView {
     }
 
     func applyInitialLaunchDestinationIfAvailable() async -> Bool {
-        guard environment.authState == .active else { return false }
-        guard environment.isProtectedContentReady else { return false }
-        guard !shouldSkipWorkspaceRestoration else { return false }
-
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
-        let snapshot = environment.workspaceRestorationStore.load(
+        let request = WorkspaceRestorationInitialLaunchRequest(
+            authState: environment.authState,
+            isProtectedContentReady: environment.isProtectedContentReady,
+            shouldSkipRestoration: shouldSkipWorkspaceRestoration,
             family: family,
-            expectedUserId: currentRestorationUserId
+            userId: currentRestorationUserId,
+            todayDateKey: TasksUtils.formatDateKey(Date())
         )
-        let todayDateKey = TasksUtils.formatDateKey(Date())
-        let previousCounts = environment.tasksViewModel.counts
-        await environment.tasksViewModel.loadCounts(force: true)
-        let todayTaskCount = WorkspaceRestorationPlanner.freshTodayTaskCountForLaunch(
-            previousCounts: previousCounts,
-            currentCounts: environment.tasksViewModel.counts,
-            errorMessage: environment.tasksViewModel.errorMessage
+        return await workspaceRestorationCoordinator.applyInitialLaunchDestination(
+            request: request,
+            loadTodayTaskCount: loadWorkspaceRestorationTodayCount,
+            applyWithSaveSuppression: { operation in
+                await applyWithWorkspaceRestorationSaveSuppression(operation)
+            },
+            applyDueToday: applyDueTodayTasksLaunchOverride,
+            applySnapshot: applyRestoredWorkspace
         )
-        let destination = WorkspaceRestorationPlanner.makeInitialLaunchDestination(
-            hasExternalIntent: false,
-            todayTaskCount: todayTaskCount,
-            hasOpenedDueToday: environment.workspaceRestorationStore.hasDueTodayAutoOpened(
-                userId: currentRestorationUserId,
-                localDateKey: todayDateKey
-            ),
-            hasRestorationSnapshot: snapshot != nil
-        )
-
-        switch destination {
-        case .externalIntent, .fallbackChat:
-            return false
-        case .dueTodayTasks:
-            return await applyWithWorkspaceRestorationSaveSuppression {
-                await applyDueTodayTasksLaunchOverride(localDateKey: todayDateKey)
-            }
-        case .restoredSnapshot:
-            guard let snapshot else { return false }
-            return await applyWithWorkspaceRestorationSaveSuppression {
-                await applyRestoredWorkspace(snapshot)
-            }
-        }
     }
 
     func applyRestoredWorkspace(_ snapshot: DeviceWorkspaceSnapshot) async -> Bool {
         let family: DeviceWorkspaceFamily = isPhoneIdiom ? .phone : .workspace
-        switch family {
-        case .phone:
-            guard let route = snapshot.phoneRoute else { return false }
-            await applyPhoneRestoration(route)
-            return true
-        case .workspace:
-            guard let splitWorkspace = snapshot.splitWorkspace else { return false }
-            applySplitWorkspaceRestoration(splitWorkspace)
-            return true
-        }
+        return await workspaceRestorationCoordinator.applyRestoredWorkspace(
+            snapshot,
+            family: family,
+            applyPhoneRoute: applyPhoneRestoration,
+            applySplitWorkspace: applySplitWorkspaceRestoration
+        )
+    }
+
+    func loadWorkspaceRestorationTodayCount() async -> WorkspaceRestorationTodayCountResult {
+        let previousCounts = environment.tasksViewModel.counts
+        await environment.tasksViewModel.loadCounts(force: true)
+        return WorkspaceRestorationTodayCountResult(
+            previousCounts: previousCounts,
+            currentCounts: environment.tasksViewModel.counts,
+            errorMessage: environment.tasksViewModel.errorMessage
+        )
     }
 
     func applyDueTodayTasksLaunchOverride(localDateKey: String) async -> Bool {
-        guard await environment.tasksViewModel.loadTodayForLaunch() else {
-            return false
-        }
-        environment.workspaceRestorationStore.recordDueTodayAutoOpen(
+        let request = WorkspaceRestorationDueTodayRequest(
             userId: currentRestorationUserId,
-            localDateKey: localDateKey
-        )
-        let plan = WorkspaceRestorationPlanner.makeDueTodayLaunchOverridePlan(
+            localDateKey: localDateKey,
             isPhone: isPhoneIdiom
         )
+        return await workspaceRestorationCoordinator.applyDueTodayLaunchOverride(
+            request: request,
+            loadTodayForLaunch: environment.tasksViewModel.loadTodayForLaunch,
+            applyPlan: applyDueTodayTasksLaunchOverridePlan
+        )
+    }
+
+    func applyDueTodayTasksLaunchOverridePlan(_ plan: DueTodayLaunchOverridePlan) {
         #if os(iOS)
         if isPhoneIdiom {
             phoneSelection = plan.phoneSelection ?? plan.sidebarSelection
@@ -173,7 +162,7 @@ extension ContentView {
             environment.tasksPhoneDetailRouteId = plan.phoneTaskRouteId
             environment.workspaceStore.dispatch(.setLayout(plan.layout), source: "due_today_launch_override")
             environment.workspaceStore.dispatch(.selectSection(plan.sidebarSelection), source: "due_today_launch_override")
-            return true
+            return
         }
         #endif
         sidebarSelection = plan.sidebarSelection
@@ -197,7 +186,6 @@ extension ContentView {
             .selectSection(plan.sidebarSelection),
             source: "due_today_launch_override"
         )
-        return true
     }
 
     func applyPhoneRestoration(_ route: PhoneWorkspaceRoute) async {
