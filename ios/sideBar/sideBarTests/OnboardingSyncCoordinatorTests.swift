@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
@@ -31,5 +32,49 @@ final class OnboardingSyncCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(store.load(), state)
         XCTAssertEqual(cache.get(key: CacheKeys.onboardingState) as OnboardingState?, state)
+    }
+
+    func testCoordinatorReturnsRemoteStateOnSuccessfulSync() async throws {
+        let api = MockOnboardingAPI()
+        let cache = TestCacheClient()
+        let localStore = OnboardingLocalStateStore(cache: cache)
+        let response = OnboardingState.default.applying(
+            OnboardingSyncPayload(status: .inProgress)
+        )
+        api.updateResult = .success(response)
+        let coordinator = OnboardingSyncCoordinator(
+            api: api,
+            localStateStore: localStore,
+            writeQueue: nil
+        )
+
+        let result = await coordinator.sync(
+            payload: OnboardingSyncPayload(status: .inProgress),
+            fallbackBaseState: .default
+        )
+
+        XCTAssertEqual(result, response)
+        XCTAssertEqual(localStore.load(), response)
+        XCTAssertEqual(api.updates.last?.status, .inProgress)
+    }
+
+    func testCoordinatorCachesOptimisticStateWhenRemoteSyncFails() async {
+        let api = MockOnboardingAPI()
+        api.updateResult = .failure(APIClientError.requestFailed(503))
+        let cache = TestCacheClient()
+        let localStore = OnboardingLocalStateStore(cache: cache)
+        let coordinator = OnboardingSyncCoordinator(
+            api: api,
+            localStateStore: localStore,
+            writeQueue: nil
+        )
+
+        let result = await coordinator.sync(
+            payload: OnboardingSyncPayload(status: .inProgress),
+            fallbackBaseState: .default
+        )
+
+        XCTAssertEqual(result.status, .inProgress)
+        XCTAssertEqual(localStore.load()?.status, .inProgress)
     }
 }
