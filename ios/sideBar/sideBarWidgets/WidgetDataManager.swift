@@ -8,6 +8,7 @@ public final class WidgetDataManager {
   public static let shared = WidgetDataManager()
 
   private let authKey = "widgetIsAuthenticated"
+  private let displayStateKey = WidgetDisplayAuthorization.displayStateStorageKey
   private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
   private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
@@ -121,6 +122,19 @@ public final class WidgetDataManager {
       ]
     )
     return isAuthenticated
+  }
+
+  public func storedDisplayState() -> WidgetDisplayAuthorization.DisplayState? {
+    guard let rawValue = userDefaults?.string(forKey: displayStateKey) else { return nil }
+    return WidgetDisplayAuthorization.DisplayState(rawValue: rawValue)
+  }
+
+  public func displayState(hasCachedSnapshot: Bool) -> WidgetDisplayAuthorization.DisplayState {
+    WidgetDisplayAuthorization.displayState(
+      storedState: storedDisplayState(),
+      isAuthenticated: isAuthenticated(),
+      hasCachedSnapshot: hasCachedSnapshot
+    )
   }
 
   public func faviconConfiguration() -> WidgetFaviconConfigurationValues {

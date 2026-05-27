@@ -89,10 +89,7 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
     ) async -> PinnedNotesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .notes)
         let isAuthenticated = dataManager.isAuthenticated()
-        let displayState = WidgetDisplayAuthorization.displayState(
-            isAuthenticated: isAuthenticated,
-            hasCachedSnapshot: hasCachedSnapshot
-        )
+        let displayState = dataManager.displayState(hasCachedSnapshot: hasCachedSnapshot)
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(for: displayState)
         guard canDisplayContent else {
             return .notAuthenticated

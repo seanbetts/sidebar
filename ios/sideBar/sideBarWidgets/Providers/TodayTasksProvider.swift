@@ -129,10 +129,7 @@ struct TodayTasksProvider: AppIntentTimelineProvider {
     func entry(for date: Date, selection: TaskWidgetSelection = .today) async -> TodayTasksEntry {
         let hasCachedSnapshot = dataManager.hasStoredTaskSnapshot(for: selection)
         let isAuthenticated = dataManager.isAuthenticated()
-        let displayState = WidgetDisplayAuthorization.displayState(
-            isAuthenticated: isAuthenticated,
-            hasCachedSnapshot: hasCachedSnapshot
-        )
+        let displayState = dataManager.displayState(hasCachedSnapshot: hasCachedSnapshot)
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(for: displayState)
         guard canDisplayContent else {
             return .notAuthenticated

@@ -20,6 +20,7 @@ public enum AppStorageKeys {
     public nonisolated static let lockoutEndTime = "sidebar.auth.lockoutEndTime"
     public nonisolated static let cacheScopeUserId = "sidebar.cacheScopeUserId"
     public nonisolated static let widgetAuthStateMirror = "sidebar.widgetAuthStateMirror"
+    public nonisolated static let widgetAuthDisplayStateMirror = "sidebar.widgetAuthDisplayStateMirror"
     public nonisolated static let deviceInstallationId = "sidebar.deviceInstallationId"
     public nonisolated static let hasShownBiometricHint = "sidebar.hasShownBiometricHint"
     public nonisolated static let onboardingStatus = "sidebar.onboardingStatus"

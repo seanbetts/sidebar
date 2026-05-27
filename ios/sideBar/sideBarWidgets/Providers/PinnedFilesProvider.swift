@@ -89,10 +89,7 @@ struct PinnedFilesProvider: AppIntentTimelineProvider {
     ) async -> PinnedFilesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .files)
         let isAuthenticated = dataManager.isAuthenticated()
-        let displayState = WidgetDisplayAuthorization.displayState(
-            isAuthenticated: isAuthenticated,
-            hasCachedSnapshot: hasCachedSnapshot
-        )
+        let displayState = dataManager.displayState(hasCachedSnapshot: hasCachedSnapshot)
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(for: displayState)
         guard canDisplayContent else {
             return .notAuthenticated

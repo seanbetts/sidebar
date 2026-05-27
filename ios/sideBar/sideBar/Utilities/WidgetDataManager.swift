@@ -9,6 +9,7 @@ public final class WidgetDataManager {
   public static let shared = WidgetDataManager()
 
   private let authKey = "widgetIsAuthenticated"
+  private let displayStateKey = WidgetDisplayAuthorization.displayStateStorageKey
   private let migrationKey = "widget_migration_v2"
   private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
@@ -63,12 +64,10 @@ public final class WidgetDataManager {
 
   // MARK: - Generic Data Storage
 
-  /// Stores widget data for a content type
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
     bridge.store(data, for: contentType)
   }
 
-  /// Loads widget data for a content type
   public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
     bridge.load(for: contentType)
   }
@@ -124,24 +123,28 @@ public final class WidgetDataManager {
   }
 
   // MARK: - Authentication State
-
-  /// Called by main app when auth state changes
   public func updateAuthState(isAuthenticated: Bool) {
+    let displayState: WidgetDisplayAuthorization.DisplayState = isAuthenticated ? .authenticated : .signedOut
+    updateAuthDisplayState(displayState)
+  }
+  public func updateAuthDisplayState(_ displayState: WidgetDisplayAuthorization.DisplayState) {
     guard let defaults = userDefaults else { return }
+    let isAuthenticated = displayState == .authenticated
     defaults.set(isAuthenticated, forKey: authKey)
+    defaults.set(displayState.rawValue, forKey: displayStateKey)
     recordDiagnostics(
       stage: "update_auth_state",
       message: "Updated widget auth state.",
-      metadata: ["is_authenticated": isAuthenticated ? "true" : "false"]
+      metadata: [
+        "is_authenticated": isAuthenticated ? "true" : "false", "display_state": displayState.rawValue
+      ]
     )
     reloadAllWidgets()
   }
-
-  /// Clears shared widget snapshots and pending operations on sign-out.
   public func clearAllDataForSignOut() {
     guard let defaults = userDefaults else { return }
     defaults.set(false, forKey: authKey)
-
+    defaults.set(WidgetDisplayAuthorization.DisplayState.signedOut.rawValue, forKey: displayStateKey)
     for contentType in WidgetContentType.allCases {
       defaults.removeObject(forKey: contentType.dataKey)
       defaults.removeObject(forKey: contentType.pendingKey)
@@ -151,7 +154,6 @@ public final class WidgetDataManager {
     }
     defaults.removeObject(forKey: taskConfigurationCatalogKey)
     defaults.removeObject(forKey: noteConfigurationCatalogKey)
-
     defaults.removeObject(forKey: legacyTodayTasksKey)
     defaults.removeObject(forKey: legacyPendingCompletionsKey)
     defaults.removeObject(forKey: legacyPendingAddTaskKey)
@@ -161,14 +163,22 @@ public final class WidgetDataManager {
     )
     reloadAllWidgets()
   }
-
-  /// Called by widgets to check auth state
   public func isAuthenticated() -> Bool {
     guard let defaults = userDefaults else { return false }
     return defaults.bool(forKey: authKey)
   }
+  public func storedDisplayState() -> WidgetDisplayAuthorization.DisplayState? {
+    guard let rawValue = userDefaults?.string(forKey: displayStateKey) else { return nil }
+    return WidgetDisplayAuthorization.DisplayState(rawValue: rawValue)
+  }
+  public func displayState(hasCachedSnapshot: Bool) -> WidgetDisplayAuthorization.DisplayState {
+    WidgetDisplayAuthorization.displayState(
+      storedState: storedDisplayState(),
+      isAuthenticated: isAuthenticated(),
+      hasCachedSnapshot: hasCachedSnapshot
+    )
+  }
 
-  /// Called by main app to share favicon URL configuration with widgets.
   public func updateFaviconConfiguration(
     r2Endpoint: URL?,
     r2FaviconBucket: String?,
@@ -192,7 +202,6 @@ public final class WidgetDataManager {
 
   // MARK: - Migration
 
-  /// Migrates data from legacy keys to new generic keys (call on app startup)
   public func migrateIfNeeded() {
     guard let defaults = userDefaults else { return }
     guard !defaults.bool(forKey: migrationKey) else { return }

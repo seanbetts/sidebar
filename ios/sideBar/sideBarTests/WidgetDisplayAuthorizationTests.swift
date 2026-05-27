@@ -41,4 +41,45 @@ final class WidgetDisplayAuthorizationTests: XCTestCase {
             .signedOut
         )
     }
+
+    func testStoredSignedOutStateOverridesCachedSnapshot() {
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(
+                storedState: .signedOut,
+                isAuthenticated: false,
+                hasCachedSnapshot: true
+            ),
+            .signedOut
+        )
+    }
+
+    func testStoredReauthenticationRequiredStateOverridesCachedSnapshot() {
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(
+                storedState: .reauthenticationRequired,
+                isAuthenticated: false,
+                hasCachedSnapshot: true
+            ),
+            .reauthenticationRequired
+        )
+    }
+
+    func testStoredTransientStateRequiresCachedSnapshot() {
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(
+                storedState: .transientlyUnavailable,
+                isAuthenticated: false,
+                hasCachedSnapshot: true
+            ),
+            .transientlyUnavailable
+        )
+        XCTAssertEqual(
+            WidgetDisplayAuthorization.displayState(
+                storedState: .transientlyUnavailable,
+                isAuthenticated: false,
+                hasCachedSnapshot: false
+            ),
+            .signedOut
+        )
+    }
 }

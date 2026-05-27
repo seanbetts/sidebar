@@ -108,10 +108,7 @@ struct SavedSitesProvider: AppIntentTimelineProvider {
     ) async -> SavedSitesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .websites)
         let isAuthenticated = dataManager.isAuthenticated()
-        let displayState = WidgetDisplayAuthorization.displayState(
-            isAuthenticated: isAuthenticated,
-            hasCachedSnapshot: hasCachedSnapshot
-        )
+        let displayState = dataManager.displayState(hasCachedSnapshot: hasCachedSnapshot)
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(for: displayState)
         guard canDisplayContent else {
             return .notAuthenticated

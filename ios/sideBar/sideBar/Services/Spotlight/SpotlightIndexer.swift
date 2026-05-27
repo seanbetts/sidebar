@@ -106,7 +106,6 @@ public final class SpotlightIndexer: SpotlightIndexing {
   static let filesDomain = "com.sidebar.files"
   static let websitesDomain = "com.sidebar.websites"
   let batchSize = 100
-  private let contentPreviewLength = 200
 
   public init(index: CSSearchableIndex = .default()) {
     self.index = index
@@ -275,19 +274,12 @@ public final class SpotlightIndexer: SpotlightIndexing {
 
     attributes.title = note.name
 
-    // Content preview (first N chars) for display, if content available
-    if let content = note.content {
-      let preview = String(content.prefix(contentPreviewLength))
-      attributes.contentDescription = preview
-      attributes.textContent = content
-    }
-
     // Modification date
     attributes.contentModificationDate = note.modified
 
-    // Keywords: path components for folder-based search
-    let pathComponents = note.path.split(separator: "/").map(String.init)
-    attributes.keywords = pathComponents
+    // Search only approved note metadata.
+    attributes.textContent = note.name
+    attributes.keywords = searchableWords(from: note.name)
 
     let identifier = noteIdentifier(for: note.path)
     return CSSearchableItem(
@@ -347,17 +339,13 @@ public final class SpotlightIndexer: SpotlightIndexing {
 
     // URL and domain for display
     attributes.contentDescription = website.domain
-    attributes.url = URL(string: website.url)
+    attributes.url = sanitizedDomainURL(for: website.domain)
 
-    // Searchable text - title, domain, and URL
-    attributes.textContent = "\(website.title) \(website.domain) \(website.url)"
+    // Searchable text - approved title and domain only.
+    attributes.textContent = "\(website.title) \(website.domain)"
 
     // Keywords: title words and domain
-    var keywords = website.title
-      .replacingOccurrences(of: "-", with: " ")
-      .replacingOccurrences(of: "_", with: " ")
-      .split(separator: " ")
-      .map(String.init)
+    var keywords = searchableWords(from: website.title)
     keywords.append(website.domain)
     attributes.keywords = keywords
 
@@ -370,6 +358,22 @@ public final class SpotlightIndexer: SpotlightIndexing {
       domainIdentifier: Self.websitesDomain,
       attributeSet: attributes
     )
+  }
+
+  private func searchableWords(from value: String) -> [String] {
+    value
+      .replacingOccurrences(of: ".", with: " ")
+      .replacingOccurrences(of: "_", with: " ")
+      .replacingOccurrences(of: "-", with: " ")
+      .split(separator: " ")
+      .map(String.init)
+  }
+
+  private func sanitizedDomainURL(for domain: String) -> URL? {
+    let trimmedDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedDomain.isEmpty else { return nil }
+    guard !trimmedDomain.contains("/") else { return nil }
+    return URL(string: "https://\(trimmedDomain)")
   }
 }
 

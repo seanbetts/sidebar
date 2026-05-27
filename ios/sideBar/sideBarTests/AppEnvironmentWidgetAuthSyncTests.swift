@@ -5,6 +5,7 @@ import sideBarShared
 @MainActor
 final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
     private let widgetAuthKey = "widgetIsAuthenticated"
+    private let widgetDisplayStateKey = "widgetDisplayState"
     private let widgetMigrationKey = "widget_migration_v2"
     private var retainedEnvironments: [AppEnvironment] = []
     private var appSuiteName: String!
@@ -86,9 +87,14 @@ final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
 
         XCTAssertEqual(widgetDefaults.object(forKey: widgetMigrationKey) as? Bool, true)
         XCTAssertEqual(widgetDefaults.object(forKey: widgetAuthKey) as? Bool, true)
+        XCTAssertEqual(widgetDefaults.string(forKey: widgetDisplayStateKey), "authenticated")
         XCTAssertEqual(
             appDefaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool,
             true
+        )
+        XCTAssertEqual(
+            appDefaults.string(forKey: AppStorageKeys.widgetAuthDisplayStateMirror),
+            "authenticated"
         )
     }
 
@@ -99,16 +105,44 @@ final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
         environment.refreshAuthState()
 
         XCTAssertEqual(widgetDefaults.object(forKey: widgetAuthKey) as? Bool, true)
+        XCTAssertEqual(widgetDefaults.string(forKey: widgetDisplayStateKey), "authenticated")
         XCTAssertEqual(
             appDefaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool,
             true
+        )
+        XCTAssertEqual(
+            appDefaults.string(forKey: AppStorageKeys.widgetAuthDisplayStateMirror),
+            "authenticated"
+        )
+    }
+
+    func testReauthenticationRequiredSyncsRedactedWidgetDisplayState() {
+        appDefaults.set(true, forKey: AppStorageKeys.widgetAuthStateMirror)
+        appDefaults.set("authenticated", forKey: AppStorageKeys.widgetAuthDisplayStateMirror)
+        widgetDefaults.set(true, forKey: widgetAuthKey)
+        widgetDefaults.set("authenticated", forKey: widgetDisplayStateKey)
+        let environment = makeEnvironment(authState: .reauthenticationRequired)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(widgetDefaults.object(forKey: widgetAuthKey) as? Bool, false)
+        XCTAssertEqual(widgetDefaults.string(forKey: widgetDisplayStateKey), "reauthenticationRequired")
+        XCTAssertEqual(
+            appDefaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool,
+            false
+        )
+        XCTAssertEqual(
+            appDefaults.string(forKey: AppStorageKeys.widgetAuthDisplayStateMirror),
+            "reauthenticationRequired"
         )
     }
 
     func testRecoverableSignedOutRefreshPreservesWidgetSnapshots() {
         widgetDefaults.set(Data("tasks".utf8), forKey: WidgetContentType.tasks.dataKey)
         widgetDefaults.set(true, forKey: widgetAuthKey)
+        widgetDefaults.set("authenticated", forKey: widgetDisplayStateKey)
         appDefaults.set(true, forKey: AppStorageKeys.widgetAuthStateMirror)
+        appDefaults.set("authenticated", forKey: AppStorageKeys.widgetAuthDisplayStateMirror)
         appDefaults.set("user-123", forKey: AppStorageKeys.cacheScopeUserId)
         let environment = makeRecoverableSignedOutEnvironment()
 
@@ -116,9 +150,14 @@ final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
 
         XCTAssertNotNil(widgetDefaults.data(forKey: WidgetContentType.tasks.dataKey))
         XCTAssertEqual(widgetDefaults.object(forKey: widgetAuthKey) as? Bool, false)
+        XCTAssertEqual(widgetDefaults.string(forKey: widgetDisplayStateKey), "transientlyUnavailable")
         XCTAssertEqual(
             appDefaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool,
             false
+        )
+        XCTAssertEqual(
+            appDefaults.string(forKey: AppStorageKeys.widgetAuthDisplayStateMirror),
+            "transientlyUnavailable"
         )
         XCTAssertEqual(appDefaults.string(forKey: AppStorageKeys.cacheScopeUserId), "user-123")
     }

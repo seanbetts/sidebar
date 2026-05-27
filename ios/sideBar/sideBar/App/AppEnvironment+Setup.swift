@@ -22,13 +22,13 @@ extension AppEnvironment {
 
     func bootstrapWidgetBridgeForCurrentAuthState() {
         guard Self.shouldBootstrapWidgetBridge(authState: authState) else {
-            syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+            syncWidgetAuthStateIfNeeded(displayState: widgetDisplayStateForCurrentAuthState())
             return
         }
 
         storage.widgetDataManager.migrateIfNeeded()
         storage.widgetDataManager.sanitizePendingTaskCompletions()
-        syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+        syncWidgetAuthStateIfNeeded(displayState: widgetDisplayStateForCurrentAuthState())
         storage.widgetDataManager.updateFaviconConfiguration(
             r2Endpoint: container.config.r2Endpoint,
             r2FaviconBucket: container.config.r2FaviconBucket,

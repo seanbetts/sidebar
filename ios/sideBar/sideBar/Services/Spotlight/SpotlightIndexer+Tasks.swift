@@ -85,7 +85,6 @@ extension SpotlightIndexer {
 
     let searchableParts = [
       task.title,
-      task.notes ?? "",
       task.status,
       task.deadline ?? ""
     ].filter { !$0.isEmpty }

@@ -42,6 +42,15 @@ extension AppEnvironment {
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
             storage.userDefaults.set(false, forKey: AppStorageKeys.widgetAuthStateMirror)
+            storage.userDefaults.set(
+                WidgetDisplayAuthorization.DisplayState.signedOut.rawValue,
+                forKey: AppStorageKeys.widgetAuthDisplayStateMirror
+            )
+        }
+        if previousAuthState != .reauthenticationRequired && authState == .reauthenticationRequired {
+            Task { [spotlightIndexer] in
+                await spotlightIndexer.clearAllIndexes()
+            }
         }
         if isAuthenticated {
             reconcileCacheScopeForAuthenticatedUser()
@@ -81,7 +90,11 @@ extension AppEnvironment {
         if previousAuthState == .signedOut && isAuthenticated {
             bootstrapWidgetBridgeForCurrentAuthState()
         } else {
-            syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+            syncWidgetAuthStateIfNeeded(
+                displayState: widgetDisplayStateForCurrentAuthState(
+                    hasRecoverableSignedOutSession: hasRecoverableSignedOutSession
+                )
+            )
         }
     }
 
@@ -233,22 +246,74 @@ extension AppEnvironment {
         storage.userDefaults.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
     }
 
+    nonisolated static func widgetDisplayState(
+        authState: AuthState,
+        hasRecoverableSignedOutSession: Bool = false
+    ) -> WidgetDisplayAuthorization.DisplayState {
+        switch authState {
+        case .active, .staleRecoverable:
+            return .authenticated
+        case .reauthenticationRequired:
+            return .reauthenticationRequired
+        case .signedOut:
+            return hasRecoverableSignedOutSession ? .transientlyUnavailable : .signedOut
+        }
+    }
+
+    func widgetDisplayStateForCurrentAuthState(
+        hasRecoverableSignedOutSession: Bool = false
+    ) -> WidgetDisplayAuthorization.DisplayState {
+        Self.widgetDisplayState(
+            authState: authState,
+            hasRecoverableSignedOutSession: hasRecoverableSignedOutSession
+        )
+    }
+
     func syncWidgetAuthStateIfNeeded(isAuthenticated: Bool) {
+        syncWidgetAuthStateIfNeeded(
+            displayState: isAuthenticated ? .authenticated : .signedOut
+        )
+    }
+
+    func syncWidgetAuthStateIfNeeded(displayState: WidgetDisplayAuthorization.DisplayState) {
         let defaults = storage.userDefaults
+        let isAuthenticated = displayState == .authenticated
         let mirroredState = defaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool
+        let mirroredDisplayState = defaults.string(forKey: AppStorageKeys.widgetAuthDisplayStateMirror)
+            .flatMap(WidgetDisplayAuthorization.DisplayState.init(rawValue:))
         let widgetState = storage.widgetDataManager.isAuthenticated()
+        let widgetDisplayState = storage.widgetDataManager.storedDisplayState()
         let shouldSyncWidgetState: Bool
 
         if isAuthenticated {
-            shouldSyncWidgetState = mirroredState != true || !widgetState
+            shouldSyncWidgetState =
+                mirroredState != true ||
+                !widgetState ||
+                mirroredDisplayState != displayState ||
+                widgetDisplayState != displayState
+        } else if displayState == .signedOut {
+            shouldSyncWidgetState =
+                mirroredState == true ||
+                widgetState ||
+                mirroredDisplayState == .authenticated ||
+                mirroredDisplayState == .transientlyUnavailable ||
+                mirroredDisplayState == .reauthenticationRequired ||
+                widgetDisplayState == .authenticated ||
+                widgetDisplayState == .transientlyUnavailable ||
+                widgetDisplayState == .reauthenticationRequired
         } else {
-            shouldSyncWidgetState = mirroredState == true || widgetState
+            shouldSyncWidgetState =
+                mirroredState != false ||
+                widgetState ||
+                mirroredDisplayState != displayState ||
+                widgetDisplayState != displayState
         }
 
         if shouldSyncWidgetState {
-            storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+            storage.widgetDataManager.updateAuthDisplayState(displayState)
         }
         defaults.set(isAuthenticated, forKey: AppStorageKeys.widgetAuthStateMirror)
+        defaults.set(displayState.rawValue, forKey: AppStorageKeys.widgetAuthDisplayStateMirror)
     }
 
     private func resetSignedInData(
