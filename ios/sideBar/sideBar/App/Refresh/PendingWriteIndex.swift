@@ -47,7 +47,7 @@ struct PendingWriteIndex {
             return .files
         case .settings:
             return .settings
-        case .scratchpad:
+        case .scratchpad, .onboarding:
             return nil
         }
     }

@@ -111,6 +111,10 @@ extension AppEnvironment {
                 pendingSecretStore: pendingSecretStore,
                 pendingAssetStore: pendingAssetStore
             )
+            let onboardingExecutor = OnboardingWriteQueueExecutor(
+                api: container.onboardingAPI,
+                localStateStore: OnboardingLocalStateStore(cache: container.cacheClient)
+            )
             let writeQueue = WriteQueue(
                 container: core.persistenceContainer,
                 connectivityMonitor: core.connectivityMonitor,
@@ -121,7 +125,8 @@ extension AppEnvironment {
                         .task: tasksExecutor,
                         .website: websitesExecutor,
                         .file: filesExecutor,
-                        .settings: settingsExecutor
+                        .settings: settingsExecutor,
+                        .onboarding: onboardingExecutor
                     ]
                 )
             )

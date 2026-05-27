@@ -20,6 +20,7 @@ enum WriteEntityType: String, Codable {
     case file
     case scratchpad
     case settings
+    case onboarding
 }
 
 enum WriteQueueStatus: String {

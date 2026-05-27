@@ -4,6 +4,7 @@ import Foundation
 final class MockOnboardingAPI: OnboardingProviding {
     struct RecordedUpdate: Equatable {
         let status: OnboardingStatus?
+        let providerConnected: String?
         let profileBasicsSet: String?
         let secondaryTourSeen: String?
         let locationPermission: OnboardingPermissionState?
@@ -59,6 +60,7 @@ final class MockOnboardingAPI: OnboardingProviding {
     func updateOnboarding(_ update: OnboardingUpdate) async throws -> OnboardingState {
         updates.append(RecordedUpdate(
             status: update.status,
+            providerConnected: update.milestones?.providerConnected,
             profileBasicsSet: update.milestones?.profileBasicsSet,
             secondaryTourSeen: update.milestones?.secondaryTourSeen,
             locationPermission: update.permissions?.location,
