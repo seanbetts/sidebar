@@ -23,6 +23,7 @@ struct OnboardingView: View {
         settingsAPI: SettingsProviding,
         onSettingsUpdated: ((UserSettings) -> Void)? = nil,
         onOnboardingUpdated: ((OnboardingState) -> Void)? = nil,
+        onboardingSync: (any OnboardingSyncing)? = nil,
         onRouteToSignIn: @escaping () -> Void = {},
         onComplete: @escaping () -> Void = {}
     ) {
@@ -32,7 +33,8 @@ struct OnboardingView: View {
                 onboardingAPI: onboardingAPI,
                 settingsAPI: settingsAPI,
                 onSettingsUpdated: onSettingsUpdated,
-                onOnboardingUpdated: onOnboardingUpdated
+                onOnboardingUpdated: onOnboardingUpdated,
+                onboardingSync: onboardingSync
             )
         )
         self.onRouteToSignIn = onRouteToSignIn

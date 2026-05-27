@@ -46,14 +46,14 @@ import OSLog
         executor: WriteQueueExecutor? = nil,
         autoProcessEnabled: Bool = true,
         maxPendingWrites: Int = 200,
-        retrySleep: @escaping WriteQueueSleep = WriteQueueSleepFactory.live
+        retrySleep: WriteQueueSleep? = nil
     ) {
         self.container = container
         self.connectivityMonitor = connectivityMonitor
         self.executor = executor
         self.autoProcessEnabled = autoProcessEnabled
         self.maxPendingWrites = maxPendingWrites
-        self.retrySleep = retrySleep
+        self.retrySleep = retrySleep ?? WriteQueueSleepFactory.live
         Task { [weak self] in
             await self?.startupRecoveryAndProcessing()
         }

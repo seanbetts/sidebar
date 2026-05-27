@@ -29,6 +29,7 @@ import UIKit
     private let settingsAPI: SettingsProviding
     private let onSettingsUpdated: ((UserSettings) -> Void)?
     private let onOnboardingUpdated: ((OnboardingState) -> Void)?
+    private let onboardingSync: (any OnboardingSyncing)?
     private var locationPermissionRequesterStorage: (any LocationPermissionRequesting)?
     private var notificationsPermissionRequesterStorage: (any NotificationPermissionRequesting)?
     private let userDefaults: UserDefaults
@@ -46,6 +47,19 @@ import UIKit
     ]
     private static let isoFormatter = ISO8601DateFormatter()
     private static let onboardingStatusKey = AppStorageKeys.onboardingStatus
+    private static let optimisticFallbackOnboardingState = OnboardingState(
+        status: .notStarted,
+        providerReady: false,
+        currentOnboardingStep: .phase1Wizard,
+        isOnboardingComplete: false,
+        intent: nil,
+        milestones: OnboardingMilestones(
+            providerConnected: nil, firstOutcomeCompleted: nil, profileBasicsSet: nil,
+            communicationStyleSet: nil, secondaryTourSeen: nil
+        ),
+        permissions: OnboardingPermissions(location: .notAsked, notifications: .notAsked),
+        lastPromptedAt: nil
+    )
 
     private var locationPermissionRequester: any LocationPermissionRequesting {
         if let requester = locationPermissionRequesterStorage {
@@ -71,6 +85,7 @@ import UIKit
         settingsAPI: SettingsProviding,
         onSettingsUpdated: ((UserSettings) -> Void)? = nil,
         onOnboardingUpdated: ((OnboardingState) -> Void)? = nil,
+        onboardingSync: (any OnboardingSyncing)? = nil,
         locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
         notificationsPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         isTestingOnboarding: Bool? = nil,
@@ -81,6 +96,7 @@ import UIKit
         self.settingsAPI = settingsAPI
         self.onSettingsUpdated = onSettingsUpdated
         self.onOnboardingUpdated = onOnboardingUpdated
+        self.onboardingSync = onboardingSync
         self.locationPermissionRequesterStorage = locationPermissionRequester
         self.notificationsPermissionRequesterStorage = notificationsPermissionRequester
         self.isTestingOnboarding = isTestingOnboarding ?? OnboardingPresentation.isTestingOnboardingEnabled()
@@ -145,14 +161,11 @@ import UIKit
             }
 
             try await authSession.verifyOTP(email: email, code: code)
-            let state = try? await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(status: .inProgress)
+            let state = await syncOnboarding(
+                payload: OnboardingSyncPayload(status: .inProgress)
             )
-            if let status = state?.status {
-                persistOnboardingStatus(status)
-            } else {
-                persistOnboardingStatus(.inProgress)
-            }
+            persistOnboardingStatus(state.status)
+            onOnboardingUpdated?(state)
             advance(from: .verifyEmail)
         } catch {
             errorMessage = "Invalid verification code. Please try again."
@@ -183,12 +196,8 @@ import UIKit
         do {
             let settings = try await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName))
             onSettingsUpdated?(settings)
-            let state = try await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(
-                    milestones: OnboardingMilestonesUpdate(
-                        profileBasicsSet: profileBasicsTimestamp
-                    )
-                )
+            let state = await syncOnboarding(
+                payload: OnboardingSyncPayload(profileBasicsSet: profileBasicsTimestamp)
             )
             onOnboardingUpdated?(state)
             advance(from: .profile)
@@ -253,21 +262,14 @@ import UIKit
             let refreshedSettings = try await settingsAPI.getSettings()
             onSettingsUpdated?(refreshedSettings)
             skippedProviderSetup = false
-            let state = try? await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(
-                    milestones: OnboardingMilestonesUpdate(
-                        providerConnected: Self.isoFormatter.string(from: Date())
-                    )
+            let state = await syncOnboarding(
+                payload: OnboardingSyncPayload(
+                    status: .inProgress,
+                    providerConnected: Self.isoFormatter.string(from: Date())
                 )
             )
-            if let state {
-                onOnboardingUpdated?(state)
-            }
-            if let status = state?.status {
-                persistOnboardingStatus(status)
-            } else {
-                persistOnboardingStatus(.inProgress)
-            }
+            onOnboardingUpdated?(state)
+            persistOnboardingStatus(state.status)
             advance(from: .addApiKey)
         } catch {
             errorMessage = ErrorMapping.providerKeyMessage(for: error)
@@ -299,12 +301,11 @@ import UIKit
             return
         }
 
-        let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .inProgress))
-        if let status = state?.status {
-            persistOnboardingStatus(status)
-        } else {
-            persistOnboardingStatus(.inProgress)
-        }
+        let state = await syncOnboarding(
+            payload: OnboardingSyncPayload(status: .inProgress)
+        )
+        persistOnboardingStatus(state.status)
+        onOnboardingUpdated?(state)
         navigate(to: .locationPermission, direction: .forward)
     }
 
@@ -317,29 +318,50 @@ import UIKit
         userDefaults.set(status.rawValue, forKey: Self.onboardingStatusKey)
     }
 
-    private func resolveLocationPermission(_ state: OnboardingPermissionState) async {
-        syncLocationPermissionState(state)
+    private func syncOnboarding(
+        payload: OnboardingSyncPayload
+    ) async -> OnboardingState {
+        await syncOnboarding(
+            payload: payload,
+            fallbackBaseState: Self.optimisticFallbackOnboardingState
+        )
+    }
+
+    private func syncOnboarding(
+        payload: OnboardingSyncPayload,
+        fallbackBaseState: OnboardingState
+    ) async -> OnboardingState {
+        if let onboardingSync {
+            return await onboardingSync.sync(payload: payload, fallbackBaseState: fallbackBaseState)
+        }
+        do {
+            return try await onboardingAPI.updateOnboarding(payload.update)
+        } catch {
+            return fallbackBaseState.applying(payload)
+        }
+    }
+
+    private func resolveLocationPermission(_ permissionState: OnboardingPermissionState) async {
+        syncLocationPermissionState(permissionState)
 
         if !isTestingOnboarding {
-            _ = try? await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(
-                    permissions: OnboardingPermissionsUpdate(location: state)
-                )
+            let state = await syncOnboarding(
+                payload: OnboardingSyncPayload(locationPermission: permissionState)
             )
+            onOnboardingUpdated?(state)
         }
 
         advance(from: .locationPermission)
     }
 
-    private func resolveNotificationsPermission(_ state: OnboardingPermissionState) async {
-        syncNotificationsPermissionState(state)
+    private func resolveNotificationsPermission(_ permissionState: OnboardingPermissionState) async {
+        syncNotificationsPermissionState(permissionState)
 
         if !isTestingOnboarding {
-            _ = try? await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(
-                    permissions: OnboardingPermissionsUpdate(notifications: state)
-                )
+            let state = await syncOnboarding(
+                payload: OnboardingSyncPayload(notificationsPermission: permissionState)
             )
+            onOnboardingUpdated?(state)
         }
 
         advance(from: .notificationsPermission)

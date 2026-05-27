@@ -170,6 +170,7 @@ public struct ContentView: View {
             onOnboardingUpdated: { state in
                 environment.settingsViewModel.setOnboardingState(state)
             },
+            onboardingSync: environment.onboardingSync,
             onRouteToSignIn: {
                 suppressAutomaticOnboarding = true
             },
