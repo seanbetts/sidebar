@@ -29,6 +29,7 @@ extension AppEnvironment {
         let connectivityMonitor: ConnectivityMonitor
         let biometricMonitor: BiometricMonitor
         let writeQueue: WriteQueue
+        let onboardingSync: OnboardingSyncing
         let draftStorage: DraftStorage
         let spotlightIndexer: any SpotlightIndexing
     }
@@ -46,10 +47,16 @@ extension AppEnvironment {
             core: core,
             widgetDataManager: widgetDataManager
         )
+        let onboardingSync = OnboardingSyncCoordinator(
+            api: container.onboardingAPI,
+            localStateStore: OnboardingLocalStateStore(cache: container.cacheClient),
+            writeQueue: stores.writeQueue
+        )
         let viewModels = ViewModelDependencyBuilder.build(
             container: container,
             core: core,
             stores: stores,
+            onboardingSync: onboardingSync,
             isTestMode: isTestMode,
             widgetDataManager: widgetDataManager,
             workspaceStateProvider: workspaceStateProvider,
@@ -83,6 +90,7 @@ extension AppEnvironment {
             connectivityMonitor: core.connectivityMonitor,
             biometricMonitor: core.biometricMonitor,
             writeQueue: stores.writeQueue,
+            onboardingSync: onboardingSync,
             draftStorage: core.draftStorage,
             spotlightIndexer: core.spotlightIndexer
         )

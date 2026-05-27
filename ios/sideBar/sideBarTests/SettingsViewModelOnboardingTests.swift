@@ -210,6 +210,30 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
     }
 
+    func testLoadOnboardingAppliesCachedOptimisticStateBeforeRemoteRefresh() async {
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .failure(APIClientError.requestFailed(503))
+        let cache = TestCacheClient()
+        let localStore = OnboardingLocalStateStore(cache: cache)
+        let cached = OnboardingState.default.withOnboardingStatus(.inProgress)
+        localStore.save(cached)
+        let viewModel = SettingsViewModel(
+            settingsAPI: OnboardingMockSettingsAPI(),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: cache
+        )
+        viewModel.onboardingSync = OnboardingSyncCoordinator(
+            api: onboardingAPI,
+            localStateStore: localStore,
+            writeQueue: nil
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState?.status, .inProgress)
+    }
+
 }
 
 extension SettingsViewModelOnboardingTests {

@@ -45,6 +45,7 @@ import sideBarShared
     let currentAuthorizedUserIdProvider: (() -> String?)?
     let refreshAuthorizedSession: (() async -> Void)?
     let userDefaults: UserDefaults
+    var onboardingSync: OnboardingSyncing?
 
     public init(
         settingsAPI: any SettingsProviding,
@@ -121,10 +122,13 @@ import sideBarShared
     }
 
     public func loadOnboarding(force: Bool = false) async {
-        _ = force
         guard let onboardingAPI else {
             onboardingState = nil
             return
+        }
+
+        if !force, let cached = onboardingSync?.cachedState() {
+            setOnboardingState(cached)
         }
 
         isLoadingOnboarding = true
@@ -132,6 +136,7 @@ import sideBarShared
 
         do {
             let state = try await onboardingAPI.getOnboarding()
+            onboardingSync?.cacheRemoteState(state)
             setOnboardingState(state)
         } catch {}
     }

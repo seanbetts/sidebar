@@ -99,6 +99,7 @@ public struct AppEnvironmentStorage {
     public let biometricMonitor: BiometricMonitor
     /// Queue that persists and replays offline writes.
     public let writeQueue: WriteQueue
+    let onboardingSync: OnboardingSyncing
     let refreshCoordinator: RefreshCoordinatorType
     let draftStorage: DraftStorage
     let spotlightIndexer: any SpotlightIndexing
@@ -230,6 +231,7 @@ public struct AppEnvironmentStorage {
         self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
+        self.onboardingSync = dependencies.onboardingSync
         let resolvedRefreshCoordinator = refreshCoordinator ?? Self.makeRefreshCoordinator(
             chatViewModel: dependencies.chatViewModel,
             notesViewModel: dependencies.notesViewModel,

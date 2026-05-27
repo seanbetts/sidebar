@@ -277,6 +277,7 @@ extension AppEnvironment {
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
             stores: StoreDependencyBuilder.Output,
+            onboardingSync: OnboardingSyncing,
             isTestMode: Bool,
             widgetDataManager: WidgetDataManager,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
@@ -286,6 +287,7 @@ extension AppEnvironment {
                 container: container,
                 settingsStore: stores.settingsStore
             )
+            settingsViewModel.onboardingSync = onboardingSync
             let notesViewModel = NotesViewModel(
                 api: container.notesAPI,
                 store: stores.notesStore,
