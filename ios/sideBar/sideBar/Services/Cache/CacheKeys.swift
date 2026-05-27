@@ -18,6 +18,7 @@ public enum CacheKeys {
     public nonisolated static let filesTreePrefix = "files.tree"
     public nonisolated static let fileContentPrefix = "files.content"
     public nonisolated static let userSettings = "settings.user"
+    public nonisolated static let onboardingState = "onboarding.state"
     public nonisolated static let skillsList = "settings.skills"
     public nonisolated static let profileImage = "settings.profile-image"
     public nonisolated static let tasksCounts = "tasks.counts"
