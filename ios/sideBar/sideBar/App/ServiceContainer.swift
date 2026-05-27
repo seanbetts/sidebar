@@ -135,6 +135,24 @@ public final class ServiceContainer {
         URLSessionChatStreamClient(
             baseUrl: config.apiBaseUrl,
             accessTokenProvider: { [authSession] in authSession.authorizationToken },
+            refreshAuthIfNeeded: { [authSession] in
+                let previousToken = authSession.authorizationToken
+                await authSession.refreshSession()
+                guard let currentToken = authSession.authorizationToken else {
+                    return false
+                }
+                return previousToken == nil || currentToken != previousToken
+            },
+            handleAuthRejectedForToken: { [authSession] rejectedToken in
+                if let scopedInvalidating = authSession as? AuthSessionTokenScopedInvalidating {
+                    scopedInvalidating.markSessionReauthenticationRequiredAfterAuthorizationFailure(
+                        rejectedToken: rejectedToken
+                    )
+                    return
+                }
+                (authSession as? AuthSessionInvalidating)?
+                    .markSessionReauthenticationRequiredAfterAuthorizationFailure()
+            },
             handler: handler
         )
     }

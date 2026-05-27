@@ -10,6 +10,8 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
 
     private let baseUrl: URL
     private let accessTokenProvider: () -> String?
+    private let refreshAuthIfNeeded: (() async -> Bool)?
+    private let handleAuthRejectedForToken: ((String?) async -> Void)?
     private let session: URLSession
     private var parser: ChatStreamParser
     public weak var handler: ChatStreamEventHandler?
@@ -20,12 +22,16 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
+        refreshAuthIfNeeded: (() async -> Bool)? = nil,
+        handleAuthRejectedForToken: ((String?) async -> Void)? = nil,
         session: URLSession = defaultSession(),
         parser: ChatStreamParser = ChatStreamParser(),
         handler: ChatStreamEventHandler? = nil
     ) {
         self.baseUrl = baseUrl
         self.accessTokenProvider = accessTokenProvider
+        self.refreshAuthIfNeeded = refreshAuthIfNeeded
+        self.handleAuthRejectedForToken = handleAuthRejectedForToken
         self.session = session
         self.parser = parser
         self.handler = handler
@@ -48,7 +54,9 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         let client = APIClient(
             config: APIClientConfig(
                 baseUrl: baseUrl,
-                accessTokenProvider: accessTokenProvider
+                accessTokenProvider: accessTokenProvider,
+                refreshAuthIfNeeded: refreshAuthIfNeeded,
+                handleAuthRejectedForToken: handleAuthRejectedForToken
             ),
             session: session
         )

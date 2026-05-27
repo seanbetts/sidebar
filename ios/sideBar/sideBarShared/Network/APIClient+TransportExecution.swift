@@ -70,6 +70,14 @@ extension APIClient {
 
         let http = try validateHTTPResponse(response, intent: intent)
         guard (200...299).contains(http.statusCode) else {
+            if let retried = try await retryUnauthorizedStream(
+                request,
+                statusCode: http.statusCode,
+                intent: intent
+            ) {
+                return retried
+            }
+
             throw try await classifyStreamFailure(bytes: bytes, http: http, intent: intent, request: request)
         }
 
@@ -236,6 +244,70 @@ extension APIClient {
             emitSuccessNotification: emitSuccessNotification,
             transport: transport
         )
+    }
+
+    private func retryUnauthorizedStream(
+        _ request: URLRequest,
+        statusCode: Int,
+        intent: RequestIntent
+    ) async throws -> (URLSession.AsyncBytes, HTTPURLResponse)? {
+        guard statusCode == 401, shouldAttemptStreamAuthRefresh(for: intent) else {
+            return nil
+        }
+
+        let method = request.httpMethod ?? "GET"
+        let url = LogRedaction.redactedURLString(request.url)
+        let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
+        logger.notice("Stream response 401 for \(method) \(url); hadToken=\(hadToken) retrying auth refresh")
+
+        let refreshed = await attemptAuthRefreshIfNeeded()
+        let tokenChanged = shouldRetryWithUpdatedToken(for: request)
+        guard tokenChanged || (refreshed && bearerToken(from: request) == nil) else {
+            logger.notice("Stream auth refresh unavailable for \(method) \(url); no retry token available")
+            return nil
+        }
+
+        logger.notice(
+            "Retrying stream \(method) \(url) after auth refresh; refreshed=\(refreshed) tokenChanged=\(tokenChanged)"
+        )
+        var retry = request
+        if let token = config.accessTokenProvider() {
+            retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            retry.setValue(nil, forHTTPHeaderField: "Authorization")
+        }
+        return try await executeStreamWithoutAuthRetry(retry, intent: intent)
+    }
+
+    private func executeStreamWithoutAuthRetry(
+        _ request: URLRequest,
+        intent: RequestIntent
+    ) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
+        if let url = request.url {
+            logger.debug("Request(retry) \(request.httpMethod ?? "GET") \(LogRedaction.redactedURLString(url), privacy: .public)")
+        }
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await session.bytes(for: request)
+        } catch {
+            handleTransportFailure(error, request: request, intent: intent)
+            throw error
+        }
+
+        let http = try validateHTTPResponse(response, intent: intent)
+        guard (200...299).contains(http.statusCode) else {
+            throw try await classifyStreamFailure(bytes: bytes, http: http, intent: intent, request: request)
+        }
+
+        postSuccessNotification(intent: intent, statusCode: http.statusCode)
+        return (bytes, http)
+    }
+
+    private func shouldAttemptStreamAuthRefresh(for intent: RequestIntent) -> Bool {
+        config.refreshAuthIfNeeded != nil
+            && intent.authRequirement == .required
+            && intent.requestKind == .sseStream
     }
 
     private func classifyHTTPFailure(
