@@ -310,6 +310,64 @@ def _build_fortune_article_html() -> str:
     """
 
 
+def _build_ben_evans_article_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>Predicting AI job exposure — Benedict Evans</title>
+        <meta property="og:title" content="Predicting AI job exposure — Benedict Evans"/>
+        <meta property="article:published_time" content="2026-05-24T00:00:00+00:00"/>
+        <meta property="og:image" content="https://images.squarespace-cdn.com/content/v1/50363cf324ac8e905e7df861/675b24ea-051a-4fcd-ba79-1d677ee0e7ac/2026+Spring+Final.055.png"/>
+        <link rel="canonical" href="https://www.ben-evans.com/benedictevans/2026/5/24/ai-job-exposure"/>
+      </head>
+      <body>
+        <main>
+          <article>
+            <h1 class="BlogItem-title">Predicting AI job exposure</h1>
+            <div class="sqs-layout sqs-grid-12 columns-12">
+              <div class="row sqs-row">
+                <div class="col sqs-col-12 span-12">
+                  <div class="sqs-block html-block sqs-block-html">
+                    <div class="sqs-block-content">
+                      <div class="sqs-html-content">
+                        <p>It would be really nice if we had some way to analyse which jobs, companies and industries were exposed to AI, and if we could assign scores.</p>
+                        <p>I think this is mostly impossible: I think this is an exercise in predicting something that cannot be predicted.</p>
+                        <p>The simplest way to see the problem is to back-test this against other big technology shifts in the past.</p>
+                        <p>Hence, we spent a century automating accounting: we built calculating machines, punch cards, mainframes, data processing, databases, PCs, spreadsheets, ERPs, cloud… yet the number of accountants kept going up.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sqs-block image-block sqs-block-image">
+                    <div class="sqs-block-content">
+                      <div class="image-block-outer-wrapper layout-caption-below">
+                        <figure class="sqs-block-image-figure intrinsic">
+                          <img src="https://images.squarespace-cdn.com/content/v1/50363cf324ac8e905e7df861/675b24ea-051a-4fcd-ba79-1d677ee0e7ac/2026+Spring+Final.055.png" alt=""/>
+                        </figure>
+                        <div class="image-caption-wrapper">
+                          <p><em>(Source:</em> <a href="https://toddwschneider.com/dashboards/nyc-taxi-ridehailing-uber-lyft-data/"><em>Todd Schneider / MTA</em></a><em>)</em></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sqs-block html-block sqs-block-html">
+                    <div class="sqs-block-content">
+                      <div class="sqs-html-content">
+                        <p>This is high-level survey data, but you can see much the same thing at the micro level.</p>
+                        <p>Narrowly, then, the problem with using things like <a href="https://www.onetonline.org">O*NET</a> to try to analyse what a job is and how much it can be automated is that this tells you nothing about all the ways that the job shrinks and grow with automation.</p>
+                        <p>But I think there's a more fundamental problem, too. Even if you set aside the question of change, I don't think it's possible, in principle, to create a usefully complete description of what the job is.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </main>
+      </body>
+    </html>
+    """
+
+
 def _build_patreon_post_html() -> str:
     next_data = {
         "props": {
@@ -758,6 +816,52 @@ def test_parse_url_local_fortune_article_uses_domain_extractor(monkeypatch):
         "https://fortune.com/img-assets/wp-content/uploads/2026/05/GettyImages-2256654494-1-e1778250677916.jpg?resize=1200,600"
         in parsed.content
     )
+
+
+def test_parse_url_local_ben_evans_uses_domain_extractor(monkeypatch):
+    html = _build_ben_evans_article_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.ben-evans.com/benedictevans/2026/5/24/ai-job-exposure",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.ben-evans.com/benedictevans/2026/5/24/ai-job-exposure"
+    )
+
+    assert parsed.title == "Predicting AI job exposure — Benedict Evans"
+    assert parsed.published_at == datetime(2026, 5, 24, 0, 0, tzinfo=UTC)
+    markdown = parsed.content.split("---\n", 2)[2]
+
+    heading_index = markdown.find("# Predicting AI job exposure")
+    intro_index = markdown.find(
+        "It would be really nice if we had some way to analyse which jobs"
+    )
+    image_index = markdown.find(
+        "![](https://images.squarespace-cdn.com/content/v1/50363cf324ac8e905e7df861/675b24ea-051a-4fcd-ba79-1d677ee0e7ac/2026+Spring+Final.055.png"
+    )
+    source_index = markdown.find("Todd Schneider / MTA")
+    later_index = markdown.find("Narrowly, then, the problem with using things like")
+
+    assert heading_index != -1
+    assert intro_index != -1
+    assert image_index != -1
+    assert source_index != -1
+    assert later_index != -1
+    assert heading_index < intro_index < image_index < source_index < later_index
+    assert (
+        "Hence, we spent a century automating accounting"
+        in markdown
+    )
+    assert "O\\*NET" in markdown
 
 
 def test_extract_steamcommunity_body_html_parses_event_store():

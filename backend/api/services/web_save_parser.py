@@ -570,7 +570,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                 raw_html=raw_html_original,
             )
         )
-        metadata.update({key: value for key, value in domain_metadata.items() if value})
+        for key, value in domain_metadata.items():
+            if value is not None or key == "image":
+                metadata[key] = value
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,

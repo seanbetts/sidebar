@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from urllib.parse import urlparse
 
 from api.services.web_save_parser_bbc import extract_bbc_body_html
+from api.services.web_save_parser_ben_evans import extract_ben_evans_body_html
 from api.services.web_save_parser_blog_google import extract_blog_google_body_html
 from api.services.web_save_parser_cleanup import (
     extract_openai_body_html,
@@ -45,6 +46,11 @@ def apply_domain_specific_extractor(
         if fortune_payload:
             fortune_html, fortune_meta = fortune_payload
             return fortune_html, _coerce_metadata(fortune_meta), False
+    if domain.endswith("ben-evans.com"):
+        ben_evans_payload = extract_ben_evans_body_html(raw_html)
+        if ben_evans_payload:
+            ben_evans_html, ben_evans_meta = ben_evans_payload
+            return ben_evans_html, _coerce_metadata(ben_evans_meta), False
     if steam_payload := extract_steamcommunity_payload_for_url(raw_html, final_url):
         steam_html, steam_meta = steam_payload
         return steam_html, _coerce_metadata(steam_meta), False
