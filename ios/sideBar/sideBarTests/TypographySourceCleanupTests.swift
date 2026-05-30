@@ -96,8 +96,10 @@ final class TypographySourceCleanupTests: XCTestCase {
         let toastSource = try sourceFile("sideBar/Design/Components/ToastCenter.swift")
         let pillSource = try sourceFile("sideBar/Design/Components/StatusPill.swift")
         let combined = toastSource + pillSource
+        let normalizedPillSource = try normalizedSourceFile("sideBar/Design/Components/StatusPill.swift")
 
         XCTAssertTrue(combined.contains("style: .banner"))
+        XCTAssertTrue(normalizedPillSource.contains("case.banner:return.body"))
         XCTAssertFalse(combined.contains(".labelMd"))
         XCTAssertFalse(combined.contains(".subheadline"))
         XCTAssertFalse(combined.contains(".subheadlineSemibold"))

@@ -61,7 +61,7 @@ enum StatusPillStyle {
         case .compact:
             return .caption
         case .banner:
-            return .subheading
+            return .body
         }
     }
 
