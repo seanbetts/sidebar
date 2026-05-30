@@ -4,17 +4,33 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
+    private var retainedEnvironments: [AppEnvironment] = []
+    private var isolatedDefaults: TestIsolation.IsolatedUserDefaults!
+
+    override func setUp() {
+        super.setUp()
+        retainedEnvironments.removeAll()
+        isolatedDefaults = TestIsolation.makeUserDefaults(
+            prefix: "AppEnvironmentStaleAuthRetryTests"
+        )
+    }
+
+    override func tearDown() {
+        retainedEnvironments.removeAll()
+        isolatedDefaults?.tearDown()
+        isolatedDefaults = nil
+        super.tearDown()
+    }
+
     func testRecoverableStaleAuthKeepsProtectedContentReadyWhenBiometricUnlocked() {
         let authSession = StaleRetryAuthSession(authState: .active)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
+        let container = makeContainer(authSession: authSession)
         let environment = AppEnvironment(
             container: container,
+            storage: isolatedStorage(),
             refreshCoordinator: NoopRefreshCoordinator()
         )
+        retainedEnvironments.append(environment)
 
         authSession.authState = .staleRecoverable
         environment.refreshAuthState()
@@ -26,15 +42,13 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
     func testRecoverableStaleAuthRefreshesAutomaticallyOnActivation() async {
         let authSession = StaleRetryAuthSession(authState: .active)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
+        let container = makeContainer(authSession: authSession)
         let environment = AppEnvironment(
             container: container,
+            storage: isolatedStorage(),
             refreshCoordinator: NoopRefreshCoordinator()
         )
+        retainedEnvironments.append(environment)
 
         authSession.authState = .staleRecoverable
         environment.refreshAuthState()
@@ -48,15 +62,13 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
     func testRecoverableStaleAuthRefreshesBeforeContentActivation() async {
         let authSession = StaleRetryAuthSession(authState: .staleRecoverable)
         let refreshCoordinator = RecordingRefreshCoordinator(observedAuthState: { authSession.authState })
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
+        let container = makeContainer(authSession: authSession)
         let environment = AppEnvironment(
             container: container,
+            storage: isolatedStorage(),
             refreshCoordinator: refreshCoordinator
         )
+        retainedEnvironments.append(environment)
 
         await environment.handleSignedInActivation(includeDeferredRefresh: true)
 
@@ -66,15 +78,13 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
     func testRefreshAuthStateSchedulesRecoverableStaleAuthActivation() async {
         let authSession = StaleRetryAuthSession(authState: .signedOut)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
+        let container = makeContainer(authSession: authSession)
         let environment = AppEnvironment(
             container: container,
+            storage: isolatedStorage(),
             refreshCoordinator: NoopRefreshCoordinator()
         )
+        retainedEnvironments.append(environment)
 
         authSession.accessToken = "stale-token"
         authSession.userId = "user-id"
@@ -89,12 +99,9 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
     func testBeginSignOutClearsRecoverableStaleAuth() async {
         let authSession = StaleRetryAuthSession(authState: .active)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
-        let environment = AppEnvironment(container: container)
+        let container = makeContainer(authSession: authSession)
+        let environment = AppEnvironment(container: container, storage: isolatedStorage())
+        retainedEnvironments.append(environment)
 
         authSession.authState = .staleRecoverable
         environment.refreshAuthState()
@@ -102,6 +109,17 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
         await environment.beginSignOut()
 
         XCTAssertEqual(environment.authState, .signedOut)
+    }
+
+    private func isolatedStorage() -> AppEnvironmentStorage {
+        AppEnvironmentStorage(userDefaults: isolatedDefaults.defaults)
+    }
+
+    private func makeContainer(authSession: AuthSession) -> ServiceContainer {
+        makeNoNetworkServiceContainer(
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
     }
 
 }

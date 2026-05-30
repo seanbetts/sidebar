@@ -54,6 +54,7 @@ import Combine
     var activeNoteMirrorTask: Task<Void, Never>?
     var pendingNoteId: String?
     var protectedRealtimeDetailRefresh: RealtimeDetailRefreshProtection?
+    var acceptedSaveAcknowledgement: NotePayload?
     var realtimeProtectedQueuedDraftIdentifiers = Set<String>()
     var searchDebounceDelay: TimeInterval = 0.3
 

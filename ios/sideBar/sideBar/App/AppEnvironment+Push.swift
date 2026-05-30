@@ -1,5 +1,6 @@
 import Foundation
 import os
+import sideBarShared
 #if os(iOS)
 import Security
 import UIKit
@@ -17,6 +18,12 @@ extension AppEnvironment {
     func registerForRemoteNotificationsIfNeeded() {
         if let remoteNotificationRegistrar {
             remoteNotificationRegistrar()
+            return
+        }
+        guard !EnvironmentConfig.isRunningTestsOrPreviews() else {
+            pushLogger.debug(
+                "Skipping remote notification registration in tests or previews."
+            )
             return
         }
 #if os(iOS)

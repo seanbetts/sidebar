@@ -32,6 +32,11 @@ extension NotesViewModel {
     }
 
     func realtimeDetailRefreshUpdateProtection(for note: NotePayload) -> RealtimeDetailRefreshUpdateProtection {
+        if let acceptedSaveAcknowledgement,
+           isAcceptedSaveAcknowledgement(note, matching: acceptedSaveAcknowledgement) {
+            self.acceptedSaveAcknowledgement = nil
+            return .acceptedSaveAcknowledgement
+        }
         guard let protection = protectedRealtimeDetailRefresh,
               protection.identifiers.contains(note.id) || protection.identifiers.contains(note.path) else {
             return .none
@@ -49,6 +54,8 @@ extension NotesViewModel {
     }
 
     func markAcceptedSaveAcknowledgementForRealtimeProtection(_ note: NotePayload) {
+        acceptedSaveAcknowledgement = note
+        scheduleAcceptedSaveAcknowledgementCleanup(note)
         guard let protection = protectedRealtimeDetailRefresh,
               protection.identifiers.contains(note.id) || protection.identifiers.contains(note.path) else {
             return
@@ -148,6 +155,17 @@ extension NotesViewModel {
                 await Task.yield()
             }
             self?.clearRealtimeDetailRefreshProtectionIfCurrent(protection)
+        }
+    }
+
+    private func scheduleAcceptedSaveAcknowledgementCleanup(_ note: NotePayload) {
+        Task { @MainActor [weak self] in
+            for _ in 0..<3 {
+                await Task.yield()
+            }
+            if self?.acceptedSaveAcknowledgement == note {
+                self?.acceptedSaveAcknowledgement = nil
+            }
         }
     }
 
