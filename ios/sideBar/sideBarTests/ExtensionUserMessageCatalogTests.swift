@@ -44,6 +44,7 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
             .imageProcessFailed: "Could not process the image.",
             .fileLoadFailed: "Could not load the file.",
             .fileReadFailed: "Could not read the file.",
+            .sharedPayloadTooLarge: "This shared item is too large to process in the extension. Open sideBar to upload it directly.",
             .uploadFailed: "Upload failed. Please try again.",
             .networkError: "Network error. Please try again.",
             .unknownFailure: "Something went wrong. Please try again."

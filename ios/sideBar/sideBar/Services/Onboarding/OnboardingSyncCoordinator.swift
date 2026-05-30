@@ -1,9 +1,8 @@
 import Foundation
 import OSLog
 
-@MainActor
 /// Synchronizes onboarding progress with optimistic local fallback support.
-public protocol OnboardingSyncing: AnyObject {
+@MainActor public protocol OnboardingSyncing: AnyObject {
     func sync(
         payload: OnboardingSyncPayload,
         fallbackBaseState: OnboardingState

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import stat
 import subprocess
-import hashlib
 from pathlib import Path
 
 
@@ -39,12 +39,25 @@ def required_env(repo_root: Path, bin_dir: Path) -> dict[str, str]:
             "SUPABASE_ANON_KEY": "anon-key",
             "KEYCHAIN_ACCESS_GROUP": "ABCDE12345.ai.sidebar.sidebar",
             "KEYCHAIN_SERVICE": "ai.sidebar.sidebar",
+        }
+    )
+    return env
+
+
+def enable_sentry_upload(env: dict[str, str]) -> None:
+    """Set the credentials required to enable Sentry dSYM upload."""
+    env.update(
+        {
             "SENTRY_AUTH_TOKEN": "token",
             "SENTRY_ORG": "sidebar",
             "SENTRY_PROJECT": "apple",
         }
     )
-    return env
+
+
+def write_darwin_uname(bin_dir: Path) -> None:
+    """Force installer tests to model Xcode Cloud's Darwin host."""
+    write_executable(bin_dir / "uname", "#!/bin/bash\necho Darwin\n")
 
 
 def test_ci_post_clone_writes_optional_sentry_dsn(tmp_path: Path) -> None:
@@ -110,7 +123,9 @@ def test_ci_post_clone_preserves_sentry_upload_variables_for_later_steps(tmp_pat
     write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
 
     env = required_env(repo_root, bin_dir)
+    enable_sentry_upload(env)
     env["SENTRY_DSN"] = "https://public@example.ingest.sentry.io/123"
+    write_executable(bin_dir / "sentry-cli", "#!/bin/bash\nexit 0\n")
 
     result = subprocess.run(
         [
@@ -197,8 +212,10 @@ def test_ci_post_clone_installs_verified_sentry_cli_when_upload_is_enabled(tmp_p
     )
 
     env = required_env(repo_root, bin_dir)
+    enable_sentry_upload(env)
     env["SENTRY_CLI_VERSION"] = "2.58.2"
     env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+    write_darwin_uname(bin_dir)
 
     result = subprocess.run(
         [str(SCRIPT_PATH)],
@@ -258,8 +275,10 @@ def test_ci_post_clone_fails_when_sentry_cli_checksum_mismatches(tmp_path: Path)
     )
 
     env = required_env(repo_root, bin_dir)
+    enable_sentry_upload(env)
     env["SENTRY_CLI_VERSION"] = "2.58.2"
     env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+    write_darwin_uname(bin_dir)
 
     result = subprocess.run(
         [str(SCRIPT_PATH)],

@@ -1,8 +1,7 @@
 import Foundation
 
-@MainActor
 /// Persists optimistic onboarding state used before remote onboarding refresh completes.
-public final class OnboardingLocalStateStore {
+@MainActor public final class OnboardingLocalStateStore {
     private let cache: CacheClient
 
     public init(cache: CacheClient) {
