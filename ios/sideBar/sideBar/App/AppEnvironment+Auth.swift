@@ -40,7 +40,10 @@ extension AppEnvironment {
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         if requiresSignedOutReset {
             clearStoredCacheScopeUserId()
-            resetSignedInData(clearNavigationState: true)
+            resetSignedInData(
+                clearNavigationState: true,
+                preserveExtensionHandoffs: true
+            )
             storage.userDefaults.set(false, forKey: AppStorageKeys.widgetAuthStateMirror)
             storage.userDefaults.set(
                 WidgetDisplayAuthorization.DisplayState.signedOut.rawValue,

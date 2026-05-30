@@ -71,7 +71,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
     )
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
-    let offlineAccessWindow: TimeInterval = 60 * 60 * 24
+    let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 30
     let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     let failedLoginAttemptsKey = AppStorageKeys.failedLoginAttempts
     let lockoutEndTimeKey = AppStorageKeys.lockoutEndTime

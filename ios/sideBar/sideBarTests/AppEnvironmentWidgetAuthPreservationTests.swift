@@ -80,7 +80,7 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
     }
 
-    func testSignedOutWebsiteSaveDeepLinkDoesNotStartSaveUntilAuthenticated() async {
+    func testSignedOutWebsiteSaveDeepLinkPersistsWithoutStartingSaveUntilAuthenticated() async {
         let savedURL = "https://example.com/articles/\(UUID().uuidString)"
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
@@ -95,15 +95,19 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
 
         XCTAssertNil(environment.commandSelection)
         XCTAssertEqual(websitesAPI.saveCallCount, 0)
-        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().map(\.url), [savedURL])
 
         environment.authState = .active
-        await environment.replayProtectedDeferredActionsIfReady()
+        await environment.consumePendingShares()
 
         await waitForWebsiteSave(url: savedURL, in: websitesAPI)
 
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
+        let persistedJob = storage.pendingShareStore.loadAll().first
+        XCTAssertEqual(persistedJob?.url, savedURL)
+        XCTAssertEqual(persistedJob?.websiteJobId, "test-job-id")
     }
 
     private func makeEnvironment(

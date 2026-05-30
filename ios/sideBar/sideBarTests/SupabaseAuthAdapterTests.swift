@@ -3,11 +3,12 @@ import sideBarShared
 import Supabase
 @testable import sideBar
 
+private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+private let failedLoginAttemptsKey = "sidebar.auth.failedLoginAttempts"
+private let lockoutEndTimeKey = "sidebar.auth.lockoutEndTime"
+
 @MainActor
 final class SupabaseAuthAdapterTests: XCTestCase {
-    private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
-    private let failedLoginAttemptsKey = "sidebar.auth.failedLoginAttempts"
-    private let lockoutEndTimeKey = "sidebar.auth.lockoutEndTime"
     private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
 
     override func tearDown() {
@@ -140,6 +141,26 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.userId, "user")
     }
 
+    func testOfflineAccessAllowsStoredCredentialsOlderThanOneDay() async {
+        let store = InMemoryAuthStateStore()
+        try? store.saveAccessToken("token")
+        try? store.saveUserId("user")
+        let olderThanOneDay = Date().addingTimeInterval(-48 * 60 * 60)
+        let defaults = makeUserDefaults()
+        defaults.set(olderThanOneDay.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+
+        let adapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: store,
+            userDefaults: defaults
+        )
+
+        XCTAssertTrue(adapter.canRestoreOfflineSession)
+        XCTAssertTrue(adapter.restoreOfflineSession())
+        XCTAssertEqual(adapter.accessToken, "token")
+        XCTAssertEqual(adapter.userId, "user")
+    }
+
     func testOfflineAccessRejectsExpiredTimestampStoredInAuthStateStore() async throws {
         let store = KeychainAuthStateStore(
             service: "sideBar.AuthTests.\(UUID().uuidString)",
@@ -147,7 +168,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
         try store.saveAccessToken("token")
         try store.saveUserId("user")
-        let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        let outsideWindow = Date().addingTimeInterval(-45 * 24 * 60 * 60)
         try store.saveAuthMetadataValue(
             String(outsideWindow.timeIntervalSince1970),
             forKey: lastAuthTimestampKey
@@ -191,7 +212,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
-        let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        let outsideWindow = Date().addingTimeInterval(-45 * 24 * 60 * 60)
         let defaults = makeUserDefaults()
         defaults.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
@@ -250,7 +271,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
-        let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        let outsideWindow = Date().addingTimeInterval(-45 * 24 * 60 * 60)
         let defaults = makeUserDefaults()
         defaults.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
@@ -268,9 +289,9 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let firstStore = InMemoryAuthStateStore()
         try? firstStore.saveAccessToken("token-1")
         try? firstStore.saveUserId("user-1")
-        let withinWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        let outsideWindow = Date().addingTimeInterval(-45 * 24 * 60 * 60)
         let firstDefaults = makeUserDefaults()
-        firstDefaults.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        firstDefaults.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
         let firstAdapter = SupabaseAuthAdapter(
             config: EnvironmentConfig.fallbackForTesting(),
@@ -291,7 +312,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
 
         XCTAssertTrue(secondAdapter.canRestoreOfflineSession)
-        XCTAssertGreaterThan(secondDefaults.double(forKey: lastAuthTimestampKey), withinWindow.timeIntervalSince1970)
+        XCTAssertGreaterThan(secondDefaults.double(forKey: lastAuthTimestampKey), outsideWindow.timeIntervalSince1970)
     }
 
     func testColdLaunchExpiredSessionRefreshesAndBecomesActive() async throws {
@@ -463,6 +484,9 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNil(try store.loadSessionData(forKey: "supabase.session"))
     }
 
+}
+
+extension SupabaseAuthAdapterTests {
     func makeUserDefaults() -> UserDefaults {
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterTests")
         isolatedDefaults.append(isolated)

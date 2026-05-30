@@ -446,6 +446,7 @@ final class ContentViewLifecycleTests: XCTestCase {
             pendingWriteCount: 0
         )
 
+        XCTAssertTrue(plan.shouldScheduleTokenRefresh)
         XCTAssertTrue(plan.shouldScheduleWidgetRefresh)
         XCTAssertFalse(plan.shouldScheduleWriteQueueFlush)
         XCTAssertTrue(plan.shouldNotifyWebsiteQueueCoordinator)
@@ -457,6 +458,7 @@ final class ContentViewLifecycleTests: XCTestCase {
             pendingWriteCount: 2
         )
 
+        XCTAssertTrue(plan.shouldScheduleTokenRefresh)
         XCTAssertTrue(plan.shouldScheduleWidgetRefresh)
         XCTAssertTrue(plan.shouldScheduleWriteQueueFlush)
         XCTAssertTrue(plan.shouldNotifyWebsiteQueueCoordinator)
@@ -468,6 +470,7 @@ final class ContentViewLifecycleTests: XCTestCase {
             pendingWriteCount: 3
         )
 
+        XCTAssertFalse(plan.shouldScheduleTokenRefresh)
         XCTAssertFalse(plan.shouldScheduleWidgetRefresh)
         XCTAssertFalse(plan.shouldScheduleWriteQueueFlush)
         XCTAssertFalse(plan.shouldNotifyWebsiteQueueCoordinator)

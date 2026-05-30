@@ -16,11 +16,17 @@ extension AppEnvironment {
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
         let redactedURL = LogRedaction.redactedURLString(url)
         guard isAuthenticated else {
+            if persistWebsiteSaveDeepLinkIfNeeded(url, logger: logger) {
+                return
+            }
             logger.info("Queueing deep link until sign-in completes: \(redactedURL, privacy: .public)")
             queueProtectedDeepLink(url)
             return
         }
         guard isProtectedContentReady else {
+            if persistWebsiteSaveDeepLinkIfNeeded(url, logger: logger) {
+                return
+            }
             logger.info("Queueing protected deep link until auth is ready: \(redactedURL, privacy: .public)")
             queueProtectedDeepLink(url)
             return
@@ -38,6 +44,30 @@ extension AppEnvironment {
             metadata: ["url": redactedURL]
         )
         handleSidebarDeepLink(url: url, logger: logger)
+    }
+
+    private func persistWebsiteSaveDeepLinkIfNeeded(_ url: URL, logger: Logger) -> Bool {
+        guard url.host == "websites", url.path == "/save" else { return false }
+        guard let websiteURL = websiteSaveURL(from: url) else {
+            logger.info("Deep link missing website save URL")
+            return true
+        }
+        if storage.pendingShareStore.enqueueWebsite(url: websiteURL) != nil {
+            logger.info(
+                """
+                Queued website save deep link until sign-in completes: \
+                \(LogRedaction.redactedURLString(websiteURL), privacy: .public)
+                """
+            )
+        } else {
+            logger.error(
+                """
+                Failed to queue website save deep link: \
+                \(LogRedaction.redactedURLString(websiteURL), privacy: .public)
+                """
+            )
+        }
+        return true
     }
 
     private func handleSidebarDeepLink(url: URL, logger: Logger) {

@@ -89,6 +89,9 @@ extension ContentView {
                     isAuthenticated: environment.isAuthenticated,
                     pendingWriteCount: environment.writeQueue.pendingCount
                 )
+                if continuationPlan.shouldScheduleTokenRefresh {
+                    AppLaunchDelegate.scheduleTokenRefresh()
+                }
                 if continuationPlan.shouldScheduleWidgetRefresh {
                     AppLaunchDelegate.scheduleWidgetRefresh()
                 }

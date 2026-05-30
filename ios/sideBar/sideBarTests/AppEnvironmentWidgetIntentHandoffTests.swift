@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
@@ -39,7 +40,7 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 
-    func testSignedOutWebsiteSaveDeepLinkQueuesUntilAuthentication() async {
+    func testSignedOutWebsiteSaveDeepLinkPersistsUntilAuthentication() async {
         let savedURL = "https://example.com/articles/\(UUID().uuidString)"
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
@@ -53,15 +54,18 @@ extension AppEnvironmentDeepLinkTests {
         environment.handleDeepLink(Self.queuedQuickSaveDeepLink(url: savedURL))
 
         XCTAssertNil(environment.commandSelection)
-        XCTAssertTrue(environment.queuedProtectedDeepLinks.contains(Self.queuedQuickSaveDeepLink(url: savedURL)))
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().map(\.url), [savedURL])
 
         environment.authState = .active
-        await environment.replayProtectedDeferredActionsIfReady()
+        await environment.consumePendingShares()
         await waitForWebsiteEventSurface(savedURL, in: environment)
 
-        XCTAssertEqual(environment.commandSelection, .websites)
         XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
         XCTAssertTrue(websiteEventIsSurfaced(savedURL, in: environment))
+        let persistedJob = storage.pendingShareStore.loadAll().first
+        XCTAssertEqual(persistedJob?.url, savedURL)
+        XCTAssertEqual(persistedJob?.websiteJobId, "test-job-id")
         XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 

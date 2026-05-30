@@ -129,22 +129,26 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         )
     }
 
-    func testRefreshAuthStateClearsCachedDataWhenSignedOutWithStoredScope() {
+    func testRefreshAuthStatePreservesExtensionHandoffsWhenSignedOutWithStoredScope() {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         isolatedDefaults.defaults.set("person@example.com", forKey: lastSignInEmailKey)
         isolatedDefaults.defaults.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
         let environment = makeEnvironment(authState: .signedOut, userId: nil)
         primeCachedData(environment)
-        _ = environment.storage.pendingShareStore.enqueueWebsite(url: "https://example.com/articles/sign-out")
-        environment.storage.extensionEventStore.recordWebsiteSaved(url: "https://example.com/articles/sign-out")
+        let queuedURL = "https://example.com/articles/sign-out"
+        let queuedItem = environment.storage.pendingShareStore.enqueueWebsite(url: queuedURL)
+        environment.storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
 
         environment.refreshAuthState()
 
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: cacheScopeKey))
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: lastSignInEmailKey))
         XCTAssertNil(isolatedDefaults.defaults.object(forKey: lastAuthTimestampKey))
-        XCTAssertTrue(environment.storage.pendingShareStore.loadAll().isEmpty)
-        XCTAssertTrue(environment.storage.extensionEventStore.consumeEvents().isEmpty)
+        XCTAssertEqual(environment.storage.pendingShareStore.loadAll().map(\.id), [queuedItem?.id].compactMap { $0 })
+        XCTAssertEqual(environment.storage.pendingShareStore.loadAll().first?.url, queuedURL)
+        XCTAssertTrue(environment.storage.extensionEventStore.consumeEvents().contains { event in
+            event.websiteUrl == queuedURL
+        })
         assertCachedDataCleared(environment)
     }
 
