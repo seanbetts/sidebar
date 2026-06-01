@@ -460,6 +460,168 @@ final class NotesViewModelMutationTests: XCTestCase {
         XCTAssertEqual(viewModel.tree?.children.first?.name, "Renamed")
     }
 
+    func testFolderPathContainingNoteUsesTreeNestingForUuidNotePath() async throws {
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Projects",
+                path: "folder:Projects",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "Planning",
+                        path: "folder:Projects/Planning",
+                        type: .directory,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: [
+                            FileNode(
+                                name: "Spec",
+                                path: "note-uuid",
+                                type: .file,
+                                size: nil,
+                                modified: nil,
+                                created: nil,
+                                children: nil,
+                                expanded: nil,
+                                pinned: nil,
+                                pinnedOrder: nil,
+                                archived: nil,
+                                folderMarker: nil
+                            )
+                        ],
+                        expanded: nil,
+                        pinned: nil,
+                        pinnedOrder: nil,
+                        archived: nil,
+                        folderMarker: true
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: true
+            )
+        ])
+        let api = NotesAPISpy()
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        store.applyTreeUpdate(tree, persist: false)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        XCTAssertEqual(viewModel.folderPath(containingNote: "note-uuid"), "Projects/Planning")
+    }
+
+    func testDeleteFolderClearsSelectedUuidNoteNestedInFolder() async throws {
+        let note = NotePayload(
+            id: "note-uuid",
+            name: "Spec",
+            content: "Body",
+            path: "note-uuid",
+            modified: nil,
+            created: nil
+        )
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Projects",
+                path: "folder:Projects",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "Spec",
+                        path: note.path,
+                        type: .file,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: nil,
+                        pinnedOrder: nil,
+                        archived: nil,
+                        folderMarker: nil
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: true
+            )
+        ])
+        let api = NotesAPISpy()
+        api.getNoteResult = .success(note)
+        api.deleteFolderResult = .success(())
+        api.listTreeResult = .success(FileTree(children: []))
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        store.applyTreeUpdate(tree, persist: false)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectNote(id: note.path)
+        XCTAssertEqual(viewModel.selectedNoteId, note.path)
+
+        await viewModel.deleteFolder(path: "folder:Projects")
+
+        XCTAssertNil(viewModel.selectedNoteId)
+        XCTAssertNil(viewModel.activeNote)
+    }
+
+    func testNotePlainTextForActionFetchesWithoutChangingSelection() async throws {
+        let selected = NotePayload(
+            id: "selected-id",
+            name: "Selected",
+            content: "Selected body",
+            path: "selected-id",
+            modified: nil,
+            created: nil
+        )
+        let other = NotePayload(
+            id: "other-id",
+            name: "Other",
+            content: "Other body",
+            path: "other-id",
+            modified: nil,
+            created: nil
+        )
+        let api = NotesAPISpy()
+        api.getNoteResults = [
+            selected.path: .success(selected),
+            other.path: .success(other)
+        ]
+        let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectNote(id: selected.path)
+        XCTAssertEqual(viewModel.selectedNoteId, selected.path)
+
+        let content = await viewModel.notePlainTextForAction(id: other.path)
+
+        XCTAssertEqual(content, "Other body")
+        XCTAssertEqual(viewModel.selectedNoteId, selected.path)
+        XCTAssertEqual(viewModel.activeNote?.id, selected.id)
+    }
+
     func testSetPinnedOnlineOptimisticallyUpdatesTreeWithoutReload() async throws {
         let initialTree = FileTree(children: [
             FileNode(
@@ -533,8 +695,10 @@ private final class NotesAPISpy: NotesProviding {
     private(set) var renameRequests: [(id: String, newName: String)] = []
     var listTreeResult: Result<FileTree, Error> = .failure(MockError.forced)
     var getNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
+    var getNoteResults: [String: Result<NotePayload, Error>] = [:]
     var createNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
     var renameNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
+    var deleteFolderResult: Result<Void, Error> = .success(())
 
     func listTree() async throws -> FileTree {
         try listTreeResult.get()
@@ -547,8 +711,10 @@ private final class NotesAPISpy: NotesProviding {
     }
 
     func getNote(id: String) async throws -> NotePayload {
-        _ = id
         getNoteCallCount += 1
+        if let result = getNoteResults[id] {
+            return try result.get()
+        }
         return try getNoteResult.get()
     }
 
@@ -624,6 +790,7 @@ private final class NotesAPISpy: NotesProviding {
 
     func deleteFolder(path: String) async throws {
         _ = path
+        try deleteFolderResult.get()
     }
 }
 

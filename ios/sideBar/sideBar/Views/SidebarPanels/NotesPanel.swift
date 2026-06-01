@@ -111,6 +111,7 @@ struct NotesPanelView: View {
                 onConfirm: { selection in
                     guard let targetId = moveTargetId else { return }
                     Task {
+                        await saveActiveNoteIfNeeded(for: targetId)
                         await viewModel.moveNote(id: targetId, folder: selection)
                     }
                 }

@@ -447,7 +447,7 @@ extension NotesDetailView {
     }
 
     #if os(iOS)
-    var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+    var isPhone: Bool { isCompact }
 
     private var defaultEditingFormattingBarPresentation: NoteFormattingBarPresentation {
         .floatingTopTrailing

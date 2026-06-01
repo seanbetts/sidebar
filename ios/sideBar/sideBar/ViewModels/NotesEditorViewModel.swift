@@ -116,15 +116,10 @@ import UIKit
         }
         let isSameNote = previousNoteId == note.id
         let realtimeProtection = notesViewModel.realtimeDetailRefreshUpdateProtection(for: note)
-        if isSameNote {
-            if case .protectedRealtimeDetail(let suppressRegardlessOfQueue) = realtimeProtection,
-               isQueuedForSync || suppressRegardlessOfQueue {
-                return
-            }
-        }
-        if isSameNote, isSaving {
-            // Avoid clobbering pending local edits while an in-flight save publishes
-            // the same note back through NotesStore.
+        if shouldSuppressSameNoteUpdate(
+            isSameNote: isSameNote,
+            realtimeProtection: realtimeProtection
+        ) {
             return
         }
         let normalized = normalizedEditorSnapshot(for: note)
@@ -133,6 +128,11 @@ import UIKit
             context: "NotesEditorViewModel.handleNoteUpdate",
             logger: logger
         )
+        if isSameNote, shouldPreserveDirtyEditorContent(incoming: normalized) {
+            unsupportedContent = detectedUnsupportedContent
+            isReadOnly = detectedUnsupportedContent != nil
+            return
+        }
         currentNoteId = note.id
         unsupportedContent = detectedUnsupportedContent
         if isSameNote,
@@ -611,6 +611,29 @@ extension NotesEditorViewModel {
     }
     fileprivate func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
         (content: NotesSemanticDocumentCodec.encode(note.document) ?? "", plainText: note.plainText)
+    }
+
+    private func shouldSuppressSameNoteUpdate(
+        isSameNote: Bool,
+        realtimeProtection: NotesViewModel.RealtimeDetailRefreshUpdateProtection
+    ) -> Bool {
+        guard isSameNote else { return false }
+        if isSaving {
+            return true
+        }
+        if case .protectedRealtimeDetail(let suppressRegardlessOfQueue) = realtimeProtection {
+            return isQueuedForSync || suppressRegardlessOfQueue
+        }
+        return false
+    }
+
+    private func shouldPreserveDirtyEditorContent(incoming normalized: (content: String, plainText: String)) -> Bool {
+        guard isDirty else { return false }
+        if #available(iOS 26.0, macOS 26.0, *), let nativeEditorViewModel {
+            let snapshot = nativeEditorViewModel.currentPersistenceSnapshot()
+            return snapshot.canonicalContent != normalized.content || snapshot.plainText != normalized.plainText
+        }
+        return canonicalContent != normalized.content || content != normalized.plainText
     }
 
     func applyLocalReadModeSnapshot(_ document: NotesSemanticDocument) {

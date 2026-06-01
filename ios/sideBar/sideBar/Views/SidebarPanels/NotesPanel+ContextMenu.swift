@@ -99,6 +99,9 @@ extension NotesPanelView {
     }
 
     private func currentFolderPath(for item: FileNodeItem) -> String {
+        if item.isFile {
+            return viewModel.folderPath(containingNote: item.id)
+        }
         guard let lastSlash = item.id.lastIndex(of: "/") else { return "" }
         return String(item.id[..<lastSlash])
     }
@@ -106,6 +109,7 @@ extension NotesPanelView {
     private func togglePin(for item: FileNodeItem) {
         Haptics.selection()
         Task {
+            await saveActiveNoteIfNeeded(for: item.id)
             await viewModel.setPinned(id: item.id, pinned: !item.pinned)
         }
     }
@@ -115,6 +119,7 @@ extension NotesPanelView {
         Task {
             prepareForDestructiveAction()
             await waitForKeyboardDismissal()
+            await saveActiveNoteIfNeeded(for: item.id)
             await viewModel.setArchived(id: item.id, archived: !item.archived)
         }
     }
@@ -172,21 +177,12 @@ extension NotesPanelView {
 
     @MainActor
     private func loadNoteContent(for item: FileNodeItem) async -> String? {
-        if viewModel.selectedNoteId != item.id {
-            requestNoteSelection(id: item.id)
+        if viewModel.selectedNoteId == item.id, viewModel.activeNote?.path == item.id {
+            return environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
+                fallback: viewModel.activeNote?.plainText ?? ""
+            )
         }
-        return await waitForNoteContent(id: item.id)
+        return await viewModel.notePlainTextForAction(id: item.id)
     }
 
-    @MainActor
-    private func waitForNoteContent(id: String, timeout: UInt64 = 2_000_000_000) async -> String? {
-        let deadline = Date().addingTimeInterval(TimeInterval(timeout) / 1_000_000_000)
-        while Date() < deadline {
-            if viewModel.activeNote?.path == id {
-                return viewModel.activeNote?.plainText
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        return nil
-    }
 }

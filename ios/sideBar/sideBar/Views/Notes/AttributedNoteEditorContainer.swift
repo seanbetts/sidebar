@@ -28,6 +28,9 @@ struct AttributedNoteEditorContainer: View {
     let onEscape: ((NotesSemanticDocument) -> Void)?
     let makeTextView: EditorTextViewFactory?
     @EnvironmentObject var environment: AppEnvironment
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
@@ -333,7 +336,7 @@ struct AttributedNoteEditorContainer: View {
     private var resolvedFormattingBarPresentation: NoteFormattingBarPresentation {
         return NoteFormattingBarPresentation.resolve(
             isEditing: true,
-            isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+            isPhone: horizontalSizeClass == .compact,
             isSoftwareKeyboardVisible: isSoftwareKeyboardVisible
         )
     }

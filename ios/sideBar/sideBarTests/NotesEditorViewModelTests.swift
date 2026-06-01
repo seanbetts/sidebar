@@ -1722,6 +1722,65 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(draft?.content, canonical)
     }
 
+    func testSameNoteMetadataUpdateDoesNotReplaceDirtyEditorSnapshot() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let serverDocument = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Original", marks: [])]),
+                .paragraph([.init(text: "Server body", marks: [])])
+            ]
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Original",
+            document: serverDocument,
+            plainText: "Original\nServer body",
+            path: "n1",
+            modified: nil,
+            created: nil
+        )
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let localDocument = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Original", marks: [])]),
+                .paragraph([.init(text: "Local unsaved body", marks: [])])
+            ]
+        )
+        context.viewModel.applyEditorSnapshot(
+            plainText: "Original\nLocal unsaved body",
+            canonicalContent: NotesSemanticDocumentCodec.encode(localDocument) ?? ""
+        )
+        context.viewModel.setDirty(true)
+
+        let renamedDocument = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Renamed", marks: [])]),
+                .paragraph([.init(text: "Server body", marks: [])])
+            ]
+        )
+        context.viewModel.handleNoteUpdate(
+            NotePayload(
+                id: "n1",
+                name: "Renamed",
+                document: renamedDocument,
+                plainText: "Renamed\nServer body",
+                path: "n1",
+                modified: nil,
+                created: nil
+            )
+        )
+
+        XCTAssertEqual(
+            context.viewModel.currentPlainTextSnapshot(fallback: "fallback"),
+            "Original\nLocal unsaved body"
+        )
+        XCTAssertTrue(context.viewModel.isDirty)
+    }
+
     func testSyncFromNativeEditorSkipsWhenBaselineAlreadyAligned() async throws {
         let nonCanonical = "- [x] Done"
         let canonicalProbe = NativeNoteEditorViewModel()

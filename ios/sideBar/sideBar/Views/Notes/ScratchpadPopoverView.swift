@@ -15,6 +15,9 @@ public struct ScratchpadPopoverView: View {
     @State private var readModeHeight: CGFloat = 0
     @State private var saveTask: Task<Void, Never>?
     @FocusState private var isEditorFocused: Bool
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init(api: any ScratchpadProviding, cache: CacheClient, scratchpadStore: ScratchpadStore) {
         _viewModel = StateObject(
@@ -179,7 +182,7 @@ public struct ScratchpadPopoverView: View {
 
     private var usesPhoneSheetLayout: Bool {
         #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass == .compact
         #else
         false
         #endif

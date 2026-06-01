@@ -20,9 +20,8 @@ extension NotesDetailView {
     }
 
     var currentFolderPath: String {
-        guard let path = activeNode?.path else { return "" }
-        guard let lastSlash = path.lastIndex(of: "/") else { return "" }
-        return String(path[..<lastSlash])
+        guard let noteId = viewModel.activeNote?.path else { return "" }
+        return viewModel.folderPath(containingNote: noteId)
     }
 
     var folderOptions: [FolderOption] {
@@ -33,6 +32,7 @@ extension NotesDetailView {
         guard let noteId = viewModel.activeNote?.path else { return }
         Haptics.selection()
         Task {
+            await editorViewModel.saveIfNeeded()
             await viewModel.setPinned(id: noteId, pinned: !isPinned)
         }
     }
@@ -41,6 +41,7 @@ extension NotesDetailView {
         guard let noteId = viewModel.activeNote?.path else { return }
         Haptics.selection()
         Task {
+            await editorViewModel.saveIfNeeded()
             await viewModel.setArchived(id: noteId, archived: !isArchived)
         }
     }

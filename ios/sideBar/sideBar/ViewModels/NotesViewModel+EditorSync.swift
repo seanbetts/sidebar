@@ -334,16 +334,16 @@ extension NotesViewModel {
     public func deleteFolder(path: String) async {
         let normalized = normalizeFolderPath(path)
         guard !normalized.isEmpty else { return }
+        let shouldClearSelection = selectedNoteId.map {
+            isSelectedNote($0, containedInFolder: normalized) || $0 == normalized
+        } ?? false
         if notesOfflineCapabilityPolicy.shouldQueueWrites {
             do {
                 try await store.enqueueDeleteFolder(path: normalized)
                 tree = store.tree
                 archivedTree = store.archivedTree
-                if let selected = selectedNoteId {
-                    let folderPrefix = normalized + "/"
-                    if selected.hasPrefix(folderPrefix) || selected == normalized {
-                        clearSelection()
-                    }
+                if shouldClearSelection {
+                    clearSelection()
                 }
                 return
             } catch WriteQueueError.queueFull {
@@ -356,11 +356,8 @@ extension NotesViewModel {
         }
         do {
             try await api.deleteFolder(path: normalized)
-            if let selected = selectedNoteId {
-                let folderPrefix = normalized + "/"
-                if selected.hasPrefix(folderPrefix) || selected == normalized {
-                    clearSelection()
-                }
+            if shouldClearSelection {
+                clearSelection()
             }
             await refreshTree(force: true)
         } catch {
@@ -388,5 +385,10 @@ extension NotesViewModel {
         let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let newPath = normalizedFolder.isEmpty ? filename : "\(normalizedFolder)/\(filename)"
         return path.hasPrefix("/") ? "/\(newPath)" : newPath
+    }
+
+    private func isSelectedNote(_ selected: String, containedInFolder folderPath: String) -> Bool {
+        let containingFolder = self.folderPath(containingNote: selected)
+        return containingFolder == folderPath || containingFolder.hasPrefix(folderPath + "/")
     }
 }

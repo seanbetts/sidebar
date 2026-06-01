@@ -98,7 +98,7 @@ extension NotesPanelView {
 
     private var isPhone: Bool {
         #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        isCompact
         #else
         false
         #endif
@@ -208,11 +208,19 @@ extension NotesPanelView {
         guard let target else { return }
         Task {
             if target.isFile {
+                await saveActiveNoteIfNeeded(for: target.id)
                 await viewModel.renameNote(id: target.id, newName: updated)
             } else {
                 await viewModel.renameFolder(path: target.id, newName: updated)
             }
         }
+    }
+
+    func saveActiveNoteIfNeeded(for noteId: String) async {
+        guard viewModel.selectedNoteId == noteId
+            || viewModel.activeNote?.path == noteId
+            || viewModel.activeNote?.id == noteId else { return }
+        await environment.notesRuntime.editorViewModel.saveIfNeeded()
     }
 
     func navigateNotesList(direction: ShortcutListDirection) {

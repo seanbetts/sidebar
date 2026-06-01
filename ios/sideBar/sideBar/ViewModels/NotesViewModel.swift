@@ -211,6 +211,24 @@ import Combine
         findNode(id: id, in: tree?.children ?? [])
     }
 
+    public func folderPath(containingNote noteId: String) -> String {
+        findFolderPath(containingNote: noteId, in: (tree ?? store.tree)?.children ?? [], parentPath: "") ?? ""
+    }
+
+    public func notePlainTextForAction(id: String) async -> String? {
+        if let activeNote, activeNote.path == id || activeNote.id == id {
+            return activeNote.plainText
+        }
+        if let cached = store.notePayload(forPath: id) ?? store.notePayload(forId: id) {
+            return cached.plainText
+        }
+        do {
+            return try await api.getNote(id: id).plainText
+        } catch {
+            return nil
+        }
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete, selectedNoteId == noteId {
@@ -336,6 +354,34 @@ import Combine
             }
         }
         return nil
+    }
+
+    private func findFolderPath(
+        containingNote noteId: String,
+        in nodes: [FileNode],
+        parentPath: String
+    ) -> String? {
+        for node in nodes {
+            if node.type == .file, node.path == noteId {
+                return parentPath
+            }
+            guard node.type == .directory, let children = node.children else { continue }
+            let folderPath = normalizeTreeFolderPath(node.path)
+            let childParent = folderPath.isEmpty ? parentPath : folderPath
+            if let found = findFolderPath(containingNote: noteId, in: children, parentPath: childParent) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func normalizeTreeFolderPath(_ path: String) -> String {
+        let trimmed = path.trimmed
+        if trimmed.hasPrefix("folder:") {
+            let start = trimmed.index(trimmed.startIndex, offsetBy: 7)
+            return String(trimmed[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        return trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
 }

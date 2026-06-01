@@ -68,6 +68,7 @@ public struct NotesView: View {
                     onConfirm: { selection in
                         guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                         Task {
+                            await environment.notesRuntime.editorViewModel.saveIfNeeded()
                             await environment.notesRuntime.viewModel.moveNote(id: noteId, folder: selection)
                         }
                     }
@@ -116,6 +117,7 @@ public struct NotesView: View {
         guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
         let updatedName = renameValue
         renameValue = ""
+        await environment.notesRuntime.editorViewModel.saveIfNeeded()
         await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
     }
 
@@ -165,7 +167,7 @@ public struct NotesView: View {
     }
 
     private var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
+        isCompact
     }
     #endif
 
@@ -190,9 +192,8 @@ public struct NotesView: View {
     }
 
     private var currentFolderPath: String {
-        guard let path = activeNode?.path else { return "" }
-        guard let lastSlash = path.lastIndex(of: "/") else { return "" }
-        return String(path[..<lastSlash])
+        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return "" }
+        return environment.notesRuntime.viewModel.folderPath(containingNote: noteId)
     }
 
     private var folderOptions: [FolderOption] {
@@ -237,6 +238,7 @@ public struct NotesView: View {
         guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
         Haptics.selection()
         Task {
+            await environment.notesRuntime.editorViewModel.saveIfNeeded()
             await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned)
         }
     }
@@ -251,6 +253,7 @@ public struct NotesView: View {
         guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
         Haptics.selection()
         Task {
+            await environment.notesRuntime.editorViewModel.saveIfNeeded()
             await environment.notesRuntime.viewModel.setArchived(id: noteId, archived: !isArchived)
         }
     }
