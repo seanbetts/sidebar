@@ -103,7 +103,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertLessThan(attachment.bounds.minY, 0)
     }
 
-    func testLogicalEditorSelectedRangeKeepsCaretOnEmptyChecklistLine() throws {
+    func testLogicalEditorSelectedRangeMovesCaretPastEmptyChecklistLineBoundary() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -126,13 +126,24 @@ final class SelectableNoteReadViewTests: XCTestCase {
             baseFontSize: 16
         )
 
-        let logicalRange = SelectableNoteReadView.logicalEditorSelectedRange(
+        let beforeBoundaryRange = SelectableNoteReadView.logicalEditorSelectedRange(
+            fromDisplaySelectedRange: NSRange(location: 2, length: 0),
+            in: editorAttributed,
+            document: document
+        )
+        let afterBoundaryRange = SelectableNoteReadView.logicalEditorSelectedRange(
             fromDisplaySelectedRange: NSRange(location: 3, length: 0),
             in: editorAttributed,
             document: document
         )
+        let displayRange = SelectableNoteReadView.editorDisplaySelectedRange(
+            in: document,
+            logicalSelectedRange: afterBoundaryRange
+        )
 
-        XCTAssertEqual(logicalRange, NSRange(location: 6, length: 0))
+        XCTAssertEqual(beforeBoundaryRange, NSRange(location: 6, length: 0))
+        XCTAssertEqual(afterBoundaryRange, NSRange(location: 7, length: 0))
+        XCTAssertEqual(displayRange, NSRange(location: 3, length: 0))
     }
 
     func testMakePlatformAttributedContentOmitsVisibleBlockquotePrefixInReadMode() throws {

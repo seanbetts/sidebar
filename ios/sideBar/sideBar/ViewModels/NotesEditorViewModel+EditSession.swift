@@ -132,13 +132,18 @@ extension NotesEditorViewModel {
     public func captureLiveEditorViewportSnapshotFromAttachedTextView() -> Bool {
         guard let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
               let nativeEditorViewModel else { return false }
+        let snapshot = nativeEditorViewModel.currentPersistenceSnapshot()
         let selectedUTF16Range = nativeEditorViewModel.utf16SelectedRange(
             in: nativeEditorViewModel.attributedContent
+        )
+        let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+            in: snapshot.document,
+            logicalSelectedRange: selectedUTF16Range
         )
         recordLiveEditorViewportSnapshot(
             offset: textView.contentOffset,
             selectedUTF16Range: selectedUTF16Range,
-            selectionViewportAnchorY: textView.viewportAnchorY(forSelectedRange: selectedUTF16Range)
+            selectionViewportAnchorY: textView.viewportAnchorY(forSelectedRange: displaySelectedRange)
         )
         return true
     }
@@ -166,12 +171,16 @@ extension NotesEditorViewModel {
                 in: nativeEditorViewModel.attributedContent
             )
             if selectedUTF16Range.location != NSNotFound {
+                let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+                    in: snapshot.document,
+                    logicalSelectedRange: selectedUTF16Range
+                )
                 liveEditorSelectionTarget = SelectableNoteReadView.readViewportAnchorTarget(
                     in: snapshot.document,
                     editorTarget: .characterOffset(selectedUTF16Range.location)
                 )
                 liveEditorSelectionViewportAnchorY = textView.viewportAnchorY(
-                    forSelectedRange: selectedUTF16Range
+                    forSelectedRange: displaySelectedRange
                 )
             } else {
                 liveEditorSelectionTarget = nil

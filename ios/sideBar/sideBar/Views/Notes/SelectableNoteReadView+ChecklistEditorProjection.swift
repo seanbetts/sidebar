@@ -145,7 +145,7 @@ extension SelectableNoteReadView {
             if displayOffset == displayPrefixEnd + 1,
                displayPrefixEnd < plainText.length,
                plainText.substring(with: NSRange(location: displayPrefixEnd, length: 1)) == "\n" {
-                return logicalPrefixEnd
+                return logicalPrefixEnd + 1
             }
 
             delta += checklistLogicalPrefixLength - marker.range.length
@@ -233,6 +233,9 @@ extension SelectableNoteReadView {
             let sourceTextStart = currentSourceOffset + sourcePrefixLength
             let sourceItemEnd = sourceTextStart + textLength
 
+            if sourceOffset == currentSourceOffset {
+                return currentTargetOffset
+            }
             if sourceOffset <= sourceTextStart {
                 return currentTargetOffset + targetPrefixLength
             }

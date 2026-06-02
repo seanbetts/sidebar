@@ -123,6 +123,97 @@ extension NativeNoteEditorViewModel {
         )
     }
 
+    func replaceTextInsideListContainer(
+        in document: NotesSemanticDocument,
+        blockInfo: DocumentBlockInfo,
+        selectionRange: Range<Int>,
+        replacementText: String
+    ) -> StructuralReplacementMutation? {
+        guard replacementText.contains("\n") else { return nil }
+        guard blockInfo.block.type == .unorderedList
+                || blockInfo.block.type == .orderedList
+                || blockInfo.block.type == .checklist else {
+            return nil
+        }
+
+        var children = blockInfo.block.children ?? []
+        let selectionStartOffset = max(0, selectionRange.lowerBound - blockInfo.range.lowerBound)
+        let selectionEndOffset = max(selectionStartOffset, selectionRange.upperBound - blockInfo.range.lowerBound)
+        guard let startContext = listItemSelectionContext(
+            in: blockInfo.block,
+            selectionOffset: selectionStartOffset
+        ),
+            let endContext = listItemSelectionContext(
+                in: blockInfo.block,
+                selectionOffset: selectionEndOffset
+            ),
+            startContext.childIndex <= endContext.childIndex else {
+            return nil
+        }
+
+        let insertedMarks = inlineMarksForStructuralInsertion().filter { mark in
+            blockInfo.block.type != .checklist || mark != .strikethrough
+        }
+        let lines = replacementText.components(separatedBy: "\n")
+        guard lines.count > 1 else { return nil }
+
+        let leading = splitInlineSegments(
+            startContext.child.content,
+            at: startContext.contentOffset
+        ).leading
+        let trailing = splitInlineSegments(
+            endContext.child.content,
+            at: endContext.contentOffset
+        ).trailing
+
+        var replacementChildren: [NotesSemanticDocument.Block] = []
+        for (lineIndex, line) in lines.enumerated() {
+            var content: [NotesSemanticDocument.InlineSegment] = []
+            if lineIndex == 0 {
+                appendSegments(leading, to: &content)
+            }
+            appendSegmentText(line, marks: insertedMarks, to: &content)
+            if lineIndex == lines.index(before: lines.endIndex) {
+                appendSegments(trailing, to: &content)
+            }
+
+            let checked: Bool?
+            if blockInfo.block.type == .checklist {
+                checked = lineIndex == 0 ? (startContext.child.checked ?? false) : false
+            } else {
+                checked = nil
+            }
+            replacementChildren.append(
+                .init(
+                    type: .listItem,
+                    content: normalizedInlineSegments(content),
+                    checked: checked
+                )
+            )
+        }
+
+        children.replaceSubrange(
+            startContext.childIndex...endContext.childIndex,
+            with: replacementChildren
+        )
+        let updatedBlock = NotesSemanticDocument.Block(
+            type: blockInfo.block.type,
+            children: children
+        )
+        var updatedBlocks = document.blocks
+        updatedBlocks[blockInfo.index] = updatedBlock
+
+        let insertedLastChildIndex = startContext.childIndex + replacementChildren.count - 1
+        let insertionOffset = blockInfo.range.lowerBound
+            + listItemContentStartOffset(in: updatedBlock, itemIndex: insertedLastChildIndex)
+            + (lines.last ?? "").count
+        return StructuralReplacementMutation(
+            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            insertionOffset: insertionOffset,
+            typingBlockType: blockInfo.block.type
+        )
+    }
+
     func listItemSelectionContext(
         in block: NotesSemanticDocument.Block,
         selectionOffset: Int

@@ -232,7 +232,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
+            let canHandleStructurally = text.contains("\n") || text.isEmpty || text == " "
+            guard canHandleStructurally else { return true }
             let document = viewModel.currentPersistenceSnapshot().document
 
             let logicalRange = SelectableNoteReadView.logicalEditorSelectedRange(
@@ -248,6 +249,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
+            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
             let undoSnapshot = literalUndoSnapshot(
                 in: textView,
                 selectedRange: range,

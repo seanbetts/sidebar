@@ -328,6 +328,82 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n> First\nBody")
     }
 
+    func testMultilinePasteInsideChecklistItemCreatesChecklistItems() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])], checked: true)
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleTextReplacement("\nSecond\nThird"))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .checklist])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "First", marks: [])], checked: true),
+                    .init(type: .listItem, content: [.init(text: "Second", marks: [])], checked: false),
+                    .init(type: .listItem, content: [.init(text: "Third", marks: [])], checked: false)
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n- [x] First\n- [ ] Second\n- [ ] Third")
+    }
+
+    func testMultilinePasteInsideBlockquoteCreatesQuotedParagraphs() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "First", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleTextReplacement("\nSecond\nThird"))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .blockquote])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "First", marks: [])]),
+                    .paragraph([.init(text: "Second", marks: [])]),
+                    .paragraph([.init(text: "Third", marks: [])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n> First\n> Second\n> Third")
+    }
+
     func testToggleUnorderedListConvertsActiveListBackIntoParagraphBlocks() async throws {
         let document = NotesSemanticDocument(
             blocks: [

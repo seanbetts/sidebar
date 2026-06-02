@@ -272,6 +272,26 @@ extension NativeNoteEditorViewModel {
                 replacementText: replacementText
             )
         }
+        if startBlockInfo.index == endBlockInfo.index {
+            switch startBlockInfo.block.type {
+            case .unorderedList, .orderedList, .checklist:
+                return replaceTextInsideListContainer(
+                    in: document,
+                    blockInfo: startBlockInfo,
+                    selectionRange: selectionRange,
+                    replacementText: replacementText
+                )
+            case .blockquote:
+                return replaceTextInsideBlockquote(
+                    in: document,
+                    blockInfo: startBlockInfo,
+                    selectionRange: selectionRange,
+                    replacementText: replacementText
+                )
+            default:
+                break
+            }
+        }
 
         switch startBlockInfo.block.type {
         case .title, .heading, .subheading, .paragraph:

@@ -77,6 +77,77 @@ extension NativeNoteEditorViewModel {
         )
     }
 
+    func replaceTextInsideBlockquote(
+        in document: NotesSemanticDocument,
+        blockInfo: DocumentBlockInfo,
+        selectionRange: Range<Int>,
+        replacementText: String
+    ) -> StructuralReplacementMutation? {
+        guard replacementText.contains("\n"), blockInfo.block.type == .blockquote else { return nil }
+
+        var children = blockInfo.block.children ?? []
+        let selectionStartOffset = max(0, selectionRange.lowerBound - blockInfo.range.lowerBound)
+        let selectionEndOffset = max(selectionStartOffset, selectionRange.upperBound - blockInfo.range.lowerBound)
+        guard let startContext = blockquoteSelectionContext(
+            in: blockInfo.block,
+            selectionOffset: selectionStartOffset
+        ),
+            let endContext = blockquoteSelectionContext(
+                in: blockInfo.block,
+                selectionOffset: selectionEndOffset
+            ),
+            startContext.childIndex <= endContext.childIndex else {
+            return nil
+        }
+
+        let insertedMarks = inlineMarksForStructuralInsertion()
+        let lines = replacementText.components(separatedBy: "\n")
+        guard lines.count > 1 else { return nil }
+
+        let leading = splitInlineSegments(
+            startContext.child.content,
+            at: startContext.contentOffset
+        ).leading
+        let trailing = splitInlineSegments(
+            endContext.child.content,
+            at: endContext.contentOffset
+        ).trailing
+
+        var replacementChildren: [NotesSemanticDocument.Block] = []
+        for (lineIndex, line) in lines.enumerated() {
+            var content: [NotesSemanticDocument.InlineSegment] = []
+            if lineIndex == 0 {
+                appendSegments(leading, to: &content)
+            }
+            appendSegmentText(line, marks: insertedMarks, to: &content)
+            if lineIndex == lines.index(before: lines.endIndex) {
+                appendSegments(trailing, to: &content)
+            }
+            replacementChildren.append(.paragraph(normalizedInlineSegments(content)))
+        }
+
+        children.replaceSubrange(
+            startContext.childIndex...endContext.childIndex,
+            with: replacementChildren
+        )
+        let updatedBlock = NotesSemanticDocument.Block(
+            type: .blockquote,
+            children: children
+        )
+        var updatedBlocks = document.blocks
+        updatedBlocks[blockInfo.index] = updatedBlock
+
+        let insertedLastChildIndex = startContext.childIndex + replacementChildren.count - 1
+        let insertionOffset = blockInfo.range.lowerBound
+            + blockquoteChildContentStartOffset(in: updatedBlock, childIndex: insertedLastChildIndex)
+            + (lines.last ?? "").count
+        return StructuralReplacementMutation(
+            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            insertionOffset: insertionOffset,
+            typingBlockType: .blockquote
+        )
+    }
+
     func blockquoteSelectionContext(
         in block: NotesSemanticDocument.Block,
         selectionOffset: Int
