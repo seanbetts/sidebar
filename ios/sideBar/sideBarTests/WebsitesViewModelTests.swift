@@ -810,7 +810,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testSaveWebsiteRegistersJobProgressInsteadOfStartingDirectPolling() async {
+    func testSaveWebsiteRegistersJobProgressAndStartsFallbackPolling() async {
         let progress = AsyncJobProgressCoordinator()
         let sut = makeSUT(jobProgressCoordinator: progress)
         sut.api.enqueueSaveResponse(jobId: "job-1")
@@ -819,7 +819,23 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertTrue(saved)
         XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
-        XCTAssertTrue(sut.viewModel.jobPollingTasks.isEmpty)
+        XCTAssertNotNil(sut.viewModel.jobPollingTasks["job-1"])
+        sut.viewModel.jobPollingTasks["job-1"]?.cancel()
+        sut.viewModel.clearWebsiteJobPolling(jobId: "job-1")
+    }
+
+    func testSaveQueuedWebsiteRegistersJobProgressAndStartsFallbackPolling() async throws {
+        let progress = AsyncJobProgressCoordinator()
+        let sut = makeSUT(jobProgressCoordinator: progress)
+        sut.api.enqueueSaveResponse(jobId: "job-queued")
+
+        let saved = try await sut.viewModel.saveQueuedWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertTrue(progress.hasActiveJob(jobId: "job-queued"))
+        XCTAssertNotNil(sut.viewModel.jobPollingTasks["job-queued"])
+        sut.viewModel.jobPollingTasks["job-queued"]?.cancel()
+        sut.viewModel.clearWebsiteJobPolling(jobId: "job-queued")
     }
 
     func testSaveWebsiteCompletesFromRealtimeInsert() async {

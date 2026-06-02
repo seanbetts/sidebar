@@ -26,6 +26,15 @@ final class AppEnvironmentSyncHealthTests: XCTestCase {
         XCTAssertEqual(environment.currentSyncHealth, .degraded)
     }
 
+    func testAllowsFallbackPollingForActiveWebsiteJobsWhenRealtimeIsDegraded() async throws {
+        let environment = makeEnvironment(refreshCoordinator: BlockingRefreshCoordinator())
+        try await requireProtectedServerReadsAllowed(in: environment)
+
+        XCTAssertEqual(environment.currentSyncHealth, .degraded)
+        XCTAssertTrue(environment.allowsFallbackPolling(section: .websites, hasActiveJob: true))
+        XCTAssertFalse(environment.allowsFallbackPolling(section: .websites, hasActiveJob: false))
+    }
+
     private func makeEnvironment(refreshCoordinator: RefreshCoordinatorType) -> AppEnvironment {
         let authSession = SyncHealthMutableAuthSession(
             accessToken: "access-token",

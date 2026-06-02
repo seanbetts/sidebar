@@ -297,6 +297,12 @@ import OSLog
                 jobId: response.jobId,
                 pendingURL: normalized
             )
+            startWebsiteJobPollingIfAllowed(
+                jobId: response.jobId,
+                pendingURL: normalized,
+                previousSelectedId: previousSelectedId,
+                shouldSelectOnCompletion: true
+            )
             return true
         } catch {
             endWebsiteSave()
@@ -377,6 +383,12 @@ import OSLog
             registerWebsiteSaveJob(
                 jobId: response.jobId,
                 pendingURL: normalizedURL
+            )
+            startWebsiteJobPollingIfAllowed(
+                jobId: response.jobId,
+                pendingURL: normalizedURL,
+                previousSelectedId: nil,
+                shouldSelectOnCompletion: false
             )
             return true
         } catch is CancellationError {

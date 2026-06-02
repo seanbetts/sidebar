@@ -22,10 +22,17 @@ extension AppEnvironment: RealtimeEventHandler {
     }
 
     func allowsFallbackPolling(section: AppSection, hasActiveJob: Bool = false) -> Bool {
+        guard connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead,
+              protectedContentReadiness.canAttemptServerRead else {
+            return false
+        }
+        if hasActiveJob {
+            return true
+        }
         guard currentSyncHealth.allowsFallbackPolling else {
             return false
         }
-        return currentRefreshContext().visibleSection == section || hasActiveJob
+        return currentRefreshContext().visibleSection == section
     }
 
     public func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) {
