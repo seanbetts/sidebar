@@ -999,6 +999,39 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isQueuedForSync)
     }
 
+    func testSaveIfNeededQueuesDirtyDraftWithoutAttachedNativeEditor() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        try context.draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Detached draft")
+
+        context.store.applyEditorUpdate(note)
+        try await waitUntil(timeoutSeconds: 2.0) {
+            context.viewModel.content == "Detached draft" &&
+                context.viewModel.isDirty &&
+                context.viewModel.attachedNativeEditorViewModel == nil
+        }
+
+        await context.viewModel.saveIfNeeded()
+
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertEqual(context.viewModel.content, "Detached draft")
+        XCTAssertFalse(context.viewModel.isDirty)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+    }
+
     func testSyncFromNativeEditorCoalescesRequestDuringInFlightSave() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

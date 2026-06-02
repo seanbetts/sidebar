@@ -10,6 +10,7 @@ extension NotesEditorViewModel {
         if #available(iOS 26.0, macOS 26.0, *) {
             guard let nativeViewModel = nativeEditorViewModel else {
                 guard isDirty else { return }
+                await saveDocumentSnapshotIfNeeded(currentSemanticDocumentSnapshot(), force: true)
                 return
             }
             let snapshot = nativeViewModel.currentPersistenceSnapshot()

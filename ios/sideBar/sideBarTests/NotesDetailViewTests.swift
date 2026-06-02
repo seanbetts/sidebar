@@ -179,6 +179,34 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Updated from edit mode")
     }
 
+    func testHandleCloseShortcutMarksNativeSnapshotSavedAfterMacOSForcedSave() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let api = NotesDetailViewFailingNotesAPI()
+        let context = await makeNotesDetailViewTestContext(api: api)
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.attributedContent = AttributedString("Saved once")
+        nativeViewModel.handleContentChange(previous: previous)
+        let document = nativeViewModel.currentPersistenceSnapshot().document
+
+        context.makeView().handleCloseShortcut(editedDocument: document)
+        await waitUntil {
+            context.editorViewModel.presentationMode == .read &&
+                context.editorViewModel.isQueuedForSync
+        }
+
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+        await context.editorViewModel.saveIfNeeded()
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(pendingWrites.count, 1)
+    }
+
     func testEscapeFromEditorQueuesUnsavedContentAndReturnsToReadMode() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

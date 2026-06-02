@@ -675,6 +675,17 @@ extension NotesEditorViewModel {
                 canonicalContent: encodedContent
             )
             notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
+            if #available(iOS 26.0, macOS 26.0, *),
+               let nativeEditorViewModel {
+                let nativeSnapshot = nativeEditorViewModel.currentPersistenceSnapshot()
+                if nativeSnapshot.plainText == plainText &&
+                    nativeSnapshot.canonicalContent == encodedContent {
+                    nativeEditorViewModel.markSaved(
+                        plainText: plainText,
+                        canonicalContent: encodedContent
+                    )
+                }
+            }
             content = plainText
             canonicalContent = encodedContent
             isDirty = false

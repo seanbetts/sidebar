@@ -42,6 +42,28 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(escapeCount, 1)
     }
 
+    func testTextDidChangeUpdatesNativeSnapshotSynchronously() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(
+                NotesSemanticDocumentCodec.encode(
+                    NotesSemanticDocumentProjection.document(fromPlainText: "Hello")
+                )
+            ),
+            plainText: "Hello"
+        )
+        let coordinator = AppKitNoteTextEditorSurface.Coordinator(viewModel: viewModel)
+        let textView = NSTextView()
+        textView.delegate = coordinator
+        textView.textStorage?.setAttributedString(NSAttributedString(string: "Hello latest"))
+        textView.setSelectedRange(NSRange(location: 12, length: 0))
+
+        coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: textView))
+
+        XCTAssertEqual(viewModel.currentPersistenceSnapshot().plainText, "Hello latest")
+        XCTAssertTrue(viewModel.hasUnsavedChanges)
+    }
+
     func testWideMacOSContainerKeepsScrollViewAtHostEdgeAndCentersReadableColumn() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
         let environment = makeNotesDetailTestEnvironment()

@@ -176,16 +176,14 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 in: textView.attributedText,
                 document: document
             )
-            DispatchQueue.main.async {
-                self.viewModel.replaceAttributedContentFromLiveTextView(
-                    attributedText,
-                    selectedUTF16Range: selectedRange
-                )
-                self.lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
-                    renderGeneration: self.viewModel.renderGeneration,
-                    baseFontSize: self.viewModel.baseFontSize
-                )
-            }
+            viewModel.replaceAttributedContentFromLiveTextView(
+                attributedText,
+                selectedUTF16Range: selectedRange
+            )
+            lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
+                renderGeneration: viewModel.renderGeneration,
+                baseFontSize: viewModel.baseFontSize
+            )
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {

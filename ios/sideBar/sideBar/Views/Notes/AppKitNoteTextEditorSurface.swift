@@ -189,19 +189,17 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 in: textView.attributedString(),
                 document: document
             )
-            DispatchQueue.main.async {
-                self.viewModel.replaceAttributedContent(
-                    SelectableNoteReadView.expandingChecklistEditorMarkers(
-                        in: attributedText,
-                        document: document
-                    ),
-                    selectedUTF16Range: selectedRange
-                )
-                self.lastAppliedRenderSignature = RenderSignature(
-                    renderGeneration: self.viewModel.renderGeneration,
-                    baseFontSize: self.viewModel.baseFontSize
-                )
-            }
+            viewModel.replaceAttributedContent(
+                SelectableNoteReadView.expandingChecklistEditorMarkers(
+                    in: attributedText,
+                    document: document
+                ),
+                selectedUTF16Range: selectedRange
+            )
+            lastAppliedRenderSignature = RenderSignature(
+                renderGeneration: viewModel.renderGeneration,
+                baseFontSize: viewModel.baseFontSize
+            )
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
