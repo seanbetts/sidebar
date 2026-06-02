@@ -64,6 +64,39 @@ final class ShareViewControllerCoverageTests: XCTestCase {
         XCTAssertEqual(url?.absoluteString, "https://example.com/article?ref=share")
     }
 
+    @MainActor
+    func testExtractWebsiteURLSkipsFileURLAndUsesPlainTextArticleURL() async throws {
+        let controller = ShareViewController()
+        let itemProvider = NSItemProvider()
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("reeder-preview.txt")
+        itemProvider.registerItem(forTypeIdentifier: UTType.fileURL.identifier, loadHandler: { completion, _, _ in
+            completion?(fileURL as NSURL, nil)
+        })
+        itemProvider.registerItem(forTypeIdentifier: UTType.plainText.identifier, loadHandler: { completion, _, _ in
+            completion?("Read later: https://example.com/article?from=rss" as NSString, nil)
+        })
+
+        let url = try await controller.extractWebsiteURL(from: itemProvider)
+
+        XCTAssertEqual(url?.absoluteString, "https://example.com/article?from=rss")
+    }
+
+    func testShareExtensionLooksForWebsiteURLBeforeMediaFallback() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "ios/sideBar/ShareExtension/ShareViewController.swift"
+            ),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        let websiteRange = try XCTUnwrap(source.range(of: "ifawaitself.handleWebsiteURL(from:itemProviders){return}"))
+        let preferredContentRange = try XCTUnwrap(
+            source.range(of: "ifawaitself.handlePreferredContent(from:itemProviders){return}")
+        )
+        XCTAssertLessThan(websiteRange.lowerBound, preferredContentRange.lowerBound)
+    }
+
     func testNormalizedWebsiteEventURLCanonicalizesYouTubeURL() {
         let controller = ShareViewController()
         let url = URL(string: "https://youtu.be/abc123xyzAA?t=14&si=test")!

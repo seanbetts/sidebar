@@ -51,6 +51,9 @@ final class ShareViewController: SharePlatformViewController {
 
         Task { [weak self] in
             guard let self else { return }
+            if await self.handleWebsiteURL(from: itemProviders) {
+                return
+            }
             if await self.handlePreferredContent(from: itemProviders) {
                 return
             }
@@ -92,6 +95,24 @@ final class ShareViewController: SharePlatformViewController {
             if hasBinaryFileContent(itemProvider) {
                 await handleFile(itemProvider, preferredType: .data)
                 return true
+            }
+        }
+        return false
+    }
+
+    private func handleWebsiteURL(from itemProviders: [NSItemProvider]) async -> Bool {
+        for itemProvider in itemProviders {
+            do {
+                if let url = try await extractWebsiteURL(from: itemProvider) {
+                    await MainActor.run { [weak self] in
+                        self?.saveURL(url)
+                    }
+                    return true
+                }
+            } catch {
+                logger.error(
+                    "Failed to extract website URL from shared content: \(error.localizedDescription, privacy: .public)"
+                )
             }
         }
         return false

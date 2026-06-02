@@ -5,7 +5,7 @@ import sideBarShared
 import UniformTypeIdentifiers
 
 final class ShareExtensionCoverageTests: XCTestCase {
-    func testShareExtensionInfoPlistMatchesSingleItemHandling() throws {
+    func testShareExtensionInfoPlistAllowsMultiProviderWebSharesAndSingleMediaFiles() throws {
         let repositoryRoot = try findRepositoryRoot()
         let plistURL = repositoryRoot.appendingPathComponent("ios/sideBar/ShareExtension/Info.plist")
         let plistData = try Data(contentsOf: plistURL)
@@ -20,12 +20,12 @@ final class ShareExtensionCoverageTests: XCTestCase {
         let attributes = try XCTUnwrap(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
         let activationRule = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? [String: Any])
 
-        XCTAssertEqual(activationRule["NSExtensionActivationSupportsAttachmentsWithMaxCount"] as? Int, 1)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsAttachmentsWithMaxCount"] as? Int, 10)
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsFileWithMaxCount"] as? Int, 1)
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsImageWithMaxCount"] as? Int, 1)
-        XCTAssertEqual(activationRule["NSExtensionActivationSupportsURLWithMaxCount"] as? Int, 1)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsURLWithMaxCount"] as? Int, 10)
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsWebPageWithMaxCount"] as? Int, 1)
-        XCTAssertEqual(activationRule["NSExtensionActivationSupportsWebURLWithMaxCount"] as? Int, 1)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsWebURLWithMaxCount"] as? Int, 10)
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsText"] as? Bool, true)
     }
 

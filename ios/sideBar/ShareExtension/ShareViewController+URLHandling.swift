@@ -10,22 +10,7 @@ extension ShareViewController {
     }
 
     func extractURL(from itemProvider: NSItemProvider) async throws -> URL? {
-        let urlTypes: [UTType] = [.url, .plainText, .text, .html, .propertyList]
-        let candidateIdentifiers = itemProvider.registeredTypeIdentifiers.compactMap { identifier -> String? in
-            guard let type = UTType(identifier) else { return nil }
-            if type.conforms(to: .url)
-                || type.conforms(to: .text)
-                || type.conforms(to: .plainText)
-                || type.conforms(to: .html)
-                || type.conforms(to: .propertyList) {
-                return identifier
-            }
-            return nil
-        }
-        let identifiersToTry = candidateIdentifiers.isEmpty
-            ? urlTypes.map(\.identifier)
-            : candidateIdentifiers
-
+        let identifiersToTry = urlLoadCandidateIdentifiers(from: itemProvider)
         var loadError: Error?
         for identifier in identifiersToTry where itemProvider.hasItemConformingToTypeIdentifier(identifier) {
             do {
@@ -42,6 +27,45 @@ extension ShareViewController {
             throw loadError
         }
         return nil
+    }
+
+    func extractWebsiteURL(from itemProvider: NSItemProvider) async throws -> URL? {
+        let identifiersToTry = urlLoadCandidateIdentifiers(from: itemProvider)
+        var loadError: Error?
+        for identifier in identifiersToTry where itemProvider.hasItemConformingToTypeIdentifier(identifier) {
+            do {
+                if let url = try await loadURL(from: itemProvider, typeIdentifier: identifier),
+                   ExtensionURLMessageHandler.normalizeQueuedURL(url.absoluteString) != nil {
+                    return url
+                }
+            } catch {
+                if loadError == nil {
+                    loadError = error
+                }
+            }
+        }
+        if let loadError {
+            throw loadError
+        }
+        return nil
+    }
+
+    func urlLoadCandidateIdentifiers(from itemProvider: NSItemProvider) -> [String] {
+        let urlTypes: [UTType] = [.url, .plainText, .text, .html, .propertyList]
+        let candidateIdentifiers = itemProvider.registeredTypeIdentifiers.compactMap { identifier -> String? in
+            guard let type = UTType(identifier) else { return nil }
+            if type.conforms(to: .url)
+                || type.conforms(to: .text)
+                || type.conforms(to: .plainText)
+                || type.conforms(to: .html)
+                || type.conforms(to: .propertyList) {
+                return identifier
+            }
+            return nil
+        }
+        return candidateIdentifiers.isEmpty
+            ? urlTypes.map(\.identifier)
+            : candidateIdentifiers
     }
 
     func saveURL(_ url: URL) {
