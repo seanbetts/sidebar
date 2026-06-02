@@ -404,6 +404,11 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n> First\n> Second\n> Third")
     }
 
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+final class NativeNoteEditorListExitTransitionTests: XCTestCase {
     func testToggleUnorderedListConvertsActiveListBackIntoParagraphBlocks() async throws {
         let document = NotesSemanticDocument(
             blocks: [
