@@ -220,6 +220,24 @@ class TaskReminderService:
         local_date,
     ) -> ReminderFocusTask | None:
         """Return the most relevant due task to mention in reminder copy."""
+        due_today_task = (
+            cls._active_tasks_query(db, user_id=user_id)
+            .filter(
+                Task.deadline == local_date,
+            )
+            .order_by(
+                Task.created_at.asc(),
+                Task.id.asc(),
+            )
+            .first()
+        )
+        if due_today_task is not None:
+            return ReminderFocusTask(
+                id=str(due_today_task.id),
+                title=str(due_today_task.title),
+                scope="today",
+            )
+
         overdue_task = (
             cls._active_tasks_query(db, user_id=user_id)
             .filter(
@@ -233,45 +251,25 @@ class TaskReminderService:
             )
             .first()
         )
-        if overdue_task is not None:
-            return ReminderFocusTask(
-                id=str(overdue_task.id),
-                title=str(overdue_task.title),
-                scope="overdue",
-            )
-
-        due_today_task = (
-            cls._active_tasks_query(db, user_id=user_id)
-            .filter(
-                Task.deadline == local_date,
-            )
-            .order_by(
-                Task.created_at.asc(),
-                Task.id.asc(),
-            )
-            .first()
-        )
-        if due_today_task is None:
+        if overdue_task is None:
             return None
         return ReminderFocusTask(
-            id=str(due_today_task.id),
-            title=str(due_today_task.title),
-            scope="today",
+            id=str(overdue_task.id),
+            title=str(overdue_task.title),
+            scope="overdue",
         )
 
     @staticmethod
     def _build_title(*, overdue_count: int, due_today_count: int) -> str:
-        """Build a short title that reflects whether overdue work exists."""
-        if overdue_count:
+        """Build a short title around today's work when it exists."""
+        if due_today_count:
             return (
-                "1 task overdue"
-                if overdue_count == 1
-                else f"{overdue_count} tasks overdue"
+                "1 task due today"
+                if due_today_count == 1
+                else f"{due_today_count} tasks due today"
             )
         return (
-            "1 task due today"
-            if due_today_count == 1
-            else f"{due_today_count} tasks due today"
+            "1 task overdue" if overdue_count == 1 else f"{overdue_count} tasks overdue"
         )
 
     @staticmethod
@@ -284,9 +282,22 @@ class TaskReminderService:
         """Build short reminder copy around a concrete focus task."""
         if due_today_count:
             if focus_task.scope == "today":
-                if due_today_count == 1:
+                summary_parts = []
+                remaining_due_today = due_today_count - 1
+                if remaining_due_today == 1:
+                    summary_parts.append("1 more due today")
+                elif remaining_due_today > 1:
+                    summary_parts.append(f"{remaining_due_today} more due today")
+                if overdue_count == 1:
+                    summary_parts.append("1 overdue")
+                elif overdue_count > 1:
+                    summary_parts.append(f"{overdue_count} overdue")
+                if not summary_parts:
                     return f"{focus_task.title} is due today."
-                return f"{focus_task.title}, plus {due_today_count - 1} more."
+                return (
+                    f"{focus_task.title} is due today, plus "
+                    f"{' and '.join(summary_parts)}."
+                )
             due_today_suffix = (
                 "plus 1 due today"
                 if due_today_count == 1

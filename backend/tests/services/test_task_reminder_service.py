@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from api.models.task import Task
-from api.services.task_reminder_service import TaskReminderService
+from api.services.task_reminder_service import ReminderFocusTask, TaskReminderService
 
 
 def _task(
@@ -63,7 +63,7 @@ def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
     assert next_day_reminder is not None
 
 
-def test_reminder_payload_summarizes_due_today_and_overdue_work(test_db):
+def test_reminder_payload_details_due_today_and_summarizes_overdue_work(test_db):
     TaskReminderService.clear_emitted_days()
     test_db.add_all(
         [
@@ -89,15 +89,15 @@ def test_reminder_payload_summarizes_due_today_and_overdue_work(test_db):
     )
 
     assert reminder is not None
-    assert reminder.title == "1 task overdue"
+    assert reminder.title == "1 task due today"
     assert reminder.route == "sidebar://tasks/today"
-    assert reminder.body == "Overdue item is overdue, plus 1 due today."
+    assert reminder.body == "Due today item is due today, plus 1 overdue."
     assert reminder.metadata == {
         "overdue_count": 1,
         "due_today_count": 1,
         "focus_task_id": str(reminder.metadata["focus_task_id"]),
-        "focus_task_title": "Overdue item",
-        "focus_scope": "overdue",
+        "focus_task_title": "Due today item",
+        "focus_scope": "today",
         "scope": "today",
     }
 
@@ -180,7 +180,7 @@ def test_due_today_single_reminder_names_focus_task(test_db):
     assert reminder.metadata["focus_scope"] == "today"
 
 
-def test_mixed_reminder_prefers_overdue_focus_task(test_db):
+def test_mixed_reminder_prefers_due_today_focus_task(test_db):
     TaskReminderService.clear_emitted_days()
     test_db.add_all(
         [
@@ -206,6 +206,24 @@ def test_mixed_reminder_prefers_overdue_focus_task(test_db):
     )
 
     assert reminder is not None
-    assert reminder.title == "1 task overdue"
-    assert reminder.body == "Pay rent is overdue, plus 1 due today."
-    assert reminder.metadata["focus_scope"] == "overdue"
+    assert reminder.title == "1 task due today"
+    assert reminder.body == "Quarterly review is due today, plus 1 overdue."
+    assert reminder.metadata["focus_scope"] == "today"
+
+
+def test_mixed_reminder_copy_summarizes_other_due_and_overdue_work():
+    body = TaskReminderService._build_body(
+        focus_task=ReminderFocusTask(
+            id="task-today",
+            title="Quarterly review",
+            scope="today",
+        ),
+        overdue_count=3,
+        due_today_count=2,
+    )
+
+    assert TaskReminderService._build_title(
+        overdue_count=3,
+        due_today_count=2,
+    ) == "2 tasks due today"
+    assert body == "Quarterly review is due today, plus 1 more due today and 3 overdue."

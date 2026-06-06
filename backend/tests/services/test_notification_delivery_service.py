@@ -45,16 +45,16 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
             user_id="user-123",
             category=NotificationCategory.TASK_REMINDER,
             delivery_mode=NotificationDeliveryMode.ALERT,
-            title="1 task overdue",
-            body="Pay rent is overdue, plus 1 due today.",
+            title="1 task due today",
+            body="Quarterly review is due today, plus 1 overdue.",
             route="sidebar://tasks/today",
             metadata={
                 "scope": "today",
                 "overdue_count": 1,
                 "due_today_count": 1,
                 "focus_task_id": "task-123",
-                "focus_task_title": "Pay rent",
-                "focus_scope": "overdue",
+                "focus_task_title": "Quarterly review",
+                "focus_scope": "today",
             },
         ),
         device_tokens=[_token()],
@@ -67,8 +67,8 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
     assert request.push_type == "alert"
     assert request.priority == "10"
     assert request.payload["aps"]["alert"] == {
-        "title": "1 task overdue",
-        "body": "Pay rent is overdue, plus 1 due today.",
+        "title": "1 task due today",
+        "body": "Quarterly review is due today, plus 1 overdue.",
     }
     assert request.payload["aps"]["category"] == "task_reminder"
     assert request.payload["sidebar_route"] == "sidebar://tasks/today"
@@ -78,8 +78,8 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
         "overdue_count": 1,
         "due_today_count": 1,
         "focus_task_id": "task-123",
-        "focus_task_title": "Pay rent",
-        "focus_scope": "overdue",
+        "focus_task_title": "Quarterly review",
+        "focus_scope": "today",
     }
 
 
