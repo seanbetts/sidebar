@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import XCTest
 @testable import ShareExtension
 import sideBarShared
@@ -124,29 +125,32 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(blockContents.contains("Assets.xcassets"))
     }
 
-    func testShareExtensionAndContainingAppUseSameSmallMacShareMenuIcons() throws {
+    func testShareExtensionMacAppIconsFillCanvasForSafariShareMenu() throws {
         let repositoryRoot = try findRepositoryRoot()
         let shareIconDirectory = repositoryRoot.appendingPathComponent(
             "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset"
         )
-        let appIconDirectory = repositoryRoot.appendingPathComponent(
-            "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset"
-        )
-        let smallIconFilenames = [
-            "Icon-macOS-Default-16x16@1x.png",
-            "Icon-macOS-Default-16x16@2x.png",
-            "Icon-macOS-Default-32x32@1x.png",
-            "Icon-macOS-Default-32x32@2x.png"
+        let iconFilenamesByPixelSize = [
+            "Icon-macOS-Default-16x16@1x.png": 16,
+            "Icon-macOS-Default-16x16@2x.png": 32,
+            "Icon-macOS-Default-32x32@1x.png": 32,
+            "Icon-macOS-Default-32x32@2x.png": 64,
+            "Icon-macOS-Default-128x128@1x.png": 128,
+            "Icon-macOS-Default-128x128@2x.png": 256,
+            "Icon-macOS-Default-256x256@1x.png": 256,
+            "Icon-macOS-Default-256x256@2x.png": 512,
+            "Icon-macOS-Default-512x512@1x.png": 512,
+            "Icon-macOS-Default-1024x1024@1x.png": 1024
         ]
 
-        for filename in smallIconFilenames {
-            let shareIconData = try Data(contentsOf: shareIconDirectory.appendingPathComponent(filename))
-            let appIconData = try Data(contentsOf: appIconDirectory.appendingPathComponent(filename))
+        for (filename, pixelSize) in iconFilenamesByPixelSize {
+            let iconURL = shareIconDirectory.appendingPathComponent(filename)
+            let bounds = try alphaBounds(forPNGAt: iconURL)
 
             XCTAssertEqual(
-                shareIconData,
-                appIconData,
-                "\(filename) should match the containing app icon because Safari's share menu row resolves the host app icon."
+                bounds,
+                CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize),
+                "\(filename) must fill its canvas because Safari's share menu puts the extension icon inside its own icon well."
             )
         }
     }
@@ -287,6 +291,53 @@ final class ShareExtensionCoverageTests: XCTestCase {
             return String(suffix)
         }
         return String(suffix[..<blockEnd.upperBound])
+    }
+
+    private func alphaBounds(forPNGAt fileURL: URL) throws -> CGRect {
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            XCTFail("Could not decode PNG at \(fileURL.path)")
+            return .null
+        }
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
+            XCTFail("Could not create bitmap context for \(fileURL.path)")
+            return .null
+        }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        for row in 0..<height {
+            for column in 0..<width {
+                let alphaIndex = ((row * width) + column) * 4 + 3
+                if pixels[alphaIndex] > 0 {
+                    minX = min(minX, column)
+                    minY = min(minY, row)
+                    maxX = max(maxX, column)
+                    maxY = max(maxY, row)
+                }
+            }
+        }
+
+        guard maxX >= minX, maxY >= minY else {
+            return .null
+        }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 }
 

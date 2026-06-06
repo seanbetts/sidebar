@@ -200,7 +200,7 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         }
     }
 
-    func testSafariManifestIconsFillTheirCanvasWithoutTransparentPadding() throws {
+    func testSafariManifestIconsUseOriginalFullCanvasAppIconArtwork() throws {
         for iconDirectory in [
             repositoryDirectory().appendingPathComponent("assets/safari-extension"),
             extensionResourcesDirectory(targetDirectory: "sideBar Safari Extension/Resources/images"),
@@ -208,12 +208,34 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         ] {
             for size in [16, 32, 48, 64, 96, 128, 256, 512] {
                 let iconURL = iconDirectory.appendingPathComponent("icon-\(size).png")
-                let bounds = try alphaBounds(forPNGAt: iconURL)
+                let alphaBounds = try alphaBounds(forPNGAt: iconURL)
+                let artworkBounds = try nonWhiteContentBounds(forPNGAt: iconURL)
+                let artworkInset = CGFloat(size) * 0.10
 
                 XCTAssertEqual(
-                    bounds,
+                    alphaBounds,
                     CGRect(x: 0, y: 0, width: size, height: size),
                     "\(iconURL.path) should fill its canvas so Safari does not compound icon padding inside system icon wells."
+                )
+                XCTAssertGreaterThanOrEqual(
+                    artworkBounds.minX,
+                    artworkInset,
+                    "\(iconURL.path) should use the original app icon artwork, not a cropped mark."
+                )
+                XCTAssertGreaterThanOrEqual(
+                    artworkBounds.minY,
+                    artworkInset,
+                    "\(iconURL.path) should use the original app icon artwork, not a cropped mark."
+                )
+                XCTAssertLessThanOrEqual(
+                    artworkBounds.maxX,
+                    CGFloat(size) - artworkInset,
+                    "\(iconURL.path) should use the original app icon artwork, not a cropped mark."
+                )
+                XCTAssertLessThanOrEqual(
+                    artworkBounds.maxY,
+                    CGFloat(size) - artworkInset,
+                    "\(iconURL.path) should use the original app icon artwork, not a cropped mark."
                 )
             }
         }
@@ -334,53 +356,6 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         text.replacingOccurrences(of: "\r\n", with: "\n")
     }
 
-    private func alphaBounds(forPNGAt fileURL: URL) throws -> CGRect {
-        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            XCTFail("Could not decode PNG at \(fileURL.path)")
-            return .null
-        }
-        let width = image.width
-        let height = image.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
-        ) else {
-            XCTFail("Could not create bitmap context for \(fileURL.path)")
-            return .null
-        }
-
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        var minX = width
-        var minY = height
-        var maxX = -1
-        var maxY = -1
-        for row in 0..<height {
-            for column in 0..<width {
-                let alphaIndex = ((row * width) + column) * 4 + 3
-                if pixels[alphaIndex] > 0 {
-                    minX = min(minX, column)
-                    minY = min(minY, row)
-                    maxX = max(maxX, column)
-                    maxY = max(maxY, row)
-                }
-            }
-        }
-
-        guard maxX >= minX, maxY >= minY else {
-            return .null
-        }
-        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-    }
-
     private func popupCodeMap(from script: String) throws -> [String: String] {
         guard let mapStart = script.range(of: "const CODE_TO_MESSAGE = {"),
               let mapEnd = script.range(of: "};", range: mapStart.upperBound..<script.endIndex) else {
@@ -403,6 +378,81 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         }
         return map
     }
+}
+
+private func alphaBounds(forPNGAt fileURL: URL) throws -> CGRect {
+    try pngBounds(forPNGAt: fileURL) { pixel in
+        pixel.alpha > 0
+    }
+}
+
+private func nonWhiteContentBounds(forPNGAt fileURL: URL) throws -> CGRect {
+    try pngBounds(forPNGAt: fileURL) { pixel in
+        pixel.alpha > 0 && (pixel.red < 245 || pixel.green < 245 || pixel.blue < 245)
+    }
+}
+
+private func pngBounds(
+    forPNGAt fileURL: URL,
+    matching predicate: (PNGPixel) -> Bool
+) throws -> CGRect {
+    guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil),
+          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+        XCTFail("Could not decode PNG at \(fileURL.path)")
+        return .null
+    }
+    let width = image.width
+    let height = image.height
+    var pixels = [UInt8](repeating: 0, count: width * height * 4)
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    guard let context = CGContext(
+        data: &pixels,
+        width: width,
+        height: height,
+        bitsPerComponent: 8,
+        bytesPerRow: width * 4,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+    ) else {
+        XCTFail("Could not create bitmap context for \(fileURL.path)")
+        return .null
+    }
+
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+    var minX = width
+    var minY = height
+    var maxX = -1
+    var maxY = -1
+    for row in 0..<height {
+        for column in 0..<width {
+            let pixelIndex = ((row * width) + column) * 4
+            let pixel = PNGPixel(
+                red: pixels[pixelIndex],
+                green: pixels[pixelIndex + 1],
+                blue: pixels[pixelIndex + 2],
+                alpha: pixels[pixelIndex + 3]
+            )
+            if predicate(pixel) {
+                minX = min(minX, column)
+                minY = min(minY, row)
+                maxX = max(maxX, column)
+                maxY = max(maxY, row)
+            }
+        }
+    }
+
+    guard maxX >= minX, maxY >= minY else {
+        return .null
+    }
+    return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+}
+
+private struct PNGPixel {
+    let red: UInt8
+    let green: UInt8
+    let blue: UInt8
+    let alpha: UInt8
 }
 
 private struct AppIconSetContents: Decodable {
