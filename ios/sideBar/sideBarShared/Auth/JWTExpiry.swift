@@ -8,13 +8,14 @@ public enum JWTExpiry {
         now: Date = Date(),
         leadTime: TimeInterval
     ) -> Bool {
-        guard let expiry = jwtExpiryDate(from: accessToken) else {
+        guard let expiry = expiryDate(from: accessToken) else {
             return true
         }
         return expiry.timeIntervalSince(now) <= leadTime
     }
 
-    private static func jwtExpiryDate(from accessToken: String) -> Date? {
+    /// Returns the expiry timestamp encoded in a JWT access token, if present.
+    public static func expiryDate(from accessToken: String) -> Date? {
         guard let payloadData = decodeJwtPayload(accessToken) else {
             return nil
         }

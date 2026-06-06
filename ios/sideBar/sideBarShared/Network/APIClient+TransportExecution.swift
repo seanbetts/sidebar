@@ -186,7 +186,7 @@ extension APIClient {
         switch intent.authRequirement {
         case .required:
             request.setValue(nil, forHTTPHeaderField: "Authorization")
-            if config.accessTokenProvider() == nil {
+            if shouldRefreshAuthorizationBeforeTransport() {
                 _ = await attemptAuthRefreshIfNeeded()
             }
             guard let token = config.accessTokenProvider(), !token.isEmpty else {
@@ -203,6 +203,16 @@ extension APIClient {
         case .none:
             request.setValue(nil, forHTTPHeaderField: "Authorization")
         }
+    }
+
+    private func shouldRefreshAuthorizationBeforeTransport() -> Bool {
+        guard let token = config.accessTokenProvider(), !token.isEmpty else {
+            return true
+        }
+        guard let expiryDate = JWTExpiry.expiryDate(from: token) else {
+            return false
+        }
+        return expiryDate.timeIntervalSinceNow <= 600
     }
 
     private func retryUnauthorizedRequest(

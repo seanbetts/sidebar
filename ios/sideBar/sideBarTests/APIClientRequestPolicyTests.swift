@@ -162,6 +162,52 @@ final class APIClientRequestPolicyTests: XCTestCase {
         XCTAssertEqual(requestCount.value, 1)
     }
 
+    func testExpiredTokenRefreshesBeforeNonReplaySafePostTransport() async throws {
+        final class TokenBox: @unchecked Sendable {
+            var token: String
+            init(_ token: String) { self.token = token }
+        }
+        final class Counter: @unchecked Sendable {
+            var value: Int = 0
+        }
+
+        let expiredToken = makeJwt(exp: Date().addingTimeInterval(-60).timeIntervalSince1970)
+        let refreshedToken = makeJwt(exp: Date().addingTimeInterval(60 * 60).timeIntervalSince1970)
+        let tokenBox = TokenBox(expiredToken)
+        let refreshCalls = Counter()
+        let requestCount = Counter()
+        let authRejectedCalls = Counter()
+        let client = APIClient(
+            config: APIClientConfig(
+                baseUrl: router.baseURL,
+                accessTokenProvider: { tokenBox.token },
+                refreshAuthIfNeeded: {
+                    refreshCalls.value += 1
+                    tokenBox.token = refreshedToken
+                    return true
+                },
+                handleAuthRejected: {
+                    authRejectedCalls.value += 1
+                }
+            ),
+            session: router.makeSession()
+        )
+
+        router.setHandler { request in
+            requestCount.value += 1
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(refreshedToken)")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        try await client.requestVoid("ping", method: "POST")
+
+        XCTAssertEqual(refreshCalls.value, 1)
+        XCTAssertEqual(requestCount.value, 1)
+        XCTAssertEqual(authRejectedCalls.value, 0)
+    }
+
     func test401RetriesBodyBearingPatchWithoutInjectedIntent() async throws {
         final class TokenBox: @unchecked Sendable {
             var token: String
@@ -406,5 +452,20 @@ final class APIClientRequestPolicyTests: XCTestCase {
             requestIntentProvider: { _ in requestIntent }
         )
         return APIClient(config: config, session: router.makeSession())
+    }
+
+    private func makeJwt(exp: TimeInterval) -> String {
+        let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
+        let payload = base64UrlEncode(["exp": exp, "sub": "user"])
+        return "\(header).\(payload)."
+    }
+
+    private func base64UrlEncode(_ payload: [String: Any]) -> String {
+        let data = try? JSONSerialization.data(withJSONObject: payload, options: [])
+        let encoded = data?.base64EncodedString() ?? ""
+        return encoded
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
