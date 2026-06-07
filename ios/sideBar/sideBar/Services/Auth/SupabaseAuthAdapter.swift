@@ -15,7 +15,22 @@ public struct AuthErrorEvent: Equatable {
         self.message = message
     }
 }
+/// Redacted authentication diagnostic event.
+public struct AuthDiagnosticsEvent: Equatable, Sendable {
+    public let name: String; public let metadata: [String: String]
+    public init(name: String, metadata: [String: String] = [:]) { self.name = name; self.metadata = metadata }
+}
+/// Records redacted authentication diagnostics.
+public protocol AuthDiagnosticsRecording: Sendable { func record(_ event: AuthDiagnosticsEvent) }
+/// Logs redacted authentication diagnostics through unified logging.
+public struct LoggingAuthDiagnosticsRecorder: AuthDiagnosticsRecording {
+    private let logger = Logger(subsystem: "sideBar", category: "AuthDiagnostics"); public init() {}
 
+    public func record(_ event: AuthDiagnosticsEvent) {
+        let metadata = event.metadata.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
+        logger.notice("auth_diagnostic name=\(event.name, privacy: .public) metadata=\(metadata, privacy: .public)")
+    }
+}
 /// Defines AuthAdapterError.
 public enum AuthAdapterError: LocalizedError, Equatable {
     case signInInProgress
@@ -64,6 +79,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
     private var refreshInFlightTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
     let userDefaults: UserDefaults
+    let diagnostics: AuthDiagnosticsRecording
     let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let statePersistenceQueue = DispatchQueue(
         label: "ai.sidebar.sidebar.auth-state-persistence",
@@ -110,7 +126,8 @@ public enum AuthAdapterError: LocalizedError, Equatable {
         config: EnvironmentConfig,
         stateStore: AuthStateStore,
         startAuthStateTask: Bool = true,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        diagnostics: AuthDiagnosticsRecording = LoggingAuthDiagnosticsRecorder()
     ) {
         let authOptions = Self.makeAuthOptions(stateStore: stateStore)
         let supabase = SupabaseClient(
@@ -121,6 +138,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
         self.stateStore = stateStore
         self.authClient = SupabaseAuthClient(supabase: supabase)
         self.userDefaults = userDefaults
+        self.diagnostics = diagnostics
         commonInit(startAuthStateTask: startAuthStateTask)
     }
 
@@ -146,11 +164,13 @@ public enum AuthAdapterError: LocalizedError, Equatable {
         authClient: SupabaseAuthClientProtocol,
         stateStore: AuthStateStore,
         startAuthStateTask: Bool = true,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        diagnostics: AuthDiagnosticsRecording = LoggingAuthDiagnosticsRecorder()
     ) {
         self.stateStore = stateStore
         self.authClient = authClient
         self.userDefaults = userDefaults
+        self.diagnostics = diagnostics
         commonInit(startAuthStateTask: startAuthStateTask)
     }
 
@@ -398,9 +418,15 @@ public enum AuthAdapterError: LocalizedError, Equatable {
         if let rejectedToken,
            let accessToken,
            rejectedToken != accessToken {
+            diagnostics.record(AuthDiagnosticsEvent(name: "backend_rejection_ignored", metadata: [
+                "reason": "previous_token", "auth_state": authState.rawValue
+            ]))
             logger.notice("Ignoring backend authorization rejection for a previous token")
             return
         }
+        diagnostics.record(AuthDiagnosticsEvent(name: "backend_rejection_accepted", metadata: [
+            "reason": rejectedToken == nil ? "unscoped" : "current_token", "auth_state": authState.rawValue
+        ]))
         markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 

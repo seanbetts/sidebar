@@ -90,6 +90,27 @@ final class FakeSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Senda
     }
 }
 
+final class RecordingAuthDiagnostics: AuthDiagnosticsRecording, @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var events: [AuthDiagnosticsEvent] = []
+
+    func record(_ event: AuthDiagnosticsEvent) {
+        lock.lock()
+        events.append(event)
+        lock.unlock()
+    }
+
+    func containsSensitiveValue(_ value: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return events.contains { event in
+            event.name.contains(value) ||
+                event.metadata.keys.contains(where: { $0.contains(value) }) ||
+                event.metadata.values.contains(where: { $0.contains(value) })
+        }
+    }
+}
+
 @MainActor
 extension SupabaseAuthAdapterTests {
     func base64UrlEncode(_ payload: [String: Any]) -> String {

@@ -134,6 +134,67 @@ final class SupabaseAuthAdapterBackendRejectionTests: XCTestCase {
         XCTAssertEqual(adapter.authorizationToken, freshToken)
     }
 
+    func testBackendAuthorizationRejectionForPreviousTokenRecordsRedactedDiagnostic() async throws {
+        let staleExp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let freshExp: TimeInterval = Date().addingTimeInterval(2 * 60 * 60).timeIntervalSince1970
+        let staleToken = makeJwt(exp: staleExp)
+        let freshToken = makeJwt(exp: freshExp)
+        let diagnostics = RecordingAuthDiagnostics()
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: staleToken, userId: "user-1", expiresAt: staleExp)
+        client.signInResult = .success(())
+        let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterBackendRejectionTests")
+        defer { isolated.tearDown() }
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: isolated.defaults,
+            diagnostics: diagnostics
+        )
+
+        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure()
+        client.currentSession = SupabaseSessionInfo(accessToken: freshToken, userId: "user-1", expiresAt: freshExp)
+        try await adapter.signIn(email: "person@example.com", password: "password123")
+        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: staleToken)
+
+        XCTAssertEqual(adapter.authState, .active)
+        XCTAssertTrue(diagnostics.events.contains {
+            $0.name == "backend_rejection_ignored" &&
+                $0.metadata["reason"] == "previous_token"
+        })
+        XCTAssertFalse(diagnostics.containsSensitiveValue(staleToken))
+        XCTAssertFalse(diagnostics.containsSensitiveValue(freshToken))
+        XCTAssertFalse(diagnostics.containsSensitiveValue("user-1"))
+    }
+
+    func testBackendAuthorizationRejectionForCurrentTokenRecordsRedactedDiagnostic() {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let diagnostics = RecordingAuthDiagnostics()
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterBackendRejectionTests")
+        defer { isolated.tearDown() }
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: isolated.defaults,
+            diagnostics: diagnostics
+        )
+
+        adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: token)
+
+        XCTAssertEqual(adapter.authState, .reauthenticationRequired)
+        XCTAssertTrue(diagnostics.events.contains {
+            $0.name == "backend_rejection_accepted" &&
+                $0.metadata["reason"] == "current_token"
+        })
+        XCTAssertFalse(diagnostics.containsSensitiveValue(token))
+        XCTAssertFalse(diagnostics.containsSensitiveValue("user-1"))
+    }
+
     private func makeJwt(exp: TimeInterval) -> String {
         let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
         let payload = base64UrlEncode(["exp": exp, "sub": "user"])
