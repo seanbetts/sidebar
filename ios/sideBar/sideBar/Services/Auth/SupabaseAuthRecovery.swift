@@ -4,6 +4,10 @@ import sideBarShared
 enum SupabaseAuthRecovery {
     private static let supabaseSessionStorageKeys = ["supabase.auth.token", "supabase.session"]
 
+    private struct PersistedAuthCleanupError: Error {
+        let errors: [Error]
+    }
+
     static func isAuthInvalid(_ error: Error) -> Bool {
         if error is URLError {
             return false
@@ -53,21 +57,49 @@ enum SupabaseAuthRecovery {
     }
 
     static func clearPersistedAuthState(stateStore: AuthStateStore) throws {
-        try stateStore.clear()
+        var errors: [Error] = []
+        do {
+            try stateStore.clear()
+        } catch {
+            errors.append(error)
+        }
+
         if let metadataStore = stateStore as? AuthMetadataStore {
-            try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp)
-            try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+            do {
+                try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp)
+            } catch {
+                errors.append(error)
+            }
+            do {
+                try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+            } catch {
+                errors.append(error)
+            }
         }
-        guard let keychainStore = stateStore as? KeychainAuthStateStore else {
-            return
+
+        if let keychainStore = stateStore as? KeychainAuthStateStore {
+            for key in supabaseSessionStorageKeys {
+                do {
+                    try keychainStore.removeSessionData(forKey: key)
+                } catch {
+                    errors.append(error)
+                }
+            }
         }
-        for key in supabaseSessionStorageKeys {
-            try keychainStore.removeSessionData(forKey: key)
+
+        if !errors.isEmpty {
+            throw PersistedAuthCleanupError(errors: errors)
         }
     }
 
     static func clearPersistedAuthState(stateStore: AuthStateStore, userDefaults: UserDefaults) throws {
-        try clearPersistedAuthState(stateStore: stateStore)
+        do {
+            try clearPersistedAuthState(stateStore: stateStore)
+        } catch {
+            userDefaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
+            userDefaults.removeObject(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+            throw error
+        }
         userDefaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
         userDefaults.removeObject(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
     }

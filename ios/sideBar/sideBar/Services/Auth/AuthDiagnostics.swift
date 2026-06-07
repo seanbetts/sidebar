@@ -18,6 +18,7 @@ public struct AuthDiagnosticsEvent: Equatable, Sendable {
     ]
     private static let allowedReasons: Set<String> = [
         "current_token",
+        "legacy_timestamp_seed_failed",
         "legacy_timestamp_seeded",
         "missing_timestamp_after_migration",
         "missing_timestamp_without_token",

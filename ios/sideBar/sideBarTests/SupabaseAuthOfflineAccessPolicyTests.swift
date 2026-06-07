@@ -52,6 +52,15 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         XCTAssertEqual(seedEvents.count, 1)
     }
 
+    func testAuthDiagnosticEventAllowsLegacyTimestampSeedFailedReason() {
+        let event = AuthDiagnosticsEvent(
+            name: "offline_access_window",
+            metadata: ["reason": "legacy_timestamp_seed_failed"]
+        )
+
+        XCTAssertEqual(event.metadata["reason"], "legacy_timestamp_seed_failed")
+    }
+
     func testMissingAuthTimestampAfterLegacyMigrationDoesNotRestoreOfflineSession() throws {
         let store = makeAuthStore()
         let token = "sensitive-access-token"
@@ -99,6 +108,10 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
             $0.name == "offline_access_window" &&
                 $0.metadata["reason"] == "legacy_timestamp_seeded"
         })
+        XCTAssertTrue(diagnostics.snapshot().contains {
+            $0.name == "offline_access_window" &&
+                $0.metadata["reason"] == "legacy_timestamp_seed_failed"
+        })
     }
 
     func testLegacyTimestampSeedFailsClosedWhenMigrationMarkerWriteFails() throws {
@@ -121,6 +134,24 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
             $0.name == "offline_access_window" &&
                 $0.metadata["reason"] == "legacy_timestamp_seeded"
         })
+        XCTAssertTrue(diagnostics.snapshot().contains {
+            $0.name == "offline_access_window" &&
+                $0.metadata["reason"] == "legacy_timestamp_seed_failed"
+        })
+    }
+
+    func testClearPersistedAuthStateClearsFallbackMarkerAfterStoreFailure() throws {
+        let defaults = makeUserDefaults()
+        defaults.set(Date().timeIntervalSince1970, forKey: AppStorageKeys.lastAuthTimestamp)
+        defaults.set(true, forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+        let store = FailingClearAuthStateStore()
+
+        XCTAssertThrowsError(try SupabaseAuthRecovery.clearPersistedAuthState(
+            stateStore: store,
+            userDefaults: defaults
+        ))
+        XCTAssertNil(defaults.object(forKey: AppStorageKeys.lastAuthTimestamp))
+        XCTAssertNil(defaults.object(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
     }
 
     func testSignOutClearsFallbackMigrationMarker() async throws {
@@ -167,6 +198,32 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthOfflineAccessPolicyTests")
         isolatedDefaults.append(isolated)
         return isolated.defaults
+    }
+}
+
+private final class FailingClearAuthStateStore: AuthStateStore {
+    private enum StoreError: Error {
+        case clearFailed
+    }
+
+    func saveAccessToken(_ token: String?) throws {
+        _ = token
+    }
+
+    func saveUserId(_ userId: String?) throws {
+        _ = userId
+    }
+
+    func loadAccessToken() throws -> String? {
+        nil
+    }
+
+    func loadUserId() throws -> String? {
+        nil
+    }
+
+    func clear() throws {
+        throw StoreError.clearFailed
     }
 }
 

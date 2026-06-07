@@ -91,6 +91,10 @@ extension SupabaseAuthAdapter {
                 return false
             }
             guard persistLegacyTimestampMigrationSeed(Date()) else {
+                diagnostics.record(AuthDiagnosticsEvent(
+                    name: "offline_access_window",
+                    metadata: ["reason": "legacy_timestamp_seed_failed"]
+                ))
                 return false
             }
             diagnostics.record(AuthDiagnosticsEvent(
@@ -169,15 +173,6 @@ extension SupabaseAuthAdapter {
             return true
         }
         return userDefaults.bool(forKey: authTimestampLegacyMigrationCompletedKey)
-    }
-
-    func markLegacyTimestampMigrationCompleted() {
-        if let metadataStore = stateStore as? AuthMetadataStore {
-            try? metadataStore.saveAuthMetadataValue("true", forKey: authTimestampLegacyMigrationCompletedKey)
-            userDefaults.removeObject(forKey: authTimestampLegacyMigrationCompletedKey)
-            return
-        }
-        userDefaults.set(true, forKey: authTimestampLegacyMigrationCompletedKey)
     }
 
     func loadPersistedRateLimitState() {
