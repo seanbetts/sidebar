@@ -266,15 +266,27 @@ enum AuthSessionPolicy {
             do {
                 let session = try await self.authClient.refreshSession()
                 self.applySession(session)
+                self.diagnostics.record(AuthDiagnosticsEvent(
+                    name: "refresh_succeeded",
+                    metadata: ["auth_state": self.authState.rawValue]
+                ))
                 self.logger.notice("Session refresh succeeded")
             } catch {
                 self.logger.error("Session refresh failed: \(error.localizedDescription, privacy: .public)")
-                if self.isAuthInvalid(error) {
+                let invalidAuth = self.isAuthInvalid(error)
+                if invalidAuth {
                     await self.transitionToSignedOut(clearPersistedState: true)
                     self.recordError(AuthAdapterError.sessionRefreshFailed.errorDescription ?? "Session refresh failed.")
                 } else {
                     self.transitionToStale()
                 }
+                self.diagnostics.record(AuthDiagnosticsEvent(
+                    name: "refresh_failed",
+                    metadata: [
+                        "classification": invalidAuth ? "invalid_auth" : "transient",
+                        "auth_state": self.authState.rawValue
+                    ]
+                ))
             }
         }
         refreshInFlightTask = task
@@ -363,27 +375,6 @@ enum AuthSessionPolicy {
         }
         return .unknown(error.localizedDescription)
     }
-    /// Attempts to recover a session when the offline access window has expired.
-    /// On success, applies the refreshed session. On failure, signs out.
-    private func attemptSessionRecovery() async {
-        do {
-            guard authClient.currentSession != nil else {
-                await transitionToSignedOut(clearPersistedState: true)
-                return
-            }
-            let session = try await authClient.refreshSession()
-            applySession(session)
-            logger.notice("Session recovery succeeded after offline window expiry")
-        } catch {
-            logger.warning("Session recovery failed: \(error.localizedDescription, privacy: .public)")
-            if isAuthInvalid(error) {
-                await transitionToSignedOut(clearPersistedState: true)
-            } else {
-                transitionToStale()
-            }
-        }
-    }
-
     func transitionToStale() {
         guard authState != .reauthenticationRequired else {
             logger.debug("Ignoring stale transition while primary reauthentication is required")
@@ -418,7 +409,7 @@ enum AuthSessionPolicy {
         markSessionReauthenticationRequiredAfterAuthorizationFailure()
     }
 
-    private func transitionToSignedOut(clearPersistedState: Bool) async {
+    func transitionToSignedOut(clearPersistedState: Bool) async {
         accessToken = nil
         userId = nil
         pendingVerificationEmail = nil
@@ -459,7 +450,7 @@ enum AuthSessionPolicy {
         }
     }
 
-    private func isAuthInvalid(_ error: Error) -> Bool {
+    func isAuthInvalid(_ error: Error) -> Bool {
         SupabaseAuthRecovery.isAuthInvalid(error)
     }
 

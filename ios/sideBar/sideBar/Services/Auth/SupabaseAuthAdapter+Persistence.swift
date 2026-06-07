@@ -19,12 +19,41 @@ extension SupabaseAuthAdapter {
         do {
             let storedToken = try stateStore.loadAccessToken()
             let storedUserId = try stateStore.loadUserId()
-            guard let storedToken, let storedUserId else { return false }
-            guard shouldAllowOfflineAccess(hasStoredToken: true) else { return false }
+            guard let storedToken, let storedUserId else {
+                diagnostics.record(AuthDiagnosticsEvent(
+                    name: "restore_offline_session_failed",
+                    metadata: [
+                        "reason": "missing_stored_credentials",
+                        "auth_state": authState.rawValue
+                    ]
+                ))
+                return false
+            }
+            guard shouldAllowOfflineAccess(hasStoredToken: true) else {
+                diagnostics.record(AuthDiagnosticsEvent(
+                    name: "restore_offline_session_failed",
+                    metadata: [
+                        "reason": "outside_policy",
+                        "auth_state": authState.rawValue
+                    ]
+                ))
+                return false
+            }
             restoreSession(accessToken: storedToken, userId: storedUserId)
             transitionToStale()
+            diagnostics.record(AuthDiagnosticsEvent(
+                name: "restore_offline_session_succeeded",
+                metadata: ["auth_state": authState.rawValue]
+            ))
             return true
         } catch {
+            diagnostics.record(AuthDiagnosticsEvent(
+                name: "restore_offline_session_failed",
+                metadata: [
+                    "reason": "store_read_failed",
+                    "auth_state": authState.rawValue
+                ]
+            ))
             return false
         }
     }

@@ -14,19 +14,33 @@ public struct AuthDiagnosticsEvent: Equatable, Sendable {
     private static let allowedNames: Set<String> = [
         "backend_rejection_accepted",
         "backend_rejection_ignored",
-        "offline_access_window"
+        "offline_access_window",
+        "refresh_failed",
+        "refresh_succeeded",
+        "restore_offline_session_failed",
+        "restore_offline_session_succeeded",
+        "session_recovery_failed",
+        "session_recovery_succeeded"
     ]
     private static let allowedReasons: Set<String> = [
         "current_token",
         "legacy_timestamp_seed_failed",
         "legacy_timestamp_seeded",
+        "missing_current_session",
         "missing_timestamp_after_migration",
         "missing_timestamp_without_token",
+        "missing_stored_credentials",
         "outside_window",
+        "outside_policy",
         "previous_token",
+        "store_read_failed",
         "unscoped",
         "within_window",
         "unknown"
+    ]
+    private static let allowedClassifications: Set<String> = [
+        "invalid_auth",
+        "transient"
     ]
     private static let allowedAuthStates: Set<String> = [
         AuthState.signedOut.rawValue,
@@ -39,6 +53,10 @@ public struct AuthDiagnosticsEvent: Equatable, Sendable {
         var sanitized: [String: String] = [:]
         if let reason = metadata["reason"] {
             sanitized["reason"] = allowedReasons.contains(reason) ? reason : "unknown"
+        }
+        if let classification = metadata["classification"],
+           allowedClassifications.contains(classification) {
+            sanitized["classification"] = classification
         }
         if let authState = metadata["auth_state"], allowedAuthStates.contains(authState) {
             sanitized["auth_state"] = authState
