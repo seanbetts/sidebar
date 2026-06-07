@@ -126,8 +126,12 @@ extension SupabaseAuthAdapter {
         }
 
         if let metadataStore = stateStore as? AuthMetadataStore {
-            try? metadataStore.saveAuthMetadataValue(String(legacyTimestamp), forKey: lastAuthTimestampKey)
-            userDefaults.removeObject(forKey: lastAuthTimestampKey)
+            do {
+                try metadataStore.saveAuthMetadataValue(String(legacyTimestamp), forKey: lastAuthTimestampKey)
+                userDefaults.removeObject(forKey: lastAuthTimestampKey)
+            } catch {
+                logger.error("Failed to migrate auth timestamp metadata: \(error.localizedDescription, privacy: .public)")
+            }
         }
         return legacyTimestamp
     }

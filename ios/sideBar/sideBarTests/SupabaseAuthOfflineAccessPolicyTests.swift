@@ -123,6 +123,24 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         })
     }
 
+    func testLegacyUserDefaultsTimestampSurvivesMetadataMigrationFailure() throws {
+        let store = FailingMetadataAuthStateStore(failingSaveKey: AppStorageKeys.lastAuthTimestamp)
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let defaults = makeUserDefaults()
+        let legacyTimestamp = Date().addingTimeInterval(-60).timeIntervalSince1970
+        defaults.set(legacyTimestamp, forKey: AppStorageKeys.lastAuthTimestamp)
+        let adapter = makeAdapter(
+            stateStore: store,
+            userDefaults: defaults,
+            diagnostics: RecordingAuthDiagnostics()
+        )
+
+        XCTAssertTrue(adapter.canRestoreOfflineSession)
+        XCTAssertEqual(defaults.double(forKey: AppStorageKeys.lastAuthTimestamp), legacyTimestamp)
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp))
+    }
+
     func testLegacyTimestampSeedFailsClosedWhenMigrationMarkerWriteFails() throws {
         let store = FailingMetadataAuthStateStore(
             failingSaveKey: AppStorageKeys.authTimestampLegacyMigrationCompleted
