@@ -81,6 +81,67 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         XCTAssertFalse(diagnostics.containsSensitiveValue(userId))
     }
 
+    func testLegacyTimestampSeedFailsClosedWhenTimestampWriteFails() throws {
+        let store = FailingMetadataAuthStateStore(failingSaveKey: AppStorageKeys.lastAuthTimestamp)
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let diagnostics = RecordingAuthDiagnostics()
+        let adapter = makeAdapter(
+            stateStore: store,
+            userDefaults: makeUserDefaults(),
+            diagnostics: diagnostics
+        )
+
+        XCTAssertFalse(adapter.canRestoreOfflineSession)
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp))
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
+        XCTAssertFalse(diagnostics.snapshot().contains {
+            $0.name == "offline_access_window" &&
+                $0.metadata["reason"] == "legacy_timestamp_seeded"
+        })
+    }
+
+    func testLegacyTimestampSeedFailsClosedWhenMigrationMarkerWriteFails() throws {
+        let store = FailingMetadataAuthStateStore(
+            failingSaveKey: AppStorageKeys.authTimestampLegacyMigrationCompleted
+        )
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let diagnostics = RecordingAuthDiagnostics()
+        let adapter = makeAdapter(
+            stateStore: store,
+            userDefaults: makeUserDefaults(),
+            diagnostics: diagnostics
+        )
+
+        XCTAssertFalse(adapter.canRestoreOfflineSession)
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp))
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
+        XCTAssertFalse(diagnostics.snapshot().contains {
+            $0.name == "offline_access_window" &&
+                $0.metadata["reason"] == "legacy_timestamp_seeded"
+        })
+    }
+
+    func testSignOutClearsFallbackMigrationMarker() async throws {
+        let defaults = makeUserDefaults()
+        defaults.set(Date().timeIntervalSince1970, forKey: AppStorageKeys.lastAuthTimestamp)
+        defaults.set(true, forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+        let store = InMemoryAuthStateStore()
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let adapter = makeAdapter(
+            stateStore: store,
+            userDefaults: defaults,
+            diagnostics: RecordingAuthDiagnostics()
+        )
+
+        await adapter.signOut()
+
+        XCTAssertNil(defaults.object(forKey: AppStorageKeys.lastAuthTimestamp))
+        XCTAssertNil(defaults.object(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
+    }
+
     private func makeAdapter(
         stateStore: AuthStateStore,
         userDefaults: UserDefaults,
@@ -106,5 +167,56 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthOfflineAccessPolicyTests")
         isolatedDefaults.append(isolated)
         return isolated.defaults
+    }
+}
+
+private final class FailingMetadataAuthStateStore: AuthStateStore, AuthMetadataStore {
+    private enum StoreError: Error {
+        case saveFailed
+    }
+
+    private let failingSaveKey: String
+    private var accessToken: String?
+    private var userId: String?
+    private var metadata: [String: String] = [:]
+
+    init(failingSaveKey: String) {
+        self.failingSaveKey = failingSaveKey
+    }
+
+    func saveAccessToken(_ token: String?) throws {
+        accessToken = token
+    }
+
+    func saveUserId(_ userId: String?) throws {
+        self.userId = userId
+    }
+
+    func loadAccessToken() throws -> String? {
+        accessToken
+    }
+
+    func loadUserId() throws -> String? {
+        userId
+    }
+
+    func clear() throws {
+        accessToken = nil
+        userId = nil
+    }
+
+    func saveAuthMetadataValue(_ value: String?, forKey key: String) throws {
+        if key == failingSaveKey {
+            throw StoreError.saveFailed
+        }
+        metadata[key] = value
+    }
+
+    func loadAuthMetadataValue(forKey key: String) throws -> String? {
+        metadata[key]
+    }
+
+    func removeAuthMetadataValue(forKey key: String) throws {
+        metadata.removeValue(forKey: key)
     }
 }

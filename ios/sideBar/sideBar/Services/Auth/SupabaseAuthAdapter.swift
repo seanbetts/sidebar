@@ -75,7 +75,6 @@ enum AuthSessionPolicy {
     )
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
-    let offlineAccessWindow: TimeInterval = AuthSessionPolicy.offlineAccessWindow
     let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     let authTimestampLegacyMigrationCompletedKey = AppStorageKeys.authTimestampLegacyMigrationCompleted
     let failedLoginAttemptsKey = AppStorageKeys.failedLoginAttempts
@@ -480,7 +479,7 @@ enum AuthSessionPolicy {
     }
 
     private func clearPersistedAuthState() throws {
-        try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore)
+        try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore, userDefaults: userDefaults)
     }
 
     private func flushStatePersistenceQueue() {

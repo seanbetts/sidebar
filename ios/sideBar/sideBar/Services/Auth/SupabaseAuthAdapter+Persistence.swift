@@ -90,8 +90,9 @@ extension SupabaseAuthAdapter {
                 ))
                 return false
             }
-            updateLastAuthTimestamp(Date())
-            markLegacyTimestampMigrationCompleted()
+            guard persistLegacyTimestampMigrationSeed(Date()) else {
+                return false
+            }
             diagnostics.record(AuthDiagnosticsEvent(
                 name: "offline_access_window",
                 metadata: ["reason": "legacy_timestamp_seeded"]
@@ -137,6 +138,29 @@ extension SupabaseAuthAdapter {
             return
         }
         userDefaults.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+    }
+
+    func persistLegacyTimestampMigrationSeed(_ date: Date) -> Bool {
+        let timestamp = String(date.timeIntervalSince1970)
+        if let metadataStore = stateStore as? AuthMetadataStore {
+            do {
+                try metadataStore.saveAuthMetadataValue(timestamp, forKey: lastAuthTimestampKey)
+                try metadataStore.saveAuthMetadataValue("true", forKey: authTimestampLegacyMigrationCompletedKey)
+                userDefaults.removeObject(forKey: lastAuthTimestampKey)
+                userDefaults.removeObject(forKey: authTimestampLegacyMigrationCompletedKey)
+                return try metadataStore.loadAuthMetadataValue(forKey: lastAuthTimestampKey) == timestamp &&
+                    metadataStore.loadAuthMetadataValue(forKey: authTimestampLegacyMigrationCompletedKey) == "true"
+            } catch {
+                try? metadataStore.removeAuthMetadataValue(forKey: lastAuthTimestampKey)
+                try? metadataStore.removeAuthMetadataValue(forKey: authTimestampLegacyMigrationCompletedKey)
+                return false
+            }
+        }
+
+        userDefaults.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        userDefaults.set(true, forKey: authTimestampLegacyMigrationCompletedKey)
+        return userDefaults.double(forKey: lastAuthTimestampKey) > 0 &&
+            userDefaults.bool(forKey: authTimestampLegacyMigrationCompletedKey)
     }
 
     func hasCompletedLegacyTimestampMigration() -> Bool {

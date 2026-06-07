@@ -360,6 +360,7 @@ extension AppEnvironment {
         let defaults = storage.userDefaults
         defaults.removeObject(forKey: AppStorageKeys.lastSignInEmail)
         defaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
+        defaults.removeObject(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
         storage.widgetDataManager.clearAllDataForSignOut()
         clearSharedExtensionAuthState()
         if !preserveExtensionHandoffs {

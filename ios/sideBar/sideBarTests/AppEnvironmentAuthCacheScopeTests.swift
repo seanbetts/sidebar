@@ -133,6 +133,7 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         isolatedDefaults.defaults.set("person@example.com", forKey: lastSignInEmailKey)
         isolatedDefaults.defaults.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        isolatedDefaults.defaults.set(true, forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
         let environment = makeEnvironment(authState: .signedOut, userId: nil)
         primeCachedData(environment)
         let queuedURL = "https://example.com/articles/sign-out"
@@ -144,6 +145,7 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: cacheScopeKey))
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: lastSignInEmailKey))
         XCTAssertNil(isolatedDefaults.defaults.object(forKey: lastAuthTimestampKey))
+        XCTAssertNil(isolatedDefaults.defaults.object(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
         XCTAssertEqual(environment.storage.pendingShareStore.loadAll().map(\.id), [queuedItem?.id].compactMap { $0 })
         XCTAssertEqual(environment.storage.pendingShareStore.loadAll().first?.url, queuedURL)
         XCTAssertTrue(environment.storage.extensionEventStore.consumeEvents().contains { event in

@@ -65,4 +65,10 @@ enum SupabaseAuthRecovery {
             try keychainStore.removeSessionData(forKey: key)
         }
     }
+
+    static func clearPersistedAuthState(stateStore: AuthStateStore, userDefaults: UserDefaults) throws {
+        try clearPersistedAuthState(stateStore: stateStore)
+        userDefaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
+        userDefaults.removeObject(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
+    }
 }
