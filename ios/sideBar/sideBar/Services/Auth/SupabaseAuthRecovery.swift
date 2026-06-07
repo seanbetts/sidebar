@@ -34,7 +34,16 @@ enum SupabaseAuthRecovery {
         if description.contains("jwt") && description.contains("expired") && description.contains("refresh") {
             return true
         }
-        if description.contains("unauthorized") || description.contains("forbidden") {
+        if description.contains("invalid") && description.contains("jwt") {
+            return true
+        }
+
+        let mentionsAuthRejection = description.contains("unauthorized") || description.contains("forbidden")
+        let mentionsSessionContext =
+            description.contains("session") ||
+            description.contains("refresh") ||
+            description.contains("jwt")
+        if mentionsAuthRejection && mentionsSessionContext {
             return true
         }
         return false

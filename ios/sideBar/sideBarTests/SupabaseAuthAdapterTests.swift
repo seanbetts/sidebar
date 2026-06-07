@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import XCTest
 import sideBarShared
 import Supabase
@@ -8,6 +9,7 @@ private let failedLoginAttemptsKey = "sidebar.auth.failedLoginAttempts"
 private let lockoutEndTimeKey = "sidebar.auth.lockoutEndTime"
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SupabaseAuthAdapterTests: XCTestCase {
     private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
 
@@ -402,6 +404,75 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let adapter = SupabaseAuthAdapter(
             authClient: client,
             stateStore: store,
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
+
+        XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
+        client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
+
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
+        XCTAssertEqual(adapter.authState, .signedOut)
+    }
+
+    func testGenericUnauthorizedRefreshFailureBecomesStaleRecoverable() async throws {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        client.refreshResult = .failure(
+            NSError(domain: "Auth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unauthorized"])
+        )
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
+
+        XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
+        client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
+
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
+        XCTAssertEqual(adapter.authState, .staleRecoverable)
+    }
+
+    func testGenericForbiddenRefreshFailureBecomesStaleRecoverable() async throws {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        client.refreshResult = .failure(
+            NSError(domain: "Auth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Forbidden"])
+        )
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
+
+        XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
+        client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
+
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
+        XCTAssertEqual(adapter.authState, .staleRecoverable)
+    }
+
+    func testSessionSpecificUnauthorizedRefreshFailureSignsOut() async throws {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        client.refreshResult = .failure(
+            NSError(domain: "Auth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unauthorized session"])
+        )
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
             startAuthStateTask: true,
             userDefaults: makeUserDefaults()
         )
