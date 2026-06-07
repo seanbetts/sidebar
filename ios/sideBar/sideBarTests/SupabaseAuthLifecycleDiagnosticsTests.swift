@@ -107,13 +107,15 @@ final class SupabaseAuthLifecycleDiagnosticsTests: XCTestCase {
         try await waitUntil(timeoutSeconds: 5.0) {
             diagnostics.snapshot().contains {
                 $0.name == "session_recovery_failed" &&
-                    $0.metadata["reason"] == "missing_current_session"
+                    $0.metadata["reason"] == "missing_current_session" &&
+                    $0.metadata["auth_state"] == "signedOut"
             }
         }
         XCTAssertEqual(adapter.authState, .signedOut)
         XCTAssertTrue(diagnostics.snapshot().contains {
             $0.name == "session_recovery_failed" &&
-                $0.metadata["reason"] == "missing_current_session"
+                $0.metadata["reason"] == "missing_current_session" &&
+                $0.metadata["auth_state"] == "signedOut"
         })
         XCTAssertFalse(diagnostics.containsSensitiveValue("sensitive-access-token"))
         XCTAssertFalse(diagnostics.containsSensitiveValue("sensitive-user-id"))

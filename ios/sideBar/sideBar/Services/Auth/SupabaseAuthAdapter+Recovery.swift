@@ -3,10 +3,11 @@ import os
 
 extension SupabaseAuthAdapter {
     /// Attempts to recover a session when the offline access window has expired.
-    /// On success, applies the refreshed session. On failure, signs out.
+    /// On success, applies the refreshed session. Invalid failures sign out, transient failures become stale.
     func attemptSessionRecovery() async {
         do {
             guard authClient.currentSession != nil else {
+                await transitionToSignedOut(clearPersistedState: true)
                 diagnostics.record(AuthDiagnosticsEvent(
                     name: "session_recovery_failed",
                     metadata: [
@@ -14,7 +15,6 @@ extension SupabaseAuthAdapter {
                         "auth_state": authState.rawValue
                     ]
                 ))
-                await transitionToSignedOut(clearPersistedState: true)
                 return
             }
             let session = try await authClient.refreshSession()
