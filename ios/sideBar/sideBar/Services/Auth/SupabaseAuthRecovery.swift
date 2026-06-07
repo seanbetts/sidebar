@@ -31,6 +31,9 @@ enum SupabaseAuthRecovery {
         if description.contains("refresh token") && description.contains("expired") {
             return true
         }
+        if description.contains("refresh token") && description.contains("revoked") {
+            return true
+        }
         if description.contains("jwt") && description.contains("expired") && description.contains("refresh") {
             return true
         }

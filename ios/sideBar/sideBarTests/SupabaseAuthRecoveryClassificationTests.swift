@@ -81,6 +81,29 @@ final class SupabaseAuthRecoveryClassificationTests: XCTestCase {
         XCTAssertEqual(adapter.authState, .signedOut)
     }
 
+    func testRevokedRefreshTokenFailureSignsOut() async throws {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        client.refreshResult = .failure(
+            NSError(domain: "Auth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Refresh token revoked"])
+        )
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
+
+        XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
+        client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
+
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
+        XCTAssertEqual(adapter.authState, .signedOut)
+    }
+
     private func makeUserDefaults() -> UserDefaults {
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthRecoveryClassificationTests")
         isolatedDefaults.append(isolated)
