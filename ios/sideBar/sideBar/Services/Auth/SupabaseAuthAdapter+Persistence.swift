@@ -76,14 +76,35 @@ extension SupabaseAuthAdapter {
 
     func shouldAllowOfflineAccess(hasStoredToken: Bool) -> Bool {
         guard let lastAuthTimestamp = persistedLastAuthTimestamp() else {
-            if hasStoredToken {
-                updateLastAuthTimestamp(Date())
-                return true
+            guard hasStoredToken else {
+                diagnostics.record(AuthDiagnosticsEvent(
+                    name: "offline_access_window",
+                    metadata: ["reason": "missing_timestamp_without_token"]
+                ))
+                return false
             }
-            return false
+            guard !hasCompletedLegacyTimestampMigration() else {
+                diagnostics.record(AuthDiagnosticsEvent(
+                    name: "offline_access_window",
+                    metadata: ["reason": "missing_timestamp_after_migration"]
+                ))
+                return false
+            }
+            updateLastAuthTimestamp(Date())
+            markLegacyTimestampMigrationCompleted()
+            diagnostics.record(AuthDiagnosticsEvent(
+                name: "offline_access_window",
+                metadata: ["reason": "legacy_timestamp_seeded"]
+            ))
+            return true
         }
         let lastAuthDate = Date(timeIntervalSince1970: lastAuthTimestamp)
-        return Date().timeIntervalSince(lastAuthDate) <= offlineAccessWindow
+        let isWithinWindow = Date().timeIntervalSince(lastAuthDate) <= AuthSessionPolicy.offlineAccessWindow
+        diagnostics.record(AuthDiagnosticsEvent(
+            name: "offline_access_window",
+            metadata: ["reason": isWithinWindow ? "within_window" : "outside_window"]
+        ))
+        return isWithinWindow
     }
 
     func persistedLastAuthTimestamp() -> TimeInterval? {
@@ -116,6 +137,23 @@ extension SupabaseAuthAdapter {
             return
         }
         userDefaults.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+    }
+
+    func hasCompletedLegacyTimestampMigration() -> Bool {
+        if let metadataStore = stateStore as? AuthMetadataStore,
+           (try? metadataStore.loadAuthMetadataValue(forKey: authTimestampLegacyMigrationCompletedKey)) == "true" {
+            return true
+        }
+        return userDefaults.bool(forKey: authTimestampLegacyMigrationCompletedKey)
+    }
+
+    func markLegacyTimestampMigrationCompleted() {
+        if let metadataStore = stateStore as? AuthMetadataStore {
+            try? metadataStore.saveAuthMetadataValue("true", forKey: authTimestampLegacyMigrationCompletedKey)
+            userDefaults.removeObject(forKey: authTimestampLegacyMigrationCompletedKey)
+            return
+        }
+        userDefaults.set(true, forKey: authTimestampLegacyMigrationCompletedKey)
     }
 
     func loadPersistedRateLimitState() {

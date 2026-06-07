@@ -56,6 +56,7 @@ enum SupabaseAuthRecovery {
         try stateStore.clear()
         if let metadataStore = stateStore as? AuthMetadataStore {
             try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp)
+            try metadataStore.removeAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted)
         }
         guard let keychainStore = stateStore as? KeychainAuthStateStore else {
             return

@@ -15,6 +15,8 @@ public enum AppStorageKeys {
     public nonisolated static let settingsSelectedSection = "sidebar.settingsSelectedSection"
     public nonisolated static let settingsSelectedTab = "sidebar.settingsSelectedTab"
     public nonisolated static let lastAuthTimestamp = "sidebar.lastAuthTimestamp"
+    public nonisolated static let authTimestampLegacyMigrationCompleted =
+        "sidebar.authTimestampLegacyMigrationCompleted"
     public nonisolated static let lastSignInEmail = "sidebar.lastSignInEmail"
     public nonisolated static let failedLoginAttempts = "sidebar.auth.failedLoginAttempts"
     public nonisolated static let lockoutEndTime = "sidebar.auth.lockoutEndTime"

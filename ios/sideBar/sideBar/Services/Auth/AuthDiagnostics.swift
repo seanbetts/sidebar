@@ -13,12 +13,18 @@ public struct AuthDiagnosticsEvent: Equatable, Sendable {
 
     private static let allowedNames: Set<String> = [
         "backend_rejection_accepted",
-        "backend_rejection_ignored"
+        "backend_rejection_ignored",
+        "offline_access_window"
     ]
     private static let allowedReasons: Set<String> = [
         "current_token",
+        "legacy_timestamp_seeded",
+        "missing_timestamp_after_migration",
+        "missing_timestamp_without_token",
+        "outside_window",
         "previous_token",
         "unscoped",
+        "within_window",
         "unknown"
     ]
     private static let allowedAuthStates: Set<String> = [

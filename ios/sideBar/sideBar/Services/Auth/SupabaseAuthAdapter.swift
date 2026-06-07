@@ -48,6 +48,10 @@ public enum AuthAdapterError: LocalizedError, Equatable {
     }
 }
 
+enum AuthSessionPolicy {
+    static let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 30
+}
+
 /// Supabase-backed authentication session handler.
 @MainActor public final class SupabaseAuthAdapter: ObservableObject, AuthSession, AuthSessionInvalidating,
     AuthSessionTokenScopedInvalidating {
@@ -71,8 +75,9 @@ public enum AuthAdapterError: LocalizedError, Equatable {
     )
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
-    let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 30
+    let offlineAccessWindow: TimeInterval = AuthSessionPolicy.offlineAccessWindow
     let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+    let authTimestampLegacyMigrationCompletedKey = AppStorageKeys.authTimestampLegacyMigrationCompleted
     let failedLoginAttemptsKey = AppStorageKeys.failedLoginAttempts
     let lockoutEndTimeKey = AppStorageKeys.lockoutEndTime
     private var lastSessionExpiryDate: Date?
