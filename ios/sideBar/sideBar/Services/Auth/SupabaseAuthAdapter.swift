@@ -15,22 +15,6 @@ public struct AuthErrorEvent: Equatable {
         self.message = message
     }
 }
-/// Redacted authentication diagnostic event.
-public struct AuthDiagnosticsEvent: Equatable, Sendable {
-    public let name: String; public let metadata: [String: String]
-    public init(name: String, metadata: [String: String] = [:]) { self.name = name; self.metadata = metadata }
-}
-/// Records redacted authentication diagnostics.
-public protocol AuthDiagnosticsRecording: Sendable { func record(_ event: AuthDiagnosticsEvent) }
-/// Logs redacted authentication diagnostics through unified logging.
-public struct LoggingAuthDiagnosticsRecorder: AuthDiagnosticsRecording {
-    private let logger = Logger(subsystem: "sideBar", category: "AuthDiagnostics"); public init() {}
-
-    public func record(_ event: AuthDiagnosticsEvent) {
-        let metadata = event.metadata.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
-        logger.notice("auth_diagnostic name=\(event.name, privacy: .public) metadata=\(metadata, privacy: .public)")
-    }
-}
 /// Defines AuthAdapterError.
 public enum AuthAdapterError: LocalizedError, Equatable {
     case signInInProgress

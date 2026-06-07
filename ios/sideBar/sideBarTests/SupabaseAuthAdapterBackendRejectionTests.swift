@@ -159,7 +159,7 @@ final class SupabaseAuthAdapterBackendRejectionTests: XCTestCase {
         adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: staleToken)
 
         XCTAssertEqual(adapter.authState, .active)
-        XCTAssertTrue(diagnostics.events.contains {
+        XCTAssertTrue(diagnostics.snapshot().contains {
             $0.name == "backend_rejection_ignored" &&
                 $0.metadata["reason"] == "previous_token"
         })
@@ -187,12 +187,32 @@ final class SupabaseAuthAdapterBackendRejectionTests: XCTestCase {
         adapter.markSessionReauthenticationRequiredAfterAuthorizationFailure(rejectedToken: token)
 
         XCTAssertEqual(adapter.authState, .reauthenticationRequired)
-        XCTAssertTrue(diagnostics.events.contains {
+        XCTAssertTrue(diagnostics.snapshot().contains {
             $0.name == "backend_rejection_accepted" &&
                 $0.metadata["reason"] == "current_token"
         })
         XCTAssertFalse(diagnostics.containsSensitiveValue(token))
         XCTAssertFalse(diagnostics.containsSensitiveValue("user-1"))
+    }
+
+    func testAuthDiagnosticEventDropsUnallowlistedPublicMetadata() {
+        let token = makeJwt(exp: Date().addingTimeInterval(60 * 60).timeIntervalSince1970)
+        let event = AuthDiagnosticsEvent(
+            name: "backend_rejection_accepted",
+            metadata: [
+                "reason": token,
+                "auth_state": "active",
+                "token": token,
+                "user_id": "user-1"
+            ]
+        )
+
+        XCTAssertEqual(event.metadata["reason"], "unknown")
+        XCTAssertEqual(event.metadata["auth_state"], "active")
+        XCTAssertNil(event.metadata["token"])
+        XCTAssertNil(event.metadata["user_id"])
+        XCTAssertFalse(event.metadata.description.contains(token))
+        XCTAssertFalse(event.metadata.description.contains("user-1"))
     }
 
     private func makeJwt(exp: TimeInterval) -> String {

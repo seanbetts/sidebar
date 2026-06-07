@@ -92,12 +92,18 @@ final class FakeSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Senda
 
 final class RecordingAuthDiagnostics: AuthDiagnosticsRecording, @unchecked Sendable {
     private let lock = NSLock()
-    private(set) var events: [AuthDiagnosticsEvent] = []
+    private var events: [AuthDiagnosticsEvent] = []
 
     func record(_ event: AuthDiagnosticsEvent) {
         lock.lock()
         events.append(event)
         lock.unlock()
+    }
+
+    func snapshot() -> [AuthDiagnosticsEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        return events
     }
 
     func containsSensitiveValue(_ value: String) -> Bool {
