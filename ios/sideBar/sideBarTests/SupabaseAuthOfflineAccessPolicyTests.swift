@@ -103,7 +103,10 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
 
         XCTAssertFalse(adapter.canRestoreOfflineSession)
         XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.lastAuthTimestamp))
-        XCTAssertNil(try store.loadAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted))
+        XCTAssertEqual(
+            try store.loadAuthMetadataValue(forKey: AppStorageKeys.authTimestampLegacyMigrationCompleted),
+            "true"
+        )
         XCTAssertFalse(diagnostics.snapshot().contains {
             $0.name == "offline_access_window" &&
                 $0.metadata["reason"] == "legacy_timestamp_seeded"
@@ -111,6 +114,12 @@ final class SupabaseAuthOfflineAccessPolicyTests: XCTestCase {
         XCTAssertTrue(diagnostics.snapshot().contains {
             $0.name == "offline_access_window" &&
                 $0.metadata["reason"] == "legacy_timestamp_seed_failed"
+        })
+
+        XCTAssertFalse(adapter.canRestoreOfflineSession)
+        XCTAssertTrue(diagnostics.snapshot().contains {
+            $0.name == "offline_access_window" &&
+                $0.metadata["reason"] == "missing_timestamp_after_migration"
         })
     }
 
