@@ -125,11 +125,16 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(blockContents.contains("Assets.xcassets"))
     }
 
-    func testShareExtensionMacAppIconsFillCanvasForSafariShareMenu() throws {
+    func testShareMenuResolvedMacAppIconsFillCanvas() throws {
         let repositoryRoot = try findRepositoryRoot()
-        let shareIconDirectory = repositoryRoot.appendingPathComponent(
-            "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset"
-        )
+        let iconDirectoriesByName = [
+            "ShareExtension": repositoryRoot.appendingPathComponent(
+                "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset"
+            ),
+            "containing app": repositoryRoot.appendingPathComponent(
+                "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset"
+            )
+        ]
         let iconFilenamesByPixelSize = [
             "Icon-macOS-Default-16x16@1x.png": 16,
             "Icon-macOS-Default-16x16@2x.png": 32,
@@ -143,15 +148,17 @@ final class ShareExtensionCoverageTests: XCTestCase {
             "Icon-macOS-Default-1024x1024@1x.png": 1024
         ]
 
-        for (filename, pixelSize) in iconFilenamesByPixelSize {
-            let iconURL = shareIconDirectory.appendingPathComponent(filename)
-            let bounds = try alphaBounds(forPNGAt: iconURL)
+        for (iconSource, iconDirectory) in iconDirectoriesByName {
+            for (filename, pixelSize) in iconFilenamesByPixelSize {
+                let iconURL = iconDirectory.appendingPathComponent(filename)
+                let bounds = try alphaBounds(forPNGAt: iconURL)
 
-            XCTAssertEqual(
-                bounds,
-                CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize),
-                "\(filename) must fill its canvas because Safari's share menu puts the extension icon inside its own icon well."
-            )
+                XCTAssertEqual(
+                    bounds,
+                    CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize),
+                    "\(iconSource) \(filename) must fill its canvas because Safari's share menu may resolve the parent app icon."
+                )
+            }
         }
     }
 
