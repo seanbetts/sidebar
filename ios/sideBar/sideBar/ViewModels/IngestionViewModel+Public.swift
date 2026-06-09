@@ -178,7 +178,13 @@ extension IngestionViewModel {
             }
             Task { [weak self] in
                 guard let self else { return }
-                if let message = await self.ingestYouTube(url: sourceUrl, showQueuedToast: false) {
+                let message: String?
+                if self.isOfflineForIngestion() {
+                    message = await self.ingestYouTube(url: sourceUrl, showQueuedToast: false)
+                } else {
+                    message = await self.startQueuedYouTubeIngestion(url: sourceUrl)
+                }
+                if let message {
                     self.toastCenter.show(message: message)
                 }
             }
@@ -249,14 +255,19 @@ extension IngestionViewModel {
         guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
             return "Invalid YouTube URL"
         }
-        if isOfflineForIngestion() {
-            if pendingShareStore.enqueueYouTube(url: normalized) != nil {
-                if showQueuedToast {
-                    toastCenter.show(message: "Saved for later", style: .success)
-                }
-                return nil
-            }
+        guard pendingShareStore.enqueueYouTube(url: normalized) != nil else {
             return "Could not save for later."
+        }
+        if showQueuedToast {
+            toastCenter.show(message: "Saved for later", style: .success)
+        }
+        return nil
+    }
+
+    func startQueuedYouTubeIngestion(url: String) async -> String? {
+        let trimmed = url.trimmed
+        guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
+            return "Invalid YouTube URL"
         }
         isIngestingYouTube = true
         defer { isIngestingYouTube = false }

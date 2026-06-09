@@ -472,7 +472,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isOffline)
     }
 
-    func testIngestYouTubeAddsLocalItemAndSelects() async {
+    func testStartQueuedYouTubeIngestionAddsLocalItemAndSelects() async {
         let file = IngestedFileMeta(
             id: "yt-1",
             filenameOriginal: "YouTube video",
@@ -512,7 +512,9 @@ final class IngestionViewModelTests: XCTestCase {
             toastCenter: ToastCenter()
         )
 
-        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
+        let errorMessage = await viewModel.startQueuedYouTubeIngestion(
+            url: "https://www.youtube.com/watch?v=abc123"
+        )
 
         XCTAssertNil(errorMessage)
         XCTAssertEqual(viewModel.selectedFileId, "yt-1")
@@ -579,6 +581,21 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNil(errorMessage)
         let pending = pendingStore.loadAll()
         XCTAssertEqual(pending.first?.kind, .youtube)
+    }
+
+    func testIngestYouTubeOnlinePersistsPendingItemBeforeCallingAPI() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+
+        let errorMessage = await context.viewModel.ingestYouTube(
+            url: "https://www.youtube.com/watch?v=abc123",
+            showQueuedToast: false
+        )
+
+        let pending = context.pendingShareStore.loadAll()
+        XCTAssertNil(errorMessage)
+        XCTAssertEqual(pending.first?.kind, .youtube)
+        XCTAssertEqual(pending.first?.url, "https://www.youtube.com/watch?v=abc123")
+        XCTAssertEqual(context.api.ingestYouTubeCallCount, 0)
     }
 
     func testRenameFileOnlineQueuesAndUpdatesLocalFilename() async throws {
@@ -1062,6 +1079,22 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertTrue(uploadManager.startedRequests.isEmpty)
         XCTAssertFalse(viewModel.items.contains(where: { $0.file.filenameOriginal == plistURL.lastPathComponent }))
         XCTAssertEqual(toastCenter.toast?.message, "That file type isn't supported yet.")
+    }
+
+    func testAddUploadCreatesDurableLocalUploadBeforeStartingNetworkUpload() throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+        let fileURL = try makeTemporaryFileURL(filename: "durable.txt")
+        var localItemAtUploadStart: IngestionListItem?
+        context.uploadManager.onStart = { request in
+            localItemAtUploadStart = context.store.items.first { $0.file.id == request.uploadId }
+        }
+
+        context.viewModel.addUploads(urls: [fileURL])
+
+        let startedUploadId = try XCTUnwrap(context.uploadManager.startedRequests.first?.uploadId)
+        XCTAssertEqual(context.uploadManager.startedRequests.count, 1)
+        XCTAssertEqual(localItemAtUploadStart?.file.id, startedUploadId)
+        XCTAssertTrue(context.store.pendingUploadsForResume().contains { $0.item.file.id == startedUploadId })
     }
 
     func testStartPendingShareUploadDeletesTemporaryCopyOnCompletion() async throws {
@@ -1909,7 +1942,7 @@ private actor PollingSleepRecorder {
     }
 }
 
-private struct MockIngestionAPI: IngestionProviding {
+private final class MockIngestionAPI: IngestionProviding {
     let listResult: Result<IngestionListResponse, Error>
     let metaResult: Result<IngestionMetaResponse, Error>
     let contentResult: Result<Data, Error>
@@ -1920,6 +1953,7 @@ private struct MockIngestionAPI: IngestionProviding {
     let youtubeResult: Result<String, Error>
     let onCancel: ((String) -> Void)?
     let pinnedOrderRecorder: PinnedOrderRecorder?
+    private(set) var ingestYouTubeCallCount = 0
 
     init(
         listResult: Result<IngestionListResponse, Error>,
@@ -2003,6 +2037,7 @@ private struct MockIngestionAPI: IngestionProviding {
 
     func ingestYouTube(url: String) async throws -> String {
         _ = url
+        ingestYouTubeCallCount += 1
         return try youtubeResult.get()
     }
 
@@ -2097,12 +2132,14 @@ private final class MockIngestionUploadManager: IngestionUploadManaging {
     private(set) var startedRequests: [UploadRequest] = []
     private(set) var canceledUploadIds: [String] = []
     private(set) var completions: [(Result<String, Error>) -> Void] = []
+    var onStart: ((UploadRequest) -> Void)?
 
     func startUpload(
         request: UploadRequest,
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
+        onStart?(request)
         startedRequests.append(request)
         completions.append(onCompletion)
         _ = onProgress

@@ -202,7 +202,7 @@ public final class PendingShareStore {
                 return existing
             }
             let item = PendingShareItem(
-                id: UUID(),
+                id: idGenerator(),
                 kind: .youtube,
                 createdAt: Date(),
                 url: url

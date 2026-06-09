@@ -50,6 +50,13 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(first?.id, second?.id)
         XCTAssertEqual(store.loadAll().count, 1)
     }
+    func testEnqueueYouTubeUsesInjectedIDGenerator() throws {
+        let expectedId = UUID(uuidString: "F6AB0DE5-F941-480D-9262-1D996F5A36D9")!
+        let (store, _) = try makeIsolatedStore(idGenerator: { expectedId })
+        let item = store.enqueueYouTube(url: "https://youtube.com/watch?v=abc123")
+        XCTAssertEqual(item?.id, expectedId)
+        XCTAssertEqual(store.loadAll().first?.id, expectedId)
+    }
     func testEnqueueWebsiteFailsWhenDefaultsUnavailable() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = PendingShareStore(

@@ -427,10 +427,7 @@ extension AppEnvironment {
             },
             ingestYouTube: { [weak self] url in
                 guard let self else { return "Environment released." }
-                return await self.ingestionViewModel.ingestYouTube(
-                    url: url,
-                    showQueuedToast: false
-                )
+                return await self.ingestionViewModel.startQueuedYouTubeIngestion(url: url)
             },
             prepareFileForUpload: { [self] item in
                 self.storage.pendingShareStore.prepareFileForUpload(for: item)
