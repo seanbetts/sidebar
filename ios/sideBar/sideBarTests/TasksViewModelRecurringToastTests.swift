@@ -4,10 +4,7 @@ import sideBarShared
 
 @MainActor
 final class TasksViewModelRecurringToastTests: XCTestCase {
-    func testCompleteTaskSuccessShowsRecurringScheduleSuccessToastWithDate() async {
-        let expectedDate = TasksUtils.tasksDateFormatter
-            .date(from: "2026-03-04")?
-            .formatted(.dateTime.day().month(.wide))
+    func testCompleteTaskQueuesRecurringCompletionWithoutImmediateScheduleToast() async throws {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Weekly review", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -34,23 +31,18 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
 
-        await sut.viewModel.completeTask(task: task)
-        await eventually {
-            sut.toastCenter.toast != nil
-        }
+        let completed = await sut.viewModel.completeTask(task: task)
+        let pending = try await sut.writeQueue.fetchPendingWrites()
 
-        XCTAssertEqual(
-            sut.toastCenter.toast?.message,
-            "Weekly review next scheduled for \(expectedDate ?? "March 4")"
-        )
-        if case .success? = sut.toastCenter.toast?.style {
-            // expected
-        } else {
-            XCTFail("Expected recurring completion toast style to be success")
-        }
+        XCTAssertTrue(completed)
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.update.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.task.rawValue)
+        XCTAssertNil(sut.toastCenter.toast)
     }
 
-    func testCompleteTaskSuccessKeepsRecurringScheduleToastVisiblePastThreeSeconds() async {
+    func testCompleteTaskDoesNotScheduleRecurringToastDismissalBeforeSync() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Weekly review", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -79,21 +71,18 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
         await sut.viewModel.load(selection: .today)
 
         await sut.viewModel.completeTask(task: task)
-        await eventually {
-            sut.toastCenter.toast != nil
-        }
-        await eventually {
-            sleepProbe.requestedNanoseconds == [4_000_000_000]
+        for _ in 0..<5 {
+            await Task.yield()
         }
 
-        XCTAssertNotNil(sut.toastCenter.toast)
-        XCTAssertEqual(sleepProbe.requestedNanoseconds, [4_000_000_000])
-        sleepProbe.completeSleeps()
+        XCTAssertNil(sut.toastCenter.toast)
+        XCTAssertEqual(sleepProbe.requestedNanoseconds, [])
     }
 
     private struct SUT {
         let viewModel: TasksViewModel
         let toastCenter: ToastCenter
+        let writeQueue: WriteQueue
     }
 
     private func makeSUT(
@@ -117,6 +106,15 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
             offlineStore: offlineStore,
             networkStatus: networkStatus
         )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: ConnectivityMonitor(
+                baseUrl: URL(string: "http://localhost")!,
+                startMonitoring: false
+            ),
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
         let toastCenter = ToastCenter(sleep: toastSleep)
         let viewModel = TasksViewModel(
             api: api,
@@ -124,7 +122,7 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
             toastCenter: toastCenter,
             networkStatus: networkStatus
         )
-        return SUT(viewModel: viewModel, toastCenter: toastCenter)
+        return SUT(viewModel: viewModel, toastCenter: toastCenter, writeQueue: writeQueue)
     }
 
     private func eventually(

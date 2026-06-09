@@ -110,8 +110,9 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
-    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async {
-        let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
+    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async throws {
+        let fixture = await makeViewWithAPI(autoExitDelay: 0.05)
+        let view = fixture.view
 
         #if !os(iOS)
         view.enterPinnedReorder(from: "note-a")
@@ -119,25 +120,22 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         view.movePinnedNotes(from: IndexSet(integer: 0), to: 2)
 
         #if os(iOS)
-        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
-        while api.updatePinnedOrderCallCount != 1,
-              DispatchTime.now().uptimeNanoseconds < deadline {
-            await Task.yield()
-        }
-
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["note-b", "note-a"])
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
         XCTAssertEqual(view.pinnedItems.map { $0.id }, ["note-b", "note-a"])
         #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItems.map { $0.id }, ["note-b", "note-a"])
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
 
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
 
         XCTAssertFalse(view.isPinnedReordering)
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["note-b", "note-a"])
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
         #endif
     }
 
@@ -427,13 +425,47 @@ private func makeViewModelAndStore(
     let resolvedArchivedTree = archivedTree ?? FileTree(children: [])
     let api = StaticTreeNotesAPI(tree: tree, archivedTree: resolvedArchivedTree)
     let store = NotesStore(api: api, cache: InMemoryCacheClient())
+    let writeQueue = makeWriteQueue()
+    store.attachWriteQueue(writeQueue)
     let viewModel = NotesViewModel(
         api: api,
         store: store,
         toastCenter: ToastCenter(),
         networkStatus: PanelTestNetworkStatus(isNetworkAvailable: true)
     )
-    return NotesPanelTestFixture(viewModel: viewModel, store: store, api: api)
+    return NotesPanelTestFixture(
+        viewModel: viewModel,
+        store: store,
+        api: api,
+        writeQueue: writeQueue
+    )
+}
+
+@MainActor
+private func makeWriteQueue() -> WriteQueue {
+    let persistence = PersistenceController(inMemory: true)
+    let connectivityMonitor = ConnectivityMonitor(
+        baseUrl: URL(string: "http://localhost")!,
+        startMonitoring: false
+    )
+    return WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: connectivityMonitor,
+        autoProcessEnabled: false
+    )
+}
+
+@MainActor
+private func waitForPendingWrite(in writeQueue: WriteQueue) async throws -> PendingWriteSummary {
+    let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+    while DispatchTime.now().uptimeNanoseconds < deadline {
+        if let pending = try await writeQueue.fetchPendingWrites().first {
+            return pending
+        }
+        await Task.yield()
+    }
+    let pending = try await writeQueue.fetchPendingWrites()
+    return try XCTUnwrap(pending.first)
 }
 
 @MainActor
@@ -441,11 +473,10 @@ private func makeView(
     isNetworkAvailable: Bool = true,
     tree: FileTree? = nil
 ) async -> NotesPanelView {
-    let (view, _) = await makeViewWithAPI(
+    await makeViewWithAPI(
         isNetworkAvailable: isNetworkAvailable,
         tree: tree
-    )
-    return view
+    ).view
 }
 
 @MainActor
@@ -453,7 +484,7 @@ private func makeViewWithAPI(
     isNetworkAvailable: Bool = true,
     tree: FileTree? = nil,
     autoExitDelay: TimeInterval? = nil
-) async -> (NotesPanelView, StaticTreeNotesAPI) {
+) async -> NotesPanelViewFixture {
     let resolvedTree = tree ?? FileTree(children: [
         makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0),
         makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 1)
@@ -467,7 +498,11 @@ private func makeViewWithAPI(
         pinnedReorderNetworkAvailability: isNetworkAvailable,
         pinnedReorderAutoExitDelay: autoExitDelay
     )
-    return (view, api)
+    return NotesPanelViewFixture(
+        view: view,
+        api: api,
+        writeQueue: fixture.writeQueue
+    )
 }
 
 private func makeFile(
@@ -499,6 +534,13 @@ private struct NotesPanelTestFixture {
     let viewModel: NotesViewModel
     let store: NotesStore
     let api: StaticTreeNotesAPI
+    let writeQueue: WriteQueue
+}
+
+private struct NotesPanelViewFixture {
+    let view: NotesPanelView
+    let api: StaticTreeNotesAPI
+    let writeQueue: WriteQueue
 }
 
 @MainActor

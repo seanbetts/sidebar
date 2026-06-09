@@ -106,8 +106,9 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
-    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async {
-        let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
+    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async throws {
+        let fixture = await makeViewWithAPI(autoExitDelay: 0.05)
+        let view = fixture.view
 
         #if !os(iOS)
         view.enterPinnedReorder(from: "w1")
@@ -115,25 +116,22 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         view.movePinnedWebsites(from: IndexSet(integer: 0), to: 2)
 
         #if os(iOS)
-        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
-        while api.updatePinnedOrderCallCount != 1,
-              DispatchTime.now().uptimeNanoseconds < deadline {
-            await Task.yield()
-        }
-
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["w2", "w1"])
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.website.rawValue)
         XCTAssertEqual(view.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
         #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
 
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
 
         XCTAssertFalse(view.isPinnedReordering)
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["w2", "w1"])
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.website.rawValue)
         #endif
     }
 
@@ -251,18 +249,17 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         isNetworkAvailable: Bool = true,
         items: [WebsiteItem]? = nil
     ) async -> WebsitesPanelView {
-        let (view, _) = await makeViewWithAPI(
+        await makeViewWithAPI(
             isNetworkAvailable: isNetworkAvailable,
             items: items
-        )
-        return view
+        ).view
     }
 
     private func makeViewWithAPI(
         isNetworkAvailable: Bool = true,
         items: [WebsiteItem]? = nil,
         autoExitDelay: TimeInterval? = nil
-    ) async -> (WebsitesPanelView, WebsitesPanelTestWebsitesAPI) {
+    ) async -> WebsitesPanelViewFixture {
         let resolvedItems = items ?? [
             makeWebsiteItem(id: "w1", pinned: true, pinnedOrder: 0),
             makeWebsiteItem(id: "w2", pinned: true, pinnedOrder: 1)
@@ -279,7 +276,11 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
             pinnedReorderNetworkAvailability: isNetworkAvailable,
             pinnedReorderAutoExitDelay: autoExitDelay
         )
-        return (view, api)
+        return WebsitesPanelViewFixture(
+            view: view,
+            api: api,
+            writeQueue: fixture.writeQueue
+        )
     }
 
     private func makeViewModelAndStore(
@@ -291,6 +292,8 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
             archivedListResponse: WebsitesResponse(items: [])
         )
         let store = WebsitesStore(api: api, cache: InMemoryCacheClient())
+        let writeQueue = makeWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -298,7 +301,39 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
             networkStatus: WebsitesPanelTestNetworkStatus(isNetworkAvailable: networkIsAvailable)
         )
         items.forEach { store.updateListItem($0, persist: false) }
-        return WebsitesPanelTestFixture(viewModel: viewModel, store: store, api: api)
+        return WebsitesPanelTestFixture(
+            viewModel: viewModel,
+            store: store,
+            api: api,
+            writeQueue: writeQueue
+        )
+    }
+
+    @MainActor
+    private func makeWriteQueue() -> WriteQueue {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        return WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+    }
+
+    @MainActor
+    private func waitForPendingWrite(in writeQueue: WriteQueue) async throws -> PendingWriteSummary {
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while DispatchTime.now().uptimeNanoseconds < deadline {
+            if let pending = try await writeQueue.fetchPendingWrites().first {
+                return pending
+            }
+            await Task.yield()
+        }
+        let pending = try await writeQueue.fetchPendingWrites()
+        return try XCTUnwrap(pending.first)
     }
 
     private func makeWebsiteItem(
@@ -332,6 +367,13 @@ private struct WebsitesPanelTestFixture {
     let viewModel: WebsitesViewModel
     let store: WebsitesStore
     let api: WebsitesPanelTestWebsitesAPI
+    let writeQueue: WriteQueue
+}
+
+private struct WebsitesPanelViewFixture {
+    let view: WebsitesPanelView
+    let api: WebsitesPanelTestWebsitesAPI
+    let writeQueue: WriteQueue
 }
 
 private struct WebsitesPanelTestNetworkStatus: NetworkStatusProviding {

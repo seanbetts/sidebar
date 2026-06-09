@@ -203,18 +203,11 @@ final class NotesViewModelTests: XCTestCase {
 
     func testCreateBlankNoteSendsNoExplicitTitleOrPathAndSelectsIt() async throws {
         let api = NotesAPISpy()
-        api.createNoteResult = .success(
-            NotePayload(
-                id: "note-blank",
-                name: "New Note",
-                content: "",
-                path: "note-blank",
-                modified: nil,
-                created: nil
-            )
-        )
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let writeQueue = makeNotesWriteQueue(persistence: persistence)
+        store.attachWriteQueue(writeQueue)
         let toastCenter = ToastCenter()
         let viewModel = NotesViewModel(
             api: api,
@@ -225,7 +218,8 @@ final class NotesViewModelTests: XCTestCase {
 
         let created = await viewModel.createBlankNote()
 
-        let request = try XCTUnwrap(api.createRequests.first)
+        let pending = try fetchOnlyPendingWrite(from: persistence)
+        let request = try JSONDecoder().decode(NoteCreateRequest.self, from: pending.payload)
         XCTAssertNil(request.title)
         XCTAssertNil(request.path)
         XCTAssertEqual(
@@ -233,13 +227,16 @@ final class NotesViewModelTests: XCTestCase {
             NotesSemanticDocument(blocks: [.paragraph([.init(text: "", marks: [])])])
         )
         XCTAssertEqual(request.plainText, "")
-        XCTAssertEqual(created?.id, "note-blank")
+        XCTAssertNotNil(request.clientId)
+        XCTAssertEqual(pending.operationType, WriteOperation.create.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
+        XCTAssertEqual(api.createRequests.count, 0)
+        XCTAssertEqual(created?.id, request.clientId)
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
     }
 
-    func testCreateBlankNoteShowsFailureToastWhenCreateFails() async throws {
+    func testCreateBlankNoteShowsFailureToastWhenQueueMissing() async throws {
         let api = NotesAPISpy()
-        api.createNoteResult = .failure(MockError.forced)
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
@@ -253,7 +250,8 @@ final class NotesViewModelTests: XCTestCase {
         let created = await viewModel.createBlankNote()
 
         XCTAssertNil(created)
-        XCTAssertEqual(toastCenter.toast?.message, "Failed to create note")
+        XCTAssertEqual(api.createRequests.count, 0)
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to queue note")
     }
 }
 
@@ -345,6 +343,8 @@ final class NotesViewModelMutationTests: XCTestCase {
         let api = ControlledMoveNotesAPI(moveResult: movedNote)
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let writeQueue = makeNotesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         store.applyTreeUpdate(initialTree, persist: false)
         let viewModel = NotesViewModel(
             api: api,
@@ -353,9 +353,7 @@ final class NotesViewModelMutationTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let moveTask = Task {
-            await viewModel.moveNote(id: "Draft.md", folder: "Projects")
-        }
+        await viewModel.moveNote(id: "Draft.md", folder: "Projects")
 
         try await waitUntil(timeoutSeconds: 0.2) {
             viewModel.tree?.children.contains(where: { $0.path == "Projects/Draft.md" }) == true
@@ -366,8 +364,9 @@ final class NotesViewModelMutationTests: XCTestCase {
         }
         XCTAssertNil(viewModel.selectedNoteId)
 
-        api.resumeMove()
-        await moveTask.value
+        let pending = try await fetchFirstPendingSummary(from: writeQueue)
+        XCTAssertEqual(pending.operationType, WriteOperation.move.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
 
         XCTAssertNil(viewModel.selectedNoteId)
     }
@@ -424,6 +423,8 @@ final class NotesViewModelMutationTests: XCTestCase {
         )
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let writeQueue = makeNotesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         store.applyTreeUpdate(initialTree, persist: false)
         store.applyEditorUpdate(initialNote)
         let viewModel = NotesViewModel(
@@ -437,24 +438,15 @@ final class NotesViewModelMutationTests: XCTestCase {
             viewModel.activeNote?.id == "note-id"
         }
 
-        let renameTask = Task {
-            await viewModel.renameNote(id: "note-id", newName: "Renamed")
-        }
+        await viewModel.renameNote(id: "note-id", newName: "Renamed")
 
-        try await waitUntil(timeoutSeconds: 0.2) {
-            api.updateNoteCallCount == 1
-        }
-
+        XCTAssertEqual(api.updateNoteCallCount, 0)
         XCTAssertEqual(api.renameNoteCallCount, 0)
         XCTAssertEqual(viewModel.activeNote?.name, "Renamed")
         XCTAssertEqual(viewModel.tree?.children.first?.name, "Renamed")
-        XCTAssertEqual(
-            api.lastUpdatedDocument?.blocks.first,
-            .init(type: .title, content: [.init(text: "Renamed", marks: [])])
-        )
-
-        api.resumeUpdate()
-        await renameTask.value
+        let pending = try await fetchFirstPendingSummary(from: writeQueue)
+        XCTAssertEqual(pending.operationType, WriteOperation.update.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
 
         XCTAssertEqual(viewModel.activeNote?.name, "Renamed")
         XCTAssertEqual(viewModel.tree?.children.first?.name, "Renamed")
@@ -565,6 +557,8 @@ final class NotesViewModelMutationTests: XCTestCase {
         api.deleteFolderResult = .success(())
         api.listTreeResult = .success(FileTree(children: []))
         let store = NotesStore(api: api, cache: InMemoryCacheClient())
+        let writeQueue = makeNotesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         store.applyTreeUpdate(tree, persist: false)
         let viewModel = NotesViewModel(
             api: api,
@@ -578,6 +572,9 @@ final class NotesViewModelMutationTests: XCTestCase {
 
         await viewModel.deleteFolder(path: "folder:Projects")
 
+        let pending = try await fetchFirstPendingSummary(from: writeQueue)
+        XCTAssertEqual(pending.operationType, WriteOperation.delete.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.noteFolder.rawValue)
         XCTAssertNil(viewModel.selectedNoteId)
         XCTAssertNil(viewModel.activeNote)
     }
@@ -650,6 +647,8 @@ final class NotesViewModelMutationTests: XCTestCase {
         let api = ControlledPinNotesAPI(pinResult: pinnedNote)
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let writeQueue = makeNotesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         store.applyTreeUpdate(initialTree, persist: false)
         let viewModel = NotesViewModel(
             api: api,
@@ -658,16 +657,15 @@ final class NotesViewModelMutationTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let pinTask = Task {
-            await viewModel.setPinned(id: "Draft.md", pinned: true)
-        }
+        await viewModel.setPinned(id: "Draft.md", pinned: true)
 
         try await waitUntil(timeoutSeconds: 0.2) {
             viewModel.tree?.children.first?.pinned == true
         }
 
-        api.resumePin()
-        await pinTask.value
+        let pending = try await fetchFirstPendingSummary(from: writeQueue)
+        XCTAssertEqual(pending.operationType, WriteOperation.pin.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.note.rawValue)
 
         XCTAssertEqual(viewModel.tree?.children.first?.pinned, true)
     }
@@ -1861,6 +1859,33 @@ extension NotesViewModelTests {
 
         XCTAssertEqual(viewModel.activeNote?.content, "Refreshed")
     }
+}
+
+@MainActor
+private func makeNotesWriteQueue(persistence: PersistenceController = PersistenceController(inMemory: true)) -> WriteQueue {
+    let connectivityMonitor = ConnectivityMonitor(
+        baseUrl: URL(string: "http://localhost")!,
+        startMonitoring: false
+    )
+    return WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: connectivityMonitor,
+        autoProcessEnabled: false
+    )
+}
+
+@MainActor
+private func fetchOnlyPendingWrite(from persistence: PersistenceController) throws -> PendingWrite {
+    let request = PendingWrite.fetchRequest()
+    let writes = try persistence.container.viewContext.fetch(request)
+    XCTAssertEqual(writes.count, 1)
+    return try XCTUnwrap(writes.first)
+}
+
+@MainActor
+private func fetchFirstPendingSummary(from writeQueue: WriteQueue) async throws -> PendingWriteSummary {
+    let pending = try await writeQueue.fetchPendingWrites()
+    return try XCTUnwrap(pending.first)
 }
 
 @MainActor

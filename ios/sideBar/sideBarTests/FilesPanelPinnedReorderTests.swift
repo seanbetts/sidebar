@@ -135,8 +135,9 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         XCTAssertEqual(view.reorderedPinnedIDs(moving: "file-a", to: "file-b"), ["file-a", "file-b"])
     }
 
-    func testPinnedFileMovePersistsFinalOrderUsingPlatformInteractionModel() async {
-        let (view, api) = makeViewWithAPI(autoExitDelay: 0.05)
+    func testPinnedFileMovePersistsFinalOrderUsingPlatformInteractionModel() async throws {
+        let fixture = makeViewWithAPI(autoExitDelay: 0.05)
+        let view = fixture.view
 
         #if !os(iOS)
         view.enterPinnedReorder(from: "file-a")
@@ -144,29 +145,22 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         view.movePinnedFiles(from: IndexSet(integer: 0), to: 2)
 
         #if os(iOS)
-        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
-        while api.updatePinnedOrderCallCount != 1,
-              DispatchTime.now().uptimeNanoseconds < deadline {
-            await Task.yield()
-        }
-
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["file-b", "file-a"])
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.file.rawValue)
         XCTAssertEqual(view.pinnedItems.map(\.file.id), ["file-b", "file-a"])
         #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItems.map(\.file.id), ["file-b", "file-a"])
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
 
-        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
-        while view.isPinnedReordering,
-              DispatchTime.now().uptimeNanoseconds < deadline {
-            await Task.yield()
-        }
+        let pending = try await waitForPendingWrite(in: fixture.writeQueue)
 
         XCTAssertFalse(view.isPinnedReordering)
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
-        XCTAssertEqual(api.lastPinnedOrderIDs, ["file-b", "file-a"])
+        XCTAssertEqual(fixture.api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.entityType, WriteEntityType.file.rawValue)
         #endif
     }
 
@@ -209,18 +203,17 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         isNetworkAvailable: Bool = true,
         items: [IngestionListItem]? = nil
     ) -> FilesPanelView {
-        let (view, _) = makeViewWithAPI(
+        makeViewWithAPI(
             isNetworkAvailable: isNetworkAvailable,
             items: items
-        )
-        return view
+        ).view
     }
 
     private func makeViewWithAPI(
         isNetworkAvailable: Bool = true,
         items: [IngestionListItem]? = nil,
         autoExitDelay: TimeInterval? = nil
-    ) -> (FilesPanelView, FilesPanelTestAPI) {
+    ) -> FilesPanelViewFixture {
         let resolvedItems = items ?? [
             makeItem(id: "file-a", pinned: true, pinnedOrder: 0),
             makeItem(id: "file-b", pinned: true, pinnedOrder: 1)
@@ -235,7 +228,11 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
             pinnedReorderNetworkAvailability: isNetworkAvailable,
             pinnedReorderAutoExitDelay: autoExitDelay
         )
-        return (view, fixture.api)
+        return FilesPanelViewFixture(
+            view: view,
+            api: fixture.api,
+            writeQueue: fixture.writeQueue
+        )
     }
 
     private func makeViewModelAndStore(
@@ -245,6 +242,8 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         let api = FilesPanelTestAPI(listResponse: IngestionListResponse(items: items))
         let defaults = UserDefaults(suiteName: "FilesPanelPinnedReorderTests.\(UUID().uuidString)")!
         let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let writeQueue = makeWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let viewModel = IngestionViewModel(
             api: api,
             store: store,
@@ -254,7 +253,39 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
             networkStatus: FilesPanelTestNetworkStatus(isNetworkAvailable: networkIsAvailable)
         )
         store.applyListUpdate(items, persist: false)
-        return FilesPanelTestFixture(viewModel: viewModel, store: store, api: api)
+        return FilesPanelTestFixture(
+            viewModel: viewModel,
+            store: store,
+            api: api,
+            writeQueue: writeQueue
+        )
+    }
+
+    @MainActor
+    private func makeWriteQueue() -> WriteQueue {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        return WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+    }
+
+    @MainActor
+    private func waitForPendingWrite(in writeQueue: WriteQueue) async throws -> PendingWriteSummary {
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while DispatchTime.now().uptimeNanoseconds < deadline {
+            if let pending = try await writeQueue.fetchPendingWrites().first {
+                return pending
+            }
+            await Task.yield()
+        }
+        let pending = try await writeQueue.fetchPendingWrites()
+        return try XCTUnwrap(pending.first)
     }
 
     private func makeItem(
@@ -320,6 +351,13 @@ private struct FilesPanelTestFixture {
     let viewModel: IngestionViewModel
     let store: IngestionStore
     let api: FilesPanelTestAPI
+    let writeQueue: WriteQueue
+}
+
+private struct FilesPanelViewFixture {
+    let view: FilesPanelView
+    let api: FilesPanelTestAPI
+    let writeQueue: WriteQueue
 }
 
 private struct FilesPanelTestNetworkStatus: NetworkStatusProviding {
