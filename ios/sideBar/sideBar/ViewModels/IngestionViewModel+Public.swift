@@ -98,43 +98,12 @@ extension IngestionViewModel {
 
     public func togglePinned(fileId: String, pinned: Bool) async {
         errorMessage = nil
-        let previousPinned: Bool? = {
-            if let item = items.first(where: { $0.file.id == fileId }) {
-                return item.file.pinned
-            }
-            if let meta = activeMeta, meta.file.id == fileId {
-                return meta.file.pinned
-            }
-            return nil
-        }()
-        if isOfflineForIngestion() {
-            do {
-                try await store.enqueuePin(fileId: fileId, pinned: pinned)
-            } catch WriteQueueError.queueFull {
-                if let previousPinned {
-                    store.updatePinned(fileId: fileId, pinned: previousPinned)
-                }
-                presentMutationFailureMessage("Sync queue full. Review pending changes.")
-            } catch {
-                if let previousPinned {
-                    store.updatePinned(fileId: fileId, pinned: previousPinned)
-                }
-                presentMutationFailureMessage("Failed to queue file update")
-            }
-            return
-        }
-        store.updatePinned(fileId: fileId, pinned: pinned)
         do {
-            try await api.pin(
-                fileId: fileId,
-                pinned: pinned,
-                clientUpdatedAt: store.currentUpdatedAt(fileId: fileId)
-            )
+            try await store.enqueuePin(fileId: fileId, pinned: pinned)
+        } catch WriteQueueError.queueFull {
+            presentMutationFailureMessage("Sync queue full. Review pending changes.")
         } catch {
-            if let previousPinned {
-                store.updatePinned(fileId: fileId, pinned: previousPinned)
-            }
-            presentMutationFailure(error, operation: "ingestion.pin")
+            presentMutationFailureMessage("Failed to queue file update")
         }
     }
 
@@ -167,33 +136,18 @@ extension IngestionViewModel {
     }
 
     public func deleteFile(fileId: String) async -> Bool {
-        if isOfflineForIngestion() {
-            do {
-                try await store.enqueueDelete(fileId: fileId)
-                if selectedFileId == fileId {
-                    clearSelection()
-                }
-                return true
-            } catch WriteQueueError.queueFull {
-                presentMutationFailureMessage("Sync queue full. Review pending changes.")
-            } catch {
-                presentMutationFailureMessage("Failed to queue file delete")
-            }
-            return false
-        }
-        if selectedFileId == fileId {
-            clearSelection()
-        }
-        let clientUpdatedAt = store.currentUpdatedAt(fileId: fileId)
-        store.removeItem(fileId: fileId)
         do {
-            try await api.delete(fileId: fileId, clientUpdatedAt: clientUpdatedAt)
+            try await store.enqueueDelete(fileId: fileId)
+            if selectedFileId == fileId {
+                clearSelection()
+            }
             return true
+        } catch WriteQueueError.queueFull {
+            presentMutationFailureMessage("Sync queue full. Review pending changes.")
         } catch {
-            await load(force: true)
-            presentMutationFailure(error, operation: "ingestion.delete")
-            return false
+            presentMutationFailureMessage("Failed to queue file delete")
         }
+        return false
     }
 
     public func clearFailedUpload(fileId: String) {
@@ -265,37 +219,17 @@ extension IngestionViewModel {
     }
 
     public func renameFile(fileId: String, filename: String) async -> Bool {
-        if isOfflineForIngestion() {
-            do {
-                try await store.enqueueRename(fileId: fileId, filename: filename)
-                return true
-            } catch WriteQueueError.queueFull {
-                presentMutationFailureMessage("Sync queue full. Review pending changes.")
-            } catch {
-                presentMutationFailureMessage("Failed to queue file rename")
-            }
-            return false
-        }
-        let previousFilename = items.first(where: { $0.file.id == fileId })?.file.filenameOriginal
-            ?? ((activeMeta?.file.id == fileId) ? activeMeta?.file.filenameOriginal : nil)
-        store.updateFilename(fileId: fileId, filename: filename)
-        items = store.items
-        activeMeta = store.activeMeta
         do {
-            try await api.rename(
-                fileId: fileId,
-                filename: filename,
-                clientUpdatedAt: store.currentUpdatedAt(fileId: fileId)
-            )
+            try await store.enqueueRename(fileId: fileId, filename: filename)
+            items = store.items
+            activeMeta = store.activeMeta
             return true
+        } catch WriteQueueError.queueFull {
+            presentMutationFailureMessage("Sync queue full. Review pending changes.")
         } catch {
-            if let previousFilename {
-                store.updateFilename(fileId: fileId, filename: previousFilename)
-                items = store.items
-                activeMeta = store.activeMeta
-            }
-            return false
+            presentMutationFailureMessage("Failed to queue file rename")
         }
+        return false
     }
 
     public func addUploads(urls: [URL]) {

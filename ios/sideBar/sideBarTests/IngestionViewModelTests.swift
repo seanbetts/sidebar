@@ -581,6 +581,40 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(pending.first?.kind, .youtube)
     }
 
+    func testRenameFileOnlineQueuesAndUpdatesLocalFilename() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+        context.store.applyListUpdate(
+            [makeLocalFirstIngestionListItem(fileId: "file-1", filename: "Old.pdf")],
+            persist: true
+        )
+
+        let renamed = await context.viewModel.renameFile(fileId: "file-1", filename: "New.pdf")
+        let pending = try await context.writeQueue.fetchPendingWrites()
+
+        XCTAssertTrue(renamed)
+        XCTAssertEqual(context.store.items.first?.file.filenameOriginal, "New.pdf")
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.file.rawValue)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.rename.rawValue)
+    }
+
+    func testDeleteFileOnlineQueuesAndRemovesLocalItem() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+        context.store.applyListUpdate(
+            [makeLocalFirstIngestionListItem(fileId: "file-1", filename: "Old.pdf")],
+            persist: true
+        )
+
+        let deleted = await context.viewModel.deleteFile(fileId: "file-1")
+        let pending = try await context.writeQueue.fetchPendingWrites()
+
+        XCTAssertTrue(deleted)
+        XCTAssertFalse(context.store.items.contains { $0.file.id == "file-1" })
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.file.rawValue)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.delete.rawValue)
+    }
+
     func testPanelPinnedItemsIncludesPinnedFileWithoutRecommendedViewer() async {
         let pinnedProcessingItem = IngestionListItem(
             file: IngestedFileMeta(
@@ -741,7 +775,7 @@ final class IngestionViewModelTests: XCTestCase {
 
         XCTAssertNotNil(viewModel.activeMeta)
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(toastCenter.toast?.message, "Server is busy right now. Please try again.")
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to queue file update")
     }
 
     func testReorderPinnedFilesDoesNotCallAPIWhenOffline() async {
@@ -1167,38 +1201,19 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(uploadManager.startedRequests.first?.uploadId, "local-1")
     }
 
-    func testRenameFileOnlineOptimisticallyUpdatesFilenameBeforeApiReturns() async throws {
-        let originalItem = makeListItem(id: "file-1")
-        let api = ControlledRenameIngestionAPI(
-            listResult: .success(IngestionListResponse(items: [originalItem])),
-            metaResult: .failure(MockError.forced),
-            contentResult: .failure(MockError.forced),
-            pinResult: .success(()),
-            youtubeResult: .failure(MockError.forced)
+    func testRenameFileOnlineQueuesAndUpdatesViewModelItemsImmediately() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+        context.store.applyListUpdate(
+            [makeLocalFirstIngestionListItem(fileId: "file-1", filename: "Original.pdf")],
+            persist: true
         )
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
-        let viewModel = IngestionViewModel(
-            api: api,
-            store: store,
-            temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager(),
-            toastCenter: ToastCenter()
-        )
-        await viewModel.load()
 
-        let renameTask = Task {
-            await viewModel.renameFile(fileId: "file-1", filename: "Renamed.pdf")
-        }
+        let renamed = await context.viewModel.renameFile(fileId: "file-1", filename: "Renamed.pdf")
+        let pending = try await context.writeQueue.fetchPendingWrites()
 
-        await waitUntil(timeout: .milliseconds(200)) {
-            viewModel.items.first?.file.filenameOriginal == "Renamed.pdf"
-        }
-
-        api.resumeRename()
-        _ = await renameTask.value
-
-        XCTAssertEqual(viewModel.items.first?.file.filenameOriginal, "Renamed.pdf")
+        XCTAssertTrue(renamed)
+        XCTAssertEqual(context.viewModel.items.first?.file.filenameOriginal, "Renamed.pdf")
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.rename.rawValue)
     }
 
     func testExtractYouTubeVideoIdSupportsCanonicalForms() async {
@@ -1677,6 +1692,81 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
+    private func makeLocalFirstIngestionContext(networkAvailable: Bool) -> LocalFirstIngestionContext {
+        let persistence = PersistenceController(inMemory: true)
+        let defaults = makeDefaults()
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: networkAvailable, isOffline: false)
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(
+            api: api,
+            cache: TestCacheClient(),
+            offlineStore: OfflineStore(container: persistence.container),
+            networkStatus: networkStatus,
+            userDefaults: defaults
+        )
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
+        let pendingShareStore = PendingShareStore(
+            baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+            userDefaults: defaults
+        )
+        let uploadManager = MockIngestionUploadManager()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: uploadManager,
+            toastCenter: ToastCenter(),
+            pendingShareStore: pendingShareStore,
+            networkStatus: networkStatus
+        )
+        return LocalFirstIngestionContext(
+            viewModel: viewModel,
+            store: store,
+            writeQueue: writeQueue,
+            api: api,
+            pendingShareStore: pendingShareStore,
+            uploadManager: uploadManager
+        )
+    }
+
+    private func makeLocalFirstIngestionListItem(fileId: String, filename: String) -> IngestionListItem {
+        IngestionListItem(
+            file: IngestedFileMeta(
+                id: fileId,
+                filenameOriginal: filename,
+                path: nil,
+                mimeOriginal: "application/pdf",
+                sizeBytes: 10,
+                sha256: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                category: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                createdAt: "2026-01-10T00:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            job: makeJob(),
+            recommendedViewer: "text_original"
+        )
+    }
+
     private func fileJobPayload(fileId: String, status: String) -> RealtimePayload<FileJobRealtimeRecord> {
         RealtimePayload<FileJobRealtimeRecord>(
             eventType: .update,
@@ -1799,6 +1889,16 @@ final class IngestionViewModelTests: XCTestCase {
     }
 }
 
+@MainActor
+private struct LocalFirstIngestionContext {
+    let viewModel: IngestionViewModel
+    let store: IngestionStore
+    let writeQueue: WriteQueue
+    let api: MockIngestionAPI
+    let pendingShareStore: PendingShareStore
+    let uploadManager: MockIngestionUploadManager
+}
+
 private func makeDefaults() -> UserDefaults {
     let defaults = UserDefaults(suiteName: "IngestionViewModelTests") ?? .standard
     defaults.removePersistentDomain(forName: "IngestionViewModelTests")
@@ -1839,101 +1939,6 @@ private actor PollingSleepRecorder {
 
     func snapshot() -> [UInt64] {
         recordedIntervals
-    }
-}
-
-@MainActor
-private final class ControlledRenameIngestionAPI: IngestionProviding {
-    let listResult: Result<IngestionListResponse, Error>
-    let metaResult: Result<IngestionMetaResponse, Error>
-    let contentResult: Result<Data, Error>
-    let pinResult: Result<Void, Error>
-    let youtubeResult: Result<String, Error>
-    private var renameContinuation: CheckedContinuation<Void, Error>?
-
-    init(
-        listResult: Result<IngestionListResponse, Error>,
-        metaResult: Result<IngestionMetaResponse, Error>,
-        contentResult: Result<Data, Error>,
-        pinResult: Result<Void, Error>,
-        youtubeResult: Result<String, Error>
-    ) {
-        self.listResult = listResult
-        self.metaResult = metaResult
-        self.contentResult = contentResult
-        self.pinResult = pinResult
-        self.youtubeResult = youtubeResult
-    }
-
-    func list() async throws -> IngestionListResponse {
-        try listResult.get()
-    }
-
-    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
-        _ = fileId
-        return try metaResult.get()
-    }
-
-    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
-        _ = fileId
-        _ = kind
-        _ = range
-        return try contentResult.get()
-    }
-
-    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
-        _ = fileURL
-        _ = filename
-        _ = mimeType
-        _ = folder
-        throw MockError.forced
-    }
-
-    func cancel(fileId: String) async throws {
-        _ = fileId
-        throw MockError.forced
-    }
-
-    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = pinned
-        _ = clientUpdatedAt
-        try pinResult.get()
-    }
-
-    func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
-    }
-
-    func delete(fileId: String, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = clientUpdatedAt
-        throw MockError.forced
-    }
-
-    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = filename
-        _ = clientUpdatedAt
-        try await withCheckedThrowingContinuation { continuation in
-            renameContinuation = continuation
-        }
-    }
-
-    func ingestYouTube(url: String) async throws -> String {
-        _ = url
-        return try youtubeResult.get()
-    }
-
-    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
-        _ = payload
-        return IngestionSyncResponse(applied: [], files: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-    }
-
-    func resumeRename() {
-        guard let renameContinuation else { return }
-        self.renameContinuation = nil
-        renameContinuation.resume()
     }
 }
 

@@ -17,7 +17,7 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await enqueueOfflineOperation(
+        try await enqueueLocalFirstOperation(
             writeQueue: writeQueue,
             operation: .pin,
             entityType: .file,
@@ -38,7 +38,7 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await enqueueOfflineOperation(
+        try await enqueueLocalFirstOperation(
             writeQueue: writeQueue,
             operation: .rename,
             entityType: .file,
@@ -58,7 +58,7 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await enqueueOfflineOperation(
+        try await enqueueLocalFirstOperation(
             writeQueue: writeQueue,
             operation: .delete,
             entityType: .file,
