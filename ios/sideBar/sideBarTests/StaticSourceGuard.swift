@@ -1,6 +1,6 @@
 import XCTest
 
-enum StaticSourceGuard {
+final class StaticSourceGuard: XCTestCase {
     static func normalizedSource(
         at pathComponents: [String],
         file: StaticString = #filePath,
@@ -31,6 +31,25 @@ enum StaticSourceGuard {
             url.appendingPathComponent(component)
         }
         XCTAssertFalse(FileManager.default.fileExists(atPath: sourceURL.path), message, file: file, line: line)
+    }
+
+    func testLocalFirstMutationFilesDoNotBranchOnShouldQueueWrites() throws {
+        let forbiddenFiles = [
+            ["sideBar", "ViewModels", "TasksViewModel+Creation.swift"],
+            ["sideBar", "ViewModels", "TasksViewModel+Operations.swift"],
+            ["sideBar", "ViewModels", "NotesViewModel.swift"],
+            ["sideBar", "ViewModels", "NotesViewModel+EditorSync.swift"],
+            ["sideBar", "ViewModels", "IngestionViewModel+Public.swift"],
+            ["sideBar", "ViewModels", "WebsitesViewModel.swift"]
+        ]
+
+        for file in forbiddenFiles {
+            let source = try Self.source(at: file, file: #filePath, line: #line)
+            XCTAssertFalse(
+                source.contains("shouldQueueWrites"),
+                "\(file.joined(separator: "/")) must enqueue local-first writes regardless of reachability"
+            )
+        }
     }
 
     private static func source(
