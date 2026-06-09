@@ -49,6 +49,23 @@ final class NotesOfflineCRUDTests: XCTestCase {
         XCTAssertEqual(cached?.id, note.id)
     }
 
+    func testCreateBlankNoteOnlineQueuesLocalNoteWithoutCallingCreateAPI() async throws {
+        let context = makeNotesLocalFirstCRUDContext(networkAvailable: true)
+
+        let created = await context.viewModel.createBlankNote()
+
+        let note = try XCTUnwrap(created)
+        let pending = try await context.writeQueue.fetchPendingWrites()
+
+        XCTAssertEqual(context.api.createNoteCallCount, 0)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.create.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
+        XCTAssertEqual(note.id, note.path)
+        XCTAssertEqual(context.viewModel.selectedNoteId, note.id)
+        XCTAssertEqual(context.store.tree?.children.first?.path, note.id)
+    }
+
     func testCreateFolderOfflineUpdatesTreeAndQueuesCreate() async throws {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -159,6 +176,101 @@ final class NotesOfflineCRUDTests: XCTestCase {
         XCTAssertEqual(store.tree?.children.first?.path, "folder:Roadmap")
         XCTAssertEqual(store.tree?.children.first?.name, "Roadmap")
     }
+
+    func testRenameNoteOnlineQueuesUpdateAndKeepsOptimisticTitle() async throws {
+        let context = makeNotesLocalFirstCRUDContext(networkAvailable: true)
+        let document = NotesSemanticDocument(
+            blocks: [.init(type: .title, content: [.init(text: "Old", marks: [])])]
+        )
+        let note = NotePayload(
+            id: "note-1",
+            name: "Old",
+            document: document,
+            plainText: "Old",
+            path: "note-1",
+            modified: nil,
+            created: nil
+        )
+        context.store.applyTreeUpdate(
+            FileTree(children: [
+                FileNode(
+                    name: "Old",
+                    path: "note-1",
+                    type: .file,
+                    size: nil,
+                    modified: nil,
+                    created: nil,
+                    children: nil,
+                    expanded: nil,
+                    pinned: nil,
+                    pinnedOrder: nil,
+                    archived: nil,
+                    folderMarker: nil
+                )
+            ]),
+            persist: false
+        )
+        context.store.applyEditorUpdate(note)
+
+        await context.viewModel.renameNote(id: "note-1", newName: "New")
+
+        let pending = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(context.api.updateNoteCallCount, 0)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.update.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
+        XCTAssertEqual(context.viewModel.activeNote?.name, "New")
+    }
+}
+
+@MainActor
+private struct NotesLocalFirstCRUDContext {
+    let viewModel: NotesViewModel
+    let store: NotesStore
+    let writeQueue: WriteQueue
+    let api: NotesOfflineCRUDAPISpy
+}
+
+@MainActor
+private func makeNotesLocalFirstCRUDContext(
+    networkAvailable: Bool,
+    isOffline: Bool = false
+) -> NotesLocalFirstCRUDContext {
+    let persistence = PersistenceController(inMemory: true)
+    let offlineStore = OfflineStore(container: persistence.container)
+    let api = NotesOfflineCRUDAPISpy()
+    let networkStatus = NotesOfflineNetworkStatus(
+        isNetworkAvailable: networkAvailable,
+        isOffline: isOffline
+    )
+    let store = NotesStore(
+        api: api,
+        cache: TestCacheClient(),
+        offlineStore: offlineStore,
+        networkStatus: networkStatus
+    )
+    let connectivityMonitor = ConnectivityMonitor(
+        baseUrl: URL(string: "http://localhost")!,
+        startMonitoring: false
+    )
+    let writeQueue = WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: connectivityMonitor,
+        autoProcessEnabled: false
+    )
+    store.attachWriteQueue(writeQueue)
+    let viewModel = NotesViewModel(
+        api: api,
+        store: store,
+        toastCenter: ToastCenter(),
+        networkStatus: networkStatus
+    )
+    return NotesLocalFirstCRUDContext(
+        viewModel: viewModel,
+        store: store,
+        writeQueue: writeQueue,
+        api: api
+    )
 }
 
 @MainActor
@@ -183,6 +295,7 @@ private final class NotesOfflineCRUDAPISpy: NotesProviding {
     private(set) var createNoteCallCount = 0
     private(set) var createFolderCallCount = 0
     private(set) var renameFolderCallCount = 0
+    private(set) var updateNoteCallCount = 0
 
     func listTree() async throws -> FileTree { FileTree(children: []) }
 
@@ -203,7 +316,8 @@ private final class NotesOfflineCRUDAPISpy: NotesProviding {
     }
 
     func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
-        NotePayload(
+        updateNoteCallCount += 1
+        return NotePayload(
             id: id,
             name: NotesSemanticDocumentProjection.title(from: document),
             document: document,

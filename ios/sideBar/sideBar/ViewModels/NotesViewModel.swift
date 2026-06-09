@@ -252,36 +252,17 @@ import Combine
             ),
             plainText: ""
         )
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            let localID = UUID().uuidString.lowercased()
-            do {
-                try await store.enqueueCreateNote(localID: localID, request: request)
-                let created = store.activeNote
-                selectedNoteId = created?.path
-                return created
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return nil
-            } catch {
-                toastCenter.show(message: "Failed to queue note")
-                return nil
-            }
-        }
+        let localID = UUID().uuidString.lowercased()
         do {
-            let created = try await api.createNote(request: request)
-            store.applyEditorUpdate(created)
-            selectedNoteId = created.path
-            await refreshTree(force: true)
+            try await store.enqueueCreateNote(localID: localID, request: request)
+            let created = store.activeNote
+            selectedNoteId = created?.path
             return created
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+            return nil
         } catch {
-            AppSentry.capture(
-                error: error,
-                context: [
-                    "feature": "notes",
-                    "operation": "create_blank_note"
-                ]
-            )
-            toastCenter.show(message: "Failed to create note")
+            toastCenter.show(message: "Failed to queue note")
             return nil
         }
     }
@@ -292,26 +273,16 @@ import Combine
         guard !normalized.isEmpty else {
             return false
         }
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueCreateFolder(path: normalized)
-                tree = store.tree
-                archivedTree = store.archivedTree
-                return true
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return false
-            } catch {
-                toastCenter.show(message: "Failed to queue folder")
-                return false
-            }
-        }
         do {
-            try await api.createFolder(path: normalized)
-            await refreshTree(force: true)
+            try await store.enqueueCreateFolder(path: normalized)
+            tree = store.tree
+            archivedTree = store.archivedTree
             return true
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+            return false
         } catch {
-            toastCenter.show(message: "Failed to create folder")
+            toastCenter.show(message: "Failed to queue folder")
             return false
         }
     }

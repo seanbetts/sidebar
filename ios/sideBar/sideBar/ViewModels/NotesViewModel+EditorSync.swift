@@ -104,193 +104,81 @@ extension NotesViewModel {
         archivedTree = store.archivedTree
         activeNote = store.activeNote
 
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueUpdate(noteId: current.id, document: renamedDocument)
-                return
-            } catch WriteQueueError.queueFull {
-                store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
-                tree = store.tree
-                archivedTree = store.archivedTree
-                activeNote = store.activeNote
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return
-            } catch {
-                store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
-                tree = store.tree
-                archivedTree = store.archivedTree
-                activeNote = store.activeNote
-                toastCenter.show(message: "Failed to queue rename")
-                return
-            }
-        }
-
         do {
-            let updated = try await api.updateNote(id: current.id, document: renamedDocument)
-            applySavedNoteAcknowledgement(serverNote: updated, document: renamedDocument)
+            try await store.enqueueUpdate(noteId: current.id, document: renamedDocument)
+        } catch WriteQueueError.queueFull {
+            store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
             tree = store.tree
             archivedTree = store.archivedTree
             activeNote = store.activeNote
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
             store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
             tree = store.tree
             archivedTree = store.archivedTree
             activeNote = store.activeNote
-            toastCenter.show(message: "Failed to rename note")
+            toastCenter.show(message: "Failed to queue rename")
         }
     }
 
     public func moveNote(id: String, folder: String) async {
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueMove(notePath: id, folder: folder)
-                if selectedNoteId == id {
-                    selectedNoteId = movingPath(id, to: folder)
-                }
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-            } catch {
-                toastCenter.show(message: "Failed to queue move")
-            }
-            return
-        }
-        let previousSelection = selectedNoteId
-        let shouldRetainSelection = selectedNoteId == id || activeNote?.path == id
-        let movedPath = movingPath(id, to: folder)
-        store.applyOptimisticMove(notePath: id, folder: folder)
-        tree = store.tree
-        archivedTree = store.archivedTree
-        activeNote = store.activeNote
-        if shouldRetainSelection {
-            selectedNoteId = movedPath
-        }
         do {
-            let updated = try await api.moveNote(id: id, folder: folder)
-            store.applyEditorUpdate(updated)
+            try await store.enqueueMove(notePath: id, folder: folder)
+            if selectedNoteId == id {
+                selectedNoteId = movingPath(id, to: folder)
+            }
             tree = store.tree
             archivedTree = store.archivedTree
             activeNote = store.activeNote
-            if shouldRetainSelection && selectedNoteId != updated.path {
-                selectedNoteId = updated.path
-            }
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
-            try? await store.loadTree(force: true)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-            if shouldRetainSelection {
-                selectedNoteId = previousSelection
-            }
-            toastCenter.show(message: "Failed to move note")
+            toastCenter.show(message: "Failed to queue move")
         }
     }
 
     public func setArchived(id: String, archived: Bool) async {
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueArchive(notePath: id, archived: archived)
-                if archived, selectedNoteId == id {
-                    clearSelection()
-                }
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-            } catch {
-                toastCenter.show(message: archived ? "Failed to queue archive" : "Failed to queue unarchive")
-            }
-            return
-        }
-        let clearedSelection = archived && selectedNoteId == id
-        store.applyOptimisticArchive(notePath: id, archived: archived)
-        tree = store.tree
-        archivedTree = store.archivedTree
-        activeNote = store.activeNote
-        if clearedSelection {
-            clearSelection()
-        }
         do {
-            let updated = try await api.archiveNote(id: id, archived: archived)
-            store.applyEditorUpdate(updated)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-        } catch {
-            try? await store.loadTree(force: true)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-            if clearedSelection {
-                selectedNoteId = id
+            try await store.enqueueArchive(notePath: id, archived: archived)
+            if archived, selectedNoteId == id {
+                clearSelection()
             }
-            toastCenter.show(message: archived ? "Failed to archive note" : "Failed to unarchive note")
+            tree = store.tree
+            archivedTree = store.archivedTree
+            activeNote = store.activeNote
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+        } catch {
+            toastCenter.show(message: archived ? "Failed to queue archive" : "Failed to queue unarchive")
         }
     }
 
     public func setPinned(id: String, pinned: Bool) async {
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueuePin(notePath: id, pinned: pinned)
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-            } catch {
-                toastCenter.show(message: pinned ? "Failed to queue pin" : "Failed to queue unpin")
-            }
-            return
-        }
-        store.applyOptimisticPin(notePath: id, pinned: pinned)
-        tree = store.tree
-        archivedTree = store.archivedTree
         do {
-            let updated = try await api.pinNote(id: id, pinned: pinned)
-            store.applyEditorUpdate(updated)
+            try await store.enqueuePin(notePath: id, pinned: pinned)
             tree = store.tree
             archivedTree = store.archivedTree
             activeNote = store.activeNote
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
-            try? await store.loadTree(force: true)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-            toastCenter.show(message: pinned ? "Failed to pin note" : "Failed to unpin note")
+            toastCenter.show(message: pinned ? "Failed to queue pin" : "Failed to queue unpin")
         }
     }
 
     public func deleteNote(id: String) async {
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueDelete(notePath: id)
-                if selectedNoteId == id {
-                    clearSelection()
-                }
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-            } catch {
-                toastCenter.show(message: "Failed to queue delete")
-            }
-            return
-        }
-        let clearedSelection = selectedNoteId == id
-        store.applyOptimisticDelete(notePath: id)
-        tree = store.tree
-        archivedTree = store.archivedTree
-        activeNote = store.activeNote
-        if clearedSelection {
-            clearSelection()
-        }
         do {
-            _ = try await api.deleteNote(id: id)
-            store.invalidateNote(id: id)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-        } catch {
-            try? await store.loadTree(force: true)
-            tree = store.tree
-            archivedTree = store.archivedTree
-            activeNote = store.activeNote
-            if clearedSelection {
-                selectedNoteId = id
+            try await store.enqueueDelete(notePath: id)
+            if selectedNoteId == id {
+                clearSelection()
             }
-            toastCenter.show(message: "Failed to delete note")
+            tree = store.tree
+            archivedTree = store.archivedTree
+            activeNote = store.activeNote
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+        } catch {
+            toastCenter.show(message: "Failed to queue delete")
         }
     }
 
@@ -298,22 +186,8 @@ extension NotesViewModel {
         guard let trimmed = newName.trimmedOrNil else { return }
         let normalized = normalizeFolderPath(path)
         guard !normalized.isEmpty else { return }
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueRenameFolder(path: normalized, newName: trimmed)
-                tree = store.tree
-                archivedTree = store.archivedTree
-                return
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return
-            } catch {
-                toastCenter.show(message: "Failed to queue folder rename")
-                return
-            }
-        }
         do {
-            try await api.renameFolder(oldPath: normalized, newName: trimmed)
+            try await store.enqueueRenameFolder(path: normalized, newName: trimmed)
             if let selected = selectedNoteId {
                 let parent = parentFolderPath(normalized)
                 let updatedPrefix = parent.isEmpty ? trimmed : "\(parent)/\(trimmed)"
@@ -325,9 +199,12 @@ extension NotesViewModel {
                     selectedNoteId = updatedPrefix
                 }
             }
-            await refreshTree(force: true)
+            tree = store.tree
+            archivedTree = store.archivedTree
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
-            toastCenter.show(message: "Failed to rename folder")
+            toastCenter.show(message: "Failed to queue folder rename")
         }
     }
 
@@ -337,31 +214,17 @@ extension NotesViewModel {
         let shouldClearSelection = selectedNoteId.map {
             isSelectedNote($0, containedInFolder: normalized) || $0 == normalized
         } ?? false
-        if notesOfflineCapabilityPolicy.shouldQueueWrites {
-            do {
-                try await store.enqueueDeleteFolder(path: normalized)
-                tree = store.tree
-                archivedTree = store.archivedTree
-                if shouldClearSelection {
-                    clearSelection()
-                }
-                return
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return
-            } catch {
-                toastCenter.show(message: "Failed to queue folder delete")
-                return
-            }
-        }
         do {
-            try await api.deleteFolder(path: normalized)
+            try await store.enqueueDeleteFolder(path: normalized)
+            tree = store.tree
+            archivedTree = store.archivedTree
             if shouldClearSelection {
                 clearSelection()
             }
-            await refreshTree(force: true)
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
-            toastCenter.show(message: "Failed to delete folder")
+            toastCenter.show(message: "Failed to queue folder delete")
         }
     }
 

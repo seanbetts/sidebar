@@ -1642,18 +1642,7 @@ extension NotesEditorViewModelTests {
     }
 
     func testNotesRuntimeCreateBlankNoteBeginsEditingAndRequestsAutofocus() async throws {
-        let createdNote = NotePayload(
-            id: "created-note",
-            name: "New Note",
-            content: "",
-            path: "/created-note.md",
-            modified: nil,
-            created: nil
-        )
-        let api = NotesAPISpy(
-            updateResult: .failure(MockError.forced),
-            createResult: .success(createdNote)
-        )
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
         let context = makeNotesEditorViewModelTestContext(api: api)
         let runtime = NotesRuntime(
             viewModel: context.notesViewModel,
@@ -1662,9 +1651,11 @@ extension NotesEditorViewModelTests {
 
         let created = await runtime.createBlankNoteAndEnterEditMode()
 
-        XCTAssertEqual(created?.id, createdNote.id)
-        await waitUntilNoteHydrated(context.viewModel, note: createdNote)
-        XCTAssertEqual(context.notesViewModel.selectedNoteId, createdNote.path)
+        let queuedNote = try XCTUnwrap(created)
+        XCTAssertFalse(queuedNote.id.isEmpty)
+        XCTAssertTrue(api.createdTitles.isEmpty)
+        await waitUntilNoteHydrated(context.viewModel, note: queuedNote)
+        XCTAssertEqual(context.notesViewModel.selectedNoteId, queuedNote.path)
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
         XCTAssertTrue(context.viewModel.shouldAutofocusEditorSurface)
     }
@@ -2098,6 +2089,7 @@ func makeNotesEditorViewModelTestContext(
         connectivityMonitor: connectivityMonitor,
         autoProcessEnabled: false
     )
+    store.attachWriteQueue(writeQueue)
     let viewModel = NotesEditorViewModel(
         notesViewModel: notesViewModel,
         draftStorage: draftStorage,
