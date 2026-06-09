@@ -127,10 +127,25 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         payload: Payload,
         serverSnapshot: ServerSnapshot? = nil
     ) async throws {
-        guard let writeQueue else {
-            throw WriteQueueError.missingQueue
-        }
-        try await writeQueue.enqueue(
+        try await enqueueLocalFirstOperation(
+            writeQueue: writeQueue,
+            operation: operation,
+            entityType: entityType,
+            entityId: entityId,
+            payload: payload,
+            serverSnapshot: serverSnapshot
+        )
+    }
+
+    func enqueueLocalFirstOperation<Payload: Encodable>(
+        writeQueue: WriteQueue?,
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String?,
+        payload: Payload,
+        serverSnapshot: ServerSnapshot? = nil
+    ) async throws {
+        try await LocalFirstMutationCoordinator(writeQueue: writeQueue).enqueue(
             operation: operation,
             entityType: entityType,
             entityId: entityId,

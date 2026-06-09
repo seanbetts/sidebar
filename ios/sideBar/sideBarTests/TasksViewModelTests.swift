@@ -27,11 +27,10 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.listLoadState.canShowEmptyState)
     }
 
-    func testCompleteTaskFailureRestoresTaskAndUsesToastPresentation() async {
+    func testCompleteTaskQueuesAndRemovesTaskLocally() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.applyResult = .failure(APIClientError.apiError("Sync failed"))
 
         let sut = makeSUT(api: api, networkAvailable: true)
         let viewModel = sut.viewModel
@@ -40,17 +39,16 @@ final class TasksViewModelTests: XCTestCase {
 
         await viewModel.completeTask(task: task)
 
-        XCTAssertEqual(api.applyCallCount, 1)
-        XCTAssertEqual(store.tasks.map(\.id), [task.id], "Failed optimistic updates should restore the task")
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertFalse(store.tasks.contains { $0.id == task.id })
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
-    func testRenameTaskFailurePreservesLoadedContentAndUsesToastPresentation() async {
+    func testRenameTaskQueuesAndUpdatesLoadedContent() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.applyResult = .failure(APIClientError.requestFailed(503))
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
@@ -58,26 +56,16 @@ final class TasksViewModelTests: XCTestCase {
         await sut.viewModel.renameTask(task: task, title: "Renamed")
 
         XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
+        XCTAssertEqual(sut.store.tasks.first?.title, "Renamed")
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertNil(sut.viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Server is busy right now. Please try again.")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
-    func testCompleteTaskSuccessKeepsSelectionStableAndRefreshesCounts() async {
+    func testCompleteTaskKeepsSelectionStableAndQueuesWithoutRefreshingCounts() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        // refreshWidgetData() still fetches today's list after a successful completion.
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.applyResult = .success(
-            TaskSyncResponse(
-                applied: ["op-1"],
-                tasks: [],
-                nextTasks: [],
-                conflicts: [],
-                updates: nil,
-                serverUpdatedSince: nil
-            )
-        )
 
         let sut = makeSUT(api: api, networkAvailable: true)
         let viewModel = sut.viewModel
@@ -87,35 +75,30 @@ final class TasksViewModelTests: XCTestCase {
 
         await viewModel.completeTask(task: task)
         await eventually {
-            api.countsCallCount >= 1
-                && api.listCallCount >= 2
+            sut.writeQueue.pendingCount >= 1
                 && !store.tasks.contains(where: { $0.id == task.id })
         }
 
-        XCTAssertEqual(
-            api.listCallCount,
-            2,
-            "Success path should avoid forcing a main list reload and only refresh widget data"
-        )
-        XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Success path should refresh counts")
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(api.listCallCount, 1, "Queued completion should not reload the list")
+        XCTAssertEqual(api.countsCallCount, 0, "Queued completion should update counts locally")
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func testReopenTaskFailureRestoresTaskAndUsesToastPresentation() async {
+    func testReopenTaskQueuesAndRemovesTaskFromCompletedSelection() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Done", status: "completed", updatedAt: "u1")
         api.enqueueListResponse(scope: "completed", tasks: [task])
-        api.applyResult = .failure(APIClientError.apiError("Sync failed"))
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .completed)
 
         await sut.viewModel.reopenTask(task: task)
 
-        XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
+        XCTAssertFalse(sut.store.tasks.contains { $0.id == task.id })
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertNil(sut.viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
-        XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testReopenTaskSuccessRemovesTaskFromCompletedSelectionAndUpdatesTodayCount() async {
@@ -135,42 +118,17 @@ final class TasksViewModelTests: XCTestCase {
             projects: [],
             groups: []
         )
-        api.applyResult = .success(
-            TaskSyncResponse(
-                applied: ["op-1"],
-                tasks: [
-                    TaskItem(
-                        id: task.id,
-                        title: task.title,
-                        status: "active",
-                        deadline: task.deadline,
-                        updatedAt: "u2",
-                        deletedAt: nil
-                    )
-                ],
-                nextTasks: [],
-                conflicts: [],
-                updates: nil,
-                serverUpdatedSince: nil
-            )
-        )
-
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .completed)
         await sut.viewModel.loadCounts(force: true)
-        api.countsResponse = TaskCountsResponse(
-            generatedAt: nil,
-            counts: TaskCounts(today: 1, upcoming: 1, completed: 0),
-            projects: [],
-            groups: []
-        )
 
         await sut.viewModel.reopenTask(task: task)
         await eventually {
             sut.store.counts?.counts.today == 1 && !sut.store.tasks.contains(where: { $0.id == task.id })
         }
 
-        XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
+        XCTAssertEqual(api.applyCallCount, 0)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
         XCTAssertFalse(sut.store.tasks.contains(where: { $0.id == task.id }))
         XCTAssertEqual(sut.store.counts?.counts.today, 1)
     }
@@ -311,6 +269,53 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(store.counts?.counts.today, 2)
     }
 
+    func testCreateTaskOnlineQueuesAndClearsDraftWithoutApplyCall() async {
+        let api = TasksViewModelAPIStub()
+        api.suspendNextApply()
+        let sut = makeSUT(api: api, networkAvailable: true)
+        let viewModel = sut.viewModel
+
+        await viewModel.load(selection: .today)
+        viewModel.startNewTask()
+        await viewModel.createTask(title: "Weak signal task", notes: "", dueDate: Date(), listId: nil)
+
+        XCTAssertNil(viewModel.newTaskDraft)
+        XCTAssertFalse(viewModel.newTaskSaving)
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(sut.store.tasks.first?.title, "Weak signal task")
+        XCTAssertEqual(sut.store.tasks.first?.isPreview, true)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
+    }
+
+    func testCompleteTaskOnlineQueuesAndDoesNotCallApply() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(
+            id: "task-1",
+            title: "Finish",
+            status: "open",
+            deadline: TasksUtils.formatDateKey(Date()),
+            notes: nil,
+            projectId: nil,
+            groupId: nil,
+            repeating: false,
+            repeatTemplate: nil,
+            recurrenceRule: nil,
+            nextInstanceDate: nil,
+            updatedAt: "2026-06-09T10:00:00Z",
+            deletedAt: nil
+        )
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        let sut = makeSUT(api: api, networkAvailable: true)
+
+        await sut.viewModel.load(selection: .today)
+        let completed = await sut.viewModel.completeTask(task: task)
+
+        XCTAssertTrue(completed)
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertFalse(sut.store.tasks.contains { $0.id == "task-1" })
+        await eventually { sut.writeQueue.pendingCount >= 1 }
+    }
+
     func testPreferredLoadSelectionDefaultsToTodayWhenSelectionIsNone() async {
         let api = TasksViewModelAPIStub()
         let sut = makeSUT(api: api, networkAvailable: true)
@@ -447,32 +452,27 @@ final class TasksViewModelTests: XCTestCase {
 
     // MARK: - Task operations error paths
 
-    func testRenameTaskFailureUsesToastPresentation() async {
+    func testRenameTaskQueuesWithoutToastPresentation() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Old name", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.applyResult = .failure(APIClientError.apiError("Rename failed"))
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
 
         await sut.viewModel.renameTask(task: task, title: "New name")
 
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(sut.store.tasks.first?.title, "New name")
         XCTAssertNil(sut.viewModel.errorMessage)
-        XCTAssertEqual(sut.toastCenter.toast?.message, "Unexpected error.")
+        XCTAssertNil(sut.toastCenter.toast)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testDeleteTaskSuccessRemovesFromStore() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Delete me", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        // After apply, the refresh returns empty
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
@@ -483,31 +483,27 @@ final class TasksViewModelTests: XCTestCase {
             !sut.store.tasks.contains(where: { $0.id == "t1" })
         }
 
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertFalse(sut.store.tasks.contains(where: { $0.id == "t1" }))
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testDeferTaskOffsetsDeadline() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Defer me", status: "open", deadline: "2025-03-15", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
 
         await sut.viewModel.deferTask(task: task, days: 3)
 
-        XCTAssertEqual(api.applyCallCount, 1)
-        // Verify the payload contains the offset date
-        let sentDueDate = api.lastApplyPayload?.operations.first?.dueDate
-        XCTAssertEqual(sentDueDate, "2025-03-18")
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(sut.store.tasks.first?.deadline, "2025-03-18")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
-    func testAutosaveNotesCallsApplyWithoutRefreshingSelectionOrCounts() async {
+    func testAutosaveNotesQueuesWithoutRefreshingSelectionOrCounts() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -519,43 +515,30 @@ final class TasksViewModelTests: XCTestCase {
 
         await sut.viewModel.autosaveNotes(task: task, notes: "Updated")
 
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertEqual(api.listCallCount, 1, "Autosave should avoid full list refresh")
         XCTAssertEqual(api.countsCallCount, 0, "Autosave should avoid counts refresh")
-        let operation = api.lastApplyPayload?.operations.first
-        XCTAssertEqual(operation?.op, "notes")
-        XCTAssertEqual(operation?.notes, "Updated")
+        XCTAssertEqual(sut.store.tasks.first?.notes, "Updated")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testUpdateNotesOptimisticallyUpdatesTaskWithoutRefreshingSelectionOrCounts() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
-        api.suspendNextApply()
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
 
-        let updateTask = Task {
-            await sut.viewModel.updateNotes(task: task, notes: "Updated")
-        }
+        await sut.viewModel.updateNotes(task: task, notes: "Updated")
 
         await eventually {
             sut.store.tasks.first?.notes == "Updated"
         }
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertEqual(api.listCallCount, 1, "Manual note save should not force a visible list reload")
         XCTAssertEqual(api.countsCallCount, 0, "Manual note save should not refresh counts")
-
-        api.resumeApply()
-        await updateTask.value
-
-        XCTAssertEqual(api.applyCallCount, 1)
-        XCTAssertEqual(api.listCallCount, 1, "Successful note save should reconcile locally without reloading the list")
-        XCTAssertEqual(api.countsCallCount, 0, "Successful note save should not refresh counts")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testMoveTaskOnlineOptimisticallyUpdatesProjectSelectionBeforeApplyReturns() async {
@@ -576,28 +559,19 @@ final class TasksViewModelTests: XCTestCase {
             projects: [sourceProject, destinationProject],
             groups: []
         )
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
-        api.suspendNextApply()
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .project(id: "project-1"))
         XCTAssertEqual(sut.viewModel.viewState.sections.first?.tasks.map(\.id), ["task-1"])
 
-        let moveTask = Task {
-            await sut.viewModel.moveTask(task: task, listId: "project-2")
-        }
+        await sut.viewModel.moveTask(task: task, listId: "project-2")
 
         await eventually {
             sut.viewModel.viewState.sections.flatMap(\.tasks).isEmpty
         }
         XCTAssertEqual(sut.store.tasks.first?.projectId, "project-2")
-
-        api.resumeApply()
-        await moveTask.value
-
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     // MARK: - New task creation
@@ -605,43 +579,28 @@ final class TasksViewModelTests: XCTestCase {
     func testCreateTaskOnlineOptimisticallyAddsPreviewWithoutRefreshingList() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
-        api.suspendNextApply()
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
         sut.viewModel.startNewTask()
 
-        let createTask = Task {
-            await sut.viewModel.createTask(title: "Buy milk", notes: "", dueDate: nil, listId: nil)
-        }
+        await sut.viewModel.createTask(title: "Buy milk", notes: "", dueDate: nil, listId: nil)
 
         await eventually {
             sut.store.tasks.first?.title == "Buy milk"
         }
         XCTAssertEqual(sut.store.tasks.first?.isPreview, true, "Online create should insert a local preview immediately")
-        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.applyCallCount, 0)
         XCTAssertEqual(api.listCallCount, 1, "Online create should not reload the list before apply finishes")
         XCTAssertEqual(api.countsCallCount, 0, "Online create should update counts locally instead of refreshing")
-
-        api.resumeApply()
-        await createTask.value
-
-        XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertNil(sut.viewModel.newTaskDraft, "Draft should be cleared after success")
         XCTAssertEqual(api.listCallCount, 1, "Successful create should reconcile locally without reloading the list")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testCreateTaskTrimsWhitespaceFromTitle() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.applyResult = .success(
-            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
-        )
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
@@ -649,26 +608,26 @@ final class TasksViewModelTests: XCTestCase {
 
         await sut.viewModel.createTask(title: "  Buy milk  ", notes: "", dueDate: nil, listId: nil)
 
-        XCTAssertEqual(api.applyCallCount, 1)
-        let sentTitle = api.lastApplyPayload?.operations.first?.title
-        XCTAssertEqual(sentTitle, "Buy milk")
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(sut.store.tasks.first?.title, "Buy milk")
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     // MARK: - Group/project management
 
-    func testCreateGroupCallsAPIAndRefreshesCounts() async {
+    func testCreateGroupOnlineQueuesAndUpdatesPanelState() async {
         let api = TasksViewModelAPIStub()
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.enqueueListResponse(scope: "today", tasks: [])
-        api.createGroupResult = .success(TaskGroup(id: "g1", title: "Work", updatedAt: nil))
 
         let sut = makeSUT(api: api, networkAvailable: true)
-        await sut.viewModel.load(selection: .today)
 
         try? await sut.viewModel.createGroup(title: "Work")
+        await eventually {
+            sut.writeQueue.pendingCount >= 1
+                && sut.store.groups.contains(where: { $0.title == "Work" })
+        }
 
-        XCTAssertEqual(api.createGroupCallCount, 1)
-        XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Should refresh counts after creating group")
+        XCTAssertEqual(api.createGroupCallCount, 0)
+        XCTAssertEqual(api.countsCallCount, 0)
     }
 
     func testCreateGroupOfflineQueuesAndUpdatesPanelState() async {
@@ -702,7 +661,8 @@ final class TasksViewModelTests: XCTestCase {
 
         // ViewModel should fall back to .none when the viewed group is deleted
         XCTAssertEqual(sut.viewModel.selection, .none)
-        XCTAssertEqual(api.deleteGroupCallCount, 1)
+        XCTAssertEqual(api.deleteGroupCallCount, 0)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     func testDeleteProjectFallsBackToNoneSelection() async {
@@ -723,7 +683,8 @@ final class TasksViewModelTests: XCTestCase {
 
         // ViewModel should fall back to .none when the viewed project is deleted
         XCTAssertEqual(sut.viewModel.selection, .none)
-        XCTAssertEqual(api.deleteProjectCallCount, 1)
+        XCTAssertEqual(api.deleteProjectCallCount, 0)
+        await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
     // MARK: - Helpers

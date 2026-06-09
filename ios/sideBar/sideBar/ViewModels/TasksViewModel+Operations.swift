@@ -53,32 +53,7 @@ extension TasksViewModel {
             id: task.id,
             clientUpdatedAt: task.updatedAt
         )
-        if shouldQueueTaskWrites {
-            await queueOfflineOperation(operation)
-            return true
-        }
-        // Optimistically remove the task immediately
-        let removedTask = store.removeTask(id: task.id)
-
-        do {
-            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
-            // Keep UX snappy by relying on optimistic removal + realtime/list refresh.
-            // Avoid forcing a full list reload immediately on completion.
-            updateCountsAfterLocalOperation(operation)
-            Task {
-                await loadCounts(force: true)
-                await refreshWidgetData()
-            }
-            return true
-        } catch {
-            // Restore the task if the API call failed
-            if let removedTask {
-                store.restoreTask(removedTask)
-            }
-            presentMutationFailure(error, operation: "tasks.complete")
-            return false
-        }
+        return await queueLocalFirstOperation(operation)
     }
 
     @discardableResult
@@ -92,44 +67,11 @@ extension TasksViewModel {
         let shouldIncrementTodayCount = reopenedTaskBelongsInToday(task)
         setLocalErrorMessage(nil)
 
-        if shouldQueueTaskWrites {
-            do {
-                try await store.enqueueOperation(operation)
-                store.applyLocalOperation(operation)
-                updateWidgetDataAfterOfflineOperation(operation)
-                if shouldIncrementTodayCount {
-                    store.incrementTodayCount()
-                }
-                return true
-            } catch WriteQueueError.queueFull {
-                toastCenter.show(message: "Sync queue full. Review pending changes.")
-                return false
-            } catch {
-                setLocalErrorMessage("Failed to queue task changes")
-                return false
-            }
-        }
-
-        let snapshot = store.makeOptimisticSnapshot()
-        store.applyLocalOperation(operation)
-        updateWidgetDataAfterOfflineOperation(operation)
-        if shouldIncrementTodayCount {
+        let queued = await queueLocalFirstOperation(operation)
+        if queued, shouldIncrementTodayCount {
             store.incrementTodayCount()
         }
-
-        do {
-            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            store.applySyncResponse(response, operationId: operation.operationId)
-            Task {
-                await loadCounts(force: true)
-                await refreshWidgetData()
-            }
-            return true
-        } catch {
-            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            presentMutationFailure(error, operation: "tasks.reopen")
-            return false
-        }
+        return queued
     }
 
     public func renameTask(task: TaskItem, title: String) async {
@@ -178,20 +120,7 @@ extension TasksViewModel {
             clientUpdatedAt: task.updatedAt
         )
         setLocalErrorMessage(nil)
-        if shouldQueueTaskWrites {
-            await queueOfflineOperation(operation)
-            return
-        }
-        let snapshot = store.makeOptimisticSnapshot()
-        store.applyLocalOperation(operation)
-        do {
-            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
-            store.applySyncResponse(response, operationId: operation.operationId)
-        } catch {
-            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            presentMutationFailure(error, operation: "tasks.move")
-        }
+        await queueLocalFirstOperation(operation)
     }
 
     public func setDueDate(task: TaskItem, date: Date?) async {
@@ -262,40 +191,32 @@ extension TasksViewModel {
         refreshWidget: Bool = true
     ) async {
         setLocalErrorMessage(nil)
-        if shouldQueueTaskWrites {
-            await queueOfflineOperation(operation)
-            return
-        }
-        let snapshot = store.makeOptimisticSnapshot()
-        store.applyLocalOperation(operation)
-        updateCountsAfterLocalOperation(operation)
-        if refreshWidget {
-            updateWidgetDataAfterOfflineOperation(operation)
-        }
-        do {
-            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
-            _ = refreshSelection
-            _ = refreshCounts
-            store.applySyncResponse(response, operationId: operation.operationId)
-        } catch {
-            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            presentMutationFailure(error, operation: "tasks.mutation")
-        }
+        _ = refreshSelection
+        _ = refreshCounts
+        await queueLocalFirstOperation(operation, refreshWidget: refreshWidget)
     }
 
-    private func queueOfflineOperation(_ operation: TaskOperationPayload) async {
+    @discardableResult
+    private func queueLocalFirstOperation(
+        _ operation: TaskOperationPayload,
+        refreshWidget: Bool = true
+    ) async -> Bool {
         do {
             try await store.enqueueOperation(operation)
             store.applyLocalOperation(operation)
 
-            // Update widget data and counts optimistically for offline operations
-            updateWidgetDataAfterOfflineOperation(operation)
+            // Update widget data and counts optimistically for queued operations.
+            if refreshWidget {
+                updateWidgetDataAfterOfflineOperation(operation)
+            }
             updateCountsAfterLocalOperation(operation)
+            return true
         } catch WriteQueueError.queueFull {
             toastCenter.show(message: "Sync queue full. Review pending changes.")
+            return false
         } catch {
             setLocalErrorMessage("Failed to queue task changes")
+            return false
         }
     }
 

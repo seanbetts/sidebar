@@ -63,6 +63,50 @@ final class WriteQueueOfflineCapabilityTests: XCTestCase {
         let writes = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
         XCTAssertTrue(writes.isEmpty)
     }
+
+    func testLocalFirstCoordinatorEnqueuesWhenServerReachable() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: OfflineCapabilityTestWriteExecutor(),
+            autoProcessEnabled: false
+        )
+        let coordinator = LocalFirstMutationCoordinator(writeQueue: queue)
+
+        try await coordinator.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: Payload(value: "queued")
+        )
+
+        let writes = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        XCTAssertEqual(writes.count, 1)
+        XCTAssertEqual(writes.first?.entityType, WriteEntityType.task.rawValue)
+    }
+
+    func testLocalFirstCoordinatorThrowsMissingQueueBeforeReportingSuccess() async {
+        let coordinator = LocalFirstMutationCoordinator(writeQueue: nil)
+
+        do {
+            try await coordinator.enqueue(
+                operation: .update,
+                entityType: .task,
+                entityId: "task-1",
+                payload: Payload(value: "queued")
+            )
+            XCTFail("Expected missing queue")
+        } catch WriteQueueError.missingQueue {
+            XCTAssertTrue(true)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }
 
 @MainActor

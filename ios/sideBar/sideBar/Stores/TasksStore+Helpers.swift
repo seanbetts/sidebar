@@ -32,8 +32,7 @@ extension TasksStore {
     }
 
     func enqueueOperation(_ operation: TaskOperationPayload) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
-        try await writeQueue.enqueue(
+        try await LocalFirstMutationCoordinator(writeQueue: writeQueue).enqueue(
             operation: .update,
             entityType: .task,
             entityId: operation.id,

@@ -59,60 +59,32 @@ extension TasksViewModel {
             clientUpdatedAt: nil
         )
 
-        if shouldQueueTaskWrites {
-            await queueOfflineTaskCreation(operation)
-            return
-        }
-
-        let snapshot = store.makeOptimisticSnapshot()
-        store.applyLocalOperation(operation)
-        updateCountsAfterLocalOperation(operation)
-        updateWidgetDataAfterOfflineOperation(operation)
-        do {
-            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            store.applySyncResponse(response, operationId: operation.operationId)
-            newTaskDraft = nil
-        } catch {
-            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            newTaskError = ErrorMapping.message(for: error)
-        }
+        await queueLocalFirstTaskCreation(operation)
     }
 
     public func createGroup(title: String) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "create_group",
-                    title: trimmed
-                )
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "create_group",
+                title: trimmed
             )
-            return
-        }
-        _ = try await api.createGroup(title: trimmed)
-        await load(selection: selection, force: true)
-        await loadCounts(force: true)
+        )
     }
 
     public func renameGroup(groupId: String, title: String) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "rename_group",
-                    id: groupId,
-                    title: trimmed
-                )
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "rename_group",
+                id: groupId,
+                title: trimmed
             )
-            return
-        }
-        _ = try await api.renameGroup(groupId: groupId, title: trimmed)
-        await load(selection: selection, force: true)
-        await loadCounts(force: true)
+        )
     }
 
     public func deleteGroup(groupId: String) async throws {
@@ -127,58 +99,40 @@ extension TasksViewModel {
             nextSelection = selection
         }
 
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "delete_group",
-                    id: groupId
-                ),
-                nextSelection: nextSelection
-            )
-            return
-        }
-        try await api.deleteGroup(groupId: groupId)
-        await load(selection: nextSelection, force: true)
-        await loadCounts(force: true)
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "delete_group",
+                id: groupId
+            ),
+            nextSelection: nextSelection
+        )
     }
 
     public func createProject(title: String, groupId: String?) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "create_project",
-                    title: trimmed,
-                    listId: groupId
-                )
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "create_project",
+                title: trimmed,
+                listId: groupId
             )
-            return
-        }
-        _ = try await api.createProject(title: trimmed, groupId: groupId)
-        await load(selection: selection, force: true)
-        await loadCounts(force: true)
+        )
     }
 
     public func renameProject(projectId: String, title: String) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "rename_project",
-                    id: projectId,
-                    title: trimmed
-                )
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "rename_project",
+                id: projectId,
+                title: trimmed
             )
-            return
-        }
-        _ = try await api.renameProject(projectId: projectId, title: trimmed)
-        await load(selection: selection, force: true)
-        await loadCounts(force: true)
+        )
     }
 
     public func deleteProject(projectId: String) async throws {
@@ -190,20 +144,14 @@ extension TasksViewModel {
             nextSelection = selection
         }
 
-        if shouldQueueTaskWrites {
-            try await queueOfflineTaskListOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "delete_project",
-                    id: projectId
-                ),
-                nextSelection: nextSelection
-            )
-            return
-        }
-        try await api.deleteProject(projectId: projectId)
-        await load(selection: nextSelection, force: true)
-        await loadCounts(force: true)
+        try await queueLocalFirstTaskListOperation(
+            TaskOperationPayload(
+                operationId: TaskOperationId.make(),
+                op: "delete_project",
+                id: projectId
+            ),
+            nextSelection: nextSelection
+        )
     }
 
     private func draftListContext(for selection: TaskSelection) -> (id: String?, name: String?) {
@@ -228,14 +176,16 @@ extension TasksViewModel {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private func queueOfflineTaskCreation(_ operation: TaskOperationPayload) async {
+    private func queueLocalFirstTaskCreation(_ operation: TaskOperationPayload) async {
         do {
             try await store.enqueueOperation(operation)
             store.applyLocalOperation(operation)
             updateWidgetDataAfterOfflineOperation(operation)
             updateCountsAfterLocalOperation(operation)
             newTaskDraft = nil
-            toastCenter.show(message: "Task queued for sync.")
+            if shouldQueueTaskWrites {
+                toastCenter.show(message: "Task queued for sync.")
+            }
         } catch WriteQueueError.queueFull {
             newTaskError = "Sync queue full. Review pending changes."
         } catch {
@@ -243,7 +193,7 @@ extension TasksViewModel {
         }
     }
 
-    private func queueOfflineTaskListOperation(
+    private func queueLocalFirstTaskListOperation(
         _ operation: TaskOperationPayload,
         nextSelection: TaskSelection? = nil
     ) async throws {
