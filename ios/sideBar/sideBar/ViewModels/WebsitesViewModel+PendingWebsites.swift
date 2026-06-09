@@ -305,7 +305,7 @@ extension WebsitesViewModel {
         savedCanonical: Set<String>
     ) {
         pendingWebsites.removeAll {
-            guard $0.source == .queuedShare else { return false }
+            guard $0.source == .queuedShare || $0.queueItemId != nil else { return false }
             if savedCanonical.contains($0.canonicalURL) {
                 return true
             }
@@ -329,17 +329,22 @@ extension WebsitesViewModel {
                 for: entry.item,
                 readingQueueItemId: readingQueueItemId
             )
+            let source: PendingWebsiteSource = entry.item.selectAfterSave == true ? .directSave : .queuedShare
 
             if let index = pendingWebsites.firstIndex(where: {
-                $0.canonicalURL == entry.canonical && $0.source == .queuedShare
+                $0.canonicalURL == entry.canonical && $0.queueItemId == entry.item.id
             }) {
+                let existingStatus = pendingWebsites[index].status
+                let resolvedStatus = existingStatus == .failed && status == .queued
+                    ? existingStatus
+                    : status
                 pendingWebsites[index] = makePendingWebsite(
                     from: entry.url,
-                    source: .queuedShare,
+                    source: source,
                     id: pendingWebsites[index].id,
                     queueItemId: entry.item.id,
                     jobId: entry.item.websiteJobId ?? pendingWebsites[index].jobId,
-                    status: status
+                    status: resolvedStatus
                 )
                 continue
             }
@@ -349,7 +354,7 @@ extension WebsitesViewModel {
             }
             _ = upsertPendingWebsite(
                 from: entry.url,
-                source: .queuedShare,
+                source: source,
                 queueItemId: entry.item.id,
                 jobId: entry.item.websiteJobId,
                 status: status

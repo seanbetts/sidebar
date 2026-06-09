@@ -188,6 +188,7 @@ extension AppEnvironment {
                 kind: item.kind,
                 createdAt: item.createdAt,
                 url: item.url,
+                selectAfterSave: item.selectAfterSave,
                 filePath: item.filePath,
                 filename: item.filename,
                 mimeType: item.mimeType,
@@ -329,12 +330,11 @@ extension AppEnvironment {
         }
         websitesViewModel.saveErrorMessage = nil
         replayStartSignal?.markStarted()
-        let saved: Bool
-        if selectAfterSave {
-            saved = await websitesViewModel.saveWebsite(url: url, selectAfterSave: true)
-        } else {
-            saved = try await websitesViewModel.saveQueuedWebsite(url: url)
-        }
+        let shouldSelectAfterSave = selectAfterSave || item.selectAfterSave == true
+        let saved = try await websitesViewModel.saveQueuedWebsiteStartingJob(
+            url: url,
+            selectAfterSave: shouldSelectAfterSave
+        )
         guard !saved else {
             return acceptedWebsiteJobItem(from: item, url: url)
         }
@@ -364,7 +364,7 @@ extension AppEnvironment {
         }
         _ = websitesViewModel.upsertPendingWebsite(
             from: pendingURL,
-            source: .queuedShare,
+            source: item.selectAfterSave == true ? .directSave : .queuedShare,
             queueItemId: item.id,
             jobId: jobId,
             status: .reading
@@ -373,7 +373,7 @@ extension AppEnvironment {
             jobId: jobId,
             pendingURL: pendingURL,
             previousSelectedId: nil,
-            shouldSelectOnCompletion: false
+            shouldSelectOnCompletion: item.selectAfterSave == true
         )
         return isTerminal ? nil : item
     }
@@ -390,6 +390,7 @@ extension AppEnvironment {
             kind: item.kind,
             createdAt: item.createdAt,
             url: item.url,
+            selectAfterSave: item.selectAfterSave,
             filePath: item.filePath,
             filename: item.filename,
             mimeType: item.mimeType,

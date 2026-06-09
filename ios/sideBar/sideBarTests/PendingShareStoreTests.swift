@@ -21,6 +21,14 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded.first?.url, "https://example.com")
     }
+    func testEnqueueWebsiteDirectSavePersistsSelectionIntent() {
+        let store = makeStore()
+        let item = store.enqueueWebsite(url: "https://example.com", selectAfterSave: true)
+
+        XCTAssertNotNil(item)
+        XCTAssertEqual(item?.selectAfterSave, true)
+        XCTAssertEqual(store.loadAll().first?.selectAfterSave, true)
+    }
     func testEnqueueWebsiteDeduplicates() {
         let store = makeStore()
         let first = store.enqueueWebsite(url: "https://example.com")

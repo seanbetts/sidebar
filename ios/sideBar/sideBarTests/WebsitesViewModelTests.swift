@@ -528,7 +528,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedWebsiteId)
     }
 
-    func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async {
+    func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async throws {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
@@ -548,7 +548,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertTrue(viewModel.items.isEmpty)
@@ -558,7 +561,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.active)
     }
 
-    func testSaveWebsiteNormalizesUrl() async {
+    func testSaveWebsiteNormalizesUrl() async throws {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
@@ -578,13 +581,16 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertEqual(api.lastSavedUrl, "https://example.com")
     }
 
-    func testSaveWebsiteSetsPendingSelectionImmediately() async {
+    func testSaveWebsiteSetsPendingSelectionImmediately() async throws {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
@@ -595,7 +601,12 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saveTask = Task { await viewModel.saveWebsite(url: "https://example.com") }
+        let saveTask = Task {
+            try await viewModel.saveQueuedWebsiteStartingJob(
+                url: "https://example.com",
+                selectAfterSave: true
+            )
+        }
         await Task.yield()
 
         XCTAssertNotNil(viewModel.pendingWebsite)
@@ -612,12 +623,12 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
 
-        _ = await saveTask.value
+        _ = try await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
         XCTAssertTrue(viewModel.isLoadingDetail)
     }
 
-    func testSaveWebsiteSetsWatchingPendingTitleForYouTube() async {
+    func testSaveWebsiteSetsWatchingPendingTitleForYouTube() async throws {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
@@ -629,7 +640,10 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         let saveTask = Task {
-            await viewModel.saveWebsite(url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            try await viewModel.saveQueuedWebsiteStartingJob(
+                url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                selectAfterSave: true
+            )
         }
         await Task.yield()
 
@@ -648,12 +662,12 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
 
-        _ = await saveTask.value
+        _ = try await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
         XCTAssertTrue(viewModel.isLoadingDetail)
     }
 
-    func testSaveWebsiteTreatsStalledJobAsFailure() async {
+    func testSaveWebsiteTreatsStalledJobAsFailure() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -678,7 +692,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertTrue(viewModel.isLoadingDetail)
@@ -701,7 +718,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
     }
 
-    func testSaveWebsiteCompletesViaPollingWithoutRealtimeJobUpdate() async {
+    func testSaveWebsiteCompletesViaPollingWithoutRealtimeJobUpdate() async throws {
         let savedDetail = makeDetail(
             id: "saved-1",
             url: "https://example.com",
@@ -729,7 +746,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         let completed = await viewModel.refreshWebsiteJobStatus(
@@ -747,7 +767,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testWebsiteRealtimeInsertCompletesPendingSaveJob() async {
+    func testWebsiteRealtimeInsertCompletesPendingSaveJob() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -770,7 +790,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
@@ -804,7 +827,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testSaveWebsiteDoesNotStartJobPollingWhenFallbackPollingPolicyDenies() async {
+    func testSaveWebsiteDoesNotStartJobPollingWhenFallbackPollingPolicyDenies() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -824,19 +847,25 @@ final class WebsitesViewModelTests: XCTestCase {
             return false
         }
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testSaveWebsiteRegistersJobProgressAndStartsFallbackPolling() async {
+    func testSaveWebsiteRegistersJobProgressAndStartsFallbackPolling() async throws {
         let progress = AsyncJobProgressCoordinator()
         let sut = makeSUT(jobProgressCoordinator: progress)
         sut.api.enqueueSaveResponse(jobId: "job-1")
 
-        let saved = await sut.viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await sut.viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
@@ -859,7 +888,7 @@ final class WebsitesViewModelTests: XCTestCase {
         sut.viewModel.clearWebsiteJobPolling(jobId: "job-queued")
     }
 
-    func testSaveWebsiteCompletesFromRealtimeInsert() async {
+    func testSaveWebsiteCompletesFromRealtimeInsert() async throws {
         let progress = AsyncJobProgressCoordinator()
         let sut = makeSUT(jobProgressCoordinator: progress)
         sut.api.enqueueSaveResponse(jobId: "job-1")
@@ -868,7 +897,10 @@ final class WebsitesViewModelTests: XCTestCase {
             terminalChanges.append(change)
         }
 
-        let saved = await sut.viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await sut.viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertTrue(progress.hasActiveJob(jobId: "job-1"))
@@ -903,7 +935,7 @@ final class WebsitesViewModelTests: XCTestCase {
         )
     }
 
-    func testCancelPendingWebsiteClearsRegisteredJobProgress() async {
+    func testCancelPendingWebsiteClearsRegisteredJobProgress() async throws {
         let progress = AsyncJobProgressCoordinator()
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -921,7 +953,10 @@ final class WebsitesViewModelTests: XCTestCase {
             jobProgressCoordinator: progress
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
         XCTAssertTrue(saved)
         guard let pendingId = viewModel.pendingWebsite?.id else {
             XCTFail("Expected pending website")
@@ -1038,7 +1073,7 @@ final class WebsitesViewModelTests: XCTestCase {
         viewModel.clearWebsiteJobPolling(jobId: "job-1")
     }
 
-    func testVisiblePendingWebsitesHideSavedDuplicateUntilPollingCompletes() async {
+    func testVisiblePendingWebsitesHideSavedDuplicateUntilPollingCompletes() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -1061,7 +1096,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.visiblePendingWebsites.count, 1)
@@ -1094,7 +1132,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.visiblePendingWebsites.isEmpty)
     }
 
-    func testSaveWebsitePollingCanceledClearsPendingState() async {
+    func testSaveWebsitePollingCanceledClearsPendingState() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
             saveResult: .success(
@@ -1117,7 +1155,10 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(url: "https://example.com")
+        let saved = try await viewModel.saveQueuedWebsiteStartingJob(
+            url: "https://example.com",
+            selectAfterSave: true
+        )
 
         XCTAssertTrue(saved)
         let canceled = await viewModel.refreshWebsiteJobStatus(
@@ -1542,7 +1583,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
     }
 
-    func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
+    func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async throws {
         let existing = makeItem(id: "site-existing")
         let existingDetail = makeDetail(id: "site-existing")
         let cache = InMemoryCacheClient()
@@ -1564,7 +1605,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
         await viewModel.load()
         await viewModel.selectWebsite(id: "site-existing")
-        let saved = await viewModel.saveWebsite(url: "https://new.example", selectAfterSave: false)
+        let saved = try await viewModel.saveQueuedWebsite(url: "https://new.example")
 
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
@@ -1574,7 +1615,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.items.contains(where: { $0.url == "https://new.example" }))
     }
 
-    func testSaveWebsiteWithoutSelectionKeepsQueuedPendingRowAfterAsyncEnqueue() async {
+    func testSaveWebsiteWithoutSelectionKeepsQueuedPendingRowAfterAsyncEnqueue() async throws {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
@@ -1586,7 +1627,7 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         let saveTask = Task {
-            await viewModel.saveWebsite(url: "https://queued.example/path", selectAfterSave: false)
+            try await viewModel.saveQueuedWebsite(url: "https://queued.example/path")
         }
         await Task.yield()
 
@@ -1603,12 +1644,12 @@ final class WebsitesViewModelTests: XCTestCase {
             )
         )
 
-        _ = await saveTask.value
+        _ = try await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsites.count, 1)
         XCTAssertEqual(viewModel.pendingWebsites.first?.jobId, "test-job-id")
     }
 
-    func testSaveWebsiteWithoutSelectionKeepsPendingRowAfterAsyncAcceptance() async {
+    func testSaveWebsiteWithoutSelectionKeepsPendingRowAfterAsyncAcceptance() async throws {
         let savedItem = makeItem(
             id: "site-queued-1",
             url: "https://queued.example/path",
@@ -1632,10 +1673,7 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(
-            url: "https://queued.example/path",
-            selectAfterSave: false
-        )
+        let saved = try await viewModel.saveQueuedWebsite(url: "https://queued.example/path")
 
         XCTAssertTrue(saved)
         XCTAssertTrue(viewModel.items.isEmpty)
@@ -1644,7 +1682,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.saveErrorMessage)
     }
 
-    func testSaveWebsiteWithoutSelectionDoesNotSelectSavedWebsiteOnPollCompletion() async {
+    func testSaveWebsiteWithoutSelectionDoesNotSelectSavedWebsiteOnPollCompletion() async throws {
         let existing = makeItem(id: "site-existing")
         let existingDetail = makeDetail(
             id: "site-existing",
@@ -1685,10 +1723,7 @@ final class WebsitesViewModelTests: XCTestCase {
         await viewModel.load()
         await viewModel.selectWebsite(id: "site-existing")
 
-        let saved = await viewModel.saveWebsite(
-            url: "https://new.example",
-            selectAfterSave: false
-        )
+        let saved = try await viewModel.saveQueuedWebsite(url: "https://new.example")
 
         XCTAssertTrue(saved)
         let completed = await viewModel.refreshWebsiteJobStatus(
@@ -1758,7 +1793,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingWebsites.first?.source, .directSave)
     }
 
-    func testSaveWebsiteWithoutSelectionFailsWhenSaveRequestFailsEvenIfListCouldContainWebsite() async {
+    func testSaveWebsiteWithoutSelectionFailsWhenSaveRequestFailsEvenIfListCouldContainWebsite() async throws {
         let savedItem = makeItem(
             id: "site-queued-1",
             url: "https://queued.example/path",
@@ -1777,10 +1812,7 @@ final class WebsitesViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        let saved = await viewModel.saveWebsite(
-            url: "https://queued.example/path",
-            selectAfterSave: false
-        )
+        let saved = try await viewModel.saveQueuedWebsite(url: "https://queued.example/path")
 
         XCTAssertFalse(saved)
         XCTAssertTrue(viewModel.items.isEmpty)

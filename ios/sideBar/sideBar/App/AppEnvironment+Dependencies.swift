@@ -37,6 +37,7 @@ extension AppEnvironment {
     static func buildDependencies(
         container: ServiceContainer,
         isTestMode: Bool,
+        pendingShareStore: PendingShareStore = .shared,
         widgetDataManager: WidgetDataManager,
         workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
         workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
@@ -58,6 +59,7 @@ extension AppEnvironment {
             stores: stores,
             onboardingSync: onboardingSync,
             isTestMode: isTestMode,
+            pendingShareStore: pendingShareStore,
             widgetDataManager: widgetDataManager,
             workspaceStateProvider: workspaceStateProvider,
             workspaceOpenFailureProvider: workspaceOpenFailureProvider

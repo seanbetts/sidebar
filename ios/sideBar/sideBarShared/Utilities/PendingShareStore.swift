@@ -19,6 +19,8 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
     public let createdAt: Date
     /// Shared website URL when kind is `.website` or `.youtube`.
     public let url: String?
+    /// Whether processing should select the saved website when the backend job completes.
+    public let selectAfterSave: Bool?
     /// Relative file path for copied binary payloads.
     public let filePath: String?
     /// Original filename supplied by the share source.
@@ -40,6 +42,7 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         kind: PendingShareKind,
         createdAt: Date,
         url: String? = nil,
+        selectAfterSave: Bool? = nil,
         filePath: String? = nil,
         filename: String? = nil,
         mimeType: String? = nil,
@@ -52,6 +55,7 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         self.kind = kind
         self.createdAt = createdAt
         self.url = url
+        self.selectAfterSave = selectAfterSave
         self.filePath = filePath
         self.filename = filename
         self.mimeType = mimeType
@@ -112,7 +116,7 @@ public final class PendingShareStore {
 
     @discardableResult
     /// Enqueues a website URL share if not already present.
-    public func enqueueWebsite(url: String) -> PendingShareItem? {
+    public func enqueueWebsite(url: String, selectAfterSave: Bool? = nil) -> PendingShareItem? {
         withAccessLock {
             let redactedURL = LogRedaction.redactedURLString(url)
             guard hasRequiredStorage(needsFileContainer: false, context: "enqueueWebsite") else {
@@ -125,6 +129,29 @@ public final class PendingShareStore {
             }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
+                if let selectAfterSave, existing.selectAfterSave != selectAfterSave {
+                    let updated = PendingShareItem(
+                        id: existing.id,
+                        kind: existing.kind,
+                        createdAt: existing.createdAt,
+                        url: existing.url,
+                        selectAfterSave: selectAfterSave,
+                        filePath: existing.filePath,
+                        filename: existing.filename,
+                        mimeType: existing.mimeType,
+                        retryCount: existing.retryCount,
+                        nextRetryAt: existing.nextRetryAt,
+                        lastError: existing.lastError,
+                        websiteJobId: existing.websiteJobId
+                    )
+                    var items = existingItems
+                    if let index = items.firstIndex(where: { $0.id == existing.id }) {
+                        items[index] = updated
+                        writeMetadata(items)
+                        WebsiteSaveHandoffNotifier.post()
+                    }
+                    return updated
+                }
                 os_log(.default, log: Self.log, "Website share already queued %{public}@", redactedURL)
                 recordDiagnostics(
                     stage: "enqueue_website_duplicate",
@@ -137,10 +164,11 @@ public final class PendingShareStore {
                 return existing
             }
             let item = PendingShareItem(
-                id: UUID(),
+                id: idGenerator(),
                 kind: .website,
                 createdAt: Date(),
-                url: url
+                url: url,
+                selectAfterSave: selectAfterSave
             )
             var items = existingItems
             items.append(item)

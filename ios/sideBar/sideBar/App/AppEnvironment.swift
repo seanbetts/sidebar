@@ -196,7 +196,7 @@ public struct AppEnvironmentStorage {
         let workspaceOpenFailureStore = WorkspaceOpenFailureStore()
         let dependencies = Self.buildDependencies(
             container: container,
-            isTestMode: isTestMode,
+            isTestMode: isTestMode, pendingShareStore: resolvedStorage.pendingShareStore,
             widgetDataManager: resolvedStorage.widgetDataManager,
             workspaceStateProvider: { workspaceStore.state },
             workspaceOpenFailureProvider: { workspaceOpenFailureStore.latest }

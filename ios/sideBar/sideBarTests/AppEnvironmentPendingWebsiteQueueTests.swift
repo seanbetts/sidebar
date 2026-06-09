@@ -92,6 +92,29 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
     }
 
+    func testSaveWebsiteOnlinePersistsPendingItemBeforeNetworkJob() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let saved = await environment.enqueueWebsiteSave(url: url, selectAfterSave: true)
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().first?.kind, .website)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().first?.url, url)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().first?.selectAfterSave, true)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.url, url)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.source, .directSave)
+    }
+
     func testHasPendingWebsiteCoordinatorWorkIncludesQueuedExtensionWebsiteEvents() {
         let environment = requireEnvironment()
 
@@ -426,8 +449,13 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         let environment = requireEnvironment()
         environment.authState = .active
 
-        let saveTask = Task {
-            await environment.enqueueWebsiteSave(url: url, selectAfterSave: true)
+        let saveResult = await environment.enqueueWebsiteSave(url: url, selectAfterSave: true)
+        XCTAssertTrue(saveResult)
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+
+        let consumeTask = Task {
+            await environment.consumePendingShares()
         }
 
         for _ in 0..<20 where websitesAPI.saveCallCount < 1 {
@@ -435,23 +463,13 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
-        let consumeTask = Task {
-            await environment.consumePendingShares()
-        }
-
-        for _ in 0..<20 where websitesAPI.saveCallCount < 2 {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
-        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
 
         await gate.open()
-        let saveResult = await saveTask.value
-        XCTAssertTrue(saveResult)
         await consumeTask.value
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().first?.websiteJobId, "job-1")
     }
 
     func testPerformBackgroundWebsiteContinuationProcessesQueuedWebsiteSave() async {

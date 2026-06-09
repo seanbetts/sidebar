@@ -22,11 +22,14 @@ extension WebsitesViewModel {
         return normalized
     }
 
-    func enqueueOfflineWebsiteSave(
+    func enqueueLocalFirstWebsiteSave(
         for normalizedURL: URL,
         selectAfterSave: Bool
     ) -> Bool {
-        if let queuedItem = PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) {
+        if let queuedItem = pendingShareStore.enqueueWebsite(
+            url: normalizedURL.absoluteString,
+            selectAfterSave: selectAfterSave
+        ) {
             let previousSelectedId = selectedWebsiteId
             let pending = upsertPendingWebsite(
                 from: normalizedURL,

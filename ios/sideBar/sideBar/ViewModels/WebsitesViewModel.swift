@@ -66,6 +66,7 @@ import OSLog
     let ingestionStore: IngestionStore?
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
+    let pendingShareStore: PendingShareStore
     let jobProgressCoordinator: AsyncJobProgressCoordinator
     let transcriptPollIntervalNanoseconds: UInt64
     let transcriptPollMaxIntervalNanoseconds: UInt64
@@ -98,6 +99,7 @@ import OSLog
         ingestionStore: IngestionStore? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding,
+        pendingShareStore: PendingShareStore = .shared,
         transcriptPollInterval: TimeInterval = 5,
         transcriptPollMaxInterval: TimeInterval = 20,
         transcriptPollMaxConsecutiveFailures: Int = 6,
@@ -110,6 +112,7 @@ import OSLog
             ingestionStore: ingestionStore,
             toastCenter: toastCenter,
             networkStatus: networkStatus,
+            pendingShareStore: pendingShareStore,
             jobProgressCoordinator: AsyncJobProgressCoordinator(),
             transcriptPollInterval: transcriptPollInterval,
             transcriptPollMaxInterval: transcriptPollMaxInterval,
@@ -125,6 +128,7 @@ import OSLog
         ingestionStore: IngestionStore? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding,
+        pendingShareStore: PendingShareStore = .shared,
         jobProgressCoordinator: AsyncJobProgressCoordinator,
         transcriptPollInterval: TimeInterval = 5,
         transcriptPollMaxInterval: TimeInterval = 20,
@@ -143,6 +147,7 @@ import OSLog
         self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
+        self.pendingShareStore = pendingShareStore
         self.jobProgressCoordinator = jobProgressCoordinator
         self.jobPollingSleep = jobPollingSleep
         self.transcriptPollingSleep = transcriptPollingSleep
@@ -273,46 +278,10 @@ import OSLog
 
     public func saveWebsite(url: String, selectAfterSave: Bool = true) async -> Bool {
         guard let normalized = normalizedWebsiteURL(from: url) else { return false }
-        if networkStatus.offlineCapabilityPolicy.shouldQueueWrites {
-            return enqueueOfflineWebsiteSave(
-                for: normalized,
-                selectAfterSave: selectAfterSave
-            )
-        }
-
-        if !selectAfterSave {
-            do {
-                return try await saveWebsiteWithoutSelection(normalizedURL: normalized)
-            } catch is CancellationError {
-                return false
-            } catch {
-                return false
-            }
-        }
-        let previousSelectedId = beginWebsiteSave(for: normalized)
-        do {
-            let response = try await api.save(url: normalized.absoluteString)
-            updatePendingWebsiteJobId(response.jobId, for: normalized)
-            registerWebsiteSaveJob(
-                jobId: response.jobId,
-                pendingURL: normalized
-            )
-            startWebsiteJobPollingIfAllowed(
-                jobId: response.jobId,
-                pendingURL: normalized,
-                previousSelectedId: previousSelectedId,
-                shouldSelectOnCompletion: true
-            )
-            return true
-        } catch {
-            endWebsiteSave()
-            failWebsiteSave(
-                previousSelectedId: previousSelectedId,
-                pendingURL: normalized,
-                message: ErrorMapping.message(for: error)
-            )
-            return false
-        }
+        return enqueueLocalFirstWebsiteSave(
+            for: normalized,
+            selectAfterSave: selectAfterSave
+        )
     }
 
     func continuePendingWebsiteJobsInBackground(maxDuration: TimeInterval = 25) async -> Bool {
@@ -366,16 +335,31 @@ import OSLog
     }
 
     func saveQueuedWebsite(url: String) async throws -> Bool {
-        guard let normalized = normalizedWebsiteURL(from: url) else { return false }
-        return try await saveWebsiteWithoutSelection(normalizedURL: normalized)
+        try await saveQueuedWebsiteStartingJob(url: url, selectAfterSave: false)
     }
 
-    private func saveWebsiteWithoutSelection(normalizedURL: URL) async throws -> Bool {
-        _ = upsertPendingWebsite(
-            from: normalizedURL,
-            source: .queuedShare,
-            status: .queued
+    func saveQueuedWebsiteStartingJob(url: String, selectAfterSave: Bool) async throws -> Bool {
+        guard let normalized = normalizedWebsiteURL(from: url) else { return false }
+        return try await saveQueuedWebsiteStartingJob(
+            normalizedURL: normalized,
+            selectAfterSave: selectAfterSave
         )
+    }
+
+    private func saveQueuedWebsiteStartingJob(normalizedURL: URL, selectAfterSave: Bool) async throws -> Bool {
+        let previousSelectedId = selectedWebsiteId
+        let pending = upsertPendingWebsite(
+            from: normalizedURL,
+            source: selectAfterSave ? .directSave : .queuedShare,
+            status: .queued,
+            selectionFallbackId: selectAfterSave ? previousSelectedId : nil
+        )
+        if selectAfterSave {
+            selectedWebsiteId = pending.id
+            store.clearActive()
+            isSavingWebsite = true
+            isLoadingDetail = true
+        }
         saveErrorMessage = nil
         do {
             let response = try await api.save(url: normalizedURL.absoluteString)
@@ -387,15 +371,25 @@ import OSLog
             startWebsiteJobPollingIfAllowed(
                 jobId: response.jobId,
                 pendingURL: normalizedURL,
-                previousSelectedId: nil,
-                shouldSelectOnCompletion: false
+                previousSelectedId: selectAfterSave ? previousSelectedId : nil,
+                shouldSelectOnCompletion: selectAfterSave
             )
             return true
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            updatePendingWebsiteStatus(for: normalizedURL.absoluteString, status: .failed)
-            saveErrorMessage = ErrorMapping.message(for: error)
+            let message = ErrorMapping.message(for: error)
+            if selectAfterSave {
+                endWebsiteSave()
+                failWebsiteSave(
+                    previousSelectedId: previousSelectedId,
+                    pendingURL: normalizedURL,
+                    message: message
+                )
+            } else {
+                updatePendingWebsiteStatus(for: normalizedURL.absoluteString, status: .failed)
+                saveErrorMessage = message
+            }
             return false
         }
     }

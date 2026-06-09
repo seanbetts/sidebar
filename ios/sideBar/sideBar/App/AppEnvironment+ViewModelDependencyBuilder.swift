@@ -278,7 +278,7 @@ extension AppEnvironment {
             core: CoreDependencyBuilder.Output,
             stores: StoreDependencyBuilder.Output,
             onboardingSync: OnboardingSyncing,
-            isTestMode: Bool,
+            isTestMode: Bool, pendingShareStore: PendingShareStore,
             widgetDataManager: WidgetDataManager,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
             workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
@@ -317,7 +317,7 @@ extension AppEnvironment {
                 store: stores.websitesStore,
                 ingestionStore: stores.ingestionStore,
                 toastCenter: core.toastCenter,
-                networkStatus: core.connectivityMonitor
+                networkStatus: core.connectivityMonitor, pendingShareStore: pendingShareStore
             )
             let tasksViewModel = TasksViewModel(
                 api: container.tasksAPI,
