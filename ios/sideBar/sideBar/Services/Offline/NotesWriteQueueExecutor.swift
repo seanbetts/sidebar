@@ -11,7 +11,8 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         .move: handleMove,
         .archive: handleArchive,
         .pin: handlePin,
-        .delete: handleDelete
+        .delete: handleDelete,
+        .reorder: handlePinnedOrder
     ]
     private lazy var folderHandlers: [WriteOperation: (PendingWriteRecord) async throws -> Void] = [
         .create: handleCreateFolder,
@@ -93,6 +94,12 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
             }
         }
         store.invalidateNote(id: noteId)
+    }
+
+    private func handlePinnedOrder(_ write: PendingWriteRecord) async throws {
+        let payload = try decoder.decode(PinnedOrderPayload.self, from: write.payload)
+        try await api.updatePinnedOrder(ids: payload.ids)
+        try await store.loadTree(force: true)
     }
 
     private func handleCreateFolder(_ write: PendingWriteRecord) async throws {

@@ -13,6 +13,11 @@ final class WebsitesWriteQueueExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         guard write.entityType == WriteEntityType.website.rawValue else { return }
+        if write.operationType == WriteOperation.reorder.rawValue {
+            let payload = try decoder.decode(PinnedOrderPayload.self, from: write.payload)
+            try await api.updatePinnedOrder(ids: payload.ids)
+            return
+        }
         let operation = try decoder.decode(WebsiteOperationPayload.self, from: write.payload)
         let request = WebsiteSyncRequest(lastSync: nil, operations: [operation])
         let response = try await api.sync(request)

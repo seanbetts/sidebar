@@ -108,20 +108,18 @@ extension IngestionViewModel {
     }
 
     public func reorderPinnedFiles(ids: [String]) async -> Bool {
-        guard !isOfflineForIngestion() else {
-            return false
-        }
         let previousOrder = store.pinnedFileOrder()
         guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
             return false
         }
-        store.applyPinnedOrder(ids)
         do {
-            try await api.updatePinnedOrder(ids: ids)
+            try await store.enqueuePinnedOrder(ids: ids)
             return true
+        } catch WriteQueueError.queueFull {
+            presentMutationFailureMessage("Sync queue full. Review pending changes.")
+            return false
         } catch {
-            store.applyPinnedOrder(previousOrder)
-            presentMutationFailureMessage("Failed to reorder pinned files")
+            presentMutationFailureMessage("Failed to queue pinned order")
             return false
         }
     }

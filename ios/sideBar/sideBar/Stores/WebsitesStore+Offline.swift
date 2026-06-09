@@ -90,6 +90,17 @@ extension WebsitesStore {
         }
     }
 
+    func enqueuePinnedOrder(ids: [String]) async throws {
+        try await enqueueLocalFirstOperation(
+            writeQueue: writeQueue,
+            operation: .reorder,
+            entityType: .website,
+            entityId: nil,
+            payload: PinnedOrderPayload(ids: ids)
+        )
+        applyPinnedOrder(ids)
+    }
+
     func enqueuePin(id: String, pinned: Bool) async throws {
         let operationId = UUID().uuidString
         let payload = WebsiteOperationPayload(

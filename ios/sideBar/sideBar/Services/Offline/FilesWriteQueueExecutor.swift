@@ -13,6 +13,11 @@ final class FilesWriteQueueExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         guard write.entityType == WriteEntityType.file.rawValue else { return }
+        if write.operationType == WriteOperation.reorder.rawValue {
+            let payload = try decoder.decode(PinnedOrderPayload.self, from: write.payload)
+            try await api.updatePinnedOrder(ids: payload.ids)
+            return
+        }
         let operation = try decoder.decode(IngestionOperationPayload.self, from: write.payload)
         let request = IngestionSyncRequest(lastSync: nil, operations: [operation])
         let response = try await api.sync(request)

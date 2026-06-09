@@ -58,22 +58,19 @@ extension NotesViewModel {
     }
 
     public func reorderPinnedNotes(ids: [String]) async -> Bool {
-        guard networkStatus.isNetworkAvailable, !networkStatus.isOffline else {
-            return false
-        }
         let previousOrder = store.pinnedNoteOrder()
         guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
             return false
         }
-        store.applyPinnedOrder(ids)
-        setMirroredTree(store.tree)
         do {
-            try await api.updatePinnedOrder(ids: ids)
-            return true
-        } catch {
-            store.applyPinnedOrder(previousOrder)
+            try await store.enqueuePinnedOrder(ids: ids)
             setMirroredTree(store.tree)
-            toastCenter.show(message: "Failed to reorder pinned notes")
+            return true
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+            return false
+        } catch {
+            toastCenter.show(message: "Failed to queue pinned order")
             return false
         }
     }

@@ -113,6 +113,17 @@ extension NotesStore {
         applyLocalCreateNote(localID: localID, request: queuedRequest)
     }
 
+    func enqueuePinnedOrder(ids: [String]) async throws {
+        try await enqueueLocalFirstOperation(
+            writeQueue: writeQueue,
+            operation: .reorder,
+            entityType: .note,
+            entityId: nil,
+            payload: PinnedOrderPayload(ids: ids)
+        )
+        applyPinnedOrder(ids)
+    }
+
     public func enqueueCreateFolder(path: String) async throws {
         let normalizedPath = normalizedFolderNodePath(path)
         try await enqueueOfflineOperation(

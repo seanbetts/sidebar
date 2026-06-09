@@ -3,20 +3,18 @@ import sideBarShared
 
 extension WebsitesViewModel {
     public func reorderPinnedWebsites(ids: [String]) async -> Bool {
-        guard networkStatus.isNetworkAvailable, !networkStatus.isOffline else {
-            return false
-        }
         let previousOrder = store.pinnedWebsiteOrder()
         guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
             return false
         }
-        store.applyPinnedOrder(ids)
         do {
-            try await api.updatePinnedOrder(ids: ids)
+            try await store.enqueuePinnedOrder(ids: ids)
             return true
+        } catch WriteQueueError.queueFull {
+            errorMessage = "Sync queue full. Review pending changes."
+            return false
         } catch {
-            store.applyPinnedOrder(previousOrder)
-            errorMessage = "Failed to reorder pinned websites"
+            errorMessage = "Failed to queue pinned order"
             return false
         }
     }

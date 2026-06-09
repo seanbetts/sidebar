@@ -9,6 +9,7 @@ enum WriteOperation: String {
     case archive
     case move
     case copy
+    case reorder
 }
 
 enum WriteEntityType: String, Codable {
@@ -50,6 +51,10 @@ struct PendingWriteRecord: Sendable, Equatable {
     let payload: Data
     let serverSnapshot: Data?
     let attempts: Int16
+}
+
+struct PinnedOrderPayload: Codable, Equatable {
+    let ids: [String]
 }
 
 enum WriteQueueError: Error {

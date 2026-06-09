@@ -69,6 +69,17 @@ extension IngestionStore {
         removeItem(fileId: fileId)
     }
 
+    func enqueuePinnedOrder(ids: [String]) async throws {
+        try await enqueueLocalFirstOperation(
+            writeQueue: writeQueue,
+            operation: .reorder,
+            entityType: .file,
+            entityId: nil,
+            payload: PinnedOrderPayload(ids: ids)
+        )
+        applyPinnedOrder(ids)
+    }
+
     func applySyncFile(_ file: IngestedFileMeta) {
         if file.deletedAt != nil {
             removeItem(fileId: file.id)

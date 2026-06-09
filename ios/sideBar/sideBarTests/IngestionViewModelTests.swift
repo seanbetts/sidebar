@@ -667,20 +667,9 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-1"])
     }
 
-    func testReorderPinnedFilesPersistsOptimisticOrder() async {
-        let recorder = PinnedOrderRecorder()
-        let api = MockIngestionAPI(
-            listResult: .success(IngestionListResponse(items: [])),
-            metaResult: .failure(MockError.forced),
-            contentResult: .failure(MockError.forced),
-            pinResult: .success(()),
-            updatePinnedOrderResult: .success(()),
-            youtubeResult: .failure(MockError.forced),
-            pinnedOrderRecorder: recorder
-        )
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
-        store.applyListUpdate(
+    func testReorderPinnedFilesQueuesAndPersistsLocalOrder() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: true)
+        context.store.applyListUpdate(
             [
                 makePinnedListItem(id: "file-a", pinnedOrder: 0),
                 makePinnedListItem(id: "file-b", pinnedOrder: 1),
@@ -688,23 +677,17 @@ final class IngestionViewModelTests: XCTestCase {
             ],
             persist: false
         )
-        let viewModel = IngestionViewModel(
-            api: api,
-            store: store,
-            temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager(),
-            toastCenter: ToastCenter()
-        )
 
-        let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
-        let recordedOrders = await recorder.snapshot()
+        let success = await context.viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
+        let pending = try await context.writeQueue.fetchPendingWrites()
 
         XCTAssertTrue(success)
-        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-b", "file-a"])
-        XCTAssertEqual(recordedOrders, [["file-b", "file-a"]])
+        XCTAssertEqual(context.viewModel.panelPinnedItems.map(\.file.id), ["file-b", "file-a"])
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.file.rawValue)
     }
 
-    func testReorderPinnedFilesRestoresPreviousOrderWhenRequestFails() async {
+    func testReorderPinnedFilesReportsQueueFailureWhenQueueMissing() async {
         let recorder = PinnedOrderRecorder()
         let api = MockIngestionAPI(
             listResult: .success(IngestionListResponse(items: [])),
@@ -739,8 +722,8 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertFalse(success)
         XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-a", "file-b"])
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(toastCenter.toast?.message, "Failed to reorder pinned files")
-        XCTAssertEqual(recordedOrders, [["file-b", "file-a"]])
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to queue pinned order")
+        XCTAssertEqual(recordedOrders, [])
     }
 
     func testPinnedMutationFailureUsesToastWithoutReplacingLoadedFileDetail() async {
@@ -778,41 +761,22 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(toastCenter.toast?.message, "Failed to queue file update")
     }
 
-    func testReorderPinnedFilesDoesNotCallAPIWhenOffline() async {
-        let recorder = PinnedOrderRecorder()
-        let api = MockIngestionAPI(
-            listResult: .success(IngestionListResponse(items: [])),
-            metaResult: .failure(MockError.forced),
-            contentResult: .failure(MockError.forced),
-            pinResult: .success(()),
-            updatePinnedOrderResult: .success(()),
-            youtubeResult: .failure(MockError.forced),
-            pinnedOrderRecorder: recorder
-        )
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
-        store.applyListUpdate(
+    func testReorderPinnedFilesQueuesWhenOffline() async throws {
+        let context = makeLocalFirstIngestionContext(networkAvailable: false, isOffline: true)
+        context.store.applyListUpdate(
             [
                 makePinnedListItem(id: "file-a", pinnedOrder: 0),
                 makePinnedListItem(id: "file-b", pinnedOrder: 1)
             ],
             persist: false
         )
-        let viewModel = IngestionViewModel(
-            api: api,
-            store: store,
-            temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager(),
-            toastCenter: ToastCenter(),
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
-        )
 
-        let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
-        let updatePinnedOrderCallCount = await recorder.callCount()
+        let success = await context.viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
+        let pending = try await context.writeQueue.fetchPendingWrites()
 
-        XCTAssertFalse(success)
-        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-a", "file-b"])
-        XCTAssertEqual(updatePinnedOrderCallCount, 0)
+        XCTAssertTrue(success)
+        XCTAssertEqual(context.viewModel.panelPinnedItems.map(\.file.id), ["file-b", "file-a"])
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
     }
 
     func testClearFailedUploadShowsToastWhenDeleteFails() async {
@@ -1692,10 +1656,13 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
-    private func makeLocalFirstIngestionContext(networkAvailable: Bool) -> LocalFirstIngestionContext {
+    private func makeLocalFirstIngestionContext(
+        networkAvailable: Bool,
+        isOffline: Bool = false
+    ) -> LocalFirstIngestionContext {
         let persistence = PersistenceController(inMemory: true)
         let defaults = makeDefaults()
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: networkAvailable, isOffline: false)
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: networkAvailable, isOffline: isOffline)
         let api = MockIngestionAPI(
             listResult: .success(IngestionListResponse(items: [])),
             metaResult: .failure(MockError.forced),

@@ -5,6 +5,27 @@ import XCTest
 
 @MainActor
 final class NotesWriteQueueExecutorTests: XCTestCase {
+    func testExecutePinnedOrderForwardsQueuedIdsAndRefreshesTree() async throws {
+        let api = NotesWriteQueueExecutorAPISpy()
+        let store = NotesWriteQueueExecutorStoreSpy()
+        let executor = NotesWriteQueueExecutor(api: api, store: store)
+        let payload = try JSONEncoder().encode(PinnedOrderPayload(ids: ["/b.md", "/a.md"]))
+        let write = PendingWriteRecord(
+            id: UUID(),
+            operationType: WriteOperation.reorder.rawValue,
+            entityType: WriteEntityType.note.rawValue,
+            entityId: nil,
+            payload: payload,
+            serverSnapshot: nil,
+            attempts: 0
+        )
+
+        try await executor.execute(write: write)
+
+        XCTAssertEqual(api.updatedPinnedOrderIDs, [["/b.md", "/a.md"]])
+        XCTAssertEqual(store.loadTreeForceValues, [true])
+    }
+
     func testExecuteUpdateForwardsQueuedSemanticDocumentBeforeApiCall() async throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -198,6 +219,7 @@ private enum NotesWriteQueueExecutorTestError: Error {
 private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
     private(set) var appliedNotes: [NotePayload] = []
     private(set) var invalidatedNoteIds: [String] = []
+    private(set) var loadTreeForceValues: [Bool] = []
 
     func applyEditorUpdate(_ note: NotePayload) {
         appliedNotes.append(note)
@@ -208,7 +230,7 @@ private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
     }
 
     func loadTree(force: Bool) async throws {
-        _ = force
+        loadTreeForceValues.append(force)
     }
 }
 
@@ -219,6 +241,7 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
     private(set) var updatedNotes: [NotePayload] = []
     private(set) var movedNotes: [(id: String, folder: String)] = []
     private(set) var moveResults: [NotePayload] = []
+    private(set) var updatedPinnedOrderIDs: [[String]] = []
 
     func listTree() async throws -> FileTree {
         throw NotesWriteQueueExecutorTestError.forced
@@ -311,7 +334,7 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
     }
 
     func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
+        updatedPinnedOrderIDs.append(ids)
     }
 
     func deleteNote(id: String) async throws -> NotePayload {

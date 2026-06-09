@@ -4,11 +4,12 @@ import sideBarShared
 
 @MainActor
 final class NotesViewModelPinnedOrderTests: XCTestCase {
-    func testReorderPinnedNotesOptimisticallyUpdatesStoreAndCallsAPI() async {
+    func testReorderPinnedNotesQueuesAndUpdatesLocalOrder() async throws {
         let api = NotesPinnedOrderAPISpy()
-        api.updatePinnedOrderResult = .success(())
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let writeQueue = makeWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let toastCenter = ToastCenter()
         let viewModel = NotesViewModel(
             api: api,
@@ -19,15 +20,17 @@ final class NotesViewModelPinnedOrderTests: XCTestCase {
         store.applyTreeUpdate(makePinnedTree(), persist: false)
 
         let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])
+        let pending = try await writeQueue.fetchPendingWrites()
 
         XCTAssertTrue(success)
-        XCTAssertEqual(api.updatedPinnedOrderIDs, [["/b.md", "/a.md"]])
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
         XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), ["/b.md", "/a.md"])
     }
 
-    func testReorderPinnedNotesRollsBackAndShowsToastWhenAPIFails() async {
+    func testReorderPinnedNotesShowsToastWhenQueueMissing() async {
         let api = NotesPinnedOrderAPISpy()
-        api.updatePinnedOrderResult = .failure(NotesPinnedOrderMockError.forced)
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
@@ -47,14 +50,15 @@ final class NotesViewModelPinnedOrderTests: XCTestCase {
 
         XCTAssertFalse(success)
         XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), previousOrder)
-        XCTAssertEqual(toastCenter.toast?.message, "Failed to reorder pinned notes")
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to queue pinned order")
     }
 
-    func testReorderPinnedNotesDoesNotCallAPIWhenOffline() async {
+    func testReorderPinnedNotesQueuesWhenOffline() async throws {
         let api = NotesPinnedOrderAPISpy()
-        api.updatePinnedOrderResult = .success(())
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let writeQueue = makeWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let toastCenter = ToastCenter()
         let viewModel = NotesViewModel(
             api: api,
@@ -62,11 +66,15 @@ final class NotesViewModelPinnedOrderTests: XCTestCase {
             toastCenter: toastCenter,
             networkStatus: NotesPinnedOrderTestNetworkStatus(isNetworkAvailable: false)
         )
+        store.applyTreeUpdate(makePinnedTree(), persist: false)
 
         let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])
+        let pending = try await writeQueue.fetchPendingWrites()
 
-        XCTAssertFalse(success)
+        XCTAssertTrue(success)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), ["/b.md", "/a.md"])
     }
 
     func testReorderPinnedNotesRejectsStalePinnedSetWithoutCallingAPI() async {
@@ -89,6 +97,19 @@ final class NotesViewModelPinnedOrderTests: XCTestCase {
         XCTAssertFalse(success)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
         XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), previousOrder)
+    }
+
+    private func makeWriteQueue() -> WriteQueue {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        return WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
     }
 
     private func makePinnedTree() -> FileTree {

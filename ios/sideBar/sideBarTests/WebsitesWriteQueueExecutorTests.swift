@@ -5,6 +5,28 @@ import sideBarShared
 
 @MainActor
 final class WebsitesWriteQueueExecutorTests: XCTestCase {
+    func testExecutePinnedOrderForwardsQueuedIdsWithoutSyncDecode() async throws {
+        let api = WebsitesWriteQueueExecutorAPIStub()
+        let store = WebsitesWriteQueueStoreSpy()
+        let executor = WebsitesWriteQueueExecutor(api: api, store: store)
+        let payload = try JSONEncoder().encode(PinnedOrderPayload(ids: ["b", "a"]))
+        let write = PendingWriteRecord(
+            id: UUID(),
+            operationType: WriteOperation.reorder.rawValue,
+            entityType: WriteEntityType.website.rawValue,
+            entityId: nil,
+            payload: payload,
+            serverSnapshot: nil,
+            attempts: 0
+        )
+
+        try await executor.execute(write: write)
+
+        XCTAssertEqual(api.updatedPinnedOrderIDs, [["b", "a"]])
+        XCTAssertEqual(store.batchApplyCallCount, 0)
+        XCTAssertEqual(store.individualApplyCallCount, 0)
+    }
+
     func testExecuteAppliesSyncResponseInSingleBatch() async throws {
         let api = WebsitesWriteQueueExecutorAPIStub()
         let store = WebsitesWriteQueueStoreSpy()
@@ -55,6 +77,8 @@ private final class WebsitesWriteQueueStoreSpy: WebsitesWriteQueueApplying {
 }
 
 private final class WebsitesWriteQueueExecutorAPIStub: WebsitesProviding {
+    private(set) var updatedPinnedOrderIDs: [[String]] = []
+
     func list() async throws -> WebsitesResponse { throw WebsitesWriteQueueExecutorStubError.unused }
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
         _ = limit
@@ -101,8 +125,7 @@ private final class WebsitesWriteQueueExecutorAPIStub: WebsitesProviding {
         throw WebsitesWriteQueueExecutorStubError.unused
     }
     func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
-        throw WebsitesWriteQueueExecutorStubError.unused
+        updatedPinnedOrderIDs.append(ids)
     }
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
@@ -143,6 +166,106 @@ private final class WebsitesWriteQueueExecutorAPIStub: WebsitesProviding {
             lastOpenedAt: nil,
             deletedAt: nil
         )
+    }
+}
+
+@MainActor
+final class FilesWriteQueueExecutorTests: XCTestCase {
+    func testExecutePinnedOrderForwardsQueuedIdsWithoutSyncDecode() async throws {
+        let api = FilesWriteQueueExecutorAPIStub()
+        let store = FilesWriteQueueStoreSpy()
+        let executor = FilesWriteQueueExecutor(api: api, store: store)
+        let payload = try JSONEncoder().encode(PinnedOrderPayload(ids: ["file-b", "file-a"]))
+        let write = PendingWriteRecord(
+            id: UUID(),
+            operationType: WriteOperation.reorder.rawValue,
+            entityType: WriteEntityType.file.rawValue,
+            entityId: nil,
+            payload: payload,
+            serverSnapshot: nil,
+            attempts: 0
+        )
+
+        try await executor.execute(write: write)
+
+        XCTAssertEqual(api.updatedPinnedOrderIDs, [["file-b", "file-a"]])
+        XCTAssertTrue(store.appliedFiles.isEmpty)
+    }
+}
+
+@MainActor
+private final class FilesWriteQueueStoreSpy: FilesWriteQueueApplying {
+    private(set) var appliedFiles: [IngestedFileMeta] = []
+
+    func applySyncFile(_ file: IngestedFileMeta) {
+        appliedFiles.append(file)
+    }
+}
+
+private final class FilesWriteQueueExecutorAPIStub: IngestionProviding {
+    private(set) var updatedPinnedOrderIDs: [[String]] = []
+
+    func list() async throws -> IngestionListResponse {
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
+        _ = fileId
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
+        _ = fileId
+        _ = kind
+        _ = range
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func cancel(fileId: String) async throws {
+        _ = fileId
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = pinned
+        _ = clientUpdatedAt
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        updatedPinnedOrderIDs.append(ids)
+    }
+
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = clientUpdatedAt
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = filename
+        _ = clientUpdatedAt
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func ingestYouTube(url: String) async throws -> String {
+        _ = url
+        throw WebsitesWriteQueueExecutorStubError.unused
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
+        throw WebsitesWriteQueueExecutorStubError.unused
     }
 }
 

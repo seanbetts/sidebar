@@ -334,11 +334,12 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.items.first?.id, "site-1")
     }
 
-    func testReorderPinnedWebsitesOptimisticallyUpdatesStoreAndCallsAPI() async {
+    func testReorderPinnedWebsitesQueuesAndUpdatesLocalOrder() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
-        api.updatePinnedOrderResult = .success(())
         let store = WebsitesStore(api: api, cache: cache)
+        let writeQueue = makePinnedWebsitesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -355,16 +356,18 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         let success = await viewModel.reorderPinnedWebsites(ids: ["w2", "w1"])
+        let pending = try await writeQueue.fetchPendingWrites()
 
         XCTAssertTrue(success)
-        XCTAssertEqual(api.updatedPinnedOrderIDs, [["w2", "w1"]])
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.website.rawValue)
         XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), ["w2", "w1"])
     }
 
-    func testReorderPinnedWebsitesRollsBackAndShowsErrorWhenAPIFails() async {
+    func testReorderPinnedWebsitesShowsErrorWhenQueueMissing() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
-        api.updatePinnedOrderResult = .failure(MockError.forced)
         let store = WebsitesStore(api: api, cache: cache)
         let viewModel = WebsitesViewModel(
             api: api,
@@ -385,13 +388,15 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertFalse(success)
         XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), ["w1", "w2"])
-        XCTAssertEqual(viewModel.errorMessage, "Failed to reorder pinned websites")
+        XCTAssertEqual(viewModel.errorMessage, "Failed to queue pinned order")
     }
 
-    func testReorderPinnedWebsitesDoesNotCallAPIWhenOffline() async {
+    func testReorderPinnedWebsitesQueuesWhenOffline() async throws {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
+        let writeQueue = makePinnedWebsitesWriteQueue()
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -408,9 +413,12 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         let success = await viewModel.reorderPinnedWebsites(ids: ["w2", "w1"])
+        let pending = try await writeQueue.fetchPendingWrites()
 
-        XCTAssertFalse(success)
+        XCTAssertTrue(success)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(pending.first?.operationType, WriteOperation.reorder.rawValue)
+        XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), ["w2", "w1"])
     }
 
     func testReorderPinnedWebsitesRejectsStalePinnedSetWithoutCallingAPI() async {
@@ -439,6 +447,19 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertFalse(success)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
         XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), previousOrder)
+    }
+
+    private func makePinnedWebsitesWriteQueue() -> WriteQueue {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        return WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
     }
 
     func testRenameWebsiteQueuesUpdateEvenWhenOnline() async throws {
