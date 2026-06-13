@@ -24,6 +24,8 @@ public enum CacheKeys {
     public nonisolated static let tasksCounts = "tasks.counts"
     public nonisolated static let tasksSync = "tasks.sync"
     public nonisolated static let faviconPrefix = "favicon"
+    /// Prefix for capability-scoped local AI work snapshots.
+    public nonisolated static let aiWorkPrefix = "ai.work"
 
     public nonisolated static func note(id: String) -> String {
         "notes.note.\(id)"
@@ -63,6 +65,11 @@ public enum CacheKeys {
 
     public nonisolated static func favicon(url: String) -> String {
         "\(faviconPrefix).\(sha256Digest(url))"
+    }
+
+    /// Returns the offline snapshot key for local AI work by capability and ID.
+    public nonisolated static func aiWork(capability: IntelligenceCapability, id: UUID) -> String {
+        "\(aiWorkPrefix).\(capability.rawValue).\(id.uuidString.lowercased())"
     }
 
     private nonisolated static func sha256Digest(_ value: String) -> String {

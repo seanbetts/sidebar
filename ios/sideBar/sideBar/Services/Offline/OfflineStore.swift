@@ -12,6 +12,8 @@ public struct OfflineSnapshotRetention: Sendable {
     public let maxTaskCounts: Int
     public let maxTaskSyncEntries: Int
     public let maxTaskPendingPlaceholders: Int
+    /// Maximum retained local AI work snapshots across capabilities.
+    public let maxAIWorkSnapshots: Int
 
     public init(
         maxNotes: Int = 200,
@@ -21,7 +23,8 @@ public struct OfflineSnapshotRetention: Sendable {
         maxTaskLists: Int = 200,
         maxTaskCounts: Int = 20,
         maxTaskSyncEntries: Int = 20,
-        maxTaskPendingPlaceholders: Int = 300
+        maxTaskPendingPlaceholders: Int = 300,
+        maxAIWorkSnapshots: Int = 100
     ) {
         self.maxNotes = maxNotes
         self.maxWebsites = maxWebsites
@@ -31,6 +34,7 @@ public struct OfflineSnapshotRetention: Sendable {
         self.maxTaskCounts = maxTaskCounts
         self.maxTaskSyncEntries = maxTaskSyncEntries
         self.maxTaskPendingPlaceholders = maxTaskPendingPlaceholders
+        self.maxAIWorkSnapshots = maxAIWorkSnapshots
     }
 
 }
@@ -97,6 +101,7 @@ public final class OfflineStore {
         await pruneEntries(entityType: "taskCounts", keepLatest: retention.maxTaskCounts)
         await pruneEntries(entityType: "taskSync", keepLatest: retention.maxTaskSyncEntries)
         await pruneEntries(entityType: "taskPending", keepLatest: retention.maxTaskPendingPlaceholders)
+        await pruneEntries(entityType: "aiWork", keepLatest: retention.maxAIWorkSnapshots)
     }
 
     // MARK: - Core Data Helpers
