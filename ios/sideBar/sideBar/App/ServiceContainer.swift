@@ -50,6 +50,14 @@ public final class ServiceContainer {
     public let passwordRecoveryManager: any PasswordRecoveryManaging
     /// Password change manager for in-session credential updates.
     public let passwordChangeManager: any PasswordChanging
+    /// Availability checks and rollout flags for native Apple Intelligence routes.
+    public let appleIntelligenceAvailabilityProvider: any AppleIntelligenceAvailabilityProviding
+    /// SideBar-owned language model boundary used by native Apple Intelligence features.
+    public let languageModelService: any LanguageModelServicing
+    /// Reusable speech transcription boundary for microphone, audio, and video sources.
+    public let speechTranscriptionService: any SpeechTranscriptionServicing
+    /// Privacy-safe diagnostics recorder for native intelligence route metadata.
+    public let intelligenceDiagnosticsRecorder: any IntelligenceDiagnosticsRecording
 
     public var observableAuthSession: (any AuthSessionObserving)? {
         authSession as? any AuthSessionObserving
@@ -75,7 +83,11 @@ public final class ServiceContainer {
         deviceTokensAPI: DeviceTokensAPI? = nil,
         internalDiagnosticsAPI: InternalDiagnosticsAPI? = nil,
         passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil,
-        passwordChangeManager: (any PasswordChanging)? = nil
+        passwordChangeManager: (any PasswordChanging)? = nil,
+        appleIntelligenceAvailabilityProvider: (any AppleIntelligenceAvailabilityProviding)? = nil,
+        languageModelService: (any LanguageModelServicing)? = nil,
+        speechTranscriptionService: (any SpeechTranscriptionServicing)? = nil,
+        intelligenceDiagnosticsRecorder: (any IntelligenceDiagnosticsRecording)? = nil
     ) {
         self.config = config
         self.authSession = authSession
@@ -128,6 +140,12 @@ public final class ServiceContainer {
             passwordChangeManager
             ?? (authSession as? any PasswordChanging)
             ?? UnavailablePasswordChangeManager()
+        self.appleIntelligenceAvailabilityProvider =
+            appleIntelligenceAvailabilityProvider ?? DefaultAppleIntelligenceAvailabilityProvider()
+        self.languageModelService = languageModelService ?? FakeLanguageModelService()
+        self.speechTranscriptionService = speechTranscriptionService ?? FakeSpeechTranscriptionService()
+        self.intelligenceDiagnosticsRecorder =
+            intelligenceDiagnosticsRecorder ?? OSLogIntelligenceDiagnosticsRecorder()
     }
 
     /// Creates a chat streaming client bound to the current auth session token provider.

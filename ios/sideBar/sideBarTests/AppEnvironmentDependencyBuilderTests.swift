@@ -42,6 +42,43 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertTrue(dependencies.settingsStore.writeQueue === dependencies.writeQueue)
     }
 
+    func testDependenciesExposeAppleIntelligenceFoundations() {
+        let container = Self.sharedContainer
+
+        XCTAssertNotNil(container.appleIntelligenceAvailabilityProvider)
+        XCTAssertNotNil(container.languageModelService)
+        XCTAssertNotNil(container.speechTranscriptionService)
+        XCTAssertNotNil(container.intelligenceDiagnosticsRecorder)
+
+        let environment = AppEnvironment(
+            container: container,
+            storage: AppEnvironmentStorage(
+                userDefaults: UserDefaults(
+                    suiteName: "AppEnvironmentDependencyBuilderTests.aiWork.\(UUID().uuidString)"
+                )!
+            )
+        )
+        let id = UUID()
+        let snapshot = AIWorkSnapshot(
+            id: id,
+            capability: .liveNotes,
+            status: .completed,
+            routeMetadata: nil,
+            payload: Data("local-ai-work".utf8),
+            updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        environment.aiWorkLocalStore.save(snapshot)
+
+        XCTAssertEqual(
+            environment.offlineStore.get(
+                key: CacheKeys.aiWork(capability: .liveNotes, id: id),
+                as: AIWorkSnapshot.self
+            ),
+            snapshot
+        )
+    }
+
     func testBuildDependenciesCreateIsolatedOfflineStoresPerTestEnvironment() {
         let firstDependencies = makeDependencies()
         let secondDependencies = makeDependencies()

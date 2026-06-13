@@ -60,6 +60,8 @@ public struct AppEnvironmentStorage {
     public let scratchpadStore: ScratchpadStore
     public let settingsStore: SettingsStore
     public let offlineStore: OfflineStore
+    /// Local durable snapshots for native AI work that must recover before backend sync exists.
+    public let aiWorkLocalStore: AIWorkLocalStore
     public let toastCenter: ToastCenter
     /// View model coordinating chat UI actions and streaming state.
     public let chatViewModel: ChatViewModel
@@ -104,7 +106,6 @@ public struct AppEnvironmentStorage {
     let draftStorage: DraftStorage
     let spotlightIndexer: any SpotlightIndexing
     let syncCoordinator: SyncCoordinator
-
     /// Current authentication state observed by top-level app routing.
     @Published public internal(set) var authState: AuthState = .signedOut
     /// Indicates whether offline mode is active due to write/read connectivity constraints.
@@ -151,7 +152,6 @@ public struct AppEnvironmentStorage {
     var hasConfiguredDevicePresenceReporting = false
     var remoteNotificationRegistrar: (@MainActor @Sendable () -> Void)?
     #endif
-
     // swiftlint:disable function_body_length
     /// Creates the root app environment and wires all stores, view models, and observers.
     public convenience init(
@@ -185,7 +185,6 @@ public struct AppEnvironmentStorage {
             logger.info("\(name, privacy: .public) took \(elapsedMs, privacy: .public)ms")
         }
         #endif
-
         #if DEBUG
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
@@ -211,6 +210,7 @@ public struct AppEnvironmentStorage {
         self.scratchpadStore = dependencies.scratchpadStore
         self.settingsStore = dependencies.settingsStore
         self.offlineStore = dependencies.offlineStore
+        self.aiWorkLocalStore = AIWorkLocalStore(offlineStore: dependencies.offlineStore)
         self.toastCenter = dependencies.toastCenter
         self.chatViewModel = dependencies.chatViewModel
         self.notesRuntime = dependencies.notesRuntime
