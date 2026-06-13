@@ -42,4 +42,38 @@ final class AppleIntelligenceRouteTests: XCTestCase {
 
         XCTAssertEqual(metadata.extra, ["safe": "true"])
     }
+
+    func testDecodedMetadataRejectsSensitiveKeys() throws {
+        let json = """
+        {
+            "descriptor": {
+                "capability": "live_notes",
+                "provider": "apple",
+                "executionRoute": "apple_on_device",
+                "credentialSource": "apple_os",
+                "modelFamily": {
+                    "kind": "system_language_model"
+                }
+            },
+            "latencyMs": 120,
+            "structuredOutputValid": true,
+            "contextBudget": {
+                "usedTokens": 200,
+                "contextSize": 4096
+            },
+            "extra": {
+                "prompt": "meeting transcript",
+                "safe": "true",
+                "transcript_text": "secret"
+            }
+        }
+        """
+
+        let metadata = try JSONDecoder().decode(
+            IntelligenceRouteMetadata.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(metadata.extra, ["safe": "true"])
+    }
 }

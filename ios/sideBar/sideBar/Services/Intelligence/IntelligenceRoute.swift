@@ -138,6 +138,15 @@ public struct IntelligenceContextBudget: Codable, Sendable, Equatable {
 
 /// Privacy-safe route metadata for diagnostics and evaluation records.
 public struct IntelligenceRouteMetadata: Codable, Sendable, Equatable {
+    private enum CodingKeys: String, CodingKey {
+        case descriptor
+        case latencyMs
+        case structuredOutputValid
+        case failureCategory
+        case contextBudget
+        case extra
+    }
+
     private static let sensitiveExtraKeys: Set<String> = [
         "prompt",
         "response",
@@ -147,6 +156,12 @@ public struct IntelligenceRouteMetadata: Codable, Sendable, Equatable {
         "audio",
         "raw_audio"
     ]
+
+    private static func sanitizedExtra(_ extra: [String: String]) -> [String: String] {
+        extra.filter { key, _ in
+            !Self.sensitiveExtraKeys.contains(key.lowercased())
+        }
+    }
 
     public let descriptor: IntelligenceRouteDescriptor
     public let latencyMs: Int?
@@ -168,8 +183,24 @@ public struct IntelligenceRouteMetadata: Codable, Sendable, Equatable {
         self.structuredOutputValid = structuredOutputValid
         self.failureCategory = failureCategory
         self.contextBudget = contextBudget
-        self.extra = extra.filter { key, _ in
-            !Self.sensitiveExtraKeys.contains(key.lowercased())
-        }
+        self.extra = Self.sanitizedExtra(extra)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.descriptor = try container.decode(IntelligenceRouteDescriptor.self, forKey: .descriptor)
+        self.latencyMs = try container.decodeIfPresent(Int.self, forKey: .latencyMs)
+        self.structuredOutputValid = try container.decodeIfPresent(Bool.self, forKey: .structuredOutputValid)
+        self.failureCategory = try container.decodeIfPresent(
+            IntelligenceFailureCategory.self,
+            forKey: .failureCategory
+        )
+        self.contextBudget = try container.decodeIfPresent(
+            IntelligenceContextBudget.self,
+            forKey: .contextBudget
+        )
+        self.extra = Self.sanitizedExtra(
+            try container.decodeIfPresent([String: String].self, forKey: .extra) ?? [:]
+        )
     }
 }
