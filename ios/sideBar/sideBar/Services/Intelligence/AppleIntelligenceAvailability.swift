@@ -71,31 +71,66 @@ public struct StaticAppleIntelligenceAvailabilityProvider: AppleIntelligenceAvai
     }
 
     public func availability(for capability: IntelligenceCapability) -> AppleIntelligenceAvailability {
+        let supportsOnDeviceLanguageModel = Self.supportsOnDeviceLanguageModel(capability)
+        let supportsPCC = Self.supportsPCC(capability)
+        let supportsSpeechTranscription = Self.supportsSpeechTranscription(capability)
+
         var reasons = Set<AppleIntelligenceUnavailableReason>()
-        if !flags.localModelsEnabled {
+        if supportsOnDeviceLanguageModel && !flags.localModelsEnabled {
             reasons.insert(.localModelsFlagDisabled)
         }
-        if !flags.pccEnabled {
+        if supportsPCC && !flags.pccEnabled {
             reasons.insert(.pccFlagDisabled)
         }
-        if !runtime.supportsFoundationModels {
+        if (supportsOnDeviceLanguageModel || supportsPCC) && !runtime.supportsFoundationModels {
             reasons.insert(.foundationModelsUnavailable)
         }
-        if !runtime.supportsSpeechTranscription {
+        if supportsSpeechTranscription && !runtime.supportsSpeechTranscription {
             reasons.insert(.speechTranscriptionUnavailable)
         }
 
         return AppleIntelligenceAvailability(
             capability: capability,
-            canUseOnDeviceLanguageModel: flags.localModelsEnabled && runtime.supportsFoundationModels,
-            canUsePCC: flags.pccEnabled && runtime.supportsFoundationModels,
-            canUseSpeechTranscription: runtime.supportsSpeechTranscription,
+            canUseOnDeviceLanguageModel: supportsOnDeviceLanguageModel
+                && flags.localModelsEnabled
+                && runtime.supportsFoundationModels,
+            canUsePCC: supportsPCC && flags.pccEnabled && runtime.supportsFoundationModels,
+            canUseSpeechTranscription: supportsSpeechTranscription && runtime.supportsSpeechTranscription,
             reasons: reasons
         )
     }
+
+    private static func supportsOnDeviceLanguageModel(_ capability: IntelligenceCapability) -> Bool {
+        switch capability {
+        case .chat, .titleGeneration, .liveNotes, .liveVoice:
+            true
+        case .audioTranscription, .videoTranscription:
+            false
+        }
+    }
+
+    private static func supportsPCC(_ capability: IntelligenceCapability) -> Bool {
+        switch capability {
+        case .liveNotes:
+            true
+        case .chat, .titleGeneration, .audioTranscription, .videoTranscription, .liveVoice:
+            false
+        }
+    }
+
+    private static func supportsSpeechTranscription(_ capability: IntelligenceCapability) -> Bool {
+        switch capability {
+        case .audioTranscription, .videoTranscription, .liveNotes, .liveVoice:
+            true
+        case .chat, .titleGeneration:
+            false
+        }
+    }
 }
 
-/// Availability provider backed by sideBar flags and compile-time framework checks.
+/// Availability provider backed by sideBar flags and compile-time framework presence checks.
+///
+/// This provider does not perform entitlement, device, model-download, locale, or permission checks.
 public struct DefaultAppleIntelligenceAvailabilityProvider: AppleIntelligenceAvailabilityProviding {
     public let flags: AppleIntelligenceFeatureFlags
 

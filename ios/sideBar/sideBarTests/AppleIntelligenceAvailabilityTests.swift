@@ -8,8 +8,12 @@ final class AppleIntelligenceAvailabilityTests: XCTestCase {
             runtime: .init(supportsFoundationModels: true, supportsSpeechTranscription: true)
         )
 
-        XCTAssertTrue(provider.availability(for: .liveNotes).canUseOnDeviceLanguageModel)
-        XCTAssertFalse(provider.availability(for: .liveNotes).canUsePCC)
+        let availability = provider.availability(for: .liveNotes)
+
+        XCTAssertTrue(availability.canUseOnDeviceLanguageModel)
+        XCTAssertFalse(availability.canUsePCC)
+        XCTAssertTrue(availability.canUseSpeechTranscription)
+        XCTAssertEqual(availability.reasons, [.pccFlagDisabled])
     }
 
     func testDisabledFlagBlocksOnDeviceLanguageModel() {
@@ -21,7 +25,9 @@ final class AppleIntelligenceAvailabilityTests: XCTestCase {
         let availability = provider.availability(for: .liveNotes)
 
         XCTAssertFalse(availability.canUseOnDeviceLanguageModel)
-        XCTAssertTrue(availability.reasons.contains(.localModelsFlagDisabled))
+        XCTAssertTrue(availability.canUsePCC)
+        XCTAssertTrue(availability.canUseSpeechTranscription)
+        XCTAssertEqual(availability.reasons, [.localModelsFlagDisabled])
     }
 
     func testMissingFoundationModelsBlocksModelUse() {
@@ -34,6 +40,35 @@ final class AppleIntelligenceAvailabilityTests: XCTestCase {
 
         XCTAssertFalse(availability.canUseOnDeviceLanguageModel)
         XCTAssertFalse(availability.canUsePCC)
-        XCTAssertTrue(availability.reasons.contains(.foundationModelsUnavailable))
+        XCTAssertTrue(availability.canUseSpeechTranscription)
+        XCTAssertEqual(availability.reasons, [.foundationModelsUnavailable])
+    }
+
+    func testAudioTranscriptionIgnoresModelAndPCCFailuresWhenSpeechIsAvailable() {
+        let provider = StaticAppleIntelligenceAvailabilityProvider(
+            flags: .init(localModelsEnabled: false, pccEnabled: false),
+            runtime: .init(supportsFoundationModels: false, supportsSpeechTranscription: true)
+        )
+
+        let availability = provider.availability(for: .audioTranscription)
+
+        XCTAssertFalse(availability.canUseOnDeviceLanguageModel)
+        XCTAssertFalse(availability.canUsePCC)
+        XCTAssertTrue(availability.canUseSpeechTranscription)
+        XCTAssertEqual(availability.reasons, [])
+    }
+
+    func testAudioTranscriptionReportsOnlySpeechSupportFailure() {
+        let provider = StaticAppleIntelligenceAvailabilityProvider(
+            flags: .init(localModelsEnabled: false, pccEnabled: false),
+            runtime: .init(supportsFoundationModels: false, supportsSpeechTranscription: false)
+        )
+
+        let availability = provider.availability(for: .audioTranscription)
+
+        XCTAssertFalse(availability.canUseOnDeviceLanguageModel)
+        XCTAssertFalse(availability.canUsePCC)
+        XCTAssertFalse(availability.canUseSpeechTranscription)
+        XCTAssertEqual(availability.reasons, [.speechTranscriptionUnavailable])
     }
 }
