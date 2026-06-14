@@ -37,12 +37,12 @@ enum NoteTextBlockquoteDecorationLayout {
             )
             guard glyphRange.length > 0 else { continue }
 
-            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { lineFragmentRect, usedRect, _, _, _ in
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, _, _ in
                 let ruleRect = CGRect(
                     x: usedRect.minX + textContainerInset.width - ruleGap - ruleWidth,
-                    y: lineFragmentRect.minY + textContainerInset.height,
+                    y: usedRect.minY + textContainerInset.height,
                     width: ruleWidth,
-                    height: lineFragmentRect.height
+                    height: usedRect.height
                 )
                 rects.append(integralized(ruleRect))
             }

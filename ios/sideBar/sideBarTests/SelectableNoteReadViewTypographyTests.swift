@@ -139,6 +139,8 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(orderedList.headIndent, baseFontSize * 2.5, accuracy: 0.001)
         XCTAssertEqual(orderedList.tabStops.first?.location ?? 0, baseFontSize * 2.5, accuracy: 0.001)
         XCTAssertEqual(orderedList.defaultTabInterval, baseFontSize * 2.5, accuracy: 0.001)
+        XCTAssertEqual(blockquote.spacingBefore, 8, accuracy: 0.001)
+        XCTAssertEqual(blockquote.spacingAfter, 8, accuracy: 0.001)
         XCTAssertEqual(blockquote.headIndent, baseFontSize * 1.25, accuracy: 0.001)
         XCTAssertEqual(codeBlock.headIndent, baseFontSize * 0.75, accuracy: 0.001)
         XCTAssertEqual(codeBlock.tailIndent, baseFontSize * 0.75, accuracy: 0.001)
@@ -319,10 +321,18 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(
+                    type: .paragraph,
+                    content: [.init(text: "Before quote", marks: [])]
+                ),
+                .init(
                     type: .blockquote,
                     children: [
                         .paragraph([.init(text: "Quoted text", marks: [])])
                     ]
+                ),
+                .init(
+                    type: .paragraph,
+                    content: [.init(text: "After quote", marks: [])]
                 )
             ]
         )
@@ -330,35 +340,41 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             document: document,
             frame: NSRect(x: 0, y: 0, width: 320, height: 180)
         )
-        let prefixGlyphRect = try glyphRect(in: textView, characterIndex: 0)
-        let prefixRect = prefixGlyphRect.offsetBy(
+        let quoteRange = (try XCTUnwrap(textView.textStorage).string as NSString).range(of: "Quoted text")
+        XCTAssertNotEqual(quoteRange.location, NSNotFound)
+        let quoteGlyphRect = try glyphRect(in: textView, characterIndex: quoteRange.location)
+        let quoteRect = quoteGlyphRect.offsetBy(
             dx: textView.textContainerInset.width,
             dy: textView.textContainerInset.height
         )
-        let ruleRect = try XCTUnwrap(
-            NoteTextBlockquoteDecorationLayout.ruleRects(
-                in: try XCTUnwrap(textView.textStorage),
-                layoutManager: try XCTUnwrap(textView.layoutManager),
-                textContainer: try XCTUnwrap(textView.textContainer),
-                textContainerInset: textView.textContainerInset
-            ).first
+        let ruleRects = NoteTextBlockquoteDecorationLayout.ruleRects(
+            in: try XCTUnwrap(textView.textStorage),
+            layoutManager: try XCTUnwrap(textView.layoutManager),
+            textContainer: try XCTUnwrap(textView.textContainer),
+            textContainerInset: textView.textContainerInset
         )
+        let ruleRect = try XCTUnwrap(ruleRects.first)
 
         XCTAssertLessThan(
             ruleRect.maxX,
-            prefixRect.minX,
-            "Expected rule rect \(ruleRect.debugDescription) to sit left of prefix rect \(prefixRect.debugDescription)"
+            quoteRect.minX,
+            "Expected rule rect \(ruleRect.debugDescription) to sit left of quote rect \(quoteRect.debugDescription)"
         )
         XCTAssertGreaterThan(
             ruleRect.maxX,
-            prefixRect.minX - 16,
-            "Expected rule rect \(ruleRect.debugDescription) to remain visually adjacent to prefix rect \(prefixRect.debugDescription)"
+            quoteRect.minX - 16,
+            "Expected rule rect \(ruleRect.debugDescription) to remain visually adjacent to quote rect \(quoteRect.debugDescription)"
         )
         XCTAssertEqual(
             ruleRect.midY,
-            prefixRect.midY,
+            quoteRect.midY,
             accuracy: 2,
-            "Expected rule rect \(ruleRect.debugDescription) to align vertically with prefix rect \(prefixRect.debugDescription)"
+            "Expected rule rect \(ruleRect.debugDescription) to align vertically with quote rect \(quoteRect.debugDescription)"
+        )
+        XCTAssertLessThanOrEqual(
+            ruleRect.height,
+            quoteRect.height + 2,
+            "Expected rule rect \(ruleRect.debugDescription) to avoid covering blockquote paragraph margin"
         )
     }
     #endif

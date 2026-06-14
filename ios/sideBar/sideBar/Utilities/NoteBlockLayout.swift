@@ -128,7 +128,12 @@ enum NoteBlockLayout {
             )
         case .blockquote:
             let indent = baseFontSize * 1.25
-            return plainMetrics(headIndent: indent, firstLineHeadIndent: indent)
+            return plainMetrics(
+                spacingBefore: 8,
+                spacingAfter: 8,
+                headIndent: indent,
+                firstLineHeadIndent: indent
+            )
         case .codeBlock:
             let inset = baseFontSize * 0.75
             return plainMetrics(
