@@ -32,36 +32,19 @@ enum NoteTextTypography {
 @available(iOS 26.0, macOS 26.0, *)
 enum NoteTextParagraphMetrics {
     static func codeBlockPaddingBefore(baseFontSize: CGFloat) -> CGFloat {
-        6
+        NoteBlockLayout.codeBlockPaddingBefore(baseFontSize: baseFontSize)
     }
 
     static func codeBlockPaddingAfter(baseFontSize: CGFloat) -> CGFloat {
-        12
+        NoteBlockLayout.codeBlockPaddingAfter(baseFontSize: baseFontSize)
     }
 
     static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize * 2.5
+        NoteBlockLayout.orderedListContentIndent(baseFontSize: baseFontSize)
     }
 
     static func orderedListMarkerIndent(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize
-    }
-
-    private struct StyleMetrics {
-        let lineSpacing: CGFloat
-        let spacingBefore: CGFloat
-        let spacingAfter: CGFloat
-    }
-
-    private struct ParagraphStyleConfiguration {
-        let lineSpacing: CGFloat
-        let spacingBefore: CGFloat
-        let spacingAfter: CGFloat
-        let headIndent: CGFloat
-        let firstLineHeadIndent: CGFloat
-        let tailIndent: CGFloat
-        let tabStops: [NSTextTab]
-        let defaultTabInterval: CGFloat
+        NoteBlockLayout.orderedListMarkerIndent(baseFontSize: baseFontSize)
     }
 
     static func bodyParagraphStyle(
@@ -88,17 +71,31 @@ enum NoteTextParagraphMetrics {
         tabStops: [NSTextTab] = [],
         defaultTabInterval: CGFloat = 0
     ) -> NSParagraphStyle {
-        let metrics = styleMetrics(for: blockType, baseFontSize: baseFontSize)
-        return paragraphStyle(
-            configuration: ParagraphStyleConfiguration(
-                lineSpacing: metrics.lineSpacing,
-                spacingBefore: metrics.spacingBefore + additionalSpacingBefore,
-                spacingAfter: metrics.spacingAfter + additionalSpacingAfter,
-                headIndent: headIndent,
-                firstLineHeadIndent: firstLineHeadIndent ?? headIndent,
-                tailIndent: tailIndent,
-                tabStops: tabStops,
-                defaultTabInterval: defaultTabInterval
+        let context = NoteBlockLayoutContext(
+            baseFontSize: baseFontSize,
+            additionalSpacingBefore: additionalSpacingBefore,
+            additionalSpacingAfter: additionalSpacingAfter
+        )
+        let resolvedMetrics = NoteBlockLayout.metrics(for: blockType, context: context)
+        let resolvedHeadIndent = headIndent != 0 ? headIndent : resolvedMetrics.headIndent
+        let resolvedFirstLineHeadIndent = firstLineHeadIndent
+            ?? (headIndent != 0 ? headIndent : resolvedMetrics.firstLineHeadIndent)
+        let resolvedTailIndent = tailIndent != 0 ? tailIndent : resolvedMetrics.tailIndent
+        let resolvedTabStops = tabStops.isEmpty ? resolvedMetrics.tabStops : tabStops
+        let resolvedDefaultTabInterval = defaultTabInterval != 0
+            ? defaultTabInterval
+            : resolvedMetrics.defaultTabInterval
+
+        return NoteBlockLayout.paragraphStyle(
+            metrics: NoteBlockLayoutMetrics(
+                lineSpacing: resolvedMetrics.lineSpacing,
+                spacingBefore: resolvedMetrics.spacingBefore,
+                spacingAfter: resolvedMetrics.spacingAfter,
+                headIndent: resolvedHeadIndent,
+                firstLineHeadIndent: resolvedFirstLineHeadIndent,
+                tailIndent: resolvedTailIndent,
+                tabStops: resolvedTabStops,
+                defaultTabInterval: resolvedDefaultTabInterval
             )
         )
     }
@@ -108,8 +105,8 @@ enum NoteTextParagraphMetrics {
         before nextBlockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat
     ) -> NSParagraphStyle {
-        paragraphStyle(
-            configuration: ParagraphStyleConfiguration(
+        NoteBlockLayout.paragraphStyle(
+            metrics: NoteBlockLayoutMetrics(
                 lineSpacing: 0,
                 spacingBefore: nextBlockType == .codeBlock
                     ? codeBlockPaddingBefore(baseFontSize: baseFontSize)
@@ -124,62 +121,6 @@ enum NoteTextParagraphMetrics {
                 defaultTabInterval: 0
             )
         )
-    }
-
-    private static func paragraphStyle(
-        configuration: ParagraphStyleConfiguration
-    ) -> NSParagraphStyle {
-        let style = NSMutableParagraphStyle()
-        style.lineSpacing = configuration.lineSpacing
-        style.paragraphSpacingBefore = configuration.spacingBefore
-        style.paragraphSpacing = configuration.spacingAfter
-        style.headIndent = configuration.headIndent
-        style.firstLineHeadIndent = configuration.firstLineHeadIndent
-        if configuration.tailIndent != 0 {
-            style.tailIndent = -configuration.tailIndent
-        }
-        style.tabStops = configuration.tabStops
-        style.defaultTabInterval = configuration.defaultTabInterval
-        return style
-    }
-
-    private static func styleMetrics(
-        for blockType: NotesSemanticDocument.BlockType,
-        baseFontSize: CGFloat
-    ) -> StyleMetrics {
-        if let style = NoteTextStyle(blockType: blockType) {
-            switch style {
-            case .title:
-                return StyleMetrics(
-                    lineSpacing: 0,
-                    spacingBefore: 0,
-                    spacingAfter: baseFontSize * 0.25
-                )
-            case .heading:
-                return StyleMetrics(
-                    lineSpacing: 0,
-                    spacingBefore: baseFontSize * 0.75,
-                    spacingAfter: baseFontSize * 0.1875
-                )
-            case .subheading:
-                return StyleMetrics(
-                    lineSpacing: 0,
-                    spacingBefore: baseFontSize * 0.5,
-                    spacingAfter: baseFontSize * 0.125
-                )
-            case .body:
-                return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 4)
-            }
-        }
-
-        switch blockType {
-        case .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
-            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
-        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
-            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
-        case .title, .paragraph, .heading, .subheading:
-            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
-        }
     }
 }
 

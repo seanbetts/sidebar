@@ -33,46 +33,10 @@ extension NativeNoteEditorViewModel {
     }
 
     func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {
-        switch blockType {
-        case .unorderedList, .checklist:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize
-            )
-        case .orderedList:
-            let contentIndent = NoteTextParagraphMetrics.orderedListContentIndent(
-                baseFontSize: baseFontSize
-            )
-            let markerIndent = NoteTextParagraphMetrics.orderedListMarkerIndent(
-                baseFontSize: baseFontSize
-            )
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: contentIndent,
-                firstLineHeadIndent: markerIndent,
-                tabStops: [
-                    NSTextTab(textAlignment: .left, location: contentIndent)
-                ],
-                defaultTabInterval: contentIndent
-            )
-        case .blockquote:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize * 1.25
-            )
-        case .codeBlock:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize * 0.75,
-                tailIndent: baseFontSize * 0.75
-            )
-        default:
-            return NoteTextParagraphMetrics.paragraphStyle(for: blockType, baseFontSize: baseFontSize)
-        }
+        NoteBlockLayout.paragraphStyle(
+            for: blockType,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize)
+        )
     }
 
     func blockPlainText(_ block: NotesSemanticDocument.Block) -> String {

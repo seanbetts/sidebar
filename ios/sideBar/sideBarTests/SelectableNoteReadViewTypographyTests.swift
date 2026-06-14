@@ -110,6 +110,101 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(bodyStyle.lineSpacing, 0, accuracy: 0.001)
     }
 
+    func testNoteBlockLayoutMetricsExposeCurrentBlockSpacingAndIndents() throws {
+        let baseFontSize: CGFloat = 16
+        let context = NoteBlockLayoutContext(baseFontSize: baseFontSize)
+
+        let title = NoteBlockLayout.metrics(for: .title, context: context)
+        let heading = NoteBlockLayout.metrics(for: .heading, context: context)
+        let subheading = NoteBlockLayout.metrics(for: .subheading, context: context)
+        let paragraph = NoteBlockLayout.metrics(for: .paragraph, context: context)
+        let unorderedList = NoteBlockLayout.metrics(for: .unorderedList, context: context)
+        let orderedList = NoteBlockLayout.metrics(for: .orderedList, context: context)
+        let checklist = NoteBlockLayout.metrics(for: .checklist, context: context)
+        let blockquote = NoteBlockLayout.metrics(for: .blockquote, context: context)
+        let codeBlock = NoteBlockLayout.metrics(for: .codeBlock, context: context)
+
+        XCTAssertEqual(title.spacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(title.spacingAfter, baseFontSize * 0.25, accuracy: 0.001)
+        XCTAssertEqual(heading.spacingBefore, baseFontSize * 0.75, accuracy: 0.001)
+        XCTAssertEqual(heading.spacingAfter, baseFontSize * 0.1875, accuracy: 0.001)
+        XCTAssertEqual(subheading.spacingBefore, baseFontSize * 0.5, accuracy: 0.001)
+        XCTAssertEqual(subheading.spacingAfter, baseFontSize * 0.125, accuracy: 0.001)
+        XCTAssertEqual(paragraph.spacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(paragraph.spacingAfter, 4, accuracy: 0.001)
+
+        XCTAssertEqual(unorderedList.headIndent, baseFontSize, accuracy: 0.001)
+        XCTAssertEqual(checklist.headIndent, baseFontSize, accuracy: 0.001)
+        XCTAssertEqual(orderedList.firstLineHeadIndent, baseFontSize, accuracy: 0.001)
+        XCTAssertEqual(orderedList.headIndent, baseFontSize * 2.5, accuracy: 0.001)
+        XCTAssertEqual(orderedList.tabStops.first?.location ?? 0, baseFontSize * 2.5, accuracy: 0.001)
+        XCTAssertEqual(orderedList.defaultTabInterval, baseFontSize * 2.5, accuracy: 0.001)
+        XCTAssertEqual(blockquote.headIndent, baseFontSize * 1.25, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.headIndent, baseFontSize * 0.75, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.tailIndent, baseFontSize * 0.75, accuracy: 0.001)
+    }
+
+    func testNoteBlockLayoutMetricsApplyCodeBlockAdjacencySpacingToNeighborBlocks() throws {
+        let baseFontSize: CGFloat = 16
+
+        let beforeCodeBlock = NoteBlockLayout.metrics(
+            for: .paragraph,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize, nextBlockType: .codeBlock)
+        )
+        let afterCodeBlock = NoteBlockLayout.metrics(
+            for: .paragraph,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize, previousBlockType: .codeBlock)
+        )
+        let codeBlock = NoteBlockLayout.metrics(
+            for: .codeBlock,
+            context: NoteBlockLayoutContext(
+                baseFontSize: baseFontSize,
+                previousBlockType: .paragraph,
+                nextBlockType: .paragraph
+            )
+        )
+
+        XCTAssertEqual(
+            beforeCodeBlock.spacingAfter,
+            4 + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize),
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            afterCodeBlock.spacingBefore,
+            NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize),
+            accuracy: 0.001
+        )
+        XCTAssertEqual(codeBlock.spacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.spacingAfter, 0, accuracy: 0.001)
+    }
+
+    func testNoteBlockLayoutParagraphStyleUsesResolvedMetrics() throws {
+        let baseFontSize: CGFloat = 16
+
+        let orderedList = NoteBlockLayout.paragraphStyle(
+            for: .orderedList,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize)
+        )
+        let codeBlock = NoteBlockLayout.paragraphStyle(
+            for: .codeBlock,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize)
+        )
+        let paragraphBeforeCode = NoteBlockLayout.paragraphStyle(
+            for: .paragraph,
+            context: NoteBlockLayoutContext(baseFontSize: baseFontSize, nextBlockType: .codeBlock)
+        )
+
+        XCTAssertEqual(orderedList.firstLineHeadIndent, baseFontSize, accuracy: 0.001)
+        XCTAssertEqual(orderedList.headIndent, baseFontSize * 2.5, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.headIndent, baseFontSize * 0.75, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.tailIndent, -(baseFontSize * 0.75), accuracy: 0.001)
+        XCTAssertEqual(
+            paragraphBeforeCode.paragraphSpacing,
+            4 + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize),
+            accuracy: 0.001
+        )
+    }
+
     func testOrderedListParagraphMetricsUseHangingIndentAndTabStop() throws {
         let baseFontSize: CGFloat = 16
         let expectedIndent = NoteTextParagraphMetrics.orderedListContentIndent(
