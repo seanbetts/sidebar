@@ -8,7 +8,8 @@ extension NoteTextFormattingDefinition {
         previousBlockType: NotesSemanticDocument.BlockType? = nil,
         nextBlockType: NotesSemanticDocument.BlockType? = nil,
         additionalSpacingBefore: CGFloat = 0,
-        additionalSpacingAfter: CGFloat = 0
+        additionalSpacingAfter: CGFloat = 0,
+        includesBlockSpacing: Bool = true
     ) -> NSParagraphStyle {
         NoteBlockLayout.paragraphStyle(
             for: blockType,
@@ -18,7 +19,8 @@ extension NoteTextFormattingDefinition {
                 nextBlockType: nextBlockType,
                 additionalSpacingBefore: additionalSpacingBefore,
                 additionalSpacingAfter: additionalSpacingAfter
-            )
+            ),
+            includesBlockSpacing: includesBlockSpacing
         )
     }
 
@@ -37,9 +39,13 @@ extension NoteTextFormattingDefinition {
             if previousBlockType == .codeBlock {
                 additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(
                     baseFontSize: baseFontSize
+                ) + NoteTextParagraphMetrics.codeBlockMarginAfter(
+                    baseFontSize: baseFontSize
                 )
             } else if nextBlockType == .codeBlock {
                 additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingBefore(
+                    baseFontSize: baseFontSize
+                ) + NoteTextParagraphMetrics.codeBlockMarginBefore(
                     baseFontSize: baseFontSize
                 )
             } else {
@@ -47,14 +53,16 @@ extension NoteTextFormattingDefinition {
             }
             return paragraphStyle(
                 for: boundaryOwner,
-                additionalSpacingAfter: additionalSpacingAfter
+                additionalSpacingAfter: additionalSpacingAfter,
+                includesBlockSpacing: false
             )
         }
 
         return paragraphStyle(
             for: blockType,
             previousBlockType: previousStructuralBoundaryBlockType(before: range.lowerBound, in: text),
-            nextBlockType: nextStructuralBoundaryBlockType(after: range.upperBound, in: text)
+            nextBlockType: nextStructuralBoundaryBlockType(after: range.upperBound, in: text),
+            includesBlockSpacing: blockType != .codeBlock
         )
     }
 
@@ -93,6 +101,7 @@ extension NoteTextFormattingDefinition {
             return 0
         }
         return NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginAfter(baseFontSize: baseFontSize)
     }
 
     func additionalSpacingAfter(
@@ -107,6 +116,7 @@ extension NoteTextFormattingDefinition {
             return 0
         }
         return NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize)
     }
 
     func containsVisibleCharacters(

@@ -85,10 +85,12 @@ enum NoteTextCodeBlockBackgroundLayout {
             guard glyphRange.length > 0 else { continue }
 
             var blockRect: CGRect?
-            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { lineFragmentRect, _, _, _, _ in
-                let rect = lineFragmentRect.offsetBy(
-                    dx: textContainerInset.width,
-                    dy: textContainerInset.height
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { lineFragmentRect, usedRect, _, _, _ in
+                let rect = CGRect(
+                    x: lineFragmentRect.minX + textContainerInset.width,
+                    y: usedRect.minY + textContainerInset.height,
+                    width: lineFragmentRect.width,
+                    height: usedRect.height
                 )
                 blockRect = blockRect?.union(rect) ?? rect
             }

@@ -101,9 +101,13 @@ extension NotesAttributedDocumentCodec {
         if previousBlockType == .codeBlock {
             additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(
                 baseFontSize: baseFontSize
+            ) + NoteTextParagraphMetrics.codeBlockMarginAfter(
+                baseFontSize: baseFontSize
             )
         } else if nextBlockType == .codeBlock {
             additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingBefore(
+                baseFontSize: baseFontSize
+            ) + NoteTextParagraphMetrics.codeBlockMarginBefore(
                 baseFontSize: baseFontSize
             )
         } else {
@@ -112,7 +116,8 @@ extension NotesAttributedDocumentCodec {
         boundary[range].paragraphStyle = paragraphStyle(
             for: boundaryOwner,
             baseFontSize: baseFontSize,
-            additionalSpacingAfter: additionalSpacingAfter
+            additionalSpacingAfter: additionalSpacingAfter,
+            includesBlockSpacing: false
         )
         boundary[range].noteBlock = blockMarker(for: nextBlockType)
         boundary[range].noteStructuralBoundary = true
@@ -137,7 +142,8 @@ extension NotesAttributedDocumentCodec {
             previousBlockType: previousBlockType,
             nextBlockType: nextBlockType,
             additionalSpacingBefore: additionalSpacingBefore,
-            additionalSpacingAfter: additionalSpacingAfter
+            additionalSpacingAfter: additionalSpacingAfter,
+            includesBlockSpacing: blockType != .codeBlock
         )
 
         if let visiblePrefix {
@@ -244,7 +250,8 @@ extension NotesAttributedDocumentCodec {
             for: blockType,
             baseFontSize: baseFontSize,
             additionalSpacingBefore: additionalSpacingBefore,
-            additionalSpacingAfter: additionalSpacingAfter
+            additionalSpacingAfter: additionalSpacingAfter,
+            includesBlockSpacing: blockType != .codeBlock
         )
         if let blockMarker = blockMarker(for: blockType) {
             attributed[range].noteBlock = blockMarker

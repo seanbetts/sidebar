@@ -45,7 +45,8 @@ extension NotesAttributedDocumentCodec {
         previousBlockType: NotesSemanticDocument.BlockType? = nil,
         nextBlockType: NotesSemanticDocument.BlockType? = nil,
         additionalSpacingBefore: CGFloat = 0,
-        additionalSpacingAfter: CGFloat = 0
+        additionalSpacingAfter: CGFloat = 0,
+        includesBlockSpacing: Bool = true
     ) -> NSParagraphStyle {
         NoteBlockLayout.paragraphStyle(
             for: blockType,
@@ -55,7 +56,8 @@ extension NotesAttributedDocumentCodec {
                 nextBlockType: nextBlockType,
                 additionalSpacingBefore: additionalSpacingBefore,
                 additionalSpacingAfter: additionalSpacingAfter
-            )
+            ),
+            includesBlockSpacing: includesBlockSpacing
         )
     }
 }

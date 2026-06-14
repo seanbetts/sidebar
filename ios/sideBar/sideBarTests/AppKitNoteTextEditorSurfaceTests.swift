@@ -246,7 +246,9 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
         let baseFontSize = NoteTextTypography.defaultBodyFontSize
         let expectedGapAboveDelta = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize)
         let expectedGapBelowDelta = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginAfter(baseFontSize: baseFontSize)
         let textView = try mountEditorTextView(
             document: document,
             baseFontSize: baseFontSize,

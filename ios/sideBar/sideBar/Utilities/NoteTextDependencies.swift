@@ -39,6 +39,14 @@ enum NoteTextParagraphMetrics {
         NoteBlockLayout.codeBlockPaddingAfter(baseFontSize: baseFontSize)
     }
 
+    static func codeBlockMarginBefore(baseFontSize: CGFloat) -> CGFloat {
+        NoteBlockLayout.codeBlockMarginBefore(baseFontSize: baseFontSize)
+    }
+
+    static func codeBlockMarginAfter(baseFontSize: CGFloat) -> CGFloat {
+        NoteBlockLayout.codeBlockMarginAfter(baseFontSize: baseFontSize)
+    }
+
     static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
         NoteBlockLayout.orderedListContentIndent(baseFontSize: baseFontSize)
     }
@@ -69,7 +77,8 @@ enum NoteTextParagraphMetrics {
         firstLineHeadIndent: CGFloat? = nil,
         tailIndent: CGFloat = 0,
         tabStops: [NSTextTab] = [],
-        defaultTabInterval: CGFloat = 0
+        defaultTabInterval: CGFloat = 0,
+        includesBlockSpacing: Bool = true
     ) -> NSParagraphStyle {
         let context = NoteBlockLayoutContext(
             baseFontSize: baseFontSize,
@@ -77,6 +86,7 @@ enum NoteTextParagraphMetrics {
             additionalSpacingAfter: additionalSpacingAfter
         )
         let resolvedMetrics = NoteBlockLayout.metrics(for: blockType, context: context)
+        let shouldIncludeSpacing = includesBlockSpacing || blockType != .codeBlock
         let resolvedHeadIndent = headIndent != 0 ? headIndent : resolvedMetrics.headIndent
         let resolvedFirstLineHeadIndent = firstLineHeadIndent
             ?? (headIndent != 0 ? headIndent : resolvedMetrics.firstLineHeadIndent)
@@ -89,8 +99,8 @@ enum NoteTextParagraphMetrics {
         return NoteBlockLayout.paragraphStyle(
             metrics: NoteBlockLayoutMetrics(
                 lineSpacing: resolvedMetrics.lineSpacing,
-                spacingBefore: resolvedMetrics.spacingBefore,
-                spacingAfter: resolvedMetrics.spacingAfter,
+                spacingBefore: shouldIncludeSpacing ? resolvedMetrics.spacingBefore : 0,
+                spacingAfter: shouldIncludeSpacing ? resolvedMetrics.spacingAfter : 0,
                 headIndent: resolvedHeadIndent,
                 firstLineHeadIndent: resolvedFirstLineHeadIndent,
                 tailIndent: resolvedTailIndent,
@@ -110,9 +120,11 @@ enum NoteTextParagraphMetrics {
                 lineSpacing: 0,
                 spacingBefore: nextBlockType == .codeBlock
                     ? codeBlockPaddingBefore(baseFontSize: baseFontSize)
+                        + codeBlockMarginBefore(baseFontSize: baseFontSize)
                     : 0,
                 spacingAfter: previousBlockType == .codeBlock
                     ? codeBlockPaddingAfter(baseFontSize: baseFontSize)
+                        + codeBlockMarginAfter(baseFontSize: baseFontSize)
                     : 0,
                 headIndent: 0,
                 firstLineHeadIndent: 0,

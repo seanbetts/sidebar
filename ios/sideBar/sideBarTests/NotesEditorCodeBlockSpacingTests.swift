@@ -170,7 +170,9 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
         )
         let baseFontSize = NoteTextTypography.defaultBodyFontSize
         let expectedGapAboveDelta = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize)
         let expectedGapBelowDelta = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
+            + NoteTextParagraphMetrics.codeBlockMarginAfter(baseFontSize: baseFontSize)
 
         let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
             from: document,

@@ -61,9 +61,15 @@ enum NoteBlockLayout {
 
     static func paragraphStyle(
         for blockType: NotesSemanticDocument.BlockType,
-        context: NoteBlockLayoutContext
+        context: NoteBlockLayoutContext,
+        includesBlockSpacing: Bool = true
     ) -> NSParagraphStyle {
-        paragraphStyle(metrics: metrics(for: blockType, context: context))
+        let resolvedMetrics = metrics(for: blockType, context: context)
+        return paragraphStyle(
+            metrics: includesBlockSpacing
+                ? resolvedMetrics
+                : contentMetrics(from: resolvedMetrics, for: blockType)
+        )
     }
 
     static func paragraphStyle(metrics: NoteBlockLayoutMetrics) -> NSParagraphStyle {
@@ -84,6 +90,10 @@ enum NoteBlockLayout {
     static func codeBlockPaddingBefore(baseFontSize _: CGFloat) -> CGFloat { 6 }
 
     static func codeBlockPaddingAfter(baseFontSize _: CGFloat) -> CGFloat { 12 }
+
+    static func codeBlockMarginBefore(baseFontSize _: CGFloat) -> CGFloat { 8 }
+
+    static func codeBlockMarginAfter(baseFontSize _: CGFloat) -> CGFloat { 8 }
 
     static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
         baseFontSize * 2.5
@@ -137,6 +147,8 @@ enum NoteBlockLayout {
         case .codeBlock:
             let inset = baseFontSize * 0.75
             return plainMetrics(
+                spacingBefore: codeBlockMarginBefore(baseFontSize: baseFontSize),
+                spacingAfter: codeBlockMarginAfter(baseFontSize: baseFontSize),
                 headIndent: inset,
                 firstLineHeadIndent: inset,
                 tailIndent: inset
@@ -173,12 +185,30 @@ enum NoteBlockLayout {
         )
     }
 
+    private static func contentMetrics(
+        from metrics: NoteBlockLayoutMetrics,
+        for blockType: NotesSemanticDocument.BlockType
+    ) -> NoteBlockLayoutMetrics {
+        guard blockType == .codeBlock else { return metrics }
+
+        return NoteBlockLayoutMetrics(
+            lineSpacing: metrics.lineSpacing,
+            spacingBefore: 0,
+            spacingAfter: 0,
+            headIndent: metrics.headIndent,
+            firstLineHeadIndent: metrics.firstLineHeadIndent,
+            tailIndent: metrics.tailIndent,
+            tabStops: metrics.tabStops,
+            defaultTabInterval: metrics.defaultTabInterval
+        )
+    }
+
     private static func adjacencySpacingBefore(
         for blockType: NotesSemanticDocument.BlockType,
         previousBlockType: NotesSemanticDocument.BlockType?
     ) -> CGFloat {
         guard blockType != .codeBlock, previousBlockType == .codeBlock else { return 0 }
-        return codeBlockPaddingAfter(baseFontSize: 0)
+        return codeBlockPaddingAfter(baseFontSize: 0) + codeBlockMarginAfter(baseFontSize: 0)
     }
 
     private static func adjacencySpacingAfter(
@@ -190,7 +220,7 @@ enum NoteBlockLayout {
             spacing += 4
         }
         if blockType != .codeBlock, nextBlockType == .codeBlock {
-            spacing += codeBlockPaddingBefore(baseFontSize: 0)
+            spacing += codeBlockPaddingBefore(baseFontSize: 0) + codeBlockMarginBefore(baseFontSize: 0)
         }
         return spacing
     }

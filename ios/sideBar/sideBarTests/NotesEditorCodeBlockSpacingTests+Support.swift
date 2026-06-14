@@ -55,8 +55,8 @@ extension NotesEditorCodeBlockSpacingTests {
             }
 
             let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { lineFragmentRect, _, _, _, _ in
-                let rect = lineFragmentRect.offsetBy(
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, _, _ in
+                let rect = usedRect.offsetBy(
                     dx: textView.textContainerInset.left,
                     dy: textView.textContainerInset.top
                 )

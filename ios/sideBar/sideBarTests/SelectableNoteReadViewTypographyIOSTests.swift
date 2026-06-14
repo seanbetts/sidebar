@@ -400,11 +400,13 @@ extension SelectableNoteReadViewTypographyTests {
         )
         let paddingBefore = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
         let paddingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
+        let marginBefore = NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize)
+        let marginAfter = NoteTextParagraphMetrics.codeBlockMarginAfter(baseFontSize: baseFontSize)
 
-        XCTAssertEqual(beforeStyle.paragraphSpacing, 4 + paddingBefore, accuracy: 0.001)
+        XCTAssertEqual(beforeStyle.paragraphSpacing, 4 + paddingBefore + marginBefore, accuracy: 0.001)
         XCTAssertEqual(codeBlockStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
         XCTAssertEqual(codeBlockStyle.paragraphSpacing, 0, accuracy: 0.001)
-        XCTAssertEqual(afterStyle.paragraphSpacingBefore, paddingAfter, accuracy: 0.001)
+        XCTAssertEqual(afterStyle.paragraphSpacingBefore, paddingAfter + marginAfter, accuracy: 0.001)
     }
     #endif
 }

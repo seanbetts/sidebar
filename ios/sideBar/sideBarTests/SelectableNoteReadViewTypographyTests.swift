@@ -142,6 +142,8 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(blockquote.spacingBefore, 8, accuracy: 0.001)
         XCTAssertEqual(blockquote.spacingAfter, 8, accuracy: 0.001)
         XCTAssertEqual(blockquote.headIndent, baseFontSize * 1.25, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.spacingBefore, 8, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.spacingAfter, 8, accuracy: 0.001)
         XCTAssertEqual(codeBlock.headIndent, baseFontSize * 0.75, accuracy: 0.001)
         XCTAssertEqual(codeBlock.tailIndent, baseFontSize * 0.75, accuracy: 0.001)
     }
@@ -203,6 +205,41 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(secondItemStyle.paragraphSpacing, 4, accuracy: 0.001)
     }
 
+    func testRenderedCodeBlockContentDoesNotApplyOuterSpacingInsideCodeLines() throws {
+        let baseFontSize: CGFloat = 16
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Before code", marks: [])]),
+                .init(
+                    type: .codeBlock,
+                    content: [.init(
+                        text: "# A simple reminder\nprint(\"Don't forget to review your notes.\")",
+                        marks: []
+                    )]
+                ),
+                .paragraph([.init(text: "After code", marks: [])])
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let text = attributed.string as NSString
+        let firstLineRange = text.range(of: "# A simple reminder")
+        let secondLineRange = text.range(of: "print(")
+        XCTAssertNotEqual(firstLineRange.location, NSNotFound)
+        XCTAssertNotEqual(secondLineRange.location, NSNotFound)
+
+        let firstLineStyle = try paragraphStyle(in: attributed, at: firstLineRange.location)
+        let secondLineStyle = try paragraphStyle(in: attributed, at: secondLineRange.location)
+
+        XCTAssertEqual(firstLineStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(firstLineStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(secondLineStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(secondLineStyle.paragraphSpacing, 0, accuracy: 0.001)
+    }
+
     func testNoteBlockLayoutMetricsApplyCodeBlockAdjacencySpacingToNeighborBlocks() throws {
         let baseFontSize: CGFloat = 16
 
@@ -225,16 +262,19 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
 
         XCTAssertEqual(
             beforeCodeBlock.spacingAfter,
-            4 + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize),
+            4
+                + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+                + NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize),
             accuracy: 0.001
         )
         XCTAssertEqual(
             afterCodeBlock.spacingBefore,
-            NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize),
+            NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
+                + NoteTextParagraphMetrics.codeBlockMarginAfter(baseFontSize: baseFontSize),
             accuracy: 0.001
         )
-        XCTAssertEqual(codeBlock.spacingBefore, 0, accuracy: 0.001)
-        XCTAssertEqual(codeBlock.spacingAfter, 0, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.spacingBefore, 8, accuracy: 0.001)
+        XCTAssertEqual(codeBlock.spacingAfter, 8, accuracy: 0.001)
     }
 
     func testNoteBlockLayoutParagraphStyleUsesResolvedMetrics() throws {
@@ -259,7 +299,9 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(codeBlock.tailIndent, -(baseFontSize * 0.75), accuracy: 0.001)
         XCTAssertEqual(
             paragraphBeforeCode.paragraphSpacing,
-            4 + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize),
+            4
+                + NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+                + NoteTextParagraphMetrics.codeBlockMarginBefore(baseFontSize: baseFontSize),
             accuracy: 0.001
         )
     }
@@ -377,8 +419,6 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             "Expected rule rect \(ruleRect.debugDescription) to avoid covering blockquote paragraph margin"
         )
     }
-    #endif
 
-    #if os(iOS)
     #endif
 }
