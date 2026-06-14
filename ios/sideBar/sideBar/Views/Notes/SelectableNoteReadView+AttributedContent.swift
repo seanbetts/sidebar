@@ -377,7 +377,12 @@ extension SelectableNoteReadView {
         )
         mutable.addAttribute(
             .paragraphStyle,
-            value: run.paragraphStyle ?? paragraphStyle(for: blockType, baseFontSize: baseFontSize),
+            value: run.paragraphStyle ?? resolvedParagraphStyle(
+                for: run,
+                blockType: blockType,
+                in: attributed,
+                baseFontSize: baseFontSize
+            ),
             range: nsRange
         )
         applyDecorationAttributes(for: run, nsRange: nsRange, mutable: mutable)
@@ -449,13 +454,18 @@ extension SelectableNoteReadView {
         }
     }
 
-    private static func paragraphStyle(
-        for blockType: NotesSemanticDocument.BlockType,
+    private static func resolvedParagraphStyle(
+        for run: AttributedString.Runs.Run,
+        blockType: NotesSemanticDocument.BlockType,
+        in attributed: AttributedString,
         baseFontSize: CGFloat
     ) -> NSParagraphStyle {
-        NoteBlockLayout.paragraphStyle(
-            for: blockType,
-            context: NoteBlockLayoutContext(baseFontSize: baseFontSize)
+        NoteTextFormattingDefinition(baseFontSize: baseFontSize).paragraphStyle(
+            for: run.range,
+            blockType: blockType,
+            noteBlock: run.noteBlock,
+            structuralBoundary: run.noteStructuralBoundary == true,
+            in: attributed
         )
     }
 }

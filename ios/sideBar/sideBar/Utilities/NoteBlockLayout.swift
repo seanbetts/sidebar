@@ -113,7 +113,10 @@ enum NoteBlockLayout {
                 spacingAfter: baseFontSize * 0.125
             )
         case .unorderedList, .checklist:
-            return plainMetrics(headIndent: baseFontSize, firstLineHeadIndent: baseFontSize)
+            return plainMetrics(
+                headIndent: baseFontSize,
+                firstLineHeadIndent: baseFontSize
+            )
         case .orderedList:
             let contentIndent = orderedListContentIndent(baseFontSize: baseFontSize)
             let markerIndent = orderedListMarkerIndent(baseFontSize: baseFontSize)
@@ -177,7 +180,34 @@ enum NoteBlockLayout {
         for blockType: NotesSemanticDocument.BlockType,
         nextBlockType: NotesSemanticDocument.BlockType?
     ) -> CGFloat {
-        guard blockType != .codeBlock, nextBlockType == .codeBlock else { return 0 }
-        return codeBlockPaddingBefore(baseFontSize: 0)
+        var spacing: CGFloat = 0
+        if isListBlockType(blockType), nextBlockType != blockType {
+            spacing += 4
+        }
+        if blockType != .codeBlock, nextBlockType == .codeBlock {
+            spacing += codeBlockPaddingBefore(baseFontSize: 0)
+        }
+        return spacing
+    }
+
+    private static func isListBlockType(_ blockType: NotesSemanticDocument.BlockType) -> Bool {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist:
+            return true
+        case .title,
+             .paragraph,
+             .heading,
+             .subheading,
+             .listItem,
+             .blockquote,
+             .codeBlock,
+             .table,
+             .tableRow,
+             .tableCell,
+             .media,
+             .caption,
+             .htmlBlock:
+            return false
+        }
     }
 }

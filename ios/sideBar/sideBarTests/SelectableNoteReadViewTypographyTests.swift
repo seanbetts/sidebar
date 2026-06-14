@@ -144,6 +144,63 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(codeBlock.tailIndent, baseFontSize * 0.75, accuracy: 0.001)
     }
 
+    func testNoteBlockLayoutOnlyAddsListSpacingAfterContiguousListRuns() throws {
+        let baseFontSize: CGFloat = 16
+        let listTypes: [NotesSemanticDocument.BlockType] = [.unorderedList, .orderedList, .checklist]
+
+        for listType in listTypes {
+            let interiorItem = NoteBlockLayout.metrics(
+                for: listType,
+                context: NoteBlockLayoutContext(baseFontSize: baseFontSize, nextBlockType: listType)
+            )
+            let finalItemBeforeParagraph = NoteBlockLayout.metrics(
+                for: listType,
+                context: NoteBlockLayoutContext(baseFontSize: baseFontSize, nextBlockType: .paragraph)
+            )
+            let finalItemAtDocumentEnd = NoteBlockLayout.metrics(
+                for: listType,
+                context: NoteBlockLayoutContext(baseFontSize: baseFontSize)
+            )
+
+            XCTAssertEqual(interiorItem.spacingAfter, 0, accuracy: 0.001)
+            XCTAssertEqual(finalItemBeforeParagraph.spacingAfter, 4, accuracy: 0.001)
+            XCTAssertEqual(finalItemAtDocumentEnd.spacingAfter, 4, accuracy: 0.001)
+        }
+    }
+
+    func testRenderedListContainerOnlyAddsSpacingAfterFinalItem() throws {
+        let baseFontSize: CGFloat = 16
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First Item", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Second Item", marks: [])])
+                    ]
+                ),
+                .paragraph([.init(text: "After list", marks: [])])
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let text = attributed.string as NSString
+        let firstItemStyle = try paragraphStyle(
+            in: attributed,
+            at: text.range(of: "First Item").location
+        )
+        let secondItemStyle = try paragraphStyle(
+            in: attributed,
+            at: text.range(of: "Second Item").location
+        )
+
+        XCTAssertEqual(firstItemStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(secondItemStyle.paragraphSpacing, 4, accuracy: 0.001)
+    }
+
     func testNoteBlockLayoutMetricsApplyCodeBlockAdjacencySpacingToNeighborBlocks() throws {
         let baseFontSize: CGFloat = 16
 

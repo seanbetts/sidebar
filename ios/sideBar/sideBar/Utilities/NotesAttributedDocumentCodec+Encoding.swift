@@ -123,6 +123,8 @@ extension NotesAttributedDocumentCodec {
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
+        previousBlockType: NotesSemanticDocument.BlockType? = nil,
+        nextBlockType: NotesSemanticDocument.BlockType? = nil,
         additionalSpacingBefore: CGFloat = 0,
         additionalSpacingAfter: CGFloat = 0,
         visiblePrefix: String? = nil,
@@ -132,6 +134,8 @@ extension NotesAttributedDocumentCodec {
         let paragraphStyle = paragraphStyle(
             for: blockType,
             baseFontSize: baseFontSize,
+            previousBlockType: previousBlockType,
+            nextBlockType: nextBlockType,
             additionalSpacingBefore: additionalSpacingBefore,
             additionalSpacingAfter: additionalSpacingAfter
         )
@@ -166,6 +170,8 @@ extension NotesAttributedDocumentCodec {
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
+        previousBlockType: NotesSemanticDocument.BlockType? = nil,
+        nextBlockType: NotesSemanticDocument.BlockType? = nil,
         visiblePrefix: String? = nil,
         checklistItemChecked: Bool = false,
         presentationIntent: PresentationIntent
@@ -174,6 +180,8 @@ extension NotesAttributedDocumentCodec {
             from: segments,
             blockType: blockType,
             baseFontSize: baseFontSize,
+            previousBlockType: previousBlockType,
+            nextBlockType: nextBlockType,
             visiblePrefix: visiblePrefix,
             checklistItemChecked: checklistItemChecked
         )

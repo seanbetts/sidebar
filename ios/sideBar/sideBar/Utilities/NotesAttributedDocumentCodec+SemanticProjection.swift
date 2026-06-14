@@ -153,6 +153,7 @@ extension NotesAttributedDocumentCodec {
         case .orderedList, .unorderedList, .checklist:
             return attributedListContainer(
                 from: block,
+                nextBlockType: nextBlockType,
                 baseFontSize: baseFontSize,
                 identitySource: &identitySource,
                 semanticParent: nil
@@ -199,6 +200,7 @@ extension NotesAttributedDocumentCodec {
         case .orderedList, .unorderedList, .checklist:
             return attributedListContainer(
                 from: block,
+                nextBlockType: nil,
                 baseFontSize: baseFontSize,
                 identitySource: &identitySource,
                 semanticParent: semanticParent
@@ -245,12 +247,15 @@ extension NotesAttributedDocumentCodec {
                 additionalSpacingAfter: spacingAfter
             )
         case .unorderedList, .orderedList, .checklist, .blockquote:
+            let usesListRunContext = isListBlockType(block.type)
             return attributedParagraph(
                 from: block.content,
                 blockType: block.type,
                 baseFontSize: baseFontSize,
-                additionalSpacingBefore: spacingBefore,
-                additionalSpacingAfter: spacingAfter,
+                previousBlockType: listRunContextBlockType(block.type, value: previousBlockType),
+                nextBlockType: listRunContextBlockType(block.type, value: nextBlockType),
+                additionalSpacingBefore: usesListRunContext ? 0 : spacingBefore,
+                additionalSpacingAfter: usesListRunContext ? 0 : spacingAfter,
                 visiblePrefix: legacyVisiblePrefix(
                     for: block,
                     orderedListIndex: orderedListIndex
@@ -266,6 +271,7 @@ extension NotesAttributedDocumentCodec {
 
     private static func attributedListContainer(
         from block: NotesSemanticDocument.Block,
+        nextBlockType: NotesSemanticDocument.BlockType?,
         baseFontSize: CGFloat,
         identitySource: inout NotesPresentationIntentIdentitySource,
         semanticParent: PresentationIntent?
@@ -292,6 +298,9 @@ extension NotesAttributedDocumentCodec {
                     attributedBoundary(for: block.type, baseFontSize: baseFontSize)
                 )
             }
+            let itemPreviousBlockType: NotesSemanticDocument.BlockType? = index > 0 ? block.type : nil
+            let itemNextBlockType: NotesSemanticDocument.BlockType? =
+                index + 1 < children.count ? block.type : nextBlockType
             let itemIntent = PresentationIntent(
                 .listItem(ordinal: index + 1),
                 identity: identitySource.makeIdentity(),
@@ -317,6 +326,8 @@ extension NotesAttributedDocumentCodec {
                     from: child.content,
                     blockType: block.type,
                     baseFontSize: baseFontSize,
+                    previousBlockType: itemPreviousBlockType,
+                    nextBlockType: itemNextBlockType,
                     visiblePrefix: prefix,
                     checklistItemChecked: block.type == .checklist && child.checked == true,
                     presentationIntent: paragraphIntent
@@ -380,6 +391,35 @@ extension NotesAttributedDocumentCodec {
             return "> "
         default:
             return nil
+        }
+    }
+
+    private static func listRunContextBlockType(
+        _ blockType: NotesSemanticDocument.BlockType,
+        value: NotesSemanticDocument.BlockType?
+    ) -> NotesSemanticDocument.BlockType? {
+        guard isListBlockType(blockType) else { return nil }
+        return value
+    }
+
+    private static func isListBlockType(_ blockType: NotesSemanticDocument.BlockType) -> Bool {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist:
+            return true
+        case .title,
+             .paragraph,
+             .heading,
+             .subheading,
+             .listItem,
+             .blockquote,
+             .codeBlock,
+             .table,
+             .tableRow,
+             .tableCell,
+             .media,
+             .caption,
+             .htmlBlock:
+            return false
         }
     }
 

@@ -5,6 +5,8 @@ import SwiftUI
 extension NoteTextFormattingDefinition {
     func paragraphStyle(
         for blockType: NotesSemanticDocument.BlockType,
+        previousBlockType: NotesSemanticDocument.BlockType? = nil,
+        nextBlockType: NotesSemanticDocument.BlockType? = nil,
         additionalSpacingBefore: CGFloat = 0,
         additionalSpacingAfter: CGFloat = 0
     ) -> NSParagraphStyle {
@@ -12,6 +14,8 @@ extension NoteTextFormattingDefinition {
             for: blockType,
             context: NoteBlockLayoutContext(
                 baseFontSize: baseFontSize,
+                previousBlockType: previousBlockType,
+                nextBlockType: nextBlockType,
                 additionalSpacingBefore: additionalSpacingBefore,
                 additionalSpacingAfter: additionalSpacingAfter
             )
@@ -47,24 +51,11 @@ extension NoteTextFormattingDefinition {
             )
         }
 
-        let extraSpacingBefore = additionalSpacingBefore(
-            for: range,
-            blockType: blockType,
-            in: text
+        return paragraphStyle(
+            for: blockType,
+            previousBlockType: previousStructuralBoundaryBlockType(before: range.lowerBound, in: text),
+            nextBlockType: nextStructuralBoundaryBlockType(after: range.upperBound, in: text)
         )
-        let extraSpacingAfter = additionalSpacingAfter(
-            for: range,
-            blockType: blockType,
-            in: text
-        )
-        if extraSpacingBefore > 0 || extraSpacingAfter > 0 {
-            return paragraphStyle(
-                for: blockType,
-                additionalSpacingBefore: extraSpacingBefore,
-                additionalSpacingAfter: extraSpacingAfter
-            )
-        }
-        return paragraphStyle(for: blockType)
     }
 
     func previousBlockType(

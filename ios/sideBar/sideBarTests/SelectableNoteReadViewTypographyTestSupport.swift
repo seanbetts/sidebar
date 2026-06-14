@@ -25,6 +25,11 @@ extension SelectableNoteReadViewTypographyTests {
         return fontWeight(try XCTUnwrap(font))
     }
 
+    func paragraphStyle(in attributed: NSAttributedString, at location: Int) throws -> NSParagraphStyle {
+        let style = attributed.attribute(.paragraphStyle, at: location, effectiveRange: nil) as? NSParagraphStyle
+        return try XCTUnwrap(style)
+    }
+
     func fontHasBoldTrait(_ font: NotePlatformFont) -> Bool {
         #if os(iOS)
         return font.fontDescriptor.symbolicTraits.contains(.traitBold)
