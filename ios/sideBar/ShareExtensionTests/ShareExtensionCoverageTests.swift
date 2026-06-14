@@ -130,9 +130,6 @@ final class ShareExtensionCoverageTests: XCTestCase {
         let iconDirectoriesByName = [
             "ShareExtension": repositoryRoot.appendingPathComponent(
                 "ios/sideBar/ShareExtension/Assets.xcassets/AppIcon.appiconset"
-            ),
-            "containing app": repositoryRoot.appendingPathComponent(
-                "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset"
             )
         ]
         let iconFilenamesByPixelSize = [
@@ -159,6 +156,36 @@ final class ShareExtensionCoverageTests: XCTestCase {
                     "\(iconSource) \(filename) must fill its canvas because Safari's share menu may resolve the parent app icon."
                 )
             }
+        }
+    }
+
+    func testMainMacAppIconsUseTransparentCornersForApplicationPresentation() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let iconDirectory = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset"
+        )
+        let iconFilenames = [
+            "Icon-macOS-Default-16x16@1x.png",
+            "Icon-macOS-Default-16x16@2x.png",
+            "Icon-macOS-Default-32x32@1x.png",
+            "Icon-macOS-Default-32x32@2x.png",
+            "Icon-macOS-Default-128x128@1x.png",
+            "Icon-macOS-Default-128x128@2x.png",
+            "Icon-macOS-Default-256x256@1x.png",
+            "Icon-macOS-Default-256x256@2x.png",
+            "Icon-macOS-Default-512x512@1x.png",
+            "Icon-macOS-Default-1024x1024@1x.png"
+        ]
+
+        for filename in iconFilenames {
+            let iconURL = iconDirectory.appendingPathComponent(filename)
+            let cornerAlphas = try cornerAlphaValues(forPNGAt: iconURL)
+
+            XCTAssertEqual(
+                cornerAlphas,
+                [0, 0, 0, 0],
+                "\(filename) must not render an opaque square in macOS Application icon views."
+            )
         }
     }
 
@@ -345,6 +372,39 @@ final class ShareExtensionCoverageTests: XCTestCase {
             return .null
         }
         return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+
+    private func cornerAlphaValues(forPNGAt fileURL: URL) throws -> [UInt8] {
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            XCTFail("Could not decode PNG at \(fileURL.path)")
+            return []
+        }
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
+            XCTFail("Could not create bitmap context for \(fileURL.path)")
+            return []
+        }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let cornerOffsets = [
+            3,
+            ((width - 1) * 4) + 3,
+            ((height - 1) * width * 4) + 3,
+            (((height - 1) * width + (width - 1)) * 4) + 3
+        ]
+        return cornerOffsets.map { pixels[$0] }
     }
 }
 
