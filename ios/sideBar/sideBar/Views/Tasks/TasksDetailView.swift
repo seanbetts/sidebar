@@ -346,7 +346,7 @@ extension TasksDetailView {
                         sectionHeaderView(section: section, state: state)
                         if section.tasks.isEmpty, case .upcoming = state.selection {
                             Label("No tasks due", systemImage: AppIcon.State.successCircle.rawValue)
-                                .appFont(.subheading)
+                                .appFont(.body)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
                                 .padding(.leading, DesignTokens.Spacing.md + 14)
                                 .padding(.trailing, DesignTokens.Spacing.md)

@@ -40,6 +40,21 @@ final class TasksDetailViewSourceTests: XCTestCase {
         )
     }
 
+    func testUpcomingEmptySectionPlaceholderUsesRegularBodyTypography() throws {
+        let normalized = try tasksDetailViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        guard let placeholderRange = normalized.range(of: "Label(\"Notasksdue\"") else {
+            XCTFail("Expected TasksDetailView to render the upcoming empty section placeholder.")
+            return
+        }
+        let placeholderSource = normalized[placeholderRange.lowerBound...]
+            .prefix(while: { $0 != "}" })
+
+        XCTAssertTrue(placeholderSource.contains(".appFont(.body)"))
+        XCTAssertFalse(placeholderSource.contains(".appFont(.subheading)"))
+    }
+
     private func tasksDetailViewSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL
