@@ -7,7 +7,7 @@ import AppKit
 #if os(macOS)
 @MainActor
 @available(macOS 26.0, *)
-final class SelectableNoteReadViewCodeBlockBackgroundMacOSTests: XCTestCase {
+final class CodeBlockBackgroundMacOSTests: XCTestCase {
     func testMountedReadViewCodeBlockBackgroundExcludesOuterMarginsOnMacOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
