@@ -7,6 +7,9 @@
 
 import Foundation
 import XCTest
+#if os(iOS)
+import UIKit
+#endif
 
 extension SideBarUITests {
     func requireLiveUITestsEnabled() throws {
@@ -127,6 +130,12 @@ extension SideBarUITests {
 
     @MainActor
     func testIPadTasksWorkspaceDoesNotShowFloatingDock() throws {
+        #if os(iOS)
+        guard UIDevice.current.userInterfaceIdiom == .pad else {
+            throw XCTSkip("This regression test targets iPad split layout only.")
+        }
+        #endif
+
         let app = launchLocallyAuthenticatedApp()
 
         XCTAssertTrue(

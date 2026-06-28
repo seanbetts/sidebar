@@ -382,8 +382,9 @@ final class SideBarUITests: XCTestCase {
         ]
 
         while Date() < deadline {
-            app.activate()
-            app.tap()
+            if app.state == .runningForeground {
+                app.tap()
+            }
 
             let dismissedInApp = tapFirstExistingButton(in: app, labels: buttonLabels)
             let dismissedInSpringboard = tapFirstExistingButton(

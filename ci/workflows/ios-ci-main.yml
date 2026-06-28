@@ -48,6 +48,7 @@ jobs:
       - name: Boot simulator for UI smoke tests
         run: |
           xcrun simctl shutdown all || true
+          xcrun simctl erase "$IOS_SIMULATOR_DEVICE" || true
           xcrun simctl boot "$IOS_SIMULATOR_DEVICE" || true
           xcrun simctl bootstatus "$IOS_SIMULATOR_DEVICE" -b
       - name: Run UI smoke tests
@@ -69,6 +70,7 @@ jobs:
       - name: Reset simulator for extension tests
         run: |
           xcrun simctl shutdown all || true
+          xcrun simctl erase "$IOS_SIMULATOR_DEVICE" || true
           xcrun simctl boot "$IOS_SIMULATOR_DEVICE" || true
           xcrun simctl bootstatus "$IOS_SIMULATOR_DEVICE" -b
       - name: Run extension tests
