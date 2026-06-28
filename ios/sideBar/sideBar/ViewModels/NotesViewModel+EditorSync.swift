@@ -45,6 +45,7 @@ extension NotesViewModel {
             created: note.created
         )
         store.applyEditorUpdate(updated)
+        activeNote = store.activeNote
     }
 
     /// Refreshes widget data by fetching the latest notes tree.

@@ -255,6 +255,9 @@ import Combine
         let localID = UUID().uuidString.lowercased()
         do {
             try await store.enqueueCreateNote(localID: localID, request: request)
+            tree = store.tree
+            archivedTree = store.archivedTree
+            activeNote = store.activeNote
             let created = store.activeNote
             selectedNoteId = created?.path
             return created

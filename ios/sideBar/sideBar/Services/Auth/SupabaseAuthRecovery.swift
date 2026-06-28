@@ -28,20 +28,19 @@ enum SupabaseAuthRecovery {
             }
         }
 
-        let description = error.localizedDescription.lowercased()
-        if description.contains("invalid") && description.contains("refresh") {
-            return true
-        }
-        if description.contains("refresh token") && description.contains("expired") {
-            return true
-        }
-        if description.contains("refresh token") && description.contains("revoked") {
-            return true
-        }
-        if description.contains("jwt") && description.contains("expired") && description.contains("refresh") {
-            return true
-        }
-        if description.contains("invalid") && description.contains("jwt") {
+        return descriptionIndicatesInvalidAuth(error.localizedDescription.lowercased())
+    }
+
+    private static func descriptionIndicatesInvalidAuth(_ description: String) -> Bool {
+        let invalidPatterns = [
+            description.contains("invalid") && description.contains("refresh"),
+            description.contains("refresh token") && description.contains("expired"),
+            description.contains("session") && description.contains("expired"),
+            description.contains("refresh token") && description.contains("revoked"),
+            description.contains("jwt") && description.contains("expired") && description.contains("refresh"),
+            description.contains("invalid") && description.contains("jwt")
+        ]
+        if invalidPatterns.contains(true) {
             return true
         }
 
@@ -50,10 +49,7 @@ enum SupabaseAuthRecovery {
             description.contains("session") ||
             description.contains("refresh") ||
             description.contains("jwt")
-        if mentionsAuthRejection && mentionsSessionContext {
-            return true
-        }
-        return false
+        return mentionsAuthRejection && mentionsSessionContext
     }
 
     static func clearPersistedAuthState(stateStore: AuthStateStore) throws {

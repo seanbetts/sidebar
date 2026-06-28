@@ -74,9 +74,9 @@ public protocol AuthDiagnosticsRecording: Sendable {
 public struct LoggingAuthDiagnosticsRecorder: AuthDiagnosticsRecording {
     private let logger = Logger(subsystem: "sideBar", category: "AuthDiagnostics")
 
-    public init() {}
+    public nonisolated init() {}
 
-    public func record(_ event: AuthDiagnosticsEvent) {
+    public nonisolated func record(_ event: AuthDiagnosticsEvent) {
         let metadata = event.metadata
             .sorted { $0.key < $1.key }
             .map { "\($0.key)=\($0.value)" }

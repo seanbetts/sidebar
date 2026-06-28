@@ -233,6 +233,7 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(api.createRequests.count, 0)
         XCTAssertEqual(created?.id, request.clientId)
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
+        XCTAssertEqual(viewModel.tree?.children.first?.path, created?.path)
     }
 
     func testCreateBlankNoteShowsFailureToastWhenQueueMissing() async throws {
@@ -1562,7 +1563,7 @@ extension NotesViewModelTests {
         XCTAssertEqual(viewModel.activeNote?.id, "note-id")
     }
 
-    func testApplyLocalNoteSnapshotMirrorsActiveNoteOnNextMainActorTurn() async throws {
+    func testApplyLocalNoteSnapshotMirrorsActiveNoteImmediately() async throws {
         let api = NotesAPISpy()
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -1597,10 +1598,6 @@ extension NotesViewModelTests {
 
         viewModel.applyLocalNoteSnapshot(id: "note-id", document: updatedDocument)
 
-        XCTAssertEqual(viewModel.activeNote?.plainText, "Original")
-        try await waitUntil(timeoutSeconds: 0.2) {
-            viewModel.activeNote?.plainText == "Updated\nBody"
-        }
         XCTAssertEqual(viewModel.activeNote?.plainText, "Updated\nBody")
     }
 
