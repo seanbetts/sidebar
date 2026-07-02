@@ -68,7 +68,7 @@ TEST_DB_DATA_DIR="${HOME}/.sidebar/test-postgres"
 TEST_DB_LOG="/tmp/sidebar-test-postgres.log"
 use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
-STARTUP_DETECT_ATTEMPTS=40
+STARTUP_DETECT_ATTEMPTS=120
 STARTUP_DETECT_INTERVAL_SECONDS="0.5"
 RUNNER_DIRS=(
   "/Users/sean/Coding/actions-runner-ios"
@@ -875,7 +875,7 @@ start_docs() {
   ensure_port_available 3001 docs
   echo "Starting docs..."
   mkdir -p "${PRODUCT_DOCS_MINTLIFY_HOME}"
-  (cd "${REPO_ROOT}/docs/product" && HOME="${PRODUCT_DOCS_MINTLIFY_HOME}" mintlify dev --port 3001 --no-open) >"${DOCS_LOG}" 2>&1 </dev/null &
+  (cd "${REPO_ROOT}/docs/product" && PATH="/usr/local/bin:${PATH}" CI=1 nohup bash -lc "exec npx --yes mint dev --port 3001 --no-open") >"${DOCS_LOG}" 2>&1 </dev/null &
   echo $! >"${DOCS_PID}"
   if ! wait_for_role_port 3001 docs "${DOCS_PID}"; then
     echo "Docs failed to bind to port 3001. Check logs: ${DOCS_LOG}"
@@ -895,7 +895,7 @@ start_design_docs() {
   ensure_port_available 3002 design-docs
   echo "Starting design docs..."
   mkdir -p "${DESIGN_DOCS_MINTLIFY_HOME}"
-  (cd "${REPO_ROOT}/docs/design" && HOME="${DESIGN_DOCS_MINTLIFY_HOME}" mintlify dev --port 3002 --no-open) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
+  (cd "${REPO_ROOT}/docs/design" && PATH="/usr/local/bin:${PATH}" CI=1 nohup bash -lc "exec npx --yes mint dev --port 3002 --no-open") >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
   echo $! >"${DESIGN_DOCS_PID}"
   if ! wait_for_role_port 3002 design-docs "${DESIGN_DOCS_PID}"; then
     echo "Design docs failed to bind to port 3002. Check logs: ${DESIGN_DOCS_LOG}"
