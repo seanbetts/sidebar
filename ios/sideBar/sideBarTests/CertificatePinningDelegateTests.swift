@@ -109,11 +109,11 @@ final class CertificatePinningDelegateTests: XCTestCase {
         )
 
         XCTAssertEqual(components.year, 2026)
-        XCTAssertEqual(components.month, 7)
-        XCTAssertEqual(components.day, 23)
+        XCTAssertEqual(components.month, 9)
+        XCTAssertEqual(components.day, 21)
         XCTAssertEqual(components.hour, 23)
-        XCTAssertEqual(components.minute, 32)
-        XCTAssertEqual(components.second, 18)
+        XCTAssertEqual(components.minute, 30)
+        XCTAssertEqual(components.second, 58)
     }
 
     func testInitWithEmptyCertsDoesNotCrash() {
