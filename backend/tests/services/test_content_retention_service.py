@@ -152,6 +152,7 @@ def test_prune_tasks_and_keys_hard_delete_after_retention(test_db) -> None:
     key.deleted_at = now - timedelta(days=8)
     key.updated_at = key.deleted_at
     test_db.commit()
+    task_id = task.id
 
     task_summary = ContentRetentionService.prune_tasks(test_db, now=now, limit=10)
     key_summary = ContentRetentionService.prune_user_ai_provider_keys(
@@ -160,13 +161,47 @@ def test_prune_tasks_and_keys_hard_delete_after_retention(test_db) -> None:
 
     assert task_summary.hard_deleted == 1
     assert key_summary.hard_deleted == 1
-    assert test_db.query(Task).filter(Task.id == task.id).one_or_none() is None
+    assert test_db.query(Task).filter(Task.id == task_id).one_or_none() is None
     assert (
         test_db.query(UserAIProviderKey)
         .filter(UserAIProviderKey.id == key.id)
         .one_or_none()
         is None
     )
+
+
+def test_prune_tasks_hard_deletes_expired_recurring_series(test_db) -> None:
+    now = datetime.now(UTC)
+    template = TaskService.create_task(
+        test_db,
+        "user-1",
+        "Recurring template",
+        repeating=True,
+        repeat_template=True,
+    )
+    template.repeat_template_id = template.id
+    instance = TaskService.create_task(
+        test_db,
+        "user-1",
+        "Recurring instance",
+        repeating=True,
+        repeat_template_id=str(template.id),
+    )
+    test_db.commit()
+
+    TaskService.trash_task_series(test_db, "user-1", str(template.id))
+    expired_at = now - timedelta(days=61)
+    template.deleted_at = expired_at - timedelta(seconds=1)
+    template.updated_at = template.deleted_at
+    instance.deleted_at = expired_at
+    instance.updated_at = expired_at
+    test_db.commit()
+    task_ids = [template.id, instance.id]
+
+    summary = ContentRetentionService.prune_tasks(test_db, now=now, limit=10)
+
+    assert summary.hard_deleted == 2
+    assert test_db.query(Task).filter(Task.id.in_(task_ids)).count() == 0
 
 
 def test_prune_operational_tables_deletes_stale_jobs_and_logs(test_db) -> None:

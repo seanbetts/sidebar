@@ -173,7 +173,27 @@ class ContentRetentionService:
         delete_cutoff = total_retention_cutoff(policy, now=now)
         summary = CleanupTableSummary()
 
-        for model in (Task, TaskProject, TaskGroup):
+        task_ids = [
+            task_id
+            for (task_id,) in (
+                db.query(Task.id)
+                .filter(
+                    Task.deleted_at.is_not(None),
+                    Task.deleted_at <= delete_cutoff,
+                )
+                .order_by(Task.deleted_at.asc())
+                .limit(limit)
+                .all()
+            )
+        ]
+        if task_ids:
+            summary.hard_deleted += (
+                db.query(Task)
+                .filter(Task.id.in_(task_ids))
+                .delete(synchronize_session="fetch")
+            )
+
+        for model in (TaskProject, TaskGroup):
             candidates = (
                 db.query(model)
                 .filter(
