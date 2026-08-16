@@ -156,8 +156,8 @@ def _dispatch_task_reminders(
                 schedule_timezone=recipient.schedule_timezone,
                 now=current_time,
             )
-            intent = evaluation.intent
-            if not intent:
+            intents = evaluation.intents
+            if not intents:
                 _log_task_dispatch_outcome(
                     user_id=recipient.user_id,
                     scheduled_time=recipient.scheduled_time,
@@ -187,70 +187,61 @@ def _dispatch_task_reminders(
                 recipient.user_id,
                 environment=environment,
             )
-            decision = NotificationPolicyService.evaluate(
-                intent,
-                settings_record=settings_record,
-                device_tokens=tokens,
-            )
-            if not decision.should_deliver:
-                _log_task_dispatch_outcome(
-                    user_id=recipient.user_id,
-                    scheduled_time=recipient.scheduled_time,
-                    schedule_timezone=recipient.schedule_timezone,
-                    decision_reason="policy_blocked",
-                    detail=decision.reason,
+            total_request_count = 0
+            total_sent_count = 0
+            last_skip_reason = None
+            for intent in intents:
+                decision = NotificationPolicyService.evaluate(
+                    intent,
+                    settings_record=settings_record,
+                    device_tokens=tokens,
                 )
-                _record_dispatch_decision(
-                    user_db,
-                    run_started_at=current_time,
-                    user_id=recipient.user_id,
-                    scheduled_time=recipient.scheduled_time,
-                    schedule_timezone=recipient.schedule_timezone,
-                    local_now=local_now,
-                    decision_reason="policy_blocked",
-                    detail=decision.reason,
+                if not decision.should_deliver:
+                    last_skip_reason = decision.reason
+                    continue
+                result = NotificationDeliveryService.deliver_intent(
+                    intent,
+                    device_tokens=list(decision.matched_tokens) or tokens,
+                    db=user_db,
                 )
-                user_db.commit()
-                continue
+                total_request_count += result.request_count
+                total_sent_count += result.sent_count
+                if result.sent_count == 0:
+                    last_skip_reason = result.reason
 
-            result = NotificationDeliveryService.deliver_intent(
-                intent,
-                device_tokens=list(decision.matched_tokens) or tokens,
-                db=user_db,
-            )
-            if result.sent_count > 0:
+            if total_sent_count > 0:
                 _mark_recipient_delivered(recipient, current_time=current_time)
-                _record_dispatch_decision(
-                    user_db,
-                    run_started_at=current_time,
-                    user_id=recipient.user_id,
-                    scheduled_time=recipient.scheduled_time,
-                    schedule_timezone=recipient.schedule_timezone,
-                    local_now=local_now,
-                    decision_reason="delivered",
-                    detail=f"sent_count={result.sent_count}",
+                decision_reason = "delivered"
+                detail = (
+                    f"intent_count={len(intents)} request_count={total_request_count} "
+                    f"sent_count={total_sent_count}"
                 )
+                delivered_count += total_sent_count
             else:
-                _log_task_dispatch_outcome(
-                    user_id=recipient.user_id,
-                    scheduled_time=recipient.scheduled_time,
-                    schedule_timezone=recipient.schedule_timezone,
-                    decision_reason="delivery_skipped",
-                    detail=result.reason,
-                    warning=True,
+                decision_reason = (
+                    "policy_blocked" if total_request_count == 0 else "delivery_skipped"
                 )
-                _record_dispatch_decision(
-                    user_db,
-                    run_started_at=current_time,
-                    user_id=recipient.user_id,
-                    scheduled_time=recipient.scheduled_time,
-                    schedule_timezone=recipient.schedule_timezone,
-                    local_now=local_now,
-                    decision_reason="delivery_skipped",
-                    detail=result.reason,
-                )
+                detail = last_skip_reason
+
+            _log_task_dispatch_outcome(
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                decision_reason=decision_reason,
+                detail=detail,
+                warning=decision_reason == "delivery_skipped",
+            )
+            _record_dispatch_decision(
+                user_db,
+                run_started_at=current_time,
+                user_id=recipient.user_id,
+                scheduled_time=recipient.scheduled_time,
+                schedule_timezone=recipient.schedule_timezone,
+                local_now=local_now,
+                decision_reason=decision_reason,
+                detail=detail,
+            )
             user_db.commit()
-            delivered_count += result.sent_count
     return delivered_count
 
 

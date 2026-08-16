@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from api.models.task import Task
-from api.services.task_reminder_service import ReminderFocusTask, TaskReminderService
+from api.services.task_reminder_service import TaskReminderService
 
 
 def _task(
@@ -23,7 +23,7 @@ def _task(
     )
 
 
-def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
+def test_configured_user_gets_at_most_one_reminder_batch_per_scheduled_day(test_db):
     TaskReminderService.clear_emitted_days()
     test_db.add(
         _task(
@@ -34,7 +34,7 @@ def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
     )
     test_db.commit()
 
-    first_reminder = TaskReminderService.build_daily_reminder(
+    first_reminders = TaskReminderService.build_daily_reminders(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
@@ -45,185 +45,213 @@ def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
         schedule_timezone="Europe/London",
         local_date_iso="2026-01-15",
     )
-    second_reminder = TaskReminderService.build_daily_reminder(
+    second_reminders = TaskReminderService.build_daily_reminders(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 30, tzinfo=UTC),
     )
-    next_day_reminder = TaskReminderService.build_daily_reminder(
+    next_day_reminders = TaskReminderService.build_daily_reminders(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 16, 9, 0, tzinfo=UTC),
     )
 
-    assert first_reminder is not None
-    assert second_reminder is None
-    assert next_day_reminder is not None
+    assert len(first_reminders) == 1
+    assert second_reminders == ()
+    assert len(next_day_reminders) == 1
 
 
-def test_reminder_payload_details_due_today_and_summarizes_overdue_work(test_db):
+def test_mixed_reminder_returns_ordered_due_tasks_and_one_overdue_summary(test_db):
     TaskReminderService.clear_emitted_days()
-    test_db.add_all(
-        [
-            _task(
-                user_id="user-123",
-                title="Overdue item",
-                deadline=date(2026, 1, 14),
-            ),
-            _task(
-                user_id="user-123",
-                title="Due today item",
-                deadline=date(2026, 1, 15),
-            ),
-        ]
+    older = _task(
+        user_id="user-123",
+        title="First due task",
+        deadline=date(2026, 1, 15),
     )
+    older.created_at = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+    newer = _task(
+        user_id="user-123",
+        title="Second due task",
+        deadline=date(2026, 1, 15),
+    )
+    newer.created_at = datetime(2026, 1, 2, 9, 0, tzinfo=UTC)
+    overdue = _task(
+        user_id="user-123",
+        title="Overdue task",
+        deadline=date(2026, 1, 14),
+    )
+    test_db.add_all([newer, overdue, older])
     test_db.commit()
 
-    reminder = TaskReminderService.build_daily_reminder(
+    evaluation = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
 
-    assert reminder is not None
-    assert reminder.title == "1 task due today"
-    assert reminder.route == "sidebar://tasks/today"
-    assert reminder.body == "Due today item is due today, plus 1 overdue."
-    assert reminder.metadata == {
+    assert evaluation.reason == "ready"
+    assert evaluation.due_today_count == 2
+    assert evaluation.overdue_count == 1
+    assert [intent.title for intent in evaluation.intents] == [
+        "First due task",
+        "Second due task",
+        "1 task overdue",
+    ]
+    assert [intent.body for intent in evaluation.intents] == [
+        "Due today",
+        "Due today",
+        "Open Today to review.",
+    ]
+    assert evaluation.intents[0].metadata == {
+        "task_id": str(older.id),
+        "task_title": "First due task",
+        "scope": "today",
+    }
+    assert evaluation.intents[2].metadata == {
         "overdue_count": 1,
-        "due_today_count": 1,
-        "focus_task_id": str(reminder.metadata["focus_task_id"]),
-        "focus_task_title": "Due today item",
-        "focus_scope": "today",
         "scope": "today",
     }
 
 
-def test_no_reminder_when_there_is_nothing_worth_surfacing(test_db):
+def test_due_today_only_returns_one_actionable_intent_per_task(test_db):
+    TaskReminderService.clear_emitted_days()
+    task = _task(
+        user_id="user-123",
+        title="Quarterly review",
+        deadline=date(2026, 1, 15),
+    )
+    test_db.add(task)
+    test_db.commit()
+
+    evaluation = TaskReminderService.inspect_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert len(evaluation.intents) == 1
+    assert evaluation.intents[0].native_category == "TASK_REMINDER_ACTIONABLE"
+    assert evaluation.intents[0].thread_id == "task-reminders"
+    assert evaluation.intents[0].metadata["task_id"] == str(task.id)
+
+
+def test_overdue_only_returns_navigation_summary_without_task_id(test_db):
     TaskReminderService.clear_emitted_days()
     test_db.add(
         _task(
             user_id="user-123",
-            title="Upcoming item",
-            deadline=date(2026, 1, 16),
+            title="Late task",
+            deadline=date(2026, 1, 14),
         )
     )
     test_db.commit()
 
-    reminder = TaskReminderService.build_daily_reminder(
+    evaluation = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
 
-    assert reminder is None
+    assert len(evaluation.intents) == 1
+    assert evaluation.intents[0].title == "1 task overdue"
+    assert evaluation.intents[0].native_category == "TASK_REMINDER_SUMMARY"
+    assert evaluation.intents[0].thread_id == "task-reminders"
+    assert "task_id" not in evaluation.intents[0].metadata
 
 
-def test_overdue_only_reminder_uses_focus_task_copy(test_db):
+def test_empty_reminder_evaluation_returns_no_intents(test_db):
     TaskReminderService.clear_emitted_days()
+
+    evaluation = TaskReminderService.inspect_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert evaluation.intents == ()
+    assert evaluation.reason == "no_due_tasks"
+
+
+def test_ineligible_task_states_and_soft_deletes_are_excluded(test_db):
+    TaskReminderService.clear_emitted_days()
+    soft_deleted = _task(
+        user_id="user-123",
+        title="Deleted task",
+        deadline=date(2026, 1, 15),
+    )
+    soft_deleted.deleted_at = datetime(2026, 1, 14, 9, 0, tzinfo=UTC)
     test_db.add_all(
         [
             _task(
                 user_id="user-123",
-                title="Pay rent",
-                deadline=date(2026, 1, 14),
+                title="Completed task",
+                deadline=date(2026, 1, 15),
+                status="completed",
             ),
             _task(
                 user_id="user-123",
-                title="File expenses",
-                deadline=date(2026, 1, 13),
+                title="Trashed task",
+                deadline=date(2026, 1, 15),
+                status="trashed",
             ),
+            _task(
+                user_id="user-123",
+                title="Someday task",
+                deadline=date(2026, 1, 15),
+                status="someday",
+            ),
+            soft_deleted,
         ]
     )
     test_db.commit()
 
-    reminder = TaskReminderService.build_daily_reminder(
+    evaluation = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
 
-    assert reminder is not None
-    assert reminder.title == "2 tasks overdue"
-    assert reminder.body == "File expenses is overdue, plus 1 more."
-    assert reminder.metadata["focus_task_title"] == "File expenses"
-    assert reminder.metadata["focus_scope"] == "overdue"
+    assert evaluation.intents == ()
+    assert evaluation.reason == "no_due_tasks"
 
 
-def test_due_today_single_reminder_names_focus_task(test_db):
+def test_invalid_timezone_and_emitted_day_return_no_intents(test_db):
     TaskReminderService.clear_emitted_days()
     test_db.add(
         _task(
             user_id="user-123",
-            title="Quarterly review",
+            title="Due task",
             deadline=date(2026, 1, 15),
         )
     )
     test_db.commit()
 
-    reminder = TaskReminderService.build_daily_reminder(
+    invalid = TaskReminderService.inspect_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Invalid/Timezone",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+    TaskReminderService.mark_emitted_day(
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        local_date_iso="2026-01-15",
+    )
+    emitted = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
 
-    assert reminder is not None
-    assert reminder.title == "1 task due today"
-    assert reminder.body == "Quarterly review is due today."
-    assert reminder.metadata["focus_task_title"] == "Quarterly review"
-    assert reminder.metadata["focus_scope"] == "today"
-
-
-def test_mixed_reminder_prefers_due_today_focus_task(test_db):
-    TaskReminderService.clear_emitted_days()
-    test_db.add_all(
-        [
-            _task(
-                user_id="user-123",
-                title="Pay rent",
-                deadline=date(2026, 1, 14),
-            ),
-            _task(
-                user_id="user-123",
-                title="Quarterly review",
-                deadline=date(2026, 1, 15),
-            ),
-        ]
-    )
-    test_db.commit()
-
-    reminder = TaskReminderService.build_daily_reminder(
-        test_db,
-        user_id="user-123",
-        schedule_timezone="Europe/London",
-        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
-    )
-
-    assert reminder is not None
-    assert reminder.title == "1 task due today"
-    assert reminder.body == "Quarterly review is due today, plus 1 overdue."
-    assert reminder.metadata["focus_scope"] == "today"
-
-
-def test_mixed_reminder_copy_summarizes_other_due_and_overdue_work():
-    body = TaskReminderService._build_body(
-        focus_task=ReminderFocusTask(
-            id="task-today",
-            title="Quarterly review",
-            scope="today",
-        ),
-        overdue_count=3,
-        due_today_count=2,
-    )
-
-    assert TaskReminderService._build_title(
-        overdue_count=3,
-        due_today_count=2,
-    ) == "2 tasks due today"
-    assert body == "Quarterly review is due today, plus 1 more due today and 3 overdue."
+    assert invalid.intents == ()
+    assert invalid.reason == "invalid_timezone"
+    assert emitted.intents == ()
+    assert emitted.reason == "already_emitted"
