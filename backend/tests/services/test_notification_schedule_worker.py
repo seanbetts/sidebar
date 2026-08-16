@@ -186,6 +186,47 @@ def test_successful_task_reminders_are_deduped_within_same_window(
     assert "task_id" not in captured_requests[0].payload
 
 
+def test_successful_task_reminder_dispatch_logs_delivered_outcome(caplog):
+    with caplog.at_level(logging.INFO, logger="notification_schedule.worker"):
+        notification_schedule_worker._log_task_dispatch_outcome(
+            user_id="user-123",
+            scheduled_time="09:00",
+            schedule_timezone="Europe/London",
+            decision_reason="delivered",
+            detail="intent_count=1 request_count=1 sent_count=1",
+        )
+
+    matching_records = [
+        record
+        for record in caplog.records
+        if record.name == "notification_schedule.worker"
+        and record.getMessage() == "Scheduled task reminder delivered"
+    ]
+    assert len(matching_records) == 1
+    assert matching_records[0].user_id == "user-123"
+    assert matching_records[0].decision_reason == "delivered"
+
+
+def test_unsuccessful_task_reminder_dispatch_retains_not_delivered_wording(caplog):
+    with caplog.at_level(logging.INFO, logger="notification_schedule.worker"):
+        notification_schedule_worker._log_task_dispatch_outcome(
+            user_id="user-123",
+            scheduled_time="09:00",
+            schedule_timezone="Europe/London",
+            decision_reason="no_reminder_intent",
+            detail="no_due_tasks",
+        )
+
+    matching_records = [
+        record
+        for record in caplog.records
+        if record.name == "notification_schedule.worker"
+        and record.getMessage() == "Scheduled task reminder not delivered"
+    ]
+    assert len(matching_records) == 1
+    assert matching_records[0].decision_reason == "no_reminder_intent"
+
+
 def test_partially_successful_task_reminder_batch_is_deduped(test_db, monkeypatch):
     NotificationScheduleService.clear_due_windows()
     TaskReminderService.clear_emitted_days()

@@ -96,9 +96,15 @@ memories automatically; you don't need to mention them in conversation.
 
 ## App
 
-**Task reminders**: choose whether sideBar sends one daily reminder for due and
-overdue tasks. Reminders only send once a day, they require a reminder time,
-and they still respect your Apple system notification settings.
+**Task reminders**: choose whether sideBar sends one daily reminder batch for
+due and overdue tasks. Tasks due today arrive as individual grouped
+notifications, while overdue tasks appear in one summary. On iOS, long-press
+an individual task notification and choose **Mark Complete** to finish it
+without opening sideBar. If you are offline, the completion queues locally and
+syncs when you reconnect. The action is available only while you are signed in
+to that account, so a stale notification cannot change a task after you sign
+out. Reminders require a reminder time and still respect your Apple system
+notification settings.
 
 **Assistant reply notifications**: choose whether sideBar alerts you when a
 reply is ready while your device is away. These alerts still follow your Apple

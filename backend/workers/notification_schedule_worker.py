@@ -54,8 +54,13 @@ def _log_task_dispatch_outcome(
 ) -> None:
     """Emit one structured task reminder dispatch outcome for operational logs."""
     log_fn = logger.warning if warning else logger.info
+    message = (
+        "Scheduled task reminder delivered"
+        if decision_reason == "delivered"
+        else "Scheduled task reminder not delivered"
+    )
     log_fn(
-        "Scheduled task reminder not delivered",
+        message,
         extra={
             "user_id": user_id,
             "scheduled_time": scheduled_time,
