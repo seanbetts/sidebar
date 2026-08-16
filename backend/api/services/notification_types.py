@@ -35,6 +35,8 @@ class NotificationIntent:
     title: str | None = None
     body: str | None = None
     route: str | None = None
+    native_category: str | None = None
+    thread_id: str | None = None
     badge_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     required_capabilities: tuple[str, ...] = ()

@@ -25,6 +25,26 @@ class NotificationDeliveryService:
     """Convert approved intents into transport requests."""
 
     @staticmethod
+    def _build_alert_payload(intent: NotificationIntent) -> dict[str, Any]:
+        """Build one APNs alert payload from a transport-neutral intent."""
+        aps: dict[str, Any] = {
+            "alert": {
+                "title": intent.title or "",
+                "body": intent.body or "",
+            },
+            "sound": "default",
+            "category": intent.native_category or intent.category.value,
+        }
+        if intent.thread_id:
+            aps["thread-id"] = intent.thread_id
+        return {
+            "aps": aps,
+            "sidebar_route": intent.route,
+            "notification_category": intent.category.value,
+            "notification_metadata": intent.metadata,
+        }
+
+    @staticmethod
     def deliver_intent(
         intent: NotificationIntent,
         *,
@@ -115,19 +135,7 @@ class NotificationDeliveryService:
                     platform=str(token.platform),
                     push_type="alert",
                     priority="10",
-                    payload={
-                        "aps": {
-                            "alert": {
-                                "title": intent.title or "",
-                                "body": intent.body or "",
-                            },
-                            "sound": "default",
-                            "category": intent.category.value,
-                        },
-                        "sidebar_route": intent.route,
-                        "notification_category": intent.category.value,
-                        "notification_metadata": intent.metadata,
-                    },
+                    payload=NotificationDeliveryService._build_alert_payload(intent),
                     installation_id=getattr(token, "installation_id", None),
                 )
                 for token in tokens

@@ -83,6 +83,50 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
     }
 
 
+def test_visible_alerts_use_explicit_native_category_and_thread_id():
+    intent = NotificationIntent(
+        user_id="user-123",
+        category=NotificationCategory.TASK_REMINDER,
+        delivery_mode=NotificationDeliveryMode.ALERT,
+        title="Quarterly review",
+        body="Due today",
+        route="sidebar://tasks/today",
+        metadata={"task_id": "task-123"},
+        native_category="TASK_REMINDER_ACTIONABLE",
+        thread_id="task-reminders",
+    )
+
+    requests = NotificationDeliveryService.build_requests(
+        intent,
+        device_tokens=[_token()],
+    )
+
+    assert requests is not None
+    assert requests[0].payload["aps"]["category"] == "TASK_REMINDER_ACTIONABLE"
+    assert requests[0].payload["aps"]["thread-id"] == "task-reminders"
+    assert requests[0].payload["notification_category"] == "task_reminder"
+    assert requests[0].payload["notification_metadata"] == {"task_id": "task-123"}
+
+
+def test_visible_alerts_fall_back_to_product_category_without_thread_id():
+    intent = NotificationIntent(
+        user_id="user-123",
+        category=NotificationCategory.ASSISTANT_REPLY,
+        delivery_mode=NotificationDeliveryMode.ALERT,
+        title="Reply ready",
+        body="Open sideBar to read it.",
+    )
+
+    requests = NotificationDeliveryService.build_requests(
+        intent,
+        device_tokens=[_token()],
+    )
+
+    assert requests is not None
+    assert requests[0].payload["aps"]["category"] == "assistant_reply"
+    assert "thread-id" not in requests[0].payload["aps"]
+
+
 def test_badge_updates_still_flow_through_transport_layer(monkeypatch):
     captured_requests = []
 
