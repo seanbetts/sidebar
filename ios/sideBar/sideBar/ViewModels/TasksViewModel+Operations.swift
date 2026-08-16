@@ -47,13 +47,45 @@ extension TasksViewModel {
 
     @discardableResult
     public func completeTask(task: TaskItem) async -> Bool {
+        await queueTaskCompletion(
+            taskId: task.id,
+            clientUpdatedAt: task.updatedAt
+        )
+    }
+
+    @discardableResult
+    public func completeTask(taskId: String) async -> Bool {
+        let queued = await queueTaskCompletion(taskId: taskId, clientUpdatedAt: nil)
+        if queued {
+            updateTodayWidgetSnapshotAfterCompletion(taskId: taskId)
+        }
+        return queued
+    }
+
+    private func queueTaskCompletion(
+        taskId: String,
+        clientUpdatedAt: String?
+    ) async -> Bool {
         let operation = TaskOperationPayload(
             operationId: TaskOperationId.make(),
             op: "complete",
-            id: task.id,
-            clientUpdatedAt: task.updatedAt
+            id: taskId,
+            clientUpdatedAt: clientUpdatedAt
         )
         return await queueLocalFirstOperation(operation)
+    }
+
+    private func updateTodayWidgetSnapshotAfterCompletion(taskId: String) {
+        let snapshot = widgetDataManager.loadTaskData(for: .today)
+        let operation = WidgetPendingOperation(
+            itemId: taskId,
+            action: TaskWidgetAction.complete
+        )
+        let updated = WidgetTaskPendingCompletionOverlay.apply(
+            to: snapshot,
+            pendingOperations: [operation]
+        )
+        widgetDataManager.storeTaskData(updated, for: .today)
     }
 
     @discardableResult

@@ -98,7 +98,9 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        UNUserNotificationCenter.current().delegate = self
+        let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.delegate = self
+        notificationCenter.setNotificationCategories(TaskNotificationContract.categories())
         if let config = try? EnvironmentConfig.load() {
             SentryBootstrap.startIfConfigured(config: config)
         }
@@ -161,11 +163,31 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
     ) {
         _ = center
         let userInfo = response.notification.request.content.userInfo
-        AppEnvironment.shared?.handleRemoteNotification(userInfo)
-        if let route = NotificationRoute(userInfo: userInfo) {
-            AppEnvironment.shared?.handleDeepLink(route.url)
+        let handler = TaskNotificationResponseHandler(
+            authState: {
+                AppEnvironment.shared?.authState ?? .signedOut
+            },
+            refresh: { payload in
+                AppEnvironment.shared?.handleRemoteNotification(payload)
+            },
+            openRoute: { route in
+                AppEnvironment.shared?.handleDeepLink(route)
+            },
+            completeTask: { taskId in
+                guard let environment = AppEnvironment.shared else { return false }
+                return await environment.tasksViewModel.completeTask(taskId: taskId)
+            }
+        )
+        Task { @MainActor [weak self] in
+            let result = await handler.handle(
+                actionIdentifier: response.actionIdentifier,
+                userInfo: userInfo,
+                completion: completionHandler
+            )
+            if result == .completionDeclined {
+                self?.logger.info("Task notification completion was not queued.")
+            }
         }
-        completionHandler()
     }
 
     // MARK: - Background Token Refresh

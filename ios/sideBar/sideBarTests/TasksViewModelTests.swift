@@ -316,6 +316,40 @@ final class TasksViewModelTests: XCTestCase {
         await eventually { sut.writeQueue.pendingCount >= 1 }
     }
 
+    func testCompleteTaskByIdentifierQueuesWithoutLoadedTask() async {
+        let api = TasksViewModelAPIStub()
+        api.countsResponse = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 1, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+        let sut = makeSUT(api: api, networkAvailable: false)
+        await sut.viewModel.loadCounts(force: true)
+        let taskId = UUID().uuidString
+        sut.widgetDataManager.storeTaskData(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: taskId, title: "Notification task")],
+                totalCount: 1,
+                progressCompletedCount: 0,
+                progressTotalCount: 1
+            ),
+            for: .today
+        )
+
+        let queued = await sut.viewModel.completeTask(taskId: taskId)
+
+        XCTAssertTrue(queued)
+        XCTAssertEqual(sut.store.counts?.counts.today, 0)
+        XCTAssertEqual(api.applyCallCount, 0)
+        await eventually { sut.writeQueue.pendingCount == 1 }
+        let widgetSnapshot = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertTrue(widgetSnapshot.tasks.isEmpty)
+        XCTAssertEqual(widgetSnapshot.totalCount, 0)
+        XCTAssertEqual(widgetSnapshot.progressCompletedCount, 1)
+        XCTAssertEqual(widgetSnapshot.progressTotalCount, 1)
+    }
+
     func testPreferredLoadSelectionDefaultsToTodayWhenSelectionIsNone() async {
         let api = TasksViewModelAPIStub()
         let sut = makeSUT(api: api, networkAvailable: true)
