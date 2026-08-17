@@ -41,6 +41,7 @@ public struct WidgetTaskData: WidgetDataContainer {
     public let progressCompletedCount: Int
     public let progressTotalCount: Int
     public let optimisticallyCompletedTaskIds: Set<String>
+    public let pendingOptimisticCompletionTaskIds: Set<String>
     public let lastUpdated: Date
 
     public var items: [WidgetTask] { tasks }
@@ -51,6 +52,7 @@ public struct WidgetTaskData: WidgetDataContainer {
         progressCompletedCount: Int = 0,
         progressTotalCount: Int? = nil,
         optimisticallyCompletedTaskIds: Set<String> = [],
+        pendingOptimisticCompletionTaskIds: Set<String>? = nil,
         lastUpdated: Date = Date()
     ) {
         self.tasks = tasks
@@ -59,6 +61,8 @@ public struct WidgetTaskData: WidgetDataContainer {
         self.progressTotalCount = resolvedProgressTotal
         self.progressCompletedCount = min(max(0, progressCompletedCount), resolvedProgressTotal)
         self.optimisticallyCompletedTaskIds = optimisticallyCompletedTaskIds
+        self.pendingOptimisticCompletionTaskIds = pendingOptimisticCompletionTaskIds
+            ?? optimisticallyCompletedTaskIds
         self.lastUpdated = lastUpdated
     }
 
@@ -82,6 +86,7 @@ extension WidgetTaskData: Codable {
         case progressCompletedCount
         case progressTotalCount
         case optimisticallyCompletedTaskIds
+        case pendingOptimisticCompletionTaskIds
         case lastUpdated
     }
 
@@ -95,6 +100,10 @@ extension WidgetTaskData: Codable {
             Set<String>.self,
             forKey: .optimisticallyCompletedTaskIds
         ) ?? []
+        let decodedPendingTaskIds = try container.decodeIfPresent(
+            Set<String>.self,
+            forKey: .pendingOptimisticCompletionTaskIds
+        ) ?? decodedCompletedTaskIds
         let decodedLastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()
 
         self.init(
@@ -103,6 +112,7 @@ extension WidgetTaskData: Codable {
             progressCompletedCount: decodedCompleted,
             progressTotalCount: decodedProgressTotal,
             optimisticallyCompletedTaskIds: decodedCompletedTaskIds,
+            pendingOptimisticCompletionTaskIds: decodedPendingTaskIds,
             lastUpdated: decodedLastUpdated
         )
     }
@@ -114,6 +124,10 @@ extension WidgetTaskData: Codable {
         try container.encode(progressCompletedCount, forKey: .progressCompletedCount)
         try container.encode(progressTotalCount, forKey: .progressTotalCount)
         try container.encode(optimisticallyCompletedTaskIds, forKey: .optimisticallyCompletedTaskIds)
+        try container.encode(
+            pendingOptimisticCompletionTaskIds,
+            forKey: .pendingOptimisticCompletionTaskIds
+        )
         try container.encode(lastUpdated, forKey: .lastUpdated)
     }
 }

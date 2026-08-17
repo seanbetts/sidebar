@@ -17,17 +17,14 @@ public final class WidgetDataManager {
   private let configuredTaskDataKeyPrefix = "widget_tasks_data::"
   private let taskConfigurationCatalogKey = "widget_tasks_configuration_catalog"
   private let noteConfigurationCatalogKey = "widget_notes_configuration_catalog"
-
   // Legacy keys (for migration)
   private let legacyTodayTasksKey = "widgetTodayTasks"
   private let legacyPendingCompletionsKey = "widgetPendingCompletions"
   private let legacyPendingAddTaskKey = "widgetPendingAddTask"
   private let injectedUserDefaults: UserDefaults?
-
   public init(userDefaults: UserDefaults? = nil) {
     self.injectedUserDefaults = userDefaults
   }
-
   // MARK: - App Group Access
 
   private var userDefaults: UserDefaults? {
@@ -50,7 +47,9 @@ public final class WidgetDataManager {
   }
 
   private var bridge: WidgetDataBridge {
-    WidgetDataBridge(
+    let pendingOperationStore = injectedUserDefaults.map { defaults in
+      WidgetPendingOperationStore(userDefaultsProvider: { defaults }) }
+    return WidgetDataBridge(
       userDefaultsProvider: { [self] in userDefaults },
       appGroupResolutionProvider: { [self] in appGroupResolution },
       diagnosticsRecorder: { [self] stage, message, metadata in
@@ -58,7 +57,8 @@ public final class WidgetDataManager {
       },
       timelineReloader: { [self] contentType in
         reloadWidgets(for: contentType)
-      }
+      },
+      pendingOperationStore: pendingOperationStore
     )
   }
 

@@ -55,7 +55,35 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(once.progressCompletedCount, 1)
         XCTAssertEqual(once.progressTotalCount, 11)
         XCTAssertEqual(once.optimisticallyCompletedTaskIds, [taskId])
+        XCTAssertEqual(once.pendingOptimisticCompletionTaskIds, [taskId])
         XCTAssertEqual(twice, once)
+    }
+
+    func testTaskSnapshotRefreshClearsHandledIdWhenTaskIsExplicitlyReopened() {
+        let taskId = UUID().uuidString
+        let now = Date(timeIntervalSince1970: 1_000)
+        let completedSnapshot = WidgetTaskData(
+            tasks: [],
+            totalCount: 0,
+            progressCompletedCount: 1,
+            progressTotalCount: 1,
+            optimisticallyCompletedTaskIds: [taskId],
+            pendingOptimisticCompletionTaskIds: [],
+            lastUpdated: now
+        )
+
+        let refreshed = WidgetTaskSnapshotRefresh.reconcile(
+            tasks: [WidgetTask(id: taskId, title: "Reopened")],
+            previousSnapshot: completedSnapshot,
+            now: now.addingTimeInterval(60)
+        )
+
+        XCTAssertEqual(refreshed.tasks.map(\.id), [taskId])
+        XCTAssertEqual(refreshed.totalCount, 1)
+        XCTAssertEqual(refreshed.progressCompletedCount, 0)
+        XCTAssertEqual(refreshed.progressTotalCount, 1)
+        XCTAssertTrue(refreshed.optimisticallyCompletedTaskIds.isEmpty)
+        XCTAssertTrue(refreshed.pendingOptimisticCompletionTaskIds.isEmpty)
     }
 
     func testTaskCompletionOverlayDoesNotDecrementForUnknownOffscreenTask() {
@@ -211,5 +239,6 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(decoded.progressCompletedCount, 0)
         XCTAssertEqual(decoded.progressTotalCount, 3)
         XCTAssertTrue(decoded.optimisticallyCompletedTaskIds.isEmpty)
+        XCTAssertTrue(decoded.pendingOptimisticCompletionTaskIds.isEmpty)
     }
 }

@@ -5,9 +5,15 @@ import sideBarShared
 public struct AppEnvironmentStorage {
     public static let shared = AppEnvironmentStorage(
         userDefaults: .standard,
-        widgetDataManager: .shared,
-        extensionEventStore: .shared,
-        pendingShareStore: .shared,
+        widgetDataManager: EnvironmentConfig.isRunningTestsOrPreviews()
+            ? WidgetDataManager(userDefaults: .standard)
+            : .shared,
+        extensionEventStore: EnvironmentConfig.isRunningTestsOrPreviews()
+            ? ExtensionEventStore(userDefaults: .standard)
+            : .shared,
+        pendingShareStore: EnvironmentConfig.isRunningTestsOrPreviews()
+            ? PendingShareStore(userDefaults: .standard, allowAppGroupFallback: false)
+            : .shared,
         taskBadgeUpdater: LiveTaskBadgeUpdater()
     )
     public let userDefaults: UserDefaults
@@ -28,7 +34,10 @@ public struct AppEnvironmentStorage {
         self.userDefaults = userDefaults
         self.widgetDataManager = widgetDataManager ?? WidgetDataManager(userDefaults: userDefaults)
         self.extensionEventStore = extensionEventStore ?? ExtensionEventStore(userDefaults: userDefaults)
-        self.pendingShareStore = pendingShareStore ?? PendingShareStore(userDefaults: userDefaults)
+        self.pendingShareStore = pendingShareStore ?? PendingShareStore(
+            userDefaults: userDefaults,
+            allowAppGroupFallback: !EnvironmentConfig.isRunningTestsOrPreviews()
+        )
         self.taskBadgeUpdater = taskBadgeUpdater ?? LiveTaskBadgeUpdater()
         self.clearDeliveredActionableTaskNotifications = clearDeliveredActionableTaskNotifications ?? {
             #if os(iOS)

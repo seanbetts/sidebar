@@ -77,8 +77,19 @@ extension TasksViewModel {
 
     @discardableResult
     func completeDueTodayTaskFromNotification(
-        taskId: String
+        taskId: String,
+        beforeEnqueue: (@MainActor @Sendable () async -> Void)? = nil
     ) async -> TaskNotificationCompletionResult {
+        let existingSnapshot = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
+            widgetDataManager.loadTaskData(for: .today)
+        )
+        if existingSnapshot.optimisticallyCompletedTaskIds.contains(taskId)
+            || inFlightTaskNotificationCompletionIds.contains(taskId) {
+            return .queued
+        }
+        inFlightTaskNotificationCompletionIds.insert(taskId)
+        defer { inFlightTaskNotificationCompletionIds.remove(taskId) }
+        await beforeEnqueue?()
         let result = await queueTaskCompletion(
             taskId: taskId,
             clientUpdatedAt: nil,
@@ -86,7 +97,13 @@ extension TasksViewModel {
             failurePresentation: .silent
         )
         if result.isQueued {
-            updateTodayWidgetSnapshotAfterCompletion(taskId: taskId)
+            let latestSnapshot = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
+                widgetDataManager.loadTaskData(for: .today)
+            )
+            updateTodayWidgetSnapshotAfterCompletion(
+                taskId: taskId,
+                snapshot: latestSnapshot
+            )
         }
         return result
     }
@@ -110,8 +127,10 @@ extension TasksViewModel {
         )
     }
 
-    private func updateTodayWidgetSnapshotAfterCompletion(taskId: String) {
-        let snapshot = widgetDataManager.loadTaskData(for: .today)
+    private func updateTodayWidgetSnapshotAfterCompletion(
+        taskId: String,
+        snapshot: WidgetTaskData
+    ) {
         let operation = WidgetPendingOperation(
             itemId: taskId,
             action: TaskWidgetAction.complete
@@ -138,8 +157,19 @@ extension TasksViewModel {
         let queued = await queueLocalFirstOperation(operation)
         if queued, shouldIncrementTodayCount {
             store.incrementTodayCount()
+            clearTodayWidgetCompletionTrackingAfterReopen(taskId: task.id)
         }
         return queued
+    }
+
+    private func clearTodayWidgetCompletionTrackingAfterReopen(taskId: String) {
+        let snapshot = widgetDataManager.loadTaskData(for: .today)
+        let updated = WidgetTaskPendingCompletionOverlay.clearTrackingForReopenedTask(
+            taskId,
+            in: snapshot
+        )
+        guard updated != snapshot else { return }
+        widgetDataManager.storeTaskData(updated, for: .today)
     }
 
     public func renameTask(task: TaskItem, title: String) async {

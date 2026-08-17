@@ -8,13 +8,21 @@ final class WidgetDataBridgeTests: XCTestCase {
         diagnostics: @escaping (String, String, [String: String]) -> Void = { _, _, _ in },
         reloader: @escaping (WidgetContentType) -> Void = { _ in }
     ) -> WidgetDataBridge {
-        WidgetDataBridge(
+        let lockFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("WidgetDataBridgeTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("pending-operations.lock", isDirectory: false)
+        let pendingOperationStore = WidgetPendingOperationStore(
+            userDefaultsProvider: { userDefaults },
+            lockFileURLProvider: { lockFileURL }
+        )
+        return WidgetDataBridge(
             userDefaultsProvider: { userDefaults },
             appGroupResolutionProvider: {
                 WidgetBridgeAppGroupResolution(id: "group.test.widget", source: "test")
             },
             diagnosticsRecorder: diagnostics,
-            timelineReloader: reloader
+            timelineReloader: reloader,
+            pendingOperationStore: pendingOperationStore
         )
     }
 

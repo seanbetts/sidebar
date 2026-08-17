@@ -27,6 +27,7 @@ import sideBarShared
     var cancellables = Set<AnyCancellable>()
     var searchDebounce: Task<Void, Never>?
     var lastNonSearchSelection: TaskSelection = .today
+    var inFlightTaskNotificationCompletionIds: Set<String> = []
 
     public init(
         api: any TasksProviding,
@@ -212,6 +213,7 @@ import sideBarShared
         newTaskError = ""
         filteredUpcomingCount = nil
         lastNonSearchSelection = .today
+        inFlightTaskNotificationCompletionIds.removeAll()
         panelGroupsSorted = []
         panelProjectsByGroup = [:]
         panelOrphanProjects = []
