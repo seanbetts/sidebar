@@ -6,6 +6,8 @@ import json
 import asyncio
 from types import SimpleNamespace
 
+import pytest
+
 from scripts import gemini_video_benchmark
 from scripts.gemini_video_benchmark import (
     _call_record_from_result,
@@ -25,6 +27,12 @@ from scripts.gemini_video_benchmarking import (
     PlannedRun,
     TokenUsage,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_workstation_environment(monkeypatch) -> None:
+    """Keep CLI unit tests from importing repo-local environment values."""
+    monkeypatch.setattr(gemini_video_benchmark, "load_local_env", lambda: None)
 
 
 def test_parse_args_accepts_config_and_dry_run() -> None:
