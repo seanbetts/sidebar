@@ -7,20 +7,18 @@ import OSLog
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var failedCount: Int = 0
     @Published private(set) var failedHeaderRows: [PendingWriteSummary] = []
-    @Published private(set) var isProcessing: Bool = false
+    @Published var isProcessing: Bool = false
     @Published private(set) var isExecutingWrite: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
     let container: NSPersistentContainer
     private let connectivityMonitor: ConnectivityMonitor
-    private let executor: WriteQueueExecutor?
+    let executor: WriteQueueExecutor?
     private let autoProcessEnabled: Bool
     private let retrySleep: WriteQueueSleep
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
-    private var processAgainAfterCurrentPass = false
-    private var processingWaiters: [CheckedContinuation<Void, Never>] = []
-    private var isQueueDrainProcessing = false
+    let processingState = WriteQueueProcessingState()
     let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
     var hasRecoveredStuckWrites = false
     var hasRecoveredConflictWrites = false
@@ -29,7 +27,7 @@ import OSLog
         max(pendingCount - failedCount, 0)
     }
 
-    private var canAttemptServerWrite: Bool {
+    var canAttemptServerWrite: Bool {
         connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite
     }
 
@@ -133,49 +131,6 @@ import OSLog
         }
     }
 
-    func processQueue() async {
-        guard executor != nil, canAttemptServerWrite else { return }
-        if isProcessing {
-            guard isQueueDrainProcessing else { return }
-            processAgainAfterCurrentPass = true
-            await waitForProcessingToFinish()
-            return
-        }
-        isProcessing = true
-        isQueueDrainProcessing = true
-        defer { finishProcessing() }
-        repeat {
-            processAgainAfterCurrentPass = false
-            do {
-                try await processQueueUntilDrained()
-            } catch is CancellationError {
-                logger.info("Write queue processing cancelled")
-            } catch {
-                logger.error("Write queue processing failed: \(error.localizedDescription, privacy: .public)")
-            }
-
-            await loadQueueCounts()
-        } while processAgainAfterCurrentPass
-            && activePendingCount > 0
-            && canAttemptServerWrite
-    }
-
-    private func waitForProcessingToFinish() async {
-        await withCheckedContinuation { continuation in
-            processingWaiters.append(continuation)
-        }
-    }
-
-    private func finishProcessing() {
-        isProcessing = false
-        isQueueDrainProcessing = false
-        let waiters = processingWaiters
-        processingWaiters.removeAll()
-        for waiter in waiters {
-            waiter.resume()
-        }
-    }
-
     private func startupRecoveryAndProcessing() async {
         do {
             try Task.checkCancellation()
@@ -194,28 +149,6 @@ import OSLog
         }
     }
 
-    private func processQueueUntilDrained() async throws {
-        try Task.checkCancellation()
-        await recoverStuckWritesIfNeeded()
-        try Task.checkCancellation()
-        await recoverConflictWritesIfNeeded()
-        try Task.checkCancellation()
-        await recoverRetryableFailedWrites()
-
-        while true {
-            try Task.checkCancellation()
-            let fetchedWrite = try await fetchNextPending()
-            guard let fetchedWrite else {
-                break
-            }
-            let shouldContinue = try await processWrite(fetchedWrite)
-            if !shouldContinue {
-                break
-            }
-            await Task.yield()
-        }
-    }
-
     public func resumeProcessing() {
         isPausedForConflict = false
         Task { [weak self] in
@@ -231,35 +164,15 @@ import OSLog
 
     func setConflictPauseState(_ isPaused: Bool) { isPausedForConflict = isPaused }
 
-    func processRetriedWrite(id: UUID) async {
-        guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
-
-        isProcessing = true
-        defer { isProcessing = false }
-
-        do {
-            guard let fetchedWrite = try await fetchPendingWrite(id: id) else {
-                await loadQueueCounts()
-                return
-            }
-            _ = try await processWrite(fetchedWrite)
-        } catch is CancellationError {
-            logger.info("Retried write processing cancelled")
-        } catch {
-            logger.error("Failed to process retried write: \(error.localizedDescription, privacy: .public)")
-        }
-
-        await loadQueueCounts()
-    }
 }
 
-private struct FetchedPendingWrite: Sendable {
+struct FetchedPendingWrite: Sendable {
     let record: PendingWriteRecord
     let recoveryState: PendingWriteRecoveryState
     let restoresOriginalAttemptState: Bool
 }
 
-private struct PendingWriteRecoveryState: Sendable {
+struct PendingWriteRecoveryState: Sendable {
     let status: String
     let attempts: Int16
     let lastAttemptAt: Date?
@@ -271,7 +184,7 @@ private struct PendingWriteRecoveryState: Sendable {
 extension WriteQueue {
     // MARK: - Private
 
-    private func processWrite(_ fetchedWrite: FetchedPendingWrite) async throws -> Bool {
+    func processWrite(_ fetchedWrite: FetchedPendingWrite) async throws -> Bool {
         let write = fetchedWrite.record
         var didExecuteWrite = false
         do {
@@ -327,7 +240,7 @@ extension WriteQueue {
         }
     }
 
-    private func fetchNextPending() async throws -> FetchedPendingWrite? {
+    func fetchNextPending() async throws -> FetchedPendingWrite? {
         try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
@@ -355,7 +268,7 @@ extension WriteQueue {
         }
     }
 
-    private func fetchPendingWrite(id: UUID) async throws -> FetchedPendingWrite? {
+    func fetchPendingWrite(id: UUID) async throws -> FetchedPendingWrite? {
         try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.fetchLimit = 1
@@ -471,7 +384,7 @@ extension WriteQueue {
         return try encoder.encode(snapshot)
     }
 
-    private func recoverRetryableFailedWrites() async {
+    func recoverRetryableFailedWrites() async {
         do {
             let recoveredCount = try await performBackgroundTask { context in
                 let request = PendingWrite.fetchRequest()

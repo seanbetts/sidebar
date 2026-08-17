@@ -151,7 +151,7 @@ final class WidgetDataBridgeTests: XCTestCase {
             },
             lockFileURLProvider: { lockFileURL }
         )
-        DispatchQueue.global(qos: .userInitiated).async {
+        let operationThread = Thread {
             operationStarted.signal()
             _ = store.record(
                 WidgetPendingOperation(
@@ -162,6 +162,9 @@ final class WidgetDataBridgeTests: XCTestCase {
             )
             operationCompleted.signal()
         }
+        operationThread.name = "WidgetPendingOperationStoreExternalLockTest"
+        operationThread.qualityOfService = .userInteractive
+        operationThread.start()
 
         XCTAssertEqual(operationStarted.wait(timeout: .now() + 1), .success)
         XCTAssertEqual(

@@ -126,6 +126,78 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testFullDrainRequestedDuringTargetedRetryRunsBeforeBothCallersFinish() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let legacyWriteId = UUID()
+        let notificationWriteId = UUID()
+        let barrier = TargetedRetryBarrier()
+        let executor = TargetedRetryBarrierExecutor(
+            targetedWriteId: legacyWriteId,
+            barrier: barrier
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+        let notificationPayload = TaskAccountBoundOperationPayload(
+            operation: TaskOperationPayload(
+                operationId: "notification-complete",
+                op: "complete",
+                id: "notification-task"
+            ),
+            accountScope: TaskNotificationAccountScope(
+                accountId: UUID(),
+                generationId: UUID()
+            )
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "notification-task",
+            payload: notificationPayload,
+            writeId: notificationWriteId
+        )
+        try insertFailedLegacyWrite(
+            id: legacyWriteId,
+            context: persistence.container.viewContext
+        )
+
+        let manualRetry = Task { @MainActor in try await queue.retryWrite(id: legacyWriteId) }
+        await barrier.waitUntilTargetedRetryStarts()
+        let recoveryProbe = FullDrainCompletionProbe()
+        let recoveryDrain = Task { @MainActor in
+            recoveryProbe.markStarted()
+            await queue.processQueue()
+            recoveryProbe.markFinished()
+        }
+        await recoveryProbe.waitUntilStarted()
+        await Task.yield()
+
+        XCTAssertFalse(recoveryProbe.didFinish)
+        barrier.releaseTargetedRetry()
+        try await manualRetry.value
+        await waitUntilWriteQueueState {
+            recoveryProbe.didFinish && !queue.isProcessing
+        }
+        if recoveryProbe.didFinish {
+            await recoveryDrain.value
+        } else {
+            recoveryDrain.cancel()
+        }
+
+        XCTAssertEqual(executor.attemptedIds, [legacyWriteId, notificationWriteId])
+        XCTAssertEqual(executor.successfulIds, [legacyWriteId, notificationWriteId])
+        XCTAssertEqual(queue.pendingCount, 0)
+        let remaining = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
     func testProcessQueueCancellationDuringRetrySleepDoesNotMarkAdditionalAttempts() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
