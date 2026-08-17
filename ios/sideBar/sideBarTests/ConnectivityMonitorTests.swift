@@ -336,8 +336,8 @@ extension ConnectivityMonitorTests {
                 object: nil,
                 userInfo: ["signal": signal, "error": URLError(.timedOut)]
             )
+            await waitForMainQueueDrain()
         }
-        await waitForMainQueueDrain()
         XCTAssertFalse(monitor?.isServerReachable ?? true)
         XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
         XCTAssertTrue(recordedSignals.isEmpty)
@@ -369,8 +369,8 @@ extension ConnectivityMonitorTests {
                 object: nil,
                 userInfo: ["signal": failure, "error": URLError(.timedOut)]
             )
+            await waitForMainQueueDrain()
         }
-        await waitForMainQueueDrain()
         XCTAssertFalse(monitor?.isServerReachable ?? true)
         for _ in 0..<2 {
             notificationCenter.post(

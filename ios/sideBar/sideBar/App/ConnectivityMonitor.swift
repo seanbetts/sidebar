@@ -94,7 +94,6 @@ final class ConnectivityMonitor: ObservableObject {
             scheduleProbe(immediate: false)
             return
         }
-        resetCounters()
         recordInternetSuccess()
         scheduleProbe(immediate: true)
     }

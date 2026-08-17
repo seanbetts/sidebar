@@ -105,14 +105,17 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
         await waitForMainQueueDrain()
 
         XCTAssertTrue(monitor?.hasScheduledHealthProbe ?? false)
+        weak var releasedMonitor: ConnectivityMonitor?
+        releasedMonitor = monitor
         monitor = nil
+        await waitForMonitorRelease { releasedMonitor }
         session.invalidateAndCancel()
     }
 
     func testInactiveInitializationDoesNotScheduleHealthProbes() async {
         let notificationCenter = NotificationCenter()
         let session = makeProbeSession()
-        var isActive = false
+        let isActive = false
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
             startMonitoring: true,
@@ -190,10 +193,11 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
             notificationCenter: notificationCenter,
             isAppForegroundActive: { true }
         )
-        weak var releasedMonitor = monitor
+        weak var releasedMonitor: ConnectivityMonitor?
+        releasedMonitor = monitor
 
         monitor = nil
-        await waitForMainQueueDrain()
+        await waitForMonitorRelease { releasedMonitor }
         let requestCountAfterDeinit = ProbeURLProtocol.completedRequestCount
         notificationCenter.post(name: didBecomeActiveNotification, object: nil)
         await waitForMainQueueDrain()
@@ -201,6 +205,16 @@ final class ConnectivityMonitorStartupTests: XCTestCase {
         XCTAssertNil(releasedMonitor)
         XCTAssertEqual(ProbeURLProtocol.completedRequestCount, requestCountAfterDeinit)
         session.invalidateAndCancel()
+    }
+
+    private func waitForMonitorRelease(
+        _ monitor: @escaping @MainActor () -> ConnectivityMonitor?
+    ) async {
+        let deadline = Date().addingTimeInterval(1)
+        while monitor() != nil, Date() < deadline {
+            await Task.yield()
+        }
+        XCTAssertNil(monitor(), "Timed out waiting for monitor cleanup")
     }
 
     private func makeProbeSession(expectedProbeRequests: Int = 0) -> URLSession {
