@@ -2,9 +2,9 @@ app = "sidebar-api"
 primary_region = "lhr"
 
 [processes]
-  app = "SKIP_PLAYWRIGHT_STARTUP_CHECK=1 uvicorn api.main:app --host 0.0.0.0 --port 8001"
-  ingestion = "python -m workers.worker_runner"
-  notification = "python -m workers.notification_schedule_worker"
+  app = "uvicorn api.main:app --host 0.0.0.0 --port 8001"
+  ingestion = "python -m workers.ingestion_worker"
+  notification = "python -m workers.worker_runner"
   website = "python -m workers.website_processing_worker"
 
 [build]
@@ -27,15 +27,22 @@ primary_region = "lhr"
   R2_FAVICON_BUCKET = "sidebar-favicons"
   STORAGE_BACKEND = "r2"
   YT_DLP_JS_RUNTIMES = "deno,node"
+  SKIP_PLAYWRIGHT_STARTUP_CHECK = "1"
   PLAYWRIGHT_RENDER_CONCURRENCY = "1"
   WEBSITE_WORKER_CONCURRENCY = "2"
+  WORKER_DEMAND_MONITOR_ENABLED = "true"
+  WORKER_DEMAND_POLL_SECONDS = "1"
+  WEBSITE_WORKER_IDLE_EXIT_SECONDS = "30"
+  INGESTION_WORKER_IDLE_EXIT_SECONDS = "30"
+  NOTIFICATION_SCHEDULE_INTERVAL_SECONDS = "300"
+  FLY_WORKER_CONTROL_APP = "sidebar-api"
 
 [http_service]
   internal_port = 8001
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
   processes = ["app"]
 
   [[http_service.checks]]
@@ -45,9 +52,33 @@ primary_region = "lhr"
     method = "GET"
     path = "/api/health"
 
-[vm]
+[[restart]]
+  policy = "always"
+  processes = ["notification"]
+
+[[restart]]
+  policy = "on-failure"
+  processes = ["app", "website", "ingestion"]
+
+[[vm]]
   size = "shared-cpu-1x"
   memory = "1024mb"
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+  processes = ["notification"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+  processes = ["website"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+  processes = ["ingestion"]
 
 [[mounts]]
   source = "data"

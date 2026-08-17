@@ -86,6 +86,7 @@ def _apply_session_settings(
     notification_worker_scope: str | None = None,
     website_worker_scope: str | None = None,
     retention_worker_scope: str | None = None,
+    ingestion_worker_scope: str | None = None,
 ) -> None:
     if user_id:
         connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
@@ -106,6 +107,11 @@ def _apply_session_settings(
             text("SET LOCAL app.retention_worker_scope = :worker_scope"),
             {"worker_scope": retention_worker_scope},
         )
+    if ingestion_worker_scope:
+        connection.execute(
+            text("SET LOCAL app.ingestion_scope = :worker_scope"),
+            {"worker_scope": ingestion_worker_scope},
+        )
     timeout_ms = settings.db_statement_timeout_ms
     if timeout_ms > 0:
         connection.execute(
@@ -123,6 +129,7 @@ def _apply_session_settings_with_retry(
     notification_worker_scope: str | None = None,
     website_worker_scope: str | None = None,
     retention_worker_scope: str | None = None,
+    ingestion_worker_scope: str | None = None,
 ) -> None:
     """Apply session settings and invalidate dropped connections for caller retry."""
     try:
@@ -133,6 +140,7 @@ def _apply_session_settings_with_retry(
             notification_worker_scope,
             website_worker_scope,
             retention_worker_scope,
+            ingestion_worker_scope,
         )
     except OperationalError as exc:
         connection.invalidate(exc)
@@ -173,6 +181,7 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     notification_worker_scope = session.info.get("notification_worker_scope")
     website_worker_scope = session.info.get("website_worker_scope")
     retention_worker_scope = session.info.get("retention_worker_scope")
+    ingestion_worker_scope = session.info.get("ingestion_worker_scope")
     _apply_session_settings_with_retry(
         connection,
         user_id,
@@ -180,6 +189,7 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
         notification_worker_scope,
         website_worker_scope,
         retention_worker_scope,
+        ingestion_worker_scope,
     )
 
 
@@ -315,6 +325,28 @@ def set_website_worker_scope(db: Session, enabled: bool) -> None:
         return
 
     db.info.pop("website_worker_scope", None)
+
+
+def set_ingestion_worker_scope(db: Session, enabled: bool) -> None:
+    """Set ingestion worker scope for the current and future transactions.
+
+    Args:
+        db: Active database session.
+        enabled: Whether cross-user ingestion worker scope should be enabled.
+    """
+    if enabled:
+        db.info["ingestion_worker_scope"] = "all"
+        _retry_session_bootstrap_operation(
+            db,
+            "SET LOCAL app.ingestion_scope",
+            lambda: db.execute(
+                text("SET LOCAL app.ingestion_scope = :worker_scope"),
+                {"worker_scope": "all"},
+            ),
+        )
+        return
+
+    db.info.pop("ingestion_worker_scope", None)
 
 
 def set_notification_worker_scope(db: Session, enabled: bool) -> None:

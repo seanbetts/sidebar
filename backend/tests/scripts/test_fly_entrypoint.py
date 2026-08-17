@@ -1,5 +1,6 @@
 """Regression tests for Fly container startup guardrails."""
 
+import tomllib
 from pathlib import Path
 
 
@@ -20,14 +21,11 @@ def test_entrypoint_allows_app_process_to_skip_playwright_startup_check() -> Non
     """App machines should be able to bypass Playwright preflight during HTTP startup."""
     contents = ENTRYPOINT_PATH.read_text(encoding="utf-8")
 
-    assert 'SKIP_PLAYWRIGHT_STARTUP_CHECK:-0' in contents
+    assert "SKIP_PLAYWRIGHT_STARTUP_CHECK:-0" in contents
 
 
-def test_fly_app_process_skips_playwright_startup_check() -> None:
-    """The Fly app process should opt out of Playwright preflight before uvicorn boots."""
-    contents = FLY_TOML_PATH.read_text(encoding="utf-8")
+def test_fly_supplies_playwright_skip_before_entrypoint_evaluates_guard() -> None:
+    """Fly should expose the skip flag before ENTRYPOINT inspects its environment."""
+    config = tomllib.loads(FLY_TOML_PATH.read_text(encoding="utf-8"))
 
-    assert (
-        'app = "SKIP_PLAYWRIGHT_STARTUP_CHECK=1 uvicorn api.main:app --host 0.0.0.0 --port 8001"'
-        in contents
-    )
+    assert config["env"].get("SKIP_PLAYWRIGHT_STARTUP_CHECK") == "1"

@@ -29,6 +29,288 @@ from workers import notification_schedule_worker
 from workers.notification_schedule_worker import execute_once, process_once
 
 
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        (datetime(2026, 8, 4, 12, 0, 0, tzinfo=UTC), 300.0),
+        (datetime(2026, 8, 4, 12, 1, 0, tzinfo=UTC), 240.0),
+        (datetime(2026, 8, 4, 12, 4, 59, tzinfo=UTC), 1.0),
+    ],
+)
+def test_seconds_until_next_boundary_uses_the_next_utc_epoch_multiple(
+    now: datetime,
+    expected: float,
+) -> None:
+    """The exact current boundary must advance to the following interval."""
+    assert (
+        notification_schedule_worker._seconds_until_next_boundary(now, 300) == expected
+    )
+
+
+def test_seconds_until_next_boundary_converts_to_utc_before_calculating() -> None:
+    """A non-UTC input must use the equivalent UTC epoch boundary."""
+    london_now = datetime.fromisoformat("2026-08-04T13:01:00+01:00")
+
+    assert (
+        notification_schedule_worker._seconds_until_next_boundary(london_now, 300)
+        == 240.0
+    )
+
+
+def test_seconds_until_next_boundary_rejects_non_positive_intervals() -> None:
+    """A zero interval cannot form a valid repeating boundary."""
+    with pytest.raises(ValueError, match="positive"):
+        notification_schedule_worker._seconds_until_next_boundary(
+            datetime(2026, 8, 4, 12, 0, tzinfo=UTC),
+            0,
+        )
+
+
+def test_seconds_until_next_boundary_rejects_naive_times() -> None:
+    """An epoch calculation must not silently depend on the host timezone."""
+    with pytest.raises(ValueError, match="timezone-aware"):
+        notification_schedule_worker._seconds_until_next_boundary(
+            datetime(2026, 8, 4, 12, 0),
+            300,
+        )
+
+
+def test_worker_loop_rejects_an_invalid_configured_interval(monkeypatch) -> None:
+    """The worker must fail before dispatching when its cadence is invalid."""
+    monkeypatch.setattr(
+        notification_schedule_worker.settings,
+        "notification_schedule_interval_seconds",
+        0,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "execute_once",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("must not dispatch")),
+    )
+
+    with pytest.raises(ValueError, match="positive"):
+        notification_schedule_worker.worker_loop()
+
+
+def test_worker_loop_sleeps_only_until_the_next_boundary_after_a_short_cycle(
+    monkeypatch,
+) -> None:
+    """A two-second cycle must not add another full interval of drift."""
+
+    class StopLoop(BaseException):
+        pass
+
+    class FakeDatetime:
+        current_times = iter(
+            [
+                datetime(2026, 8, 4, 12, 0, tzinfo=UTC),
+                datetime(2026, 8, 4, 12, 0, 2, tzinfo=UTC),
+            ]
+        )
+
+        @classmethod
+        def now(cls, tz):
+            assert tz is UTC
+            return next(cls.current_times)
+
+    execute_times: list[datetime] = []
+    sleep_calls: list[float] = []
+
+    monkeypatch.setattr(notification_schedule_worker, "datetime", FakeDatetime)
+    monkeypatch.setattr(
+        notification_schedule_worker.settings,
+        "notification_schedule_interval_seconds",
+        300,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "execute_once",
+        lambda *, now: (
+            execute_times.append(now)
+            or {
+                "task_reminders_due": 1,
+                "morning_digests_due": 0,
+                "task_reminders_dispatched": 0,
+                "morning_digests_dispatched": 0,
+            }
+        ),
+    )
+
+    def stop_after_first_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        raise StopLoop()
+
+    monkeypatch.setattr(
+        notification_schedule_worker.time, "sleep", stop_after_first_sleep
+    )
+
+    with pytest.raises(StopLoop):
+        notification_schedule_worker.worker_loop()
+
+    assert execute_times == [datetime(2026, 8, 4, 12, 0, tzinfo=UTC)]
+    assert sleep_calls == [298.0]
+
+
+def test_worker_loop_retries_failed_cycles_after_two_seconds(monkeypatch) -> None:
+    """A failed evaluation retains the short retry delay rather than boundary sleep."""
+
+    class StopLoop(BaseException):
+        pass
+
+    class FakeDatetime:
+        @classmethod
+        def now(cls, tz):
+            assert tz is UTC
+            return datetime(2026, 8, 4, 12, 0, tzinfo=UTC)
+
+    execute_times: list[datetime] = []
+    sleep_calls: list[float] = []
+
+    def fail_cycle(*, now: datetime) -> dict[str, int]:
+        execute_times.append(now)
+        raise RuntimeError("scheduler failed")
+
+    def stop_after_retry_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        raise StopLoop()
+
+    monkeypatch.setattr(notification_schedule_worker, "datetime", FakeDatetime)
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "execute_once",
+        fail_cycle,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.time,
+        "sleep",
+        stop_after_retry_sleep,
+    )
+
+    with pytest.raises(StopLoop):
+        notification_schedule_worker.worker_loop()
+
+    assert execute_times == [datetime(2026, 8, 4, 12, 0, tzinfo=UTC)]
+    assert sleep_calls == [2]
+
+
+def test_worker_loop_propagates_failed_cycle_without_sleep_in_control_mode(
+    monkeypatch,
+    caplog,
+) -> None:
+    """The control runner must own logging and retry delay for cycle failures."""
+
+    class UnexpectedSleep(BaseException):
+        pass
+
+    sleep_calls: list[float] = []
+
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "execute_once",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("scheduler failed")),
+    )
+
+    def fail_on_inner_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        raise UnexpectedSleep
+
+    monkeypatch.setattr(
+        notification_schedule_worker.time,
+        "sleep",
+        fail_on_inner_sleep,
+    )
+
+    with (
+        caplog.at_level(
+            logging.ERROR,
+            logger=notification_schedule_worker.logger.name,
+        ),
+        pytest.raises(RuntimeError, match="scheduler failed"),
+    ):
+        notification_schedule_worker.worker_loop(raise_on_error=True)
+
+    assert sleep_calls == []
+    assert not any(
+        record.message == "Notification schedule worker crashed, retrying"
+        for record in caplog.records
+    )
+
+
+@pytest.mark.parametrize(
+    ("completed_at", "expected_sleep", "expected_elapsed"),
+    [
+        (datetime(2026, 8, 4, 12, 5, tzinfo=UTC), 300.0, 300.0),
+        (datetime(2026, 8, 4, 12, 5, 1, tzinfo=UTC), 299.0, 301.0),
+    ],
+)
+def test_worker_loop_warns_for_cycles_at_or_over_the_interval(
+    monkeypatch,
+    caplog,
+    completed_at: datetime,
+    expected_sleep: float,
+    expected_elapsed: float,
+) -> None:
+    """Long cycles must warn while retaining the following fixed boundary."""
+
+    class StopLoop(BaseException):
+        pass
+
+    class FakeDatetime:
+        current_times = iter(
+            [
+                datetime(2026, 8, 4, 12, 0, tzinfo=UTC),
+                completed_at,
+            ]
+        )
+
+        @classmethod
+        def now(cls, tz):
+            assert tz is UTC
+            return next(cls.current_times)
+
+    sleep_calls: list[float] = []
+    monkeypatch.setattr(notification_schedule_worker, "datetime", FakeDatetime)
+    monkeypatch.setattr(
+        notification_schedule_worker.settings,
+        "notification_schedule_interval_seconds",
+        300,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker,
+        "execute_once",
+        lambda *, now: {
+            "task_reminders_due": 0,
+            "morning_digests_due": 0,
+            "task_reminders_dispatched": 0,
+            "morning_digests_dispatched": 0,
+        },
+    )
+
+    def stop_after_first_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        raise StopLoop()
+
+    monkeypatch.setattr(
+        notification_schedule_worker.time, "sleep", stop_after_first_sleep
+    )
+
+    with (
+        caplog.at_level(logging.WARNING, logger="notification_schedule.worker"),
+        pytest.raises(StopLoop),
+    ):
+        notification_schedule_worker.worker_loop()
+
+    warning = next(
+        record
+        for record in caplog.records
+        if record.getMessage()
+        == "Notification schedule evaluation reached or exceeded its interval"
+    )
+    assert warning.elapsed_seconds == expected_elapsed
+    assert warning.interval_seconds == 300
+    assert sleep_calls == [expected_sleep]
+
+
 def _task(
     *,
     user_id: str,
@@ -675,7 +957,9 @@ def test_execute_once_persists_scheduler_heartbeat_on_failure(test_db):
     assert heartbeat.last_error == "scheduler exploded"
 
 
-def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, monkeypatch):
+def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(
+    test_db, monkeypatch
+):
     NotificationScheduleService.clear_due_windows()
     MorningDigestService.clear_emitted_days()
     monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
@@ -709,7 +993,12 @@ def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, mo
 
     assert stats["task_reminders_due"] == 1
     assert stats["task_reminders_dispatched"] == 0
-    assert ("user-123", "dispatch", "no_reminder_intent", "no_due_tasks") in decision_rows
+    assert (
+        "user-123",
+        "dispatch",
+        "no_reminder_intent",
+        "no_due_tasks",
+    ) in decision_rows
 
 
 def test_due_task_reminder_non_delivery_is_logged_for_worker_ops(test_db, caplog):

@@ -1,10 +1,15 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
+from api.services.file_ingestion_service import FileIngestionService
+from api.services.website_transcript_service import WebsiteTranscriptService
 from workers import ingestion_worker
+from workers.idle_exit import IdleExitTracker
 
 
 class _DummySession:
@@ -15,6 +20,95 @@ class _DummySession:
     def execute(self, statement):
         self.executed.append(str(statement))
         return None
+
+
+class StopAfterIdleClock:
+    def __init__(self) -> None:
+        self.elapsed = 0.0
+
+    def __call__(self) -> float:
+        return self.elapsed
+
+    def advance(self, seconds: float) -> None:
+        self.elapsed += seconds
+
+
+class EmptySession:
+    def __init__(self, events: list[str] | None = None) -> None:
+        self.events = events
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def rollback(self) -> None:
+        if self.events is not None:
+            self.events.append("rollback")
+
+
+class ObservedIdleExitTracker(IdleExitTracker):
+    def __init__(self, timeout_seconds: float, *, monotonic) -> None:
+        super().__init__(timeout_seconds, monotonic=monotonic)
+        self.started = 0
+        self.finished = 0
+
+    def job_started(self) -> None:
+        self.started += 1
+        super().job_started()
+
+    def job_finished(self) -> None:
+        self.finished += 1
+        super().job_finished()
+
+
+def install_empty_ingestion_queue(monkeypatch, *, session_factory=EmptySession) -> None:
+    monkeypatch.setattr(ingestion_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(ingestion_worker, "_initialize_worker_sentry", lambda: None)
+    monkeypatch.setattr(ingestion_worker, "_ensure_stdio", lambda: None)
+    monkeypatch.setattr(ingestion_worker, "_resolve_worker_user_id", lambda: None)
+    monkeypatch.setattr(
+        ingestion_worker,
+        "_enforce_safe_dev_worker_configuration",
+        lambda _user_id: None,
+    )
+    monkeypatch.setattr(
+        ingestion_worker,
+        "_set_worker_claim_scope",
+        lambda _db, _user_id: None,
+    )
+    monkeypatch.setattr(ingestion_worker, "_requeue_stalled_jobs", lambda _db: None)
+    monkeypatch.setattr(ingestion_worker, "_claim_job", lambda _db, _worker_id: None)
+
+
+def install_claimed_ingestion_job(monkeypatch, *, job, record) -> EmptySession:
+    session = EmptySession()
+    claims = iter((job, None))
+    install_empty_ingestion_queue(monkeypatch, session_factory=lambda: session)
+    monkeypatch.setattr(
+        ingestion_worker,
+        "_claim_job",
+        lambda _db, _worker_id: next(claims, None),
+    )
+    monkeypatch.setattr(ingestion_worker, "_get_file", lambda _db, _job: record)
+    monkeypatch.setattr(ingestion_worker, "set_session_user_id", lambda *_args: None)
+    monkeypatch.setattr(
+        ingestion_worker,
+        "_start_heartbeat",
+        lambda _job_id, _user_id: lambda: None,
+    )
+    monkeypatch.setattr(session, "refresh", lambda _record: None, raising=False)
+    monkeypatch.setattr(ingestion_worker, "_mark_ready", lambda *_args: None)
+    monkeypatch.setattr(ingestion_worker, "_cleanup_staging", lambda *_args: None)
+    monkeypatch.setattr(
+        ingestion_worker, "_ensure_source_path", lambda _record: Path("/tmp/source")
+    )
+    monkeypatch.setattr(
+        ingestion_worker, "_normalize_mime", lambda *_args: "text/plain"
+    )
+    monkeypatch.setattr(ingestion_worker, "_should_fast_track", lambda *_args: True)
+    return session
 
 
 def _make_ingested_file(test_db, file_id):
@@ -107,6 +201,67 @@ def test_compute_idle_poll_seconds_uses_bounded_backoff():
     assert ingestion_worker._compute_idle_poll_seconds(8) == 10
 
 
+def test_worker_loop_returns_after_configured_idle_period(monkeypatch):
+    clock = StopAfterIdleClock()
+    tracker = IdleExitTracker(30, monotonic=clock)
+    install_empty_ingestion_queue(monkeypatch)
+    monkeypatch.setattr(ingestion_worker.time, "sleep", clock.advance)
+
+    ingestion_worker.worker_loop(idle_tracker=tracker)
+
+    assert clock.elapsed == 34
+
+
+def test_worker_loop_uses_configured_idle_period_by_default(monkeypatch):
+    clock = StopAfterIdleClock()
+    configured_timeouts: list[float] = []
+
+    class ConfiguredTracker(IdleExitTracker):
+        def __init__(self, timeout_seconds: float) -> None:
+            configured_timeouts.append(timeout_seconds)
+            super().__init__(timeout_seconds, monotonic=clock)
+
+    def advance_with_limit(seconds: float) -> None:
+        clock.advance(seconds)
+        if clock.elapsed > 60:
+            pytest.fail("configured idle timeout was not applied")
+
+    install_empty_ingestion_queue(monkeypatch)
+    monkeypatch.setattr(ingestion_worker, "IdleExitTracker", ConfiguredTracker)
+    monkeypatch.setattr(
+        ingestion_worker.settings, "ingestion_worker_idle_exit_seconds", 30
+    )
+    monkeypatch.setattr(ingestion_worker.time, "sleep", advance_with_limit)
+
+    ingestion_worker.worker_loop()
+
+    assert configured_timeouts == [30]
+    assert clock.elapsed == 34
+
+
+def test_worker_loop_rolls_back_before_idle_exit_check(monkeypatch):
+    events: list[str] = []
+
+    class ExitingTracker:
+        def should_exit(self) -> bool:
+            events.append("check")
+            return True
+
+    install_empty_ingestion_queue(
+        monkeypatch,
+        session_factory=lambda: EmptySession(events),
+    )
+    monkeypatch.setattr(
+        ingestion_worker.time,
+        "sleep",
+        lambda _seconds: pytest.fail("idle exit must happen before sleeping"),
+    )
+
+    ingestion_worker.worker_loop(idle_tracker=ExitingTracker())
+
+    assert events[:2] == ["rollback", "check"]
+
+
 def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
     class StopLoop(BaseException):
         pass
@@ -125,13 +280,15 @@ def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
 
     def fake_sleep(seconds: int) -> None:
         sleep_calls.append(seconds)
-        if len(sleep_calls) >= 3:
+        if len(sleep_calls) >= 4:
             raise StopLoop()
 
     monkeypatch.setattr(ingestion_worker, "SessionLocal", lambda: FakeSession())
     monkeypatch.setattr(ingestion_worker, "_resolve_worker_user_id", lambda: None)
     monkeypatch.setattr(
-        ingestion_worker, "_enforce_safe_dev_worker_configuration", lambda _user_id: None
+        ingestion_worker,
+        "_enforce_safe_dev_worker_configuration",
+        lambda _user_id: None,
     )
     monkeypatch.setattr(
         ingestion_worker, "_set_worker_claim_scope", lambda _db, _worker_user_id: None
@@ -141,11 +298,156 @@ def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
     monkeypatch.setattr(ingestion_worker.time, "sleep", fake_sleep)
 
     try:
-        ingestion_worker.worker_loop()
+        ingestion_worker.worker_loop(idle_tracker=IdleExitTracker(0))
     except StopLoop:
         pass
 
-    assert sleep_calls == [2, 4, 8]
+    assert sleep_calls == [2, 4, 8, 10]
+
+
+def test_active_youtube_job_resets_idle_period_after_finishing(monkeypatch):
+    clock = StopAfterIdleClock()
+    tracker = ObservedIdleExitTracker(30, monotonic=clock)
+    job = SimpleNamespace(id="job-1", file_id="file-1", status="processing")
+    record = SimpleNamespace(
+        id="file-1",
+        user_id="user-1",
+        source_url="https://www.youtube.com/watch?v=abc123",
+        filename_original="YouTube Video",
+        mime_original="video/youtube",
+    )
+    install_claimed_ingestion_job(monkeypatch, job=job, record=record)
+
+    def process_youtube_job(_db, _job, _record) -> None:
+        clock.advance(60)
+        assert tracker.should_exit() is False
+
+    monkeypatch.setattr(ingestion_worker, "_process_youtube_job", process_youtube_job)
+    monkeypatch.setattr(ingestion_worker.time, "sleep", clock.advance)
+
+    ingestion_worker.worker_loop(idle_tracker=tracker)
+
+    assert tracker.started == 1
+    assert tracker.finished == 1
+    assert clock.elapsed == 94
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ["youtube", "fast_track", "pipeline", "halted", "retryable", "unexpected"],
+)
+def test_claimed_job_finishes_once_across_worker_branches(monkeypatch, outcome):
+    class StopLoop(BaseException):
+        pass
+
+    clock = StopAfterIdleClock()
+    tracker = ObservedIdleExitTracker(0, monotonic=clock)
+    source_url = (
+        "https://www.youtube.com/watch?v=abc123" if outcome == "youtube" else None
+    )
+    job = SimpleNamespace(
+        id="job-1",
+        file_id="file-1",
+        status="processing",
+        lease_expires_at=None,
+    )
+    record = SimpleNamespace(
+        id="file-1",
+        user_id="user-1",
+        source_url=source_url,
+        filename_original="sample.txt",
+        mime_original="text/plain",
+    )
+    install_claimed_ingestion_job(monkeypatch, job=job, record=record)
+
+    def process_youtube_job(_db, _job, _record) -> None:
+        return None
+
+    def process_simple_file(_db, _job, _record, _source_path, _mime) -> None:
+        if outcome == "halted":
+            raise ingestion_worker.IngestionError(
+                "JOB_HALTED", "halted", retryable=False
+            )
+        if outcome == "retryable":
+            raise ingestion_worker.IngestionError(
+                "STORAGE_UNAVAILABLE", "retry", retryable=True
+            )
+        if outcome == "unexpected":
+            raise RuntimeError("boom")
+
+    retry_lease = object()
+    retried_errors: list[ingestion_worker.IngestionError] = []
+
+    def retry_or_fail(_db, retried_job, error) -> None:
+        retried_job.status = "queued"
+        retried_job.lease_expires_at = retry_lease
+        retried_errors.append(error)
+
+    monkeypatch.setattr(ingestion_worker, "_process_youtube_job", process_youtube_job)
+    monkeypatch.setattr(ingestion_worker, "_process_simple_file", process_simple_file)
+    if outcome == "pipeline":
+        monkeypatch.setattr(
+            ingestion_worker, "_should_fast_track", lambda *_args: False
+        )
+        monkeypatch.setattr(ingestion_worker, "PIPELINE_STAGES", ())
+    monkeypatch.setattr(ingestion_worker, "_retry_or_fail", retry_or_fail)
+    monkeypatch.setattr(
+        ingestion_worker.time,
+        "sleep",
+        lambda _seconds: (_ for _ in ()).throw(StopLoop()),
+    )
+
+    with pytest.raises(StopLoop):
+        ingestion_worker.worker_loop(idle_tracker=tracker)
+
+    assert tracker.started == 1
+    assert tracker.finished == 1
+    if outcome in {"retryable", "unexpected"}:
+        assert len(retried_errors) == 1
+        assert job.lease_expires_at is retry_lease
+    else:
+        assert retried_errors == []
+
+
+def test_main_returns_after_intentional_idle_exit(monkeypatch):
+    worker_calls: list[str] = []
+    monkeypatch.setattr(
+        ingestion_worker,
+        "worker_loop",
+        lambda: worker_calls.append("idle-exit"),
+    )
+    monkeypatch.setattr(
+        ingestion_worker.time,
+        "sleep",
+        lambda _seconds: pytest.fail("normal idle exit must not restart"),
+    )
+
+    ingestion_worker.main()
+
+    assert worker_calls == ["idle-exit"]
+
+
+def test_main_restarts_after_worker_exception(monkeypatch):
+    worker_calls = 0
+    sleep_calls: list[int] = []
+
+    def worker_loop() -> None:
+        nonlocal worker_calls
+        worker_calls += 1
+        if worker_calls == 1:
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(ingestion_worker, "worker_loop", worker_loop)
+    monkeypatch.setattr(
+        ingestion_worker.time,
+        "sleep",
+        lambda seconds: sleep_calls.append(seconds),
+    )
+
+    ingestion_worker.main()
+
+    assert worker_calls == 2
+    assert sleep_calls == [2]
 
 
 def test_retryable_error_exhausts_attempts(test_db):
@@ -214,7 +516,7 @@ def test_retryable_website_transcript_error_does_not_report_sentry_before_final_
         )
 
     monkeypatch.setattr(
-        ingestion_worker.WebsiteTranscriptService,
+        WebsiteTranscriptService,
         "update_transcript_status",
         fake_update_transcript_status,
     )
@@ -234,7 +536,9 @@ def test_retryable_website_transcript_error_does_not_report_sentry_before_final_
 def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypatch):
     website_id = uuid4()
     file_id = uuid4()
-    record = _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id)
+    record = _make_youtube_website_transcript_ingested_file(
+        test_db, file_id, website_id
+    )
     job = FileProcessingJob(
         file_id=file_id,
         status="processing",
@@ -319,12 +623,12 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
         )
 
     monkeypatch.setattr(
-        ingestion_worker.WebsiteTranscriptService,
+        WebsiteTranscriptService,
         "update_transcript_status",
         fake_update_transcript_status,
     )
     monkeypatch.setattr(
-        ingestion_worker.FileIngestionService,
+        FileIngestionService,
         "soft_delete_file",
         lambda _db, target_file_id: soft_deleted_file_ids.append(str(target_file_id)),
     )
@@ -372,11 +676,15 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
 def test_initialize_worker_sentry_uses_backend_settings(monkeypatch):
     init_calls: list[dict[str, object]] = []
 
-    monkeypatch.setattr(ingestion_worker.settings, "sentry_dsn", "https://example@sentry.io/123")
+    monkeypatch.setattr(
+        ingestion_worker.settings, "sentry_dsn", "https://example@sentry.io/123"
+    )
     monkeypatch.setattr(ingestion_worker.settings, "sentry_traces_sample_rate", 0.25)
     monkeypatch.setattr(ingestion_worker.settings, "sentry_profiles_sample_rate", 0.5)
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
-    monkeypatch.setattr(ingestion_worker.sentry_sdk, "init", lambda **kwargs: init_calls.append(kwargs))
+    monkeypatch.setattr(
+        ingestion_worker.sentry_sdk, "init", lambda **kwargs: init_calls.append(kwargs)
+    )
     monkeypatch.setattr(ingestion_worker, "_worker_sentry_initialized", False)
 
     ingestion_worker._initialize_worker_sentry()
@@ -429,9 +737,7 @@ def test_is_allowed_file_rejects_unsupported_types():
     assert not ingestion_worker._is_allowed_file("text/xml", "settings.plist")
 
 
-def test_process_youtube_job_disables_transcript_upload(
-    test_db, monkeypatch, tmp_path
-):
+def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch, tmp_path):
     file_id = uuid4()
     record = _make_youtube_ingested_file(test_db, file_id)
     job = FileProcessingJob(
@@ -460,7 +766,9 @@ def test_process_youtube_job_disables_transcript_upload(
 
     monkeypatch.setattr(ingestion_worker, "_transcribe_youtube", fake_transcribe)
     monkeypatch.setattr(
-        ingestion_worker, "_write_derivatives_atomically", lambda *_args, **_kwargs: None
+        ingestion_worker,
+        "_write_derivatives_atomically",
+        lambda *_args, **_kwargs: None,
     )
 
     ingestion_worker._process_youtube_job(test_db, job, record)
@@ -469,7 +777,9 @@ def test_process_youtube_job_disables_transcript_upload(
     assert output_names == ["ai.md"]
     persisted_kinds = {
         item.kind
-        for item in test_db.query(FileDerivative).filter(FileDerivative.file_id == file_id)
+        for item in test_db.query(FileDerivative).filter(
+            FileDerivative.file_id == file_id
+        )
     }
     assert "source_original" in persisted_kinds
     assert "ai_md" in persisted_kinds
@@ -502,7 +812,9 @@ def test_build_source_original_payload_uses_original_extension():
 def test_process_youtube_website_transcript_uses_minimal_stages(test_db, monkeypatch):
     file_id = uuid4()
     website_id = uuid4()
-    record = _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id)
+    record = _make_youtube_website_transcript_ingested_file(
+        test_db, file_id, website_id
+    )
     job = FileProcessingJob(
         file_id=file_id,
         status="processing",
@@ -525,20 +837,22 @@ def test_process_youtube_website_transcript_uses_minimal_stages(test_db, monkeyp
         return "Transcript", {"title": "Test Video"}
 
     monkeypatch.setattr(ingestion_worker, "_set_stage", fake_set_stage)
-    monkeypatch.setattr(ingestion_worker, "_refresh_lease", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        ingestion_worker, "_refresh_lease", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(ingestion_worker, "_transcribe_youtube", fake_transcribe)
     monkeypatch.setattr(
-        ingestion_worker.WebsiteTranscriptService,
+        WebsiteTranscriptService,
         "update_transcript_status",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        ingestion_worker.WebsiteTranscriptService,
+        WebsiteTranscriptService,
         "append_transcript_from_text",
         lambda *_args, **_kwargs: "",
     )
     monkeypatch.setattr(
-        ingestion_worker.FileIngestionService,
+        FileIngestionService,
         "soft_delete_file",
         lambda *_args, **_kwargs: None,
     )
@@ -611,7 +925,7 @@ def test_classify_unexpected_error_maps_storage_tls_failure():
 def test_classify_unexpected_error_maps_storage_timeout_as_retryable():
     error = RuntimeError(
         "Read timeout on endpoint URL: "
-        "\"https://example.r2.cloudflarestorage.com/sidebar/user/files/file/derivatives/source.txt\""
+        '"https://example.r2.cloudflarestorage.com/sidebar/user/files/file/derivatives/source.txt"'
     )
 
     classified = ingestion_worker._classify_unexpected_error(error)
@@ -646,7 +960,9 @@ def test_resolve_worker_user_id_uses_default_in_local(monkeypatch, tmp_path):
     assert ingestion_worker._resolve_worker_user_id() == "fallback-user"
 
 
-def test_resolve_worker_user_id_prefers_active_user_file_in_local(monkeypatch, tmp_path):
+def test_resolve_worker_user_id_prefers_active_user_file_in_local(
+    monkeypatch, tmp_path
+):
     active_user_file = tmp_path / "active-user-id.txt"
     active_user_file.write_text("jwt-user-id", encoding="utf-8")
     monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
@@ -679,7 +995,9 @@ def test_set_worker_claim_scope_sets_explicit_user(monkeypatch):
     def fake_set_session_user_id(_db, user_id):
         scoped_to.append(user_id)
 
-    monkeypatch.setattr(ingestion_worker, "set_session_user_id", fake_set_session_user_id)
+    monkeypatch.setattr(
+        ingestion_worker, "set_session_user_id", fake_set_session_user_id
+    )
 
     session = _DummySession()
     ingestion_worker._set_worker_claim_scope(session, "user-1")
@@ -698,7 +1016,9 @@ def test_set_worker_claim_scope_clears_stale_user_when_unscoped():
     assert "app_user_id" not in session.info
     assert len(session.executed) == 2
     assert "set_config('app.user_id', '', false)" in session.executed[0].lower()
-    assert "set_config('app.ingestion_scope', 'all', false)" in session.executed[1].lower()
+    assert (
+        "set_config('app.ingestion_scope', 'all', false)" in session.executed[1].lower()
+    )
 
 
 def test_enforce_safe_dev_worker_configuration_allows_local_db(monkeypatch):

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from workers import data_retention_worker, worker_runner
+import logging
+
+import pytest
+
+from workers import data_retention_worker
 
 
 class _FakeSession:
@@ -83,27 +87,78 @@ def test_run_once_applies_retention_worker_scope_before_cleanup(monkeypatch):
     assert summary.total_actions == 1
 
 
-def test_worker_runner_starts_data_retention_thread(monkeypatch):
-    started: list[object] = []
+def test_worker_loop_retries_failed_cycles_on_configured_cadence(
+    monkeypatch,
+    caplog,
+) -> None:
+    """The dedicated retention process should retain its existing retry behavior."""
 
-    class FakeThread:
-        def __init__(self, *, target, daemon):
-            self._target = target
-            self._daemon = daemon
+    class StopLoop(BaseException):
+        pass
 
-        def start(self):
-            started.append(self._target)
+    sleep_calls: list[int] = []
 
-        def join(self):
-            return None
+    monkeypatch.setattr(
+        data_retention_worker,
+        "run_once",
+        lambda: (_ for _ in ()).throw(RuntimeError("retention failed")),
+    )
+    monkeypatch.setattr(
+        data_retention_worker.settings,
+        "data_retention_poll_seconds",
+        123,
+    )
 
-    def retention_target() -> None:
-        return None
+    def stop_after_retry_sleep(seconds: int) -> None:
+        sleep_calls.append(seconds)
+        raise StopLoop
 
-    monkeypatch.setattr(worker_runner.threading, "Thread", FakeThread)
-    monkeypatch.setattr(worker_runner, "_run_ingestion", lambda: None)
-    monkeypatch.setattr(worker_runner, "_run_data_retention", retention_target)
+    monkeypatch.setattr(data_retention_worker.time, "sleep", stop_after_retry_sleep)
 
-    worker_runner.main()
+    with (
+        caplog.at_level(logging.ERROR, logger=data_retention_worker.logger.name),
+        pytest.raises(StopLoop),
+    ):
+        data_retention_worker.worker_loop()
 
-    assert retention_target in started
+    assert sleep_calls == [123]
+    assert any(
+        record.message == "Data retention worker crashed, retrying after delay"
+        for record in caplog.records
+    )
+
+
+def test_worker_loop_propagates_failed_cycle_without_sleep_in_control_mode(
+    monkeypatch,
+    caplog,
+) -> None:
+    """The control runner must own logging and retry delay for retention failures."""
+
+    class UnexpectedSleep(BaseException):
+        pass
+
+    sleep_calls: list[int] = []
+
+    monkeypatch.setattr(
+        data_retention_worker,
+        "run_once",
+        lambda: (_ for _ in ()).throw(RuntimeError("retention failed")),
+    )
+
+    def fail_on_inner_sleep(seconds: int) -> None:
+        sleep_calls.append(seconds)
+        raise UnexpectedSleep
+
+    monkeypatch.setattr(data_retention_worker.time, "sleep", fail_on_inner_sleep)
+
+    with (
+        caplog.at_level(logging.ERROR, logger=data_retention_worker.logger.name),
+        pytest.raises(RuntimeError, match="retention failed"),
+    ):
+        data_retention_worker.worker_loop(raise_on_error=True)
+
+    assert sleep_calls == []
+    assert not any(
+        record.message == "Data retention worker crashed, retrying after delay"
+        for record in caplog.records
+    )

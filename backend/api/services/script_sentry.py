@@ -44,6 +44,7 @@ def initialize_script_sentry(
         sentry_sdk.init(
             dsn=settings.sentry_dsn,
             integrations=merged_integrations,
+            auto_enabling_integrations=False,
             traces_sample_rate=settings.sentry_traces_sample_rate,
             profiles_sample_rate=settings.sentry_profiles_sample_rate,
             environment=resolve_sentry_environment(settings.app_env),

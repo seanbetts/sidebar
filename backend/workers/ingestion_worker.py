@@ -23,31 +23,26 @@ from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from threading import Event, Thread
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import pdfplumber
 import sentry_sdk
-from botocore import exceptions as botocore_exceptions
-from docx import Document
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LAParams, LTAnno, LTChar, LTTextContainer, LTTextLine
-from PIL import Image
-from pptx import Presentation
-from pypdf import PdfReader
-from python_calamine import CalamineError, CalamineWorkbook, XmlError, ZipError
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import and_, or_, text
 from sqlalchemy.orm.attributes import flag_modified
-from tabulate import tabulate
 
 from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
-from api.services.file_ingestion_service import FileIngestionService
 from api.services.script_sentry import initialize_script_sentry
-from api.services.storage.service import get_storage_backend
-from api.services.website_transcript_service import WebsiteTranscriptService
+from workers.idle_exit import IdleExitTracker
+
+if TYPE_CHECKING:
+    import pdfplumber
+    from pdfminer.layout import LTTextLine
+
+    from api.services.storage.base import StorageBackend
 
 LEASE_SECONDS = 180
 HEARTBEAT_SECONDS = 15
@@ -192,6 +187,9 @@ def _initialize_worker_sentry() -> None:
 def _report_website_transcript_final_failure(
     db, job: FileProcessingJob, error: IngestionError, *, failure_stage: str
 ) -> bool:
+    from api.services.file_ingestion_service import FileIngestionService
+    from api.services.website_transcript_service import WebsiteTranscriptService
+
     record = _get_file(db, job)
     transcript_target = _get_transcript_target(record) if record else None
     if record is None or transcript_target is None:
@@ -415,6 +413,8 @@ def _matches_message_hints(
 
 
 def _classify_storage_error(error: Exception) -> IngestionError | None:
+    from botocore import exceptions as botocore_exceptions
+
     for item in _iter_exception_chain(error):
         if isinstance(item, botocore_exceptions.SSLError):
             return IngestionError("STORAGE_TLS_FAILED", str(error), retryable=False)
@@ -534,7 +534,7 @@ def _claim_job(db, worker_id: str) -> FileProcessingJob | None:
                 FileProcessingJob.status == "queued",
                 or_(
                     FileProcessingJob.lease_expires_at.is_(None),
-                    FileProcessingJob.lease_expires_at < _now(),
+                    FileProcessingJob.lease_expires_at <= _now(),
                 ),
             )
         )
@@ -723,7 +723,7 @@ def _cleanup_staging(file_id: str, user_id: str | None = None) -> None:
         shutil.rmtree(staging_root, ignore_errors=True)
     if user_id:
         try:
-            storage = get_storage_backend()
+            storage = _get_storage_backend()
             key = _staging_storage_key(user_id, file_id)
             if storage.object_exists(key):
                 storage.delete_object(key)
@@ -739,7 +739,7 @@ def _ensure_source_path(record: IngestedFile) -> Path:
         raise IngestionError(
             "SOURCE_MISSING", "Uploaded file not found", retryable=False
         )
-    storage = get_storage_backend()
+    storage = _get_storage_backend()
     key = _staging_storage_key(record.user_id, str(record.id))
     if storage.object_exists(key):
         source_path.parent.mkdir(parents=True, exist_ok=True)
@@ -761,6 +761,13 @@ def _relative_storage_key(record: IngestedFile, key: str) -> str:
     if key.startswith(prefix):
         return key[len(prefix) :]
     return key.lstrip("/")
+
+
+def _get_storage_backend() -> StorageBackend:
+    """Load the processing-only storage service after a job has been claimed."""
+    from api.services.storage.service import get_storage_backend
+
+    return get_storage_backend()
 
 
 def _write_derivatives_atomically(
@@ -1205,6 +1212,8 @@ def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
 
 
 def _generate_image_thumbnail(image_path: Path, max_size: int = 640) -> bytes | None:
+    from PIL import Image
+
     try:
         with Image.open(image_path) as image:
             image.thumbnail((max_size, max_size))
@@ -1312,6 +1321,8 @@ def _order_pdf_lines(
 
 
 def _split_line_segments(line: LTTextLine) -> list[tuple[float, str]]:
+    from pdfminer.layout import LTAnno, LTChar
+
     chars = [obj for obj in line if isinstance(obj, LTChar)]
     if not chars:
         return []
@@ -1422,6 +1433,8 @@ def _table_to_markdown(rows: Sequence[Sequence[object | None]]) -> str | None:
     body = normalized[1:]
     if not body:
         return None
+    from tabulate import tabulate
+
     return tabulate(body, headers=header, tablefmt="github")
 
 
@@ -1465,6 +1478,8 @@ def _extract_non_table_text(
 
 
 def _extract_pdf_tables(pdf_path: Path) -> tuple[dict[int, list[str]], dict[int, str]]:
+    import pdfplumber
+
     tables_by_page: dict[int, list[str]] = {}
     text_by_page: dict[int, str] = {}
     try:
@@ -1491,6 +1506,9 @@ def _extract_pdf_tables(pdf_path: Path) -> tuple[dict[int, list[str]], dict[int,
 
 
 def _extract_pdf_text(pdf_path: Path) -> str:
+    from pdfminer.high_level import extract_pages
+    from pdfminer.layout import LAParams, LTTextContainer, LTTextLine
+
     text = ""
     try:
         tables_by_page, table_text_by_page = _extract_pdf_tables(pdf_path)
@@ -1533,6 +1551,8 @@ def _extract_pdf_text(pdf_path: Path) -> str:
     except Exception as exc:
         logger.warning("PDFMiner extraction failed (%s). Falling back to pypdf.", exc)
         try:
+            from pypdf import PdfReader
+
             reader = PdfReader(str(pdf_path))
             sections = []
             for index, page in enumerate(reader.pages, start=1):
@@ -1547,6 +1567,8 @@ def _extract_pdf_text(pdf_path: Path) -> str:
 
 
 def _extract_pptx_text(pptx_path: Path) -> str:
+    from pptx import Presentation
+
     presentation = Presentation(str(pptx_path))
     sections = []
     for index, slide in enumerate(presentation.slides, start=1):
@@ -1560,6 +1582,8 @@ def _extract_pptx_text(pptx_path: Path) -> str:
 
 
 def _extract_docx_text(docx_path: Path) -> str:
+    from docx import Document
+
     document = Document(str(docx_path))
     parts: list[str] = []
     for paragraph in document.paragraphs:
@@ -1768,6 +1792,8 @@ def _extract_spreadsheet_data(source_path: Path, mime: str, filename: str) -> di
     if mime in {"text/tab-separated-values", "text/tsv"} or lower_name.endswith(".tsv"):
         rows = _read_csv_rows(content, "\t")
         return {"sheets": [_build_sheet_payload(Path(filename).stem or "Sheet1", rows)]}
+
+    from python_calamine import CalamineError, CalamineWorkbook, XmlError, ZipError
 
     try:
         workbook = CalamineWorkbook.from_path(str(source_path))
@@ -2019,7 +2045,7 @@ def _process_simple_file(
                 record, viewer_payload.kind, extraction_text
             )
         elif stage == "finalizing":
-            storage = get_storage_backend()
+            storage = _get_storage_backend()
             if viewer_payload is None or ai_payload is None:
                 raise IngestionError(
                     "DERIVATIVE_MISSING",
@@ -2110,6 +2136,9 @@ def _build_youtube_derivatives(
 
 
 def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> None:
+    from api.services.file_ingestion_service import FileIngestionService
+    from api.services.website_transcript_service import WebsiteTranscriptService
+
     logger.info("Processing YouTube file_id=%s url=%s", record.id, record.source_url)
     transcript = ""
     metadata: dict = {}
@@ -2190,7 +2219,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                             )
                     if source_original_payload is not None:
                         derivatives = [source_original_payload, *derivatives]
-                    storage = get_storage_backend()
+                    storage = _get_storage_backend()
                     _write_derivatives_atomically(storage, record, derivatives)
 
                     db.query(FileDerivative).filter(
@@ -2271,9 +2300,14 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
         raise
 
 
-def worker_loop() -> None:
+def worker_loop(*, idle_tracker: IdleExitTracker | None = None) -> None:
     """Run the ingestion worker loop that leases and processes pending jobs."""
     _initialize_worker_sentry()
+    tracker = (
+        idle_tracker
+        if idle_tracker is not None
+        else IdleExitTracker(settings.ingestion_worker_idle_exit_seconds)
+    )
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
     idle_polls = 0
@@ -2314,17 +2348,25 @@ def worker_loop() -> None:
                 )
         _enforce_safe_dev_worker_configuration(worker_user_id)
         with SessionLocal() as db:
+            job_is_active = False
             try:
                 _set_worker_claim_scope(db, worker_user_id)
                 _requeue_stalled_jobs(db)
                 job = _claim_job(db, worker_id)
                 if not job:
                     db.rollback()
+                    if tracker.should_exit():
+                        logger.info(
+                            "Ingestion worker idle grace period elapsed; exiting"
+                        )
+                        return
                     idle_polls += 1
                     time.sleep(_compute_idle_poll_seconds(idle_polls))
                     continue
 
                 idle_polls = 0
+                tracker.job_started()
+                job_is_active = True
                 record: IngestedFile | None = None
                 try:
                     record = _get_file(db, job)
@@ -2564,7 +2606,7 @@ def worker_loop() -> None:
                                     derivatives.insert(0, source_original_payload)
                                 if thumb_payload:
                                     derivatives.append(thumb_payload)
-                                storage = get_storage_backend()
+                                storage = _get_storage_backend()
                                 _write_derivatives_atomically(
                                     storage, record, derivatives
                                 )
@@ -2613,14 +2655,23 @@ def worker_loop() -> None:
                             str(job.file_id), str(record.user_id) if record else None
                         )
             finally:
+                if job_is_active:
+                    tracker.job_finished()
                 db.rollback()
         time.sleep(SLEEP_SECONDS)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Restart crashes, but return after the worker intentionally idles out."""
     while True:
         try:
             worker_loop()
+            logger.info("Ingestion worker exiting after idle grace period")
+            return
         except Exception:
             logger.exception("Ingestion worker crashed, restarting after delay")
             time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()

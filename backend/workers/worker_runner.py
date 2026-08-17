@@ -1,50 +1,64 @@
-"""Run shared background workers in a single process."""
+"""Run always-on control workers in a single process."""
+
+from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
+from functools import partial
+from time import sleep
 
+from api.services.script_sentry import initialize_script_sentry
 from workers.data_retention_worker import worker_loop as data_retention_loop
-from workers.ingestion_worker import worker_loop as ingestion_loop
+from workers.notification_schedule_worker import worker_loop as notification_loop
+from workers.worker_demand_monitor import worker_loop as worker_demand_loop
 
 logger = logging.getLogger(__name__)
 
 
-def _run_ingestion() -> None:
-    """Run the ingestion worker with crash recovery."""
-    import time
-
+def _supervise(name: str, target: Callable[[], None]) -> None:
+    """Restart one control loop independently after a crash or unexpected exit."""
     while True:
         try:
-            ingestion_loop()
+            target()
         except Exception:
-            logger.exception("Ingestion worker crashed, restarting after delay")
-            time.sleep(2)
-
-
-def _run_data_retention() -> None:
-    """Run the data retention worker loop."""
-    data_retention_loop()
+            logger.exception("Control loop crashed", extra={"control_loop": name})
+        else:
+            logger.error(
+                "Control loop exited unexpectedly",
+                extra={"control_loop": name},
+            )
+        sleep(2)
 
 
 def main() -> None:
-    """Start shared ingestion and retention workers."""
+    """Start notification, retention, and worker-demand supervisors."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    initialize_script_sentry("workers.worker_runner", process_type="worker")
 
-    ingestion_thread = threading.Thread(target=_run_ingestion, daemon=True)
-    ingestion_thread.start()
-    logger.info("Ingestion worker started in background thread")
+    threads = [
+        threading.Thread(
+            name=name,
+            target=partial(_supervise, name, target),
+            daemon=True,
+        )
+        for name, target in (
+            ("notification", partial(notification_loop, raise_on_error=True)),
+            ("retention", partial(data_retention_loop, raise_on_error=True)),
+            ("worker-demand", worker_demand_loop),
+        )
+    ]
+    for thread in threads:
+        thread.start()
+        logger.info(
+            "Control loop supervisor started",
+            extra={"control_loop": thread.name},
+        )
 
-    retention_thread = threading.Thread(
-        target=_run_data_retention,
-        daemon=True,
-    )
-    retention_thread.start()
-    logger.info("Data retention worker started in background thread")
-
-    ingestion_thread.join()
+    threads[0].join()
 
 
 if __name__ == "__main__":

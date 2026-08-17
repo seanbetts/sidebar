@@ -1,9 +1,11 @@
 """Configuration settings for sideBar Skills API."""
 
 import os
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse, urlunparse
 
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -175,6 +177,15 @@ class Settings(BaseSettings):
     website_worker_poll_seconds: int = 2
     website_worker_heartbeat_seconds: int = 15
     website_worker_lease_seconds: int = 180
+    worker_demand_monitor_enabled: bool = False
+    worker_demand_poll_seconds: int = 5
+    website_worker_idle_exit_seconds: int = 0
+    ingestion_worker_idle_exit_seconds: int = 0
+    notification_schedule_interval_seconds: int = 300
+    fly_worker_control_app: str = "sidebar-api"
+    fly_machines_api_base_url: str = "https://api.machines.dev/v1"
+    fly_worker_control_token: SecretStr | None = None
+    fly_worker_control_token_expires_at: date | None = None
     data_retention_poll_seconds: int = int(
         os.getenv("DATA_RETENTION_POLL_SECONDS", "3600")
     )
@@ -225,6 +236,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",  # Ignore extra environment variables (like DOPPLER_TOKEN)
     )
+
+    @field_validator("fly_worker_control_token", mode="before")
+    @classmethod
+    def normalize_blank_fly_worker_control_token(cls, value: object) -> object:
+        """Treat blank raw Fly worker-control token configuration as absent."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     def __init__(self, **kwargs):
         """Initialize settings and validate production-only constraints."""

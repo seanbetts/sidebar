@@ -170,36 +170,93 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl -c fly.toml deploy --image "${{ steps.image.outputs.ref }}" --deploy-retries 3
 
-      - name: Collect Fly diagnostics on deploy failure
-        if: failure()
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl -c fly.toml status --json || true
-          flyctl -c fly.toml machine list --json || true
-          flyctl -c fly.toml logs --json --no-tail --region lhr || true
-
-      - name: Ensure ingestion worker machine is running
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl -c fly.toml scale count 1 --yes --process-group ingestion --region lhr
-
-      - name: Ensure website worker machine is running
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl -c fly.toml scale count 1 --yes --process-group website --region lhr
-
-      - name: Ensure notification worker machine is running
+      - name: Reconcile Fly Machine topology
+        id: topology
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           python - <<'PY'
           import json
+          import os
+          import re
           import subprocess
+          import sys
+          from collections.abc import Mapping
+
+          EXPECTED_GROUPS = ("app", "notification", "website", "ingestion")
+          HEALTHY_STATES = {"started", "starting", "stopping", "stopped", "suspended"}
+          MACHINE_ID = re.compile(r"^[0-9a-f]{14}$")
+          FLY_REGION = re.compile(r"^[a-z]{3}$")
+
+          def mapping(value: object) -> Mapping[str, object]:
+              return value if isinstance(value, Mapping) else {}
+
+          def machine_process_group(machine: Mapping[str, object]) -> str | None:
+              config = mapping(machine.get("config"))
+              metadata = mapping(config.get("metadata"))
+              env = mapping(config.get("env"))
+              process_group = (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or env.get("FLY_PROCESS_GROUP")
+              )
+              return process_group if isinstance(process_group, str) else None
+
+          def inspect_topology(
+              payload: object,
+          ) -> tuple[dict[str, list[dict[str, str]]], list[str], int]:
+              if not isinstance(payload, list):
+                  return {}, ["malformed Machine list response"], 1
+              grouped: dict[str, list[dict[str, str]]] = {
+                  process_group: [] for process_group in EXPECTED_GROUPS
+              }
+              invalid_count = 0
+              for machine in payload:
+                  if not isinstance(machine, Mapping):
+                      invalid_count += 1
+                      continue
+                  process_group = machine_process_group(machine)
+                  machine_id = machine.get("id")
+                  state = machine.get("state")
+                  region = machine.get("region")
+                  if (
+                      process_group not in EXPECTED_GROUPS
+                      or not isinstance(machine_id, str)
+                      or not MACHINE_ID.fullmatch(machine_id)
+                      or not isinstance(state, str)
+                      or state not in HEALTHY_STATES
+                      or not isinstance(region, str)
+                      or not FLY_REGION.fullmatch(region)
+                  ):
+                      invalid_count += 1
+                      continue
+                  grouped[process_group].append({"id": machine_id, "state": state})
+              errors = [
+                  f"duplicate {process_group} Machines"
+                  for process_group in EXPECTED_GROUPS
+                  if len(grouped[process_group]) > 1
+              ]
+              if invalid_count:
+                  errors.insert(0, "unknown or malformed Machines")
+              return grouped, errors, invalid_count
+
+          def safe_summary(
+              grouped: dict[str, list[dict[str, str]]], invalid_count: int
+          ) -> dict[str, object]:
+              return {
+                  "process_groups": {
+                      process_group: {
+                          "count": len(grouped.get(process_group, [])),
+                          "states": [
+                              machine["state"]
+                              for machine in grouped.get(process_group, [])
+                          ],
+                      }
+                      for process_group in EXPECTED_GROUPS
+                  },
+                  "unrecognized_count": invalid_count,
+              }
 
           result = subprocess.run(
               ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
@@ -207,176 +264,386 @@ jobs:
               capture_output=True,
               text=True,
           )
-          machines = json.loads(result.stdout)
+          try:
+              payload = json.loads(result.stdout)
+          except (TypeError, json.JSONDecodeError):
+              payload = None
 
-          def machine_process_group(machine: dict[str, object]) -> str | None:
-              config = machine.get("config") or {}
-              metadata = config.get("metadata") or {}
-              env = config.get("env") or {}
-              return (
-                  machine.get("process_group")
-                  or metadata.get("fly_process_group")
-                  or env.get("FLY_PROCESS_GROUP")
-              )
+          grouped, errors, invalid_count = inspect_topology(payload)
+          if errors:
+              print("Fly Machine topology is invalid.", file=sys.stderr)
+              for error in errors:
+                  print(error, file=sys.stderr)
+              print(json.dumps(safe_summary(grouped, invalid_count), indent=2), file=sys.stderr)
+              raise SystemExit(1)
 
-          notification_machines = [
-              machine
-              for machine in machines
-              if machine_process_group(machine) == "notification"
-          ]
-          started_machines = [
-              machine
-              for machine in notification_machines
-              if machine.get("state") == "started"
-          ]
-          if started_machines:
-              print("Notification worker already has a started machine.")
-              raise SystemExit(0)
+          notification_rows = grouped["notification"]
+          notification_id = notification_rows[0]["id"] if notification_rows else ""
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"notification_machine_id={notification_id}\n")
 
-          recoverable_machines = [
-              machine
-              for machine in notification_machines
-              if machine.get("state") in {"stopped", "suspended"}
-          ]
-          if recoverable_machines:
-              recoverable_machines.sort(
-                  key=lambda machine: (
-                      str(machine.get("updated_at") or ""),
-                      str(machine.get("created_at") or ""),
-                  ),
-                  reverse=True,
-              )
-              machine_id = str(recoverable_machines[0]["id"])
+          for process_group in EXPECTED_GROUPS:
+              if grouped[process_group]:
+                  print(f"Preserving existing {process_group} Machine.")
+                  continue
+              print(f"Creating missing {process_group} Machine.")
               subprocess.run(
-                  ["flyctl", "-c", "fly.toml", "machine", "start", machine_id],
+                  [
+                      "flyctl",
+                      "-c",
+                      "fly.toml",
+                      "scale",
+                      "count",
+                      "1",
+                      "--yes",
+                      "--process-group",
+                      process_group,
+                      "--region",
+                      "lhr",
+                  ],
                   check=True,
               )
-              print(f"Started existing notification machine {machine_id}.")
-              raise SystemExit(0)
-
           PY
-          flyctl -c fly.toml scale count 1 --yes --process-group notification --region lhr
 
-      - name: Verify ingestion worker machine state
+      - name: Start and verify notification control Machine
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RECONCILED_NOTIFICATION_MACHINE_ID: ${{ steps.topology.outputs.notification_machine_id }}
+          FLY_MACHINE_POLL_SECONDS: "5"
         run: |
           python - <<'PY'
           import json
+          import os
+          import re
           import subprocess
-
-          result = subprocess.run(
-              ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
-              check=True,
-              capture_output=True,
-              text=True,
-          )
-          machines = json.loads(result.stdout)
-          def machine_process_group(machine: dict[str, object]) -> str | None:
-              config = machine.get("config") or {}
-              metadata = config.get("metadata") or {}
-              env = config.get("env") or {}
-              return (
-                  machine.get("process_group")
-                  or metadata.get("fly_process_group")
-                  or env.get("FLY_PROCESS_GROUP")
-              )
-
-          has_started_ingestion = any(
-              machine_process_group(machine) == "ingestion"
-              and machine.get("state") == "started"
-              for machine in machines
-          )
-          if not has_started_ingestion:
-              print(json.dumps(machines, indent=2))
-              raise SystemExit("No started ingestion machine found after deploy")
-          PY
-
-      - name: Verify website worker machine state
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          python - <<'PY'
-          import json
-          import subprocess
-
-          result = subprocess.run(
-              ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
-              check=True,
-              capture_output=True,
-              text=True,
-          )
-          machines = json.loads(result.stdout)
-          def machine_process_group(machine: dict[str, object]) -> str | None:
-              config = machine.get("config") or {}
-              metadata = config.get("metadata") or {}
-              env = config.get("env") or {}
-              return (
-                  machine.get("process_group")
-                  or metadata.get("fly_process_group")
-                  or env.get("FLY_PROCESS_GROUP")
-              )
-
-          has_started_website = any(
-              machine_process_group(machine) == "website"
-              and machine.get("state") == "started"
-              for machine in machines
-          )
-          if not has_started_website:
-              print(json.dumps(machines, indent=2))
-              raise SystemExit("No started website machine found after deploy")
-          PY
-
-      - name: Verify notification worker machine state
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          python - <<'PY'
-          import json
-          import subprocess
+          import sys
           import time
+          from collections.abc import Mapping
 
-          def machine_process_group(machine: dict[str, object]) -> str | None:
-              config = machine.get("config") or {}
-              metadata = config.get("metadata") or {}
-              env = config.get("env") or {}
-              return (
+          EXPECTED_GROUPS = ("app", "notification", "website", "ingestion")
+          HEALTHY_STATES = {"started", "starting", "stopping", "stopped", "suspended"}
+          MACHINE_ID = re.compile(r"^[0-9a-f]{14}$")
+          FLY_REGION = re.compile(r"^[a-z]{3}$")
+          RECOVERABLE_STATES = {"stopped", "suspended"}
+          TRANSITION_STATES = {"starting", "stopping"}
+
+          def mapping(value: object) -> Mapping[str, object]:
+              return value if isinstance(value, Mapping) else {}
+
+          def machine_process_group(machine: Mapping[str, object]) -> str | None:
+              config = mapping(machine.get("config"))
+              metadata = mapping(config.get("metadata"))
+              env = mapping(config.get("env"))
+              process_group = (
                   machine.get("process_group")
                   or metadata.get("fly_process_group")
                   or env.get("FLY_PROCESS_GROUP")
               )
+              return process_group if isinstance(process_group, str) else None
 
-          for attempt in range(12):
+          def inspect_topology(
+              payload: object,
+          ) -> tuple[dict[str, list[dict[str, str]]], list[str]]:
+              if not isinstance(payload, list):
+                  return {}, ["malformed Machine list response"]
+              grouped: dict[str, list[dict[str, str]]] = {
+                  process_group: [] for process_group in EXPECTED_GROUPS
+              }
+              invalid_count = 0
+              for machine in payload:
+                  if not isinstance(machine, Mapping):
+                      invalid_count += 1
+                      continue
+                  process_group = machine_process_group(machine)
+                  machine_id = machine.get("id")
+                  state = machine.get("state")
+                  region = machine.get("region")
+                  if (
+                      process_group not in EXPECTED_GROUPS
+                      or not isinstance(machine_id, str)
+                      or not MACHINE_ID.fullmatch(machine_id)
+                      or not isinstance(state, str)
+                      or state not in HEALTHY_STATES
+                      or not isinstance(region, str)
+                      or not FLY_REGION.fullmatch(region)
+                  ):
+                      invalid_count += 1
+                      continue
+                  grouped[process_group].append({"id": machine_id, "state": state})
+              errors = [
+                  f"duplicate {process_group} Machines"
+                  for process_group in EXPECTED_GROUPS
+                  if len(grouped[process_group]) > 1
+              ]
+              if invalid_count:
+                  errors.insert(0, "unknown or malformed Machines")
+              return grouped, errors
+
+          try:
+              poll_seconds = float(os.environ["FLY_MACHINE_POLL_SECONDS"])
+          except (KeyError, ValueError):
+              raise SystemExit("Fly Machine poll interval is invalid.")
+          if poll_seconds < 0:
+              raise SystemExit("Fly Machine poll interval is invalid.")
+
+          pinned_notification_id = os.environ.get(
+              "RECONCILED_NOTIFICATION_MACHINE_ID", ""
+          ).strip()
+          if pinned_notification_id and not MACHINE_ID.fullmatch(pinned_notification_id):
+              raise SystemExit("Reconciled notification Machine identity is invalid.")
+
+          observed_ids: dict[str, str] = {}
+          start_requested = False
+          deadline = time.monotonic() + 90
+          while True:
               result = subprocess.run(
                   ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
                   check=True,
                   capture_output=True,
                   text=True,
               )
-              machines = json.loads(result.stdout)
-              has_started_notification = any(
-                  machine_process_group(machine) == "notification"
-                  and machine.get("state") == "started"
-                  for machine in machines
-              )
-              if has_started_notification:
-                  raise SystemExit(0)
-              if attempt < 11:
-                  time.sleep(5)
+              try:
+                  payload = json.loads(result.stdout)
+              except (TypeError, json.JSONDecodeError):
+                  payload = None
 
-          notification_machines = [
-              machine
-              for machine in machines
-              if machine_process_group(machine) == "notification"
-          ]
-          print(json.dumps(notification_machines, indent=2))
-          raise SystemExit("No started notification machine found after deploy")
+              grouped, errors = inspect_topology(payload)
+              if errors:
+                  print("Notification recovery topology is invalid.", file=sys.stderr)
+                  for error in errors:
+                      print(error, file=sys.stderr)
+                  raise SystemExit(1)
+
+              for process_group in EXPECTED_GROUPS:
+                  rows = grouped[process_group]
+                  if len(rows) != 1:
+                      continue
+                  machine_id = rows[0]["id"]
+                  prior_id = observed_ids.setdefault(process_group, machine_id)
+                  if prior_id != machine_id:
+                      raise SystemExit(
+                          "Machine identity changed during notification recovery."
+                      )
+
+              notification_rows = grouped["notification"]
+              if notification_rows:
+                  current_notification_id = notification_rows[0]["id"]
+                  if (
+                      pinned_notification_id
+                      and current_notification_id != pinned_notification_id
+                  ):
+                      raise SystemExit(
+                          "Machine identity changed during notification recovery."
+                      )
+
+              missing_groups = [
+                  process_group
+                  for process_group in EXPECTED_GROUPS
+                  if not grouped[process_group]
+              ]
+              remaining = deadline - time.monotonic()
+              if missing_groups:
+                  if remaining <= 0:
+                      raise SystemExit(
+                          "Notification recovery topology did not converge within 90 seconds."
+                      )
+                  time.sleep(min(poll_seconds, remaining))
+                  continue
+
+              if not pinned_notification_id:
+                  pinned_notification_id = notification_rows[0]["id"]
+              state = notification_rows[0]["state"]
+              if state == "started":
+                  print("Notification control Machine is started.")
+                  raise SystemExit(0)
+              if state in RECOVERABLE_STATES and not start_requested:
+                  subprocess.run(
+                      [
+                          "flyctl",
+                          "-c",
+                          "fly.toml",
+                          "machine",
+                          "start",
+                          pinned_notification_id,
+                      ],
+                      check=True,
+                  )
+                  start_requested = True
+                  continue
+              if state not in RECOVERABLE_STATES | TRANSITION_STATES:
+                  raise SystemExit("Notification Machine has an unsupported state.")
+              if remaining <= 0:
+                  raise SystemExit(
+                      "Notification Machine did not become started within 90 seconds."
+                  )
+              time.sleep(min(poll_seconds, remaining))
           PY
 
-      - name: Collect notification worker diagnostics on verification failure
+      - name: Verify demand-aware Fly Machine lifecycle
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          DEMAND_WORKER_SETTLE_SECONDS: "90"
+          FLY_MACHINE_POLL_SECONDS: "5"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import time
+          from collections.abc import Mapping
+
+          EXPECTED_GROUPS = ("app", "notification", "website", "ingestion")
+          HEALTHY_STATES = {"started", "starting", "stopping", "stopped", "suspended"}
+          IDLE_STATES = {"stopped", "suspended"}
+          MACHINE_ID = re.compile(r"^[0-9a-f]{14}$")
+          FLY_REGION = re.compile(r"^[a-z]{3}$")
+
+          def mapping(value: object) -> Mapping[str, object]:
+              return value if isinstance(value, Mapping) else {}
+
+          def machine_process_group(machine: Mapping[str, object]) -> str | None:
+              config = mapping(machine.get("config"))
+              metadata = mapping(config.get("metadata"))
+              env = mapping(config.get("env"))
+              process_group = (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or env.get("FLY_PROCESS_GROUP")
+              )
+              return process_group if isinstance(process_group, str) else None
+
+          def inspect_topology(
+              payload: object,
+          ) -> tuple[dict[str, list[dict[str, str]]], list[str]]:
+              if not isinstance(payload, list):
+                  return {}, ["malformed Machine list response"]
+              grouped: dict[str, list[dict[str, str]]] = {
+                  process_group: [] for process_group in EXPECTED_GROUPS
+              }
+              invalid_count = 0
+              for machine in payload:
+                  if not isinstance(machine, Mapping):
+                      invalid_count += 1
+                      continue
+                  process_group = machine_process_group(machine)
+                  machine_id = machine.get("id")
+                  state = machine.get("state")
+                  region = machine.get("region")
+                  if (
+                      process_group not in EXPECTED_GROUPS
+                      or not isinstance(machine_id, str)
+                      or not MACHINE_ID.fullmatch(machine_id)
+                      or not isinstance(state, str)
+                      or state not in HEALTHY_STATES
+                      or not isinstance(region, str)
+                      or not FLY_REGION.fullmatch(region)
+                  ):
+                      invalid_count += 1
+                      continue
+                  grouped[process_group].append({"id": machine_id, "state": state})
+              errors = [
+                  f"duplicate {process_group} Machines"
+                  for process_group in EXPECTED_GROUPS
+                  if len(grouped[process_group]) > 1
+              ]
+              if invalid_count:
+                  errors.insert(0, "unknown or malformed Machines")
+              return grouped, errors
+
+          try:
+              settle_seconds = int(os.environ["DEMAND_WORKER_SETTLE_SECONDS"])
+          except (KeyError, ValueError):
+              raise SystemExit("Demand worker settle window is invalid.")
+          if settle_seconds < 0:
+              raise SystemExit("Demand worker settle window is invalid.")
+          try:
+              poll_seconds = float(os.environ["FLY_MACHINE_POLL_SECONDS"])
+          except (KeyError, ValueError):
+              raise SystemExit("Fly Machine poll interval is invalid.")
+          if poll_seconds < 0:
+              raise SystemExit("Fly Machine poll interval is invalid.")
+
+          deadline = time.monotonic() + settle_seconds
+          observed_ids: dict[str, str] = {}
+          while True:
+              result = subprocess.run(
+                  ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              try:
+                  payload = json.loads(result.stdout)
+              except (TypeError, json.JSONDecodeError):
+                  payload = None
+
+              grouped, errors = inspect_topology(payload)
+              if errors:
+                  print("Fly lifecycle topology is invalid.", file=sys.stderr)
+                  for error in errors:
+                      print(error, file=sys.stderr)
+                  raise SystemExit(1)
+
+              for process_group in EXPECTED_GROUPS:
+                  rows = grouped[process_group]
+                  if len(rows) != 1:
+                      continue
+                  machine_id = rows[0]["id"]
+                  prior_id = observed_ids.setdefault(process_group, machine_id)
+                  if prior_id != machine_id:
+                      raise SystemExit(
+                          "Machine identity changed during lifecycle verification."
+                      )
+
+              notification_rows = grouped["notification"]
+              if notification_rows and notification_rows[0]["state"] != "started":
+                  raise SystemExit("Notification control Machine is not started.")
+
+              missing_groups = [
+                  process_group
+                  for process_group in EXPECTED_GROUPS
+                  if not grouped[process_group]
+              ]
+              remaining = deadline - time.monotonic()
+              if missing_groups:
+                  if remaining <= 0:
+                      raise SystemExit(
+                          "Fly Machine topology did not converge before the lifecycle deadline."
+                      )
+                  time.sleep(min(poll_seconds, remaining))
+                  continue
+
+              states = {
+                  process_group: grouped[process_group][0]["state"]
+                  for process_group in EXPECTED_GROUPS
+              }
+              active_workers = [
+                  process_group
+                  for process_group in ("website", "ingestion")
+                  if states[process_group] not in IDLE_STATES
+              ]
+              if not active_workers:
+                  print("Demand worker Machines are stopped or suspended.")
+                  raise SystemExit(0)
+
+              if remaining <= 0:
+                  summary = ", ".join(
+                      f"{process_group}={states[process_group]}"
+                      for process_group in active_workers
+                  )
+                  print(
+                      "Demand workers remained active through the 90-second settle "
+                      f"window; queued work may still be active: {summary}"
+                  )
+                  raise SystemExit(0)
+              time.sleep(min(poll_seconds, remaining))
+          PY
+
+      - name: Collect scoped Fly diagnostics on failure
         if: failure()
         working-directory: backend
         env:
@@ -385,30 +652,62 @@ jobs:
           python - <<'PY'
           import json
           import subprocess
+          from collections.abc import Mapping
 
-          result = subprocess.run(
-              ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
-              check=True,
-              capture_output=True,
-              text=True,
-          )
-          machines = json.loads(result.stdout)
-          def machine_process_group(machine: dict[str, object]) -> str | None:
-              config = machine.get("config") or {}
-              metadata = config.get("metadata") or {}
-              env = config.get("env") or {}
-              return (
+          EXPECTED_GROUPS = ("app", "notification", "website", "ingestion")
+          HEALTHY_STATES = {"started", "starting", "stopping", "stopped", "suspended"}
+
+          def mapping(value: object) -> Mapping[str, object]:
+              return value if isinstance(value, Mapping) else {}
+
+          def machine_process_group(machine: Mapping[str, object]) -> str | None:
+              config = mapping(machine.get("config"))
+              metadata = mapping(config.get("metadata"))
+              env = mapping(config.get("env"))
+              process_group = (
                   machine.get("process_group")
                   or metadata.get("fly_process_group")
                   or env.get("FLY_PROCESS_GROUP")
               )
+              return process_group if isinstance(process_group, str) else None
 
-          notification_machines = [
-              machine
-              for machine in machines
-              if machine_process_group(machine) == "notification"
-          ]
-          print(json.dumps(notification_machines, indent=2))
+          try:
+              result = subprocess.run(
+                  ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              payload = json.loads(result.stdout)
+          except Exception:
+              print("Scoped Fly Machine diagnostics are unavailable.")
+              raise SystemExit(0)
+
+          process_groups: dict[str, dict[str, object]] = {
+              process_group: {"count": 0, "states": []}
+              for process_group in EXPECTED_GROUPS
+          }
+          unrecognized_count = 0
+          if isinstance(payload, list):
+              for machine in payload:
+                  if not isinstance(machine, Mapping):
+                      unrecognized_count += 1
+                      continue
+                  process_group = machine_process_group(machine)
+                  if process_group not in EXPECTED_GROUPS:
+                      unrecognized_count += 1
+                      continue
+                  state = machine.get("state")
+                  process_groups[process_group]["count"] += 1
+                  if isinstance(state, str) and state in HEALTHY_STATES:
+                      process_groups[process_group]["states"].append(state)
+          print(
+              json.dumps(
+                  {
+                      "process_groups": process_groups,
+                      "unrecognized_count": unrecognized_count,
+                  },
+                  indent=2,
+              )
+          )
           PY
-          flyctl -c fly.toml machine list --json || true
-          flyctl -c fly.toml logs --json --no-tail --region lhr || true

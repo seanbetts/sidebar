@@ -99,7 +99,7 @@ final class ConnectivityMonitorTests: XCTestCase {
                 signal: readFailure,
                 isActive: false,
                 expectedSignals: [],
-                expectedServerReachable: true
+                expectedServerReachable: false
             ),
             Scenario(
                 signal: readFailure,
@@ -312,6 +312,79 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+}
+extension ConnectivityMonitorTests {
+    func testInactiveLifecycleFailuresUpdateStateWithoutSchedulingProbe() async {
+        let notificationCenter = NotificationCenter()
+        var recordedSignals: [RequestLifecycleSignal] = []
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: true,
+            notificationCenter: notificationCenter,
+            isAppForegroundActive: { false },
+            requestLifecycleFailureRecorder: { recordedSignals.append($0) }
+        )
+        let signal = RequestLifecycleSignal(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            stage: .failed,
+            errorCategory: .timeout
+        )
+        for _ in 0..<2 {
+            notificationCenter.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["signal": signal, "error": URLError(.timedOut)]
+            )
+        }
+        await waitForMainQueueDrain()
+        XCTAssertFalse(monitor?.isServerReachable ?? true)
+        XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
+        XCTAssertTrue(recordedSignals.isEmpty)
+        monitor = nil
+    }
+
+    func testInactiveLifecycleSuccessesRecoverStateWithoutSchedulingProbe() async {
+        let notificationCenter = NotificationCenter()
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: true,
+            notificationCenter: notificationCenter,
+            isAppForegroundActive: { false }
+        )
+        let failure = RequestLifecycleSignal(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            stage: .failed,
+            errorCategory: .timeout
+        )
+        let success = RequestLifecycleSignal(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            stage: .succeeded
+        )
+        for _ in 0..<2 {
+            notificationCenter.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["signal": failure, "error": URLError(.timedOut)]
+            )
+        }
+        await waitForMainQueueDrain()
+        XCTAssertFalse(monitor?.isServerReachable ?? true)
+        for _ in 0..<2 {
+            notificationCenter.post(
+                name: .apiClientRequestSucceeded,
+                object: nil,
+                userInfo: ["signal": success]
+            )
+        }
+        await waitForMainQueueDrain()
+        XCTAssertTrue(monitor?.isServerReachable ?? false)
+        XCTAssertFalse(monitor?.hasScheduledHealthProbe ?? true)
+        monitor = nil
+    }
+
     func testSecureConnectionFailureOnlyMarksServerUnreachable() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
@@ -411,7 +484,7 @@ final class ConnectivityMonitorTests: XCTestCase {
         XCTAssertTrue(strongMonitor.isNetworkAvailable)
         XCTAssertFalse(strongMonitor.isOffline)
         XCTAssertTrue(strongMonitor.isServerReachable)
-        XCTAssertEqual(ProbeURLProtocol.requestCount, 2)
+        XCTAssertEqual(ProbeURLProtocol.completedRequestCount, 2)
 
         monitor = nil
         session.invalidateAndCancel()

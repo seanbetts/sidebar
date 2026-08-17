@@ -126,6 +126,7 @@ def test_after_begin_invalidates_and_reraises_disconnect(
         _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
+        _ingestion_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -166,6 +167,7 @@ def test_after_begin_does_not_retry_disconnects_in_same_transaction(
         _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
+        _ingestion_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -210,6 +212,7 @@ def test_after_begin_never_rolls_back_connection_directly(
         _notification_worker_scope=None,
         _website_worker_scope=None,
         _retention_worker_scope=None,
+        _ingestion_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -234,11 +237,13 @@ def test_after_begin_never_rolls_back_connection_directly(
     assert rollbacks == []
 
 
-def test_after_begin_applies_worker_scope_from_session_info(
+def test_after_begin_applies_worker_scopes_from_session_info(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Worker-scope sessions should reapply website_worker_scope every transaction."""
-    session = SimpleNamespace(info={"website_worker_scope": "all"})
+    """Worker-scope sessions should reapply every worker scope per transaction."""
+    session = SimpleNamespace(
+        info={"website_worker_scope": "all", "ingestion_worker_scope": "all"}
+    )
     connection = SimpleNamespace()
     captured: dict[str, object] = {}
 
@@ -249,12 +254,14 @@ def test_after_begin_applies_worker_scope_from_session_info(
         notification_worker_scope,
         website_worker_scope,
         retention_worker_scope,
+        ingestion_worker_scope,
     ) -> None:
         captured["user_id"] = user_id
         captured["force_public_search_path"] = force_public_search_path
         captured["notification_worker_scope"] = notification_worker_scope
         captured["website_worker_scope"] = website_worker_scope
         captured["retention_worker_scope"] = retention_worker_scope
+        captured["ingestion_worker_scope"] = ingestion_worker_scope
 
     monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
 
@@ -270,6 +277,7 @@ def test_after_begin_applies_worker_scope_from_session_info(
         "notification_worker_scope": None,
         "website_worker_scope": "all",
         "retention_worker_scope": None,
+        "ingestion_worker_scope": "all",
     }
 
 
@@ -385,6 +393,16 @@ def test_set_notification_worker_scope_retries_bootstrap_disconnects_on_fresh_co
     assert db.invalidate_calls == 2
 
 
+def test_set_ingestion_worker_scope_reapplies_scope_on_future_transactions() -> None:
+    """Ingestion scope must be retained in session info for transaction bootstrap."""
+    db = _BootstrapDisconnectingSession(failures_before_success=0)
+
+    session_module.set_ingestion_worker_scope(db, enabled=True)
+
+    assert db.info["ingestion_worker_scope"] == "all"
+    assert db.execute_calls == 1
+
+
 def test_apply_session_settings_clears_stale_user_scope_and_sets_retention_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -409,6 +427,35 @@ def test_apply_session_settings_clears_stale_user_scope_and_sets_retention_scope
         ("SELECT set_config('app.user_id', '', false)", None),
         (
             "SET LOCAL app.retention_worker_scope = :worker_scope",
+            {"worker_scope": "all"},
+        ),
+    ]
+
+
+def test_apply_session_settings_sets_ingestion_worker_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Session bootstrap must set the ingestion GUC in each worker transaction."""
+    executed: list[tuple[str, dict[str, object] | None]] = []
+
+    class _RecordingConnection:
+        def execute(self, statement, params=None):
+            executed.append((str(statement), params))
+            return None
+
+    monkeypatch.setattr(session_module.settings, "db_statement_timeout_ms", 0)
+
+    session_module._apply_session_settings(
+        _RecordingConnection(),
+        None,
+        False,
+        ingestion_worker_scope="all",
+    )
+
+    assert executed == [
+        ("SELECT set_config('app.user_id', '', false)", None),
+        (
+            "SET LOCAL app.ingestion_scope = :worker_scope",
             {"worker_scope": "all"},
         ),
     ]

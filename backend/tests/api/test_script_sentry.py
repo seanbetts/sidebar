@@ -38,3 +38,35 @@ def test_initialize_script_sentry_uses_canonical_environment(monkeypatch) -> Non
         "process_type": "script",
         "script_name": "notes.save_note_document",
     }
+
+
+def test_initialize_script_sentry_disables_auto_enabled_integrations(
+    monkeypatch,
+) -> None:
+    """Worker startup should not discover installed framework integrations."""
+    init_calls: list[dict[str, object]] = []
+
+    class _Scope:
+        def set_tag(self, _key: str, _value: str) -> None:
+            pass
+
+    monkeypatch.setattr(
+        script_sentry.settings, "sentry_dsn", "https://example@sentry.io/123"
+    )
+    monkeypatch.setattr(script_sentry.settings, "sentry_traces_sample_rate", 0.25)
+    monkeypatch.setattr(script_sentry.settings, "sentry_profiles_sample_rate", 0.5)
+    monkeypatch.setattr(script_sentry.settings, "app_env", "prod")
+    monkeypatch.setattr(script_sentry, "_sentry_initialized", False)
+    monkeypatch.setattr(
+        script_sentry.sentry_sdk, "init", lambda **kwargs: init_calls.append(kwargs)
+    )
+    monkeypatch.setattr(script_sentry.sentry_sdk, "get_current_scope", lambda: _Scope())
+
+    initialized = script_sentry.initialize_script_sentry(
+        "workers.website_processing_worker",
+        process_type="worker",
+    )
+
+    assert initialized is True
+    assert init_calls[0].get("auto_enabling_integrations") is False
+    assert "default_integrations" not in init_calls[0]

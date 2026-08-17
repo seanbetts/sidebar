@@ -252,11 +252,13 @@ def run_once() -> CleanupRunSummary:
         )
 
 
-def worker_loop() -> None:
+def worker_loop(*, raise_on_error: bool = False) -> None:
     """Continuously run retention cleanup on the configured cadence."""
     while True:
         try:
             run_once()
         except Exception:
+            if raise_on_error:
+                raise
             logger.exception("Data retention worker crashed, retrying after delay")
         time.sleep(settings.data_retention_poll_seconds)

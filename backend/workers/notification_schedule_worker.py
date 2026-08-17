@@ -37,8 +37,8 @@ from api.services.task_reminder_service import TaskReminderService
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger("notification_schedule.worker")
-SLEEP_SECONDS = 30
 FAILURE_SLEEP_SECONDS = 2
+UTC_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _set_worker_scope(db) -> None:
@@ -464,15 +464,50 @@ def execute_once(
     return stats
 
 
-def worker_loop(sleep_seconds: int = SLEEP_SECONDS) -> None:
-    """Run scheduled notification evaluation forever."""
+def _seconds_until_next_boundary(now: datetime, interval_seconds: int) -> float:
+    """Return seconds from ``now`` to the next UTC epoch interval boundary."""
+    if interval_seconds <= 0:
+        raise ValueError("Notification schedule interval must be positive")
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("Notification schedule time must be timezone-aware")
+
+    elapsed = now.astimezone(UTC) - UTC_EPOCH
+    elapsed_microseconds = (
+        elapsed.days * 86_400 + elapsed.seconds
+    ) * 1_000_000 + elapsed.microseconds
+    interval_microseconds = interval_seconds * 1_000_000
+    remaining_microseconds = (
+        interval_microseconds - elapsed_microseconds % interval_microseconds
+    )
+    return remaining_microseconds / 1_000_000
+
+
+def worker_loop(*, raise_on_error: bool = False) -> None:
+    """Run scheduled notification evaluation on fixed UTC interval boundaries."""
+    interval_seconds = settings.notification_schedule_interval_seconds
+    if interval_seconds <= 0:
+        raise ValueError("Notification schedule interval must be positive")
+
     while True:
+        current_time = datetime.now(UTC)
         try:
-            stats = execute_once()
+            stats = execute_once(now=current_time)
             if stats["task_reminders_due"] or stats["morning_digests_due"]:
                 logger.info("Scheduled notification evaluation: %s", stats)
-            time.sleep(sleep_seconds)
+            completed_at = datetime.now(UTC)
+            elapsed_seconds = (completed_at - current_time).total_seconds()
+            if elapsed_seconds >= interval_seconds:
+                logger.warning(
+                    "Notification schedule evaluation reached or exceeded its interval",
+                    extra={
+                        "elapsed_seconds": elapsed_seconds,
+                        "interval_seconds": interval_seconds,
+                    },
+                )
+            time.sleep(_seconds_until_next_boundary(completed_at, interval_seconds))
         except Exception:
+            if raise_on_error:
+                raise
             logger.exception("Notification schedule worker crashed, retrying")
             time.sleep(FAILURE_SLEEP_SECONDS)
 

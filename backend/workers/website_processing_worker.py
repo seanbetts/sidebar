@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -21,10 +22,12 @@ from api.services.script_sentry import initialize_script_sentry
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
+from workers.idle_exit import IdleExitTracker
 
 logger = logging.getLogger(__name__)
 
 _CLEANUP_INTERVAL_SECONDS = 3600
+_IDLE_EXIT_CHECK_SECONDS = 0.1
 _JOB_RETENTION_DAYS = 7
 
 
@@ -107,7 +110,7 @@ def _claim_job(db, worker_id: str) -> WebsiteProcessingJob | None:
                 WebsiteProcessingJob.status == "queued",
                 or_(
                     WebsiteProcessingJob.lease_expires_at.is_(None),
-                    WebsiteProcessingJob.lease_expires_at < _now(),
+                    WebsiteProcessingJob.lease_expires_at <= _now(),
                 ),
             )
         )
@@ -337,13 +340,18 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
     logger.info("Job %s completed (website_id=%s)", job_id, raw_website_id)
 
 
-def _run_worker_loop(worker_id: str) -> None:
+def _run_worker_loop(
+    worker_id: str,
+    *,
+    stop_event: threading.Event | None = None,
+    idle_tracker: IdleExitTracker | None = None,
+) -> None:
     """Main worker loop: poll, claim, process."""
     logger.info("Website worker %s starting", worker_id)
     last_cleanup = 0.0
     idle_polls = 0
 
-    while True:
+    while stop_event is None or not stop_event.is_set():
         try:
             with SessionLocal() as db:
                 _set_worker_scope(db)
@@ -362,11 +370,17 @@ def _run_worker_loop(worker_id: str) -> None:
                     continue
 
                 idle_polls = 0
-                stop_heartbeat = _start_heartbeat(job.id, job.user_id)
+                if idle_tracker is not None:
+                    idle_tracker.job_started()
                 try:
-                    _process_job(db, job)
+                    stop_heartbeat = _start_heartbeat(job.id, job.user_id)
+                    try:
+                        _process_job(db, job)
+                    finally:
+                        stop_heartbeat()
                 finally:
-                    stop_heartbeat()
+                    if idle_tracker is not None:
+                        idle_tracker.job_finished()
         except Exception:
             logger.exception("Worker loop error")
             idle_polls = 0
@@ -385,20 +399,43 @@ def main() -> None:
     )
 
     worker_id = f"web-worker-{uuid.uuid4().hex[:8]}"
-    concurrency = settings.website_worker_concurrency
+    concurrency = max(settings.website_worker_concurrency, 1)
+    stop_event = threading.Event()
+    idle_tracker = IdleExitTracker(settings.website_worker_idle_exit_seconds)
 
-    if concurrency <= 1:
-        _run_worker_loop(worker_id)
-    else:
-        from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor
 
-        with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = []
-            for i in range(concurrency):
-                thread_worker_id = f"{worker_id}-t{i}"
-                futures.append(pool.submit(_run_worker_loop, thread_worker_id))
-            for f in futures:
-                f.result()
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        futures = []
+        for i in range(concurrency):
+            thread_worker_id = worker_id if concurrency == 1 else f"{worker_id}-t{i}"
+            futures.append(
+                pool.submit(
+                    _run_worker_loop,
+                    thread_worker_id,
+                    stop_event=stop_event,
+                    idle_tracker=idle_tracker,
+                )
+            )
+
+        while not stop_event.is_set():
+            completed = [future for future in futures if future.done()]
+            if completed:
+                stop_event.set()
+                for future in completed:
+                    future.result()
+                break
+            if idle_tracker.should_exit():
+                logger.info(
+                    "Website worker exiting after %s seconds idle",
+                    settings.website_worker_idle_exit_seconds,
+                )
+                stop_event.set()
+                break
+            stop_event.wait(_IDLE_EXIT_CHECK_SECONDS)
+
+        for future in futures:
+            future.result()
 
 
 if __name__ == "__main__":

@@ -72,7 +72,10 @@ final class ConnectivityMonitor: ObservableObject {
                 }
             }
             monitor.start(queue: queue)
-            startScheduler()
+            observeApplicationActivity()
+            if isAppForegroundActive() {
+                startScheduler()
+            }
         }
         observeRequestFailures()
     }
@@ -158,10 +161,9 @@ final class ConnectivityMonitor: ObservableObject {
         guard signal.stage == .failed, let category = signal.errorCategory else {
             return
         }
-        guard shouldHandleLifecycleFailure(signal) else {
-            return
+        if shouldRecordLifecycleFailure(signal) {
+            requestLifecycleFailureRecorder(signal)
         }
-        requestLifecycleFailureRecorder(signal)
 
         switch category {
         case .offline:
@@ -181,7 +183,7 @@ final class ConnectivityMonitor: ObservableObject {
         }
     }
 
-    private func shouldHandleLifecycleFailure(_ signal: RequestLifecycleSignal) -> Bool {
+    private func shouldRecordLifecycleFailure(_ signal: RequestLifecycleSignal) -> Bool {
         guard !isAppForegroundActive() else {
             return true
         }
@@ -219,7 +221,7 @@ final class ConnectivityMonitor: ObservableObject {
     }
 
     private func scheduleProbe(immediate: Bool) {
-        guard allowsHealthProbes else {
+        guard canScheduleHealthProbe else {
             return
         }
         if let lastProbeAt,
@@ -232,14 +234,22 @@ final class ConnectivityMonitor: ObservableObject {
         }
         probeTask?.cancel()
         probeTask = Task { [weak self] in
-            guard let self else { return }
-            self.beginProbe()
-            defer { self.endProbe() }
             if !immediate {
-                let delay = probeDelay()
+                guard let delay = self?.probeDelay() else {
+                    return
+                }
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
+            guard !Task.isCancelled,
+                  self?.canScheduleHealthProbe == true,
+                  self?.isProbing == false,
+                  let self else {
+                return
+            }
+            self.beginProbe()
             await self.probeNetworkAndServer()
+            self.endProbe()
+            self.probeTask = nil
         }
     }
 
@@ -389,12 +399,78 @@ final class ConnectivityMonitor: ObservableObject {
     private func startScheduler() {
         schedulerTask?.cancel()
         schedulerTask = Task { [weak self] in
-            guard let self else { return }
             while !Task.isCancelled {
-                let delay = probeDelay()
+                guard let delay = self?.probeDelay() else {
+                    return
+                }
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                await self.probeNetworkAndServer()
+                guard !Task.isCancelled, self?.canScheduleHealthProbe == true else {
+                    return
+                }
+                self?.scheduleProbe(immediate: true)
             }
+        }
+    }
+}
+
+private extension ConnectivityMonitor {
+    var canScheduleHealthProbe: Bool {
+        allowsHealthProbes && isAppForegroundActive()
+    }
+
+    var applicationDidBecomeActiveNotification: Notification.Name {
+        #if os(iOS)
+        UIApplication.didBecomeActiveNotification
+        #else
+        NSApplication.didBecomeActiveNotification
+        #endif
+    }
+
+    var applicationDidResignActiveNotification: Notification.Name {
+        #if os(iOS)
+        UIApplication.willResignActiveNotification
+        #else
+        NSApplication.didResignActiveNotification
+        #endif
+    }
+
+    func observeApplicationActivity() {
+        notificationCenter.publisher(for: applicationDidBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleApplicationDidBecomeActive()
+            }
+            .store(in: &cancellables)
+
+        notificationCenter.publisher(for: applicationDidResignActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleApplicationDidResignActive()
+            }
+            .store(in: &cancellables)
+    }
+
+    func handleApplicationDidBecomeActive() {
+        guard canScheduleHealthProbe else {
+            return
+        }
+        startScheduler()
+        scheduleProbe(immediate: true)
+    }
+
+    func handleApplicationDidResignActive() {
+        guard allowsHealthProbes else {
+            return
+        }
+        stopScheduledProbing()
+    }
+
+    func stopScheduledProbing() {
+        schedulerTask?.cancel()
+        schedulerTask = nil
+        if !isProbing {
+            probeTask?.cancel()
+            probeTask = nil
         }
     }
 }
