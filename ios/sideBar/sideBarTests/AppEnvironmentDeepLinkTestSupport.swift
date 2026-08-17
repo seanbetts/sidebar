@@ -267,6 +267,7 @@ private func makeNoNetworkWebsitesAPI() -> any WebsitesProviding {
 func makeNoNetworkServiceContainer(
     authSession: AuthSession,
     cacheClient: CacheClient,
+    tasksAPI: (any TasksProviding)? = nil,
     websitesAPI: (any WebsitesProviding)? = nil
 ) -> ServiceContainer {
     ServiceContainer(
@@ -277,7 +278,7 @@ func makeNoNetworkServiceContainer(
         ingestionAPI: IngestionStoreTestsSupport.MockIngestionAPI(
             listResponse: IngestionListResponse(items: [])
         ),
-        tasksAPI: NoNetworkTasksAPI(),
+        tasksAPI: tasksAPI ?? NoNetworkTasksAPI(),
         websitesAPI: websitesAPI ?? makeNoNetworkWebsitesAPI()
     )
 }

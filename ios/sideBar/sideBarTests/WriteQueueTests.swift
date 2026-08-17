@@ -82,6 +82,50 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testOverlappingProcessRequestReplaysWriteDeferredByCurrentDrain() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let barrier = OverlappingDrainBarrier()
+        let executor = DeferredThenSuccessfulWriteExecutor(barrier: barrier)
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: Payload(value: "complete")
+        )
+        let writeId = try XCTUnwrap(
+            persistence.container.viewContext.fetch(PendingWrite.fetchRequest()).first?.id
+        )
+
+        let initialDrain = Task { @MainActor in await queue.processQueue() }
+        await barrier.waitUntilFirstAttemptStarts()
+        let overlappingDrain = Task { @MainActor in
+            barrier.signalOverlappingRequest()
+            await queue.processQueue()
+        }
+        await initialDrain.value
+        await overlappingDrain.value
+
+        XCTAssertEqual(executor.attemptedIds, [writeId, writeId])
+        XCTAssertEqual(executor.successfulIds, [writeId])
+        XCTAssertEqual(queue.pendingCount, 0)
+        let remaining = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
     func testProcessQueueCancellationDuringRetrySleepDoesNotMarkAdditionalAttempts() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
@@ -789,6 +833,57 @@ private final class TestWriteExecutor: WriteQueueExecutor {
             throw error
         }
         executedIds.append(write.id)
+    }
+}
+
+@MainActor
+private final class OverlappingDrainBarrier {
+    private var didStartFirstAttempt = false
+    private var didSignalOverlappingRequest = false
+    private var firstAttemptStartedContinuation: CheckedContinuation<Void, Never>?
+    private var overlappingRequestContinuation: CheckedContinuation<Void, Never>?
+
+    func suspendFirstAttemptUntilOverlap() async {
+        didStartFirstAttempt = true
+        firstAttemptStartedContinuation?.resume()
+        firstAttemptStartedContinuation = nil
+        guard !didSignalOverlappingRequest else { return }
+        await withCheckedContinuation { continuation in
+            overlappingRequestContinuation = continuation
+        }
+    }
+
+    func waitUntilFirstAttemptStarts() async {
+        guard !didStartFirstAttempt else { return }
+        await withCheckedContinuation { continuation in
+            firstAttemptStartedContinuation = continuation
+        }
+    }
+
+    func signalOverlappingRequest() {
+        didSignalOverlappingRequest = true
+        overlappingRequestContinuation?.resume()
+        overlappingRequestContinuation = nil
+    }
+}
+
+@MainActor
+private final class DeferredThenSuccessfulWriteExecutor: WriteQueueExecutor {
+    private let barrier: OverlappingDrainBarrier
+    private(set) var attemptedIds: [UUID] = []
+    private(set) var successfulIds: [UUID] = []
+
+    init(barrier: OverlappingDrainBarrier) {
+        self.barrier = barrier
+    }
+
+    func execute(write: PendingWriteRecord) async throws {
+        attemptedIds.append(write.id)
+        if attemptedIds.count == 1 {
+            await barrier.suspendFirstAttemptUntilOverlap()
+            throw WriteQueueError.accountAuthorizationUnavailable
+        }
+        successfulIds.append(write.id)
     }
 }
 

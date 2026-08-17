@@ -404,6 +404,9 @@ extension AppEnvironment {
 
     /// Handles signed-in foreground activation work shared by iOS and macOS.
     public func handleSignedInActivation(includeDeferredRefresh: Bool = true) async {
+        let recoveringAccountScope = authState == .staleRecoverable
+            ? taskNotificationAccountScopeCoordinator.currentScope
+            : nil
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "app_activation",
             stage: "begin",
@@ -422,6 +425,10 @@ extension AppEnvironment {
         }
 
         if authState == .active {
+            if let recoveringAccountScope,
+               taskNotificationAccountScopeCoordinator.isCurrent(recoveringAccountScope) {
+                await writeQueue.processQueue()
+            }
             let context = currentRefreshContext()
             await refreshCoordinator.handleActivation(
                 ActivationRefreshRequest(

@@ -18,6 +18,9 @@ import OSLog
     private let retrySleep: WriteQueueSleep
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
+    private var processAgainAfterCurrentPass = false
+    private var processingWaiters: [CheckedContinuation<Void, Never>] = []
+    private var isQueueDrainProcessing = false
     let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
     var hasRecoveredStuckWrites = false
     var hasRecoveredConflictWrites = false
@@ -131,19 +134,46 @@ import OSLog
     }
 
     func processQueue() async {
-        guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
-        isProcessing = true
-        defer { isProcessing = false }
-
-        do {
-            try await processQueueUntilDrained()
-        } catch is CancellationError {
-            logger.info("Write queue processing cancelled")
-        } catch {
-            logger.error("Write queue processing failed: \(error.localizedDescription, privacy: .public)")
+        guard executor != nil, canAttemptServerWrite else { return }
+        if isProcessing {
+            guard isQueueDrainProcessing else { return }
+            processAgainAfterCurrentPass = true
+            await waitForProcessingToFinish()
+            return
         }
+        isProcessing = true
+        isQueueDrainProcessing = true
+        defer { finishProcessing() }
+        repeat {
+            processAgainAfterCurrentPass = false
+            do {
+                try await processQueueUntilDrained()
+            } catch is CancellationError {
+                logger.info("Write queue processing cancelled")
+            } catch {
+                logger.error("Write queue processing failed: \(error.localizedDescription, privacy: .public)")
+            }
 
-        await loadQueueCounts()
+            await loadQueueCounts()
+        } while processAgainAfterCurrentPass
+            && activePendingCount > 0
+            && canAttemptServerWrite
+    }
+
+    private func waitForProcessingToFinish() async {
+        await withCheckedContinuation { continuation in
+            processingWaiters.append(continuation)
+        }
+    }
+
+    private func finishProcessing() {
+        isProcessing = false
+        isQueueDrainProcessing = false
+        let waiters = processingWaiters
+        processingWaiters.removeAll()
+        for waiter in waiters {
+            waiter.resume()
+        }
     }
 
     private func startupRecoveryAndProcessing() async {
@@ -399,16 +429,6 @@ extension WriteQueue {
         }
     }
 
-    private func deleteWrite(id: UUID) async throws {
-        try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.fetchLimit = 1
-            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-            guard let write = try context.fetch(request).first else { return }
-            context.delete(write)
-        }
-    }
-
     private func restoreFetchedWriteState(_ fetchedWrite: FetchedPendingWrite, restoreAttemptState: Bool) async {
         do {
             try await performBackgroundTask { context in
@@ -477,24 +497,4 @@ extension WriteQueue {
             logger.error("Failed to recover retryable failed writes: \(error.localizedDescription, privacy: .public)")
         }
     }
-
-    func performBackgroundTask<T>(
-        _ work: @escaping (NSManagedObjectContext) throws -> T
-    ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            container.performBackgroundTask { context in
-                context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-                do {
-                    let result = try work(context)
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
 }

@@ -97,6 +97,93 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
         XCTAssertEqual(environment.authState, .active)
     }
 
+    func testSameAccountStaleAuthRecoveryReplaysRetainedNotificationWriteBeforeRefresh() async throws {
+        let accountId = UUID()
+        let task = TaskItem(
+            id: UUID().uuidString,
+            title: "Recover after stale auth",
+            status: "open",
+            deadline: TasksUtils.formatDateKey(Date())
+        )
+        let authorizationToken = try makeUnsignedJWT(subject: accountId.uuidString)
+        let authSession = StaleRetryAuthSession(
+            authState: .staleRecoverable,
+            accessToken: authorizationToken,
+            userId: accountId.uuidString
+        )
+        let tasksAPI = StaleRecoveryTasksAPI(task: task)
+        isolatedDefaults.defaults.set(
+            accountId.uuidString.lowercased(), forKey: AppStorageKeys.cacheScopeUserId
+        )
+        let storage = isolatedStorage()
+        let container = makeContainer(authSession: authSession, tasksAPI: tasksAPI)
+        let environment = AppEnvironment(
+            container: container,
+            storage: storage,
+            refreshCoordinator: NoopRefreshCoordinator()
+        )
+        retainedEnvironments.append(environment)
+        let accountScope = try XCTUnwrap(environment.taskNotificationAuthContext?.accountScope)
+        environment.tasksStore.tasks = [task]
+        environment.tasksStore.counts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 1, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+        storage.widgetDataManager.storeTaskData(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: task.id, title: task.title)],
+                totalCount: 1,
+                progressCompletedCount: 0,
+                progressTotalCount: 1
+            ),
+            for: .today
+        )
+
+        let completionResult = await environment.tasksViewModel
+            .completeDueTodayTaskFromNotification(
+                taskId: task.id,
+                accountScope: accountScope
+            )
+        await waitUntil(timeoutSeconds: 1) {
+            environment.writeQueue.pendingCount == 1
+                && !environment.writeQueue.isProcessing
+        }
+
+        XCTAssertEqual(completionResult, .queued)
+        XCTAssertTrue(environment.connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite)
+        XCTAssertEqual(tasksAPI.fixedAuthorizationSyncCallCount, 0)
+        XCTAssertEqual(tasksAPI.currentSessionSyncCallCount, 0)
+        XCTAssertEqual(environment.writeQueue.pendingCount, 1)
+        XCTAssertTrue(environment.tasksStore.tasks.isEmpty)
+        XCTAssertEqual(environment.tasksStore.counts?.counts.today, 0)
+        let retainedSnapshot = storage.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(retainedSnapshot.totalCount, 0)
+        XCTAssertEqual(retainedSnapshot.progressCompletedCount, 1)
+        XCTAssertEqual(retainedSnapshot.pendingOptimisticCompletionTaskIds, [task.id])
+
+        await environment.handleSignedInActivation(includeDeferredRefresh: true)
+        await environment.handleSignedInActivation(includeDeferredRefresh: false)
+
+        XCTAssertEqual(environment.authState, .active)
+        XCTAssertEqual(tasksAPI.fixedAuthorizationSyncCallCount, 1)
+        XCTAssertEqual(tasksAPI.currentSessionSyncCallCount, 0)
+        XCTAssertEqual(tasksAPI.authorizationTokens, [authorizationToken])
+        XCTAssertEqual(environment.writeQueue.pendingCount, 0)
+        let remainingWrites = try await environment.writeQueue.fetchPendingWrites()
+        XCTAssertTrue(remainingWrites.isEmpty)
+        XCTAssertTrue(environment.tasksStore.tasks.isEmpty)
+        XCTAssertEqual(environment.tasksStore.counts?.counts.today, 0)
+        let reconciledSnapshot = storage.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertTrue(reconciledSnapshot.tasks.isEmpty)
+        XCTAssertEqual(reconciledSnapshot.totalCount, 0)
+        XCTAssertEqual(reconciledSnapshot.progressCompletedCount, 1)
+        XCTAssertEqual(reconciledSnapshot.progressTotalCount, 1)
+        XCTAssertEqual(reconciledSnapshot.optimisticallyCompletedTaskIds, [task.id])
+        XCTAssertTrue(reconciledSnapshot.pendingOptimisticCompletionTaskIds.isEmpty)
+    }
+
     func testBeginSignOutClearsRecoverableStaleAuth() async {
         let authSession = StaleRetryAuthSession(authState: .active)
         let container = makeContainer(authSession: authSession)
@@ -115,18 +202,38 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
         AppEnvironmentStorage(userDefaults: isolatedDefaults.defaults)
     }
 
-    private func makeContainer(authSession: AuthSession) -> ServiceContainer {
+    private func makeContainer(
+        authSession: AuthSession,
+        tasksAPI: (any TasksProviding)? = nil
+    ) -> ServiceContainer {
         makeNoNetworkServiceContainer(
             authSession: authSession,
-            cacheClient: InMemoryCacheClient()
+            cacheClient: InMemoryCacheClient(),
+            tasksAPI: tasksAPI
         )
+    }
+
+    private func makeUnsignedJWT(subject: String) throws -> String {
+        let headerData = try JSONSerialization.data(
+            withJSONObject: ["alg": "none", "typ": "JWT"]
+        )
+        let payloadData = try JSONSerialization.data(
+            withJSONObject: ["sub": subject]
+        )
+        func encode(_ data: Data) -> String {
+            data.base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")
+        }
+        return "\(encode(headerData)).\(encode(payloadData))."
     }
 
 }
 
 private final class StaleRetryAuthSession: AuthSession {
-    var accessToken: String? = "token"
-    var userId: String? = "user-id"
+    var accessToken: String?
+    var userId: String?
     var authState: AuthState
 
     var authorizationToken: String? {
@@ -139,8 +246,14 @@ private final class StaleRetryAuthSession: AuthSession {
 
     private(set) var refreshSessionCallCount = 0
 
-    init(authState: AuthState) {
+    init(
+        authState: AuthState,
+        accessToken: String? = "token",
+        userId: String? = "user-id"
+    ) {
         self.authState = authState
+        self.accessToken = accessToken
+        self.userId = userId
     }
 
     func signIn(email: String, password: String) async throws {
