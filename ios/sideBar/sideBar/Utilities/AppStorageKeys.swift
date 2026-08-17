@@ -21,6 +21,8 @@ public enum AppStorageKeys {
     public nonisolated static let failedLoginAttempts = "sidebar.auth.failedLoginAttempts"
     public nonisolated static let lockoutEndTime = "sidebar.auth.lockoutEndTime"
     public nonisolated static let cacheScopeUserId = "sidebar.cacheScopeUserId"
+    public nonisolated static let taskNotificationAccountGenerationId =
+        "sidebar.taskNotificationAccountGenerationId"
     public nonisolated static let widgetAuthStateMirror = "sidebar.widgetAuthStateMirror"
     public nonisolated static let widgetAuthDisplayStateMirror = "sidebar.widgetAuthDisplayStateMirror"
     public nonisolated static let deviceInstallationId = "sidebar.deviceInstallationId"

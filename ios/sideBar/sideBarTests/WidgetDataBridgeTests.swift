@@ -101,6 +101,132 @@ final class WidgetDataBridgeTests: XCTestCase {
         XCTAssertEqual(pending.first?.action, .complete)
     }
 
+    func testPendingOperationStoreWaitsForExternalProcessFileLock() throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "WidgetPendingOperationStoreExternalLockTests-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: temporaryDirectory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+        let lockFileURL = temporaryDirectory.appendingPathComponent("pending-operations.lock")
+        let suiteName = "WidgetDataBridgeTests.external-lock.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let helperReady = expectation(description: "External helper acquired lock")
+        let helperExited = DispatchSemaphore(value: 0)
+        let helperResources = makeExternalLockHelper(
+            lockFileURL: lockFileURL,
+            readyExpectation: helperReady,
+            exitedSemaphore: helperExited
+        )
+        let helper = helperResources.process
+        let helperOutput = helperResources.output
+        let helperInput = helperResources.input
+        defer {
+            helperOutput.fileHandleForReading.readabilityHandler = nil
+            try? helperInput.fileHandleForWriting.close()
+            if helper.isRunning {
+                helper.terminate()
+            }
+        }
+
+        try helper.run()
+        guard XCTWaiter.wait(for: [helperReady], timeout: 2) == .completed else {
+            XCTFail("External lock helper did not become ready")
+            return
+        }
+
+        let enteredCriticalSection = DispatchSemaphore(value: 0)
+        let operationCompleted = DispatchSemaphore(value: 0)
+        let operationStarted = DispatchSemaphore(value: 0)
+        let store = WidgetPendingOperationStore(
+            userDefaultsProvider: {
+                enteredCriticalSection.signal()
+                return defaults
+            },
+            lockFileURLProvider: { lockFileURL }
+        )
+        DispatchQueue.global(qos: .userInitiated).async {
+            operationStarted.signal()
+            _ = store.record(
+                WidgetPendingOperation(
+                    itemId: "external-lock-task",
+                    action: TaskWidgetAction.complete
+                ),
+                key: WidgetContentType.tasks.pendingKey
+            )
+            operationCompleted.signal()
+        }
+
+        XCTAssertEqual(operationStarted.wait(timeout: .now() + 1), .success)
+        XCTAssertEqual(
+            enteredCriticalSection.wait(timeout: .now() + 0.25),
+            .timedOut,
+            "The test process entered shared storage while another process held the file lock"
+        )
+
+        helperInput.fileHandleForWriting.write(Data([0]))
+        try helperInput.fileHandleForWriting.close()
+        XCTAssertEqual(enteredCriticalSection.wait(timeout: .now() + 2), .success)
+        XCTAssertEqual(operationCompleted.wait(timeout: .now() + 2), .success)
+        XCTAssertEqual(helperExited.wait(timeout: .now() + 2), .success)
+
+        let pending: [WidgetPendingOperation<TaskWidgetAction>] = store.load(
+            key: WidgetContentType.tasks.pendingKey,
+            actionType: TaskWidgetAction.self
+        )
+        XCTAssertEqual(pending.map(\.itemId), ["external-lock-task"])
+    }
+
+    private func makeExternalLockHelper(
+        lockFileURL: URL,
+        readyExpectation: XCTestExpectation,
+        exitedSemaphore: DispatchSemaphore
+    ) -> ExternalLockHelperResources {
+        let process = Process()
+        let output = Pipe()
+        let input = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.arguments = [
+            "-c",
+            """
+            import fcntl
+            import os
+            import sys
+            lock_path = sys.argv[1]
+            os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+            with open(lock_path, "a+") as lock_file:
+                fcntl.flock(lock_file, fcntl.LOCK_EX)
+                print("LOCKED", flush=True)
+                sys.stdin.buffer.read(1)
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+            """,
+            lockFileURL.path
+        ]
+        process.standardOutput = output
+        process.standardError = output
+        process.standardInput = input
+        process.terminationHandler = { _ in exitedSemaphore.signal() }
+        output.fileHandleForReading.readabilityHandler = { handle in
+            guard let message = String(data: handle.availableData, encoding: .utf8),
+                  message.contains("LOCKED") else {
+                return
+            }
+            handle.readabilityHandler = nil
+            readyExpectation.fulfill()
+        }
+        return ExternalLockHelperResources(
+            process: process,
+            output: output,
+            input: input
+        )
+    }
+
     func testConcurrentPendingOperationRecordsAndRemovesPreserveExpectedOperations() async {
         let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -191,4 +317,10 @@ final class WidgetDataBridgeTests: XCTestCase {
         XCTAssertEqual(remaining.first?.id, addNew.id)
         XCTAssertEqual(remaining.first?.action, .addNew)
     }
+}
+
+private struct ExternalLockHelperResources {
+    let process: Process
+    let output: Pipe
+    let input: Pipe
 }

@@ -10,23 +10,27 @@ private struct CompletionAuthCase {
 
 @MainActor
 final class TaskNotificationResponseHandlerTests: XCTestCase {
-    func testCompleteQueuesQuietlyAndFinishesOnce() async {
+    func testCompleteQueuesQuietlyAndFinishesOnce() async throws {
         let taskId = UUID().uuidString
         let accountId = UUID().uuidString
         var completedTaskIds: [String] = []
+        let generationId = UUID()
+        var receivedScope: TaskNotificationAccountScope?
         var openedRoutes: [URL] = []
         var completionCount = 0
         let handler = TaskNotificationResponseHandler(
             authContext: {
                 TaskNotificationAuthContext(
                     authState: .active,
-                    accountId: accountId.lowercased()
+                    accountId: accountId.lowercased(),
+                    generationId: generationId
                 )
             },
             refresh: { _ in },
             openRoute: { openedRoutes.append($0) },
-            completeTask: {
-                completedTaskIds.append($0)
+            completeTask: { taskId, scope in
+                completedTaskIds.append(taskId)
+                receivedScope = scope
                 return .queued
             }
         )
@@ -39,6 +43,13 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
 
         XCTAssertEqual(result, .completionQueued)
         XCTAssertEqual(completedTaskIds, [taskId])
+        XCTAssertEqual(
+            receivedScope,
+            TaskNotificationAccountScope(
+                accountId: try XCTUnwrap(UUID(uuidString: accountId)),
+                generationId: generationId
+            )
+        )
         XCTAssertTrue(openedRoutes.isEmpty)
         XCTAssertEqual(completionCount, 1)
     }

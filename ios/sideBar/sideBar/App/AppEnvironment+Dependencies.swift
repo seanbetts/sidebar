@@ -39,6 +39,7 @@ extension AppEnvironment {
         isTestMode: Bool,
         pendingShareStore: PendingShareStore = .shared,
         widgetDataManager: WidgetDataManager,
+        taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator = .init(),
         workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
         workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
     ) -> EnvironmentDependencies {
@@ -46,7 +47,8 @@ extension AppEnvironment {
         let stores = StoreDependencyBuilder.build(
             container: container,
             core: core,
-            widgetDataManager: widgetDataManager
+            widgetDataManager: widgetDataManager,
+            taskNotificationAccountScopeCoordinator: taskNotificationAccountScopeCoordinator
         )
         let onboardingSync = OnboardingSyncCoordinator(
             api: container.onboardingAPI,
@@ -61,6 +63,7 @@ extension AppEnvironment {
             isTestMode: isTestMode,
             pendingShareStore: pendingShareStore,
             widgetDataManager: widgetDataManager,
+            taskNotificationAccountScopeCoordinator: taskNotificationAccountScopeCoordinator,
             workspaceStateProvider: workspaceStateProvider,
             workspaceOpenFailureProvider: workspaceOpenFailureProvider
         )

@@ -72,6 +72,7 @@ import UIKit
     public let biometricMonitor: BiometricMonitor
     /// Queue that persists and replays offline writes.
     public let writeQueue: WriteQueue
+    let taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator
     let onboardingSync: OnboardingSyncing
     let refreshCoordinator: RefreshCoordinatorType
     let draftStorage: DraftStorage
@@ -160,14 +161,17 @@ import UIKit
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
         let resolvedStorage = storage ?? .shared
+        let taskNotificationAccountScopeCoordinator = TaskNotificationAccountScopeCoordinator()
         self.container = container
         self.storage = resolvedStorage
+        self.taskNotificationAccountScopeCoordinator = taskNotificationAccountScopeCoordinator
         let workspaceStore = WorkspaceStore()
         let workspaceOpenFailureStore = WorkspaceOpenFailureStore()
         let dependencies = Self.buildDependencies(
             container: container,
             isTestMode: isTestMode, pendingShareStore: resolvedStorage.pendingShareStore,
             widgetDataManager: resolvedStorage.widgetDataManager,
+            taskNotificationAccountScopeCoordinator: taskNotificationAccountScopeCoordinator,
             workspaceStateProvider: { workspaceStore.state },
             workspaceOpenFailureProvider: { workspaceOpenFailureStore.latest }
         )
@@ -259,6 +263,7 @@ import UIKit
             self?.dispatchChatWorkspaceAction(action)
         }
         self.authState = container.authSession.authState
+        synchronizeTaskNotificationAccountScope()
         self.isBiometricUnlocked = (authState == .active || authState == .staleRecoverable) && !isBiometricUnlockEnabled
         self.chatViewModel.configureRefreshCoordinator(resolvedRefreshCoordinator) { [weak self] in
             self?.currentRefreshContext()

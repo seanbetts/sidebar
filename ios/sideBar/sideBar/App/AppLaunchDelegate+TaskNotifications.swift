@@ -31,12 +31,15 @@ extension AppLaunchDelegate {
             openRoute: { route in
                 AppEnvironment.shared?.handleDeepLink(route)
             },
-            completeTask: { taskId in
+            completeTask: { taskId, accountScope in
                 guard let environment = AppEnvironment.shared else {
                     return .failed(.unavailable)
                 }
                 return await environment.tasksViewModel
-                    .completeDueTodayTaskFromNotification(taskId: taskId)
+                    .completeDueTodayTaskFromNotification(
+                        taskId: taskId,
+                        accountScope: accountScope
+                    )
             }
         )
         Task { @MainActor in

@@ -541,20 +541,200 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertTrue(Calendar.current.isDateInToday(snapshot.lastUpdated))
         XCTAssertTrue(snapshot.tasks.isEmpty)
         XCTAssertEqual(snapshot.totalCount, 0)
+        XCTAssertEqual(snapshot.progressCompletedCount, 0)
+        XCTAssertEqual(snapshot.progressTotalCount, 0)
+        XCTAssertEqual(snapshot.optimisticallyCompletedTaskIds, [taskId])
+        XCTAssertEqual(snapshot.pendingOptimisticCompletionTaskIds, [taskId])
+    }
+
+    func testNotificationCompletionDiscardsPersistedWriteWhenAccountChangesDuringEnqueue() async {
+        let api = TasksViewModelAPIStub()
+        let taskId = UUID().uuidString
+        let gate = TasksNotificationEnqueuePersistenceGate()
+        let sut = makeSUT(api: api, networkAvailable: false)
+        let receivingScope = sut.accountScopeCoordinator.currentScope!
+        sut.store.tasks = [TaskItem(id: taskId, title: "Account A task", status: "open")]
+        sut.store.counts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 1, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+        sut.widgetDataManager.storeTaskData(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: taskId, title: "Account A task")],
+                totalCount: 1
+            ),
+            for: .today
+        )
+
+        let completion = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(
+                taskId: taskId,
+                accountScope: receivingScope,
+                afterEnqueuePersistence: { await gate.suspendAfterPersistence() }
+            )
+        }
+        await gate.waitUntilSuspended()
+        await eventually { sut.writeQueue.pendingCount == 1 }
+
+        sut.accountScopeCoordinator.invalidate()
+        _ = sut.accountScopeCoordinator.activate(accountId: UUID().uuidString)
+        let accountBTask = TaskItem(id: "account-b-task", title: "Account B task", status: "open")
+        let accountBCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 4, upcoming: 2, completed: 1),
+            projects: [],
+            groups: []
+        )
+        let accountBWidget = WidgetTaskData(
+            tasks: [WidgetTask(id: accountBTask.id, title: accountBTask.title)],
+            totalCount: 4,
+            progressCompletedCount: 1,
+            progressTotalCount: 5
+        )
+        sut.store.reset()
+        sut.store.tasks = [accountBTask]
+        sut.store.counts = accountBCounts
+        sut.widgetDataManager.storeTaskData(accountBWidget, for: .today)
+        await gate.release()
+
+        let result = await completion.value
+
+        XCTAssertEqual(result, .declined)
+        XCTAssertEqual(sut.writeQueue.pendingCount, 0)
+        XCTAssertEqual(sut.store.tasks, [accountBTask])
+        XCTAssertEqual(sut.store.counts, accountBCounts)
+        let storedAccountBWidget = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(storedAccountBWidget.tasks, accountBWidget.tasks)
+        XCTAssertEqual(storedAccountBWidget.totalCount, accountBWidget.totalCount)
+        XCTAssertEqual(
+            storedAccountBWidget.progressCompletedCount,
+            accountBWidget.progressCompletedCount
+        )
+        XCTAssertEqual(storedAccountBWidget.progressTotalCount, accountBWidget.progressTotalCount)
+        XCTAssertEqual(
+            storedAccountBWidget.optimisticallyCompletedTaskIds,
+            accountBWidget.optimisticallyCompletedTaskIds
+        )
+        XCTAssertEqual(
+            storedAccountBWidget.pendingOptimisticCompletionTaskIds,
+            accountBWidget.pendingOptimisticCompletionTaskIds
+        )
+        XCTAssertEqual(api.applyCallCount, 0)
+    }
+
+    func testOverlappingNotificationCompletionAwaitsOriginalQueuedResult() async {
+        let api = TasksViewModelAPIStub()
+        let taskId = UUID().uuidString
+        let gate = TasksNotificationEnqueuePersistenceGate()
+        let sut = makeSUT(api: api, networkAvailable: true)
+        sut.widgetDataManager.storeTaskData(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: taskId, title: "Notification task")],
+                totalCount: 1,
+                progressCompletedCount: 0,
+                progressTotalCount: 1
+            ),
+            for: .today
+        )
+
+        let original = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(
+                taskId: taskId,
+                afterEnqueuePersistence: { await gate.suspendAfterPersistence() }
+            )
+        }
+        await gate.waitUntilSuspended()
+        await eventually { sut.writeQueue.pendingCount == 1 }
+
+        var duplicateFinished = false
+        let duplicateStarted = expectation(description: "Duplicate started")
+        let duplicate = Task { @MainActor in
+            duplicateStarted.fulfill()
+            let result = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+            duplicateFinished = true
+            return result
+        }
+        await fulfillment(of: [duplicateStarted], timeout: 1)
+        await Task.yield()
+
+        XCTAssertFalse(duplicateFinished)
+        await gate.release()
+        let results = await (original.value, duplicate.value)
+
+        XCTAssertEqual(results.0, .queued)
+        XCTAssertEqual(results.1, .queued)
+        XCTAssertEqual(sut.writeQueue.pendingCount, 1)
+        let snapshot = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(snapshot.totalCount, 0)
         XCTAssertEqual(snapshot.progressCompletedCount, 1)
         XCTAssertEqual(snapshot.optimisticallyCompletedTaskIds, [taskId])
         XCTAssertEqual(snapshot.pendingOptimisticCompletionTaskIds, [taskId])
     }
 
-    func testNotificationCompletionIgnoresDuplicateWhileFirstActionIsInFlight() async {
+    func testOverlappingNotificationCompletionSharesQueueFullResult() async {
         let api = TasksViewModelAPIStub()
         let taskId = UUID().uuidString
-        let sut = makeSUT(api: api, networkAvailable: true)
-        sut.viewModel.inFlightTaskNotificationCompletionIds.insert(taskId)
+        let gate = TasksNotificationEnqueuePersistenceGate()
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: false,
+            maxPendingWrites: 1
+        )
+        await sut.viewModel.renameTask(
+            task: TaskItem(id: "queued-task", title: "Queued", status: "open"),
+            title: "Already queued"
+        )
+        await eventually { sut.writeQueue.pendingCount == 1 }
 
-        let result = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        let original = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(
+                taskId: taskId,
+                beforeEnqueue: { await gate.suspendAfterPersistence() }
+            )
+        }
+        await gate.waitUntilSuspended()
+        let duplicate = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        }
+        await gate.release()
+        let results = await (original.value, duplicate.value)
 
-        XCTAssertEqual(result, .queued)
+        XCTAssertEqual(results.0, .failed(.queueFull))
+        XCTAssertEqual(results.1, .failed(.queueFull))
+        XCTAssertEqual(sut.writeQueue.pendingCount, 1)
+        XCTAssertFalse(
+            sut.widgetDataManager.loadTaskData(for: .today)
+                .optimisticallyCompletedTaskIds.contains(taskId)
+        )
+    }
+
+    func testOverlappingNotificationCompletionSharesUnavailableResult() async {
+        let api = TasksViewModelAPIStub()
+        let taskId = UUID().uuidString
+        let gate = TasksNotificationEnqueuePersistenceGate()
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: false,
+            attachWriteQueue: false
+        )
+
+        let original = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(
+                taskId: taskId,
+                beforeEnqueue: { await gate.suspendAfterPersistence() }
+            )
+        }
+        await gate.waitUntilSuspended()
+        let duplicate = Task { @MainActor in
+            await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        }
+        await gate.release()
+        let results = await (original.value, duplicate.value)
+
+        XCTAssertEqual(results.0, .failed(.unavailable))
+        XCTAssertEqual(results.1, .failed(.unavailable))
         XCTAssertEqual(sut.writeQueue.pendingCount, 0)
         XCTAssertFalse(
             sut.widgetDataManager.loadTaskData(for: .today)
@@ -1084,6 +1264,7 @@ final class TasksViewModelTests: XCTestCase {
         let writeQueue: WriteQueue
         let widgetDataManager: WidgetDataManager
         let toastCenter: ToastCenter
+        let accountScopeCoordinator: TaskNotificationAccountScopeCoordinator
     }
 
     private func makeSUT(
@@ -1121,6 +1302,8 @@ final class TasksViewModelTests: XCTestCase {
         let defaults = UserDefaults(suiteName: "TasksViewModelTests.widget.\(UUID().uuidString)")!
         let widgetDataManager = WidgetDataManager(userDefaults: defaults)
         let toastCenter = ToastCenter()
+        let accountScopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        _ = accountScopeCoordinator.activate(accountId: UUID().uuidString)
         if attachWriteQueue {
             store.attachWriteQueue(writeQueue)
         }
@@ -1130,6 +1313,7 @@ final class TasksViewModelTests: XCTestCase {
             widgetDataManager: widgetDataManager,
             toastCenter: toastCenter,
             networkStatus: networkStatus,
+            taskNotificationAccountScopeCoordinator: accountScopeCoordinator,
             searchDebounceNanoseconds: searchDebounceNanoseconds
         )
         return SUT(
@@ -1137,7 +1321,8 @@ final class TasksViewModelTests: XCTestCase {
             store: store,
             writeQueue: writeQueue,
             widgetDataManager: widgetDataManager,
-            toastCenter: toastCenter
+            toastCenter: toastCenter,
+            accountScopeCoordinator: accountScopeCoordinator
         )
     }
 
@@ -1173,5 +1358,35 @@ private actor TasksNotificationCompletionBarrier {
         await withCheckedContinuation { continuation in
             firstWaiter = continuation
         }
+    }
+}
+
+private actor TasksNotificationEnqueuePersistenceGate {
+    private var suspendedContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+    private var isSuspended = false
+    private var isReleased = false
+
+    func suspendAfterPersistence() async {
+        isSuspended = true
+        suspendedContinuation?.resume()
+        suspendedContinuation = nil
+        guard !isReleased else { return }
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func waitUntilSuspended() async {
+        guard !isSuspended else { return }
+        await withCheckedContinuation { continuation in
+            suspendedContinuation = continuation
+        }
+    }
+
+    func release() {
+        isReleased = true
+        releaseContinuation?.resume()
+        releaseContinuation = nil
     }
 }

@@ -280,6 +280,7 @@ extension AppEnvironment {
             onboardingSync: OnboardingSyncing,
             isTestMode: Bool, pendingShareStore: PendingShareStore,
             widgetDataManager: WidgetDataManager,
+            taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil },
             workspaceOpenFailureProvider: @escaping () -> WorkspaceOpenFailure? = { nil }
         ) -> Output {
@@ -324,7 +325,8 @@ extension AppEnvironment {
                 store: stores.tasksStore,
                 widgetDataManager: widgetDataManager,
                 toastCenter: core.toastCenter,
-                networkStatus: core.connectivityMonitor
+                networkStatus: core.connectivityMonitor,
+                taskNotificationAccountScopeCoordinator: taskNotificationAccountScopeCoordinator
             )
             let memoriesViewModel = MemoriesViewModel(
                 api: container.memoriesAPI,
@@ -403,28 +405,6 @@ extension AppEnvironment {
             )
         }
 
-        static func makeCurrentLocationViewModel(isTestMode: Bool) -> CurrentLocationViewModel {
-            CurrentLocationViewModel(
-                provider: makeCurrentLocationProvider(isTestMode: isTestMode),
-                labelResolver: makeCurrentLocationLabelResolver(isTestMode: isTestMode)
-            )
-        }
-
-        static func makeCurrentLocationProvider(isTestMode: Bool) -> any CurrentLocationProviding {
-            if isTestMode {
-                return NoOpCurrentLocationProvider()
-            }
-            return CoreLocationProvider()
-        }
-
-        static func makeCurrentLocationLabelResolver(
-            isTestMode: Bool
-        ) -> any CurrentLocationLabelResolving {
-            if isTestMode {
-                return NoOpCurrentLocationLabelResolver()
-            }
-            return CLGeocoderLocationLabelResolver()
-        }
     }
 }
 // swiftlint:enable nesting

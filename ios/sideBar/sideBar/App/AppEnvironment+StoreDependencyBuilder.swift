@@ -18,7 +18,8 @@ extension AppEnvironment {
         static func build(
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
-            widgetDataManager: WidgetDataManager
+            widgetDataManager: WidgetDataManager,
+            taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator
         ) -> Output {
             let pendingSecretStore = SettingsPendingSecretStore()
             let pendingAssetStore = SettingsPendingAssetStore()
@@ -75,7 +76,8 @@ extension AppEnvironment {
                 ingestionStore: ingestionStore,
                 settingsStore: settingsStore,
                 pendingSecretStore: pendingSecretStore,
-                pendingAssetStore: pendingAssetStore
+                pendingAssetStore: pendingAssetStore,
+                taskNotificationAccountScopeCoordinator: taskNotificationAccountScopeCoordinator
             )
 
             return Output(
@@ -99,10 +101,18 @@ extension AppEnvironment {
             ingestionStore: IngestionStore,
             settingsStore: SettingsStore,
             pendingSecretStore: SettingsPendingSecretStore,
-            pendingAssetStore: SettingsPendingAssetStore
+            pendingAssetStore: SettingsPendingAssetStore,
+            taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator
         ) -> WriteQueue {
             let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
-            let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
+            let tasksExecutor = TasksWriteQueueExecutor(
+                api: container.tasksAPI,
+                store: tasksStore,
+                accountScopeCoordinator: taskNotificationAccountScopeCoordinator,
+                authorizationTokenProvider: {
+                    container.authSession.authorizationToken
+                }
+            )
             let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
             let filesExecutor = FilesWriteQueueExecutor(api: container.ingestionAPI, store: ingestionStore)
             let settingsExecutor = SettingsWriteQueueExecutor(

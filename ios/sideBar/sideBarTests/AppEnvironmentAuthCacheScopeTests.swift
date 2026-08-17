@@ -17,6 +17,9 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         isolatedDefaults = TestIsolation.makeUserDefaults(prefix: "AppEnvironmentAuthCacheScopeTests")
         retainedEnvironments.removeAll()
         isolatedDefaults.defaults.removeObject(forKey: cacheScopeKey)
+        isolatedDefaults.defaults.removeObject(
+            forKey: AppStorageKeys.taskNotificationAccountGenerationId
+        )
         isolatedDefaults.defaults.removeObject(forKey: lastSignInEmailKey)
         isolatedDefaults.defaults.removeObject(forKey: lastAuthTimestampKey)
     }
@@ -85,6 +88,41 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         environment.refreshAuthState()
 
         XCTAssertEqual(cleanupCalls, 1)
+    }
+
+    func testRefreshAuthStateRotatesNotificationScopeAcrossAccountSwitch() throws {
+        let firstAccountId = UUID().uuidString
+        let secondAccountId = UUID().uuidString
+        isolatedDefaults.defaults.set(firstAccountId, forKey: cacheScopeKey)
+        let environment = makeEnvironment(authState: .active, userId: firstAccountId)
+
+        environment.refreshAuthState()
+        let firstContext = try XCTUnwrap(environment.taskNotificationAuthContext)
+
+        let authSession = try XCTUnwrap(environment.container.authSession as? MutableAuthSession)
+        authSession.userId = secondAccountId
+        environment.refreshAuthState()
+        let secondContext = try XCTUnwrap(environment.taskNotificationAuthContext)
+
+        XCTAssertEqual(firstContext.accountId, firstAccountId.lowercased())
+        XCTAssertEqual(secondContext.accountId, secondAccountId.lowercased())
+        XCTAssertNotEqual(firstContext.generationId, secondContext.generationId)
+    }
+
+    func testNotificationScopeGenerationSurvivesRecreationForSameAccount() throws {
+        let accountId = UUID().uuidString
+        isolatedDefaults.defaults.set(accountId, forKey: cacheScopeKey)
+        let firstEnvironment = makeEnvironment(authState: .active, userId: accountId)
+
+        firstEnvironment.refreshAuthState()
+        let firstContext = try XCTUnwrap(firstEnvironment.taskNotificationAuthContext)
+
+        let recreatedEnvironment = makeEnvironment(authState: .active, userId: accountId)
+        recreatedEnvironment.refreshAuthState()
+        let recreatedContext = try XCTUnwrap(recreatedEnvironment.taskNotificationAuthContext)
+
+        XCTAssertEqual(recreatedContext.accountId, firstContext.accountId)
+        XCTAssertEqual(recreatedContext.generationId, firstContext.generationId)
     }
 
     func testNotificationCompletionDeclinesDuringUnreconciledAccountTransition() async throws {

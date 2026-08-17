@@ -16,6 +16,25 @@ public protocol TasksProviding {
     func deleteProject(projectId: String) async throws
     func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse
+    func sync(
+        _ payload: TaskSyncRequest,
+        authorizationToken: String
+    ) async throws -> TaskSyncResponse
+}
+
+enum TasksProvidingError: Error {
+    case fixedAuthorizationUnsupported
+}
+
+public extension TasksProviding {
+    func sync(
+        _ payload: TaskSyncRequest,
+        authorizationToken: String
+    ) async throws -> TaskSyncResponse {
+        _ = payload
+        _ = authorizationToken
+        throw TasksProvidingError.fixedAuthorizationUnsupported
+    }
 }
 
 /// Encodes a batch of task operations for sync.
@@ -186,6 +205,18 @@ public struct TasksAPI {
 
     public func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
         try await client.request("tasks/sync", method: "POST", body: payload)
+    }
+
+    public func sync(
+        _ payload: TaskSyncRequest,
+        authorizationToken: String
+    ) async throws -> TaskSyncResponse {
+        try await client.requestWithFixedAuthorization(
+            "tasks/sync",
+            method: "POST",
+            body: payload,
+            authorizationToken: authorizationToken
+        )
     }
 }
 

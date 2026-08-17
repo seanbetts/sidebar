@@ -77,6 +77,35 @@ public final class APIClient {
         }
     }
 
+    /// Executes a request with a caller-captured bearer token and never refreshes it mid-request.
+    public func requestWithFixedAuthorization<T: Decodable>(
+        _ path: String,
+        method: String = "GET",
+        body: Encodable? = nil,
+        headers: [String: String] = [:],
+        timeoutInterval: TimeInterval? = nil,
+        authorizationToken: String
+    ) async throws -> T {
+        let context = try buildRequestContext(
+            path,
+            method: method,
+            body: body,
+            headers: headers,
+            timeoutInterval: timeoutInterval
+        )
+        let (data, _) = try await execute(
+            context.request,
+            intent: context.intent,
+            fixedAuthorizationToken: authorizationToken
+        )
+        do {
+            return try Self.makeDecoder().decode(T.self, from: data)
+        } catch {
+            logDecodingError(error, data: data, type: T.self)
+            throw APIClientError.decodingFailed
+        }
+    }
+
     public func requestVoid(
         _ path: String,
         method: String = "POST",

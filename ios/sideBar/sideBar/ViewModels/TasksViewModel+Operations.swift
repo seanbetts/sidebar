@@ -8,11 +8,22 @@ enum TaskNotificationCompletionFailure: Equatable {
 
 enum TaskNotificationCompletionResult: Equatable {
     case queued
+    case declined
     case failed(TaskNotificationCompletionFailure)
 
     var isQueued: Bool {
         self == .queued
     }
+}
+
+struct TaskNotificationCompletionKey: Hashable {
+    let taskId: String
+    let accountScope: TaskNotificationAccountScope
+}
+
+struct InFlightTaskNotificationCompletion {
+    let token: UUID
+    let task: Task<TaskNotificationCompletionResult, Never>
 }
 
 extension TasksViewModel {
@@ -78,25 +89,89 @@ extension TasksViewModel {
     @discardableResult
     func completeDueTodayTaskFromNotification(
         taskId: String,
-        beforeEnqueue: (@MainActor @Sendable () async -> Void)? = nil
+        accountScope: TaskNotificationAccountScope? = nil,
+        beforeEnqueue: (@MainActor @Sendable () async -> Void)? = nil,
+        afterEnqueuePersistence: (@MainActor @Sendable () async -> Void)? = nil
     ) async -> TaskNotificationCompletionResult {
+        guard let accountScope = accountScope
+            ?? taskNotificationAccountScopeCoordinator.currentScope,
+            taskNotificationAccountScopeCoordinator.isCurrent(accountScope) else {
+            return .declined
+        }
         let existingSnapshot = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
             widgetDataManager.loadTaskData(for: .today)
         )
-        if existingSnapshot.optimisticallyCompletedTaskIds.contains(taskId)
-            || inFlightTaskNotificationCompletionIds.contains(taskId) {
+        if existingSnapshot.optimisticallyCompletedTaskIds.contains(taskId) {
             return .queued
         }
-        inFlightTaskNotificationCompletionIds.insert(taskId)
-        defer { inFlightTaskNotificationCompletionIds.remove(taskId) }
-        await beforeEnqueue?()
-        let result = await queueTaskCompletion(
+        let key = TaskNotificationCompletionKey(
             taskId: taskId,
-            clientUpdatedAt: nil,
-            refreshWidget: selection != .today,
-            failurePresentation: .silent
+            accountScope: accountScope
         )
-        if result.isQueued {
+        if let existing = inFlightTaskNotificationCompletions[key] {
+            return await existing.task.value
+        }
+        let token = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return TaskNotificationCompletionResult.declined }
+            return await self.performDueTodayTaskNotificationCompletion(
+                taskId: taskId,
+                accountScope: accountScope,
+                beforeEnqueue: beforeEnqueue,
+                afterEnqueuePersistence: afterEnqueuePersistence
+            )
+        }
+        inFlightTaskNotificationCompletions[key] = InFlightTaskNotificationCompletion(
+            token: token,
+            task: task
+        )
+        let result = await task.value
+        if inFlightTaskNotificationCompletions[key]?.token == token {
+            inFlightTaskNotificationCompletions.removeValue(forKey: key)
+        }
+        return result
+    }
+
+    private func performDueTodayTaskNotificationCompletion(
+        taskId: String,
+        accountScope: TaskNotificationAccountScope,
+        beforeEnqueue: (@MainActor @Sendable () async -> Void)?,
+        afterEnqueuePersistence: (@MainActor @Sendable () async -> Void)?
+    ) async -> TaskNotificationCompletionResult {
+        await beforeEnqueue?()
+        guard !Task.isCancelled,
+              taskNotificationAccountScopeCoordinator.isCurrent(accountScope) else {
+            return .declined
+        }
+        let operation = TaskOperationPayload(
+            operationId: TaskOperationId.make(),
+            op: "complete",
+            id: taskId
+        )
+        let writeId: UUID
+        do {
+            writeId = try await store.enqueueAccountBoundOperation(
+                operation,
+                accountScope: accountScope
+            )
+        } catch WriteQueueError.queueFull {
+            return .failed(.queueFull)
+        } catch {
+            return .failed(.unavailable)
+        }
+        await afterEnqueuePersistence?()
+        guard !Task.isCancelled,
+              taskNotificationAccountScopeCoordinator.isCurrent(accountScope) else {
+            await store.discardQueuedWrite(id: writeId)
+            return .declined
+        }
+
+        store.applyLocalOperation(operation)
+        if selection != .today {
+            updateWidgetDataAfterOfflineOperation(operation)
+        }
+        updateCountsAfterLocalOperation(operation)
+        if taskNotificationAccountScopeCoordinator.isCurrent(accountScope) {
             let latestSnapshot = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
                 widgetDataManager.loadTaskData(for: .today)
             )
@@ -105,7 +180,7 @@ extension TasksViewModel {
                 snapshot: latestSnapshot
             )
         }
-        return result
+        return .queued
     }
 
     private func queueTaskCompletion(

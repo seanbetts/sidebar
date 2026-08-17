@@ -65,7 +65,8 @@ import OSLog
         entityType: WriteEntityType,
         entityId: String?,
         payload: T,
-        serverSnapshot: ServerSnapshot? = nil
+        serverSnapshot: ServerSnapshot? = nil,
+        writeId: UUID = UUID()
     ) async throws {
         let payloadData = try encoder.encode(payload)
         let snapshotData = try? encodeSnapshot(serverSnapshot)
@@ -109,7 +110,7 @@ import OSLog
 
         try await performBackgroundTask { context in
             let write = PendingWrite.insertNew(in: context)
-            write.id = UUID()
+            write.id = writeId
             write.operationType = operation.rawValue
             write.entityType = entityType.rawValue
             write.entityId = entityId
@@ -222,8 +223,6 @@ import OSLog
     }
 }
 
-extension WriteQueue: SettingsWriteQueueEnqueuing {}
-
 private struct FetchedPendingWrite: Sendable {
     let record: PendingWriteRecord
     let recoveryState: PendingWriteRecoveryState
@@ -261,6 +260,9 @@ extension WriteQueue {
                 await restoreFetchedWriteAfterCancellation(fetchedWrite)
             }
             throw CancellationError()
+        } catch WriteQueueError.accountScopeChanged {
+            try await deleteWrite(id: write.id)
+            return true
         } catch {
             if let conflictError = error as? WriteQueueConflictError {
                 await autoResolveConflict(write: write, error: conflictError)

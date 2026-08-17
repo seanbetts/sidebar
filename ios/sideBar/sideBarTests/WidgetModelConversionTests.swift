@@ -59,6 +59,73 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(twice, once)
     }
 
+    func testNotificationCompletionRolloverCreatesEmptyCurrentDayBaseline() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let now = Date(timeIntervalSince1970: 172_800)
+        let previousDay = now.addingTimeInterval(-86_400)
+        let staleTaskId = UUID().uuidString
+        let priorSnapshot = WidgetTaskData(
+            tasks: [],
+            totalCount: 0,
+            progressCompletedCount: 5,
+            progressTotalCount: 5,
+            optimisticallyCompletedTaskIds: [staleTaskId],
+            pendingOptimisticCompletionTaskIds: [staleTaskId],
+            lastUpdated: previousDay
+        )
+
+        let prepared = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
+            priorSnapshot,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(prepared.tasks.isEmpty)
+        XCTAssertEqual(prepared.totalCount, 0)
+        XCTAssertEqual(prepared.progressCompletedCount, 0)
+        XCTAssertEqual(prepared.progressTotalCount, 0)
+        XCTAssertTrue(prepared.optimisticallyCompletedTaskIds.isEmpty)
+        XCTAssertTrue(prepared.pendingOptimisticCompletionTaskIds.isEmpty)
+        XCTAssertEqual(prepared.lastUpdated, now)
+    }
+
+    func testNotificationCompletionRolloverDoesNotRelabelPriorRowsForOffscreenTask() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let now = Date(timeIntervalSince1970: 172_800)
+        let previousDay = now.addingTimeInterval(-86_400)
+        let taskId = UUID().uuidString
+        let priorSnapshot = WidgetTaskData(
+            tasks: (0..<10).map { WidgetTask(id: "stale-\($0)", title: "Stale \($0)") },
+            totalCount: 11,
+            progressCompletedCount: 3,
+            progressTotalCount: 14,
+            lastUpdated: previousDay
+        )
+        let prepared = WidgetTaskPendingCompletionOverlay.prepareForNotificationCompletion(
+            priorSnapshot,
+            now: now,
+            calendar: calendar
+        )
+
+        let updated = WidgetTaskPendingCompletionOverlay.apply(
+            to: prepared,
+            pendingOperations: [
+                WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
+            ],
+            knownDueTodayTaskIds: [taskId]
+        )
+
+        XCTAssertTrue(updated.tasks.isEmpty)
+        XCTAssertEqual(updated.totalCount, 0)
+        XCTAssertEqual(updated.progressCompletedCount, 0)
+        XCTAssertEqual(updated.progressTotalCount, 0)
+        XCTAssertEqual(updated.optimisticallyCompletedTaskIds, [taskId])
+        XCTAssertEqual(updated.pendingOptimisticCompletionTaskIds, [taskId])
+        XCTAssertEqual(updated.lastUpdated, now)
+    }
+
     func testTaskSnapshotRefreshClearsHandledIdWhenTaskIsExplicitlyReopened() {
         let taskId = UUID().uuidString
         let now = Date(timeIntervalSince1970: 1_000)

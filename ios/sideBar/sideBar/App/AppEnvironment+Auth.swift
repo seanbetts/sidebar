@@ -25,6 +25,7 @@ extension AppEnvironment {
         let wasAuthenticated = isAuthenticated
         let wasProtectedContentReady = isProtectedContentReady
         authState = container.authSession.authState
+        synchronizeTaskNotificationAccountScope()
         syncBiometricUnlockState(previousAuthState: previousAuthState)
         let becameActive = previousAuthState != .active && authState == .active
         let isAuthenticated = self.isAuthenticated
@@ -58,6 +59,7 @@ extension AppEnvironment {
         }
         if isAuthenticated {
             reconcileCacheScopeForAuthenticatedUser()
+            synchronizeTaskNotificationAccountScope()
             biometricMonitor.startMonitoring()
             if authState == .active {
                 currentLocationViewModel.startTrackingIfAuthorized()
@@ -81,6 +83,7 @@ extension AppEnvironment {
                 }
             }
         } else {
+            taskNotificationAccountScopeCoordinator.invalidate()
             biometricMonitor.stopMonitoring()
             currentLocationViewModel.stopTracking()
         }
@@ -219,16 +222,13 @@ extension AppEnvironment {
 
         // Run a one-time migration clear for existing installs with unscoped cache keys.
         let shouldResetSignedInData = storedUserId != nil || authState == .active
+        defaults.removeObject(forKey: AppStorageKeys.taskNotificationAccountGenerationId)
         if shouldResetSignedInData {
             if storedUserId != nil {
                 storage.clearDeliveredActionableTaskNotifications()
             }
-            let previousScope = storedUserId ?? "<none>"
             authLogger.notice(
-                """
-                Resetting cached data for user scope change from \
-                \(previousScope, privacy: .public) to \(currentUserId, privacy: .public)
-                """
+                "Resetting cached data for authenticated user scope change."
             )
             resetSignedInData(
                 clearNavigationState: false,
@@ -238,26 +238,11 @@ extension AppEnvironment {
         defaults.set(currentUserId, forKey: AppStorageKeys.cacheScopeUserId)
     }
 
-    private var currentAuthUserId: String? {
+    var currentAuthUserId: String? {
         guard let rawUserId = container.authSession.userId else { return nil }
         let trimmedUserId = Self.normalizedCacheScopeUserId(rawUserId)
         guard !trimmedUserId.isEmpty else { return nil }
         return trimmedUserId
-    }
-
-    var taskNotificationAuthContext: TaskNotificationAuthContext? {
-        guard authState == .active || authState == .staleRecoverable,
-              let accountId = currentAuthUserId,
-              let cacheScopeAccountId = storage.userDefaults.string(
-                forKey: AppStorageKeys.cacheScopeUserId
-              ),
-              TaskNotificationContract.accountIdentifier(
-                accountId,
-                matches: cacheScopeAccountId
-              ) else {
-            return nil
-        }
-        return TaskNotificationAuthContext(authState: authState, accountId: accountId)
     }
 
     private static func normalizedCacheScopeUserId(_ userId: String) -> String {
@@ -266,6 +251,9 @@ extension AppEnvironment {
 
     private func clearStoredCacheScopeUserId() {
         storage.userDefaults.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
+        storage.userDefaults.removeObject(
+            forKey: AppStorageKeys.taskNotificationAccountGenerationId
+        )
     }
 
     nonisolated static func widgetDisplayState(

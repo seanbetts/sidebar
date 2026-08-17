@@ -17,6 +17,28 @@ extension APIClient {
         )
     }
 
+    public func execute(
+        _ request: URLRequest,
+        intent: RequestIntent,
+        fixedAuthorizationToken: String
+    ) async throws -> (Data, HTTPURLResponse) {
+        guard !fixedAuthorizationToken.isEmpty else {
+            throw APIClientError.missingToken
+        }
+        var request = request
+        request.setValue(
+            "Bearer \(fixedAuthorizationToken)",
+            forHTTPHeaderField: "Authorization"
+        )
+        return try await executeRequestWithoutAuthRetry(
+            request,
+            intent: intent,
+            transport: { request in
+                try await self.session.data(for: request)
+            }
+        )
+    }
+
     public func executeUpload(
         _ request: URLRequest,
         fromFile bodyFileURL: URL,

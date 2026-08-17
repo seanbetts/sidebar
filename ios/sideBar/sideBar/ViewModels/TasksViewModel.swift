@@ -22,12 +22,15 @@ import sideBarShared
     let widgetDataManager: WidgetDataManager
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
+    let taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator
     let searchDebounceNanoseconds: UInt64
     var onRealtimeInvalidation: ((DomainSyncChange) async -> Void)?
     var cancellables = Set<AnyCancellable>()
     var searchDebounce: Task<Void, Never>?
     var lastNonSearchSelection: TaskSelection = .today
-    var inFlightTaskNotificationCompletionIds: Set<String> = []
+    var inFlightTaskNotificationCompletions: [
+        TaskNotificationCompletionKey: InFlightTaskNotificationCompletion
+    ] = [:]
 
     public init(
         api: any TasksProviding,
@@ -35,6 +38,7 @@ import sideBarShared
         widgetDataManager: WidgetDataManager? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding,
+        taskNotificationAccountScopeCoordinator: TaskNotificationAccountScopeCoordinator = .init(),
         searchDebounceNanoseconds: UInt64 = 350_000_000
     ) {
         self.api = api
@@ -42,6 +46,7 @@ import sideBarShared
         self.widgetDataManager = widgetDataManager ?? .shared
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
+        self.taskNotificationAccountScopeCoordinator = taskNotificationAccountScopeCoordinator
         self.searchDebounceNanoseconds = searchDebounceNanoseconds
 
         store.objectWillChange
@@ -213,7 +218,8 @@ import sideBarShared
         newTaskError = ""
         filteredUpcomingCount = nil
         lastNonSearchSelection = .today
-        inFlightTaskNotificationCompletionIds.removeAll()
+        inFlightTaskNotificationCompletions.values.forEach { $0.task.cancel() }
+        inFlightTaskNotificationCompletions.removeAll()
         panelGroupsSorted = []
         panelProjectsByGroup = [:]
         panelOrphanProjects = []

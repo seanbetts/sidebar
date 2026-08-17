@@ -40,6 +40,28 @@ extension TasksStore {
         )
     }
 
+    func enqueueAccountBoundOperation(
+        _ operation: TaskOperationPayload,
+        accountScope: TaskNotificationAccountScope
+    ) async throws -> UUID {
+        let writeId = UUID()
+        try await LocalFirstMutationCoordinator(writeQueue: writeQueue).enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: operation.id,
+            payload: TaskAccountBoundOperationPayload(
+                operation: operation,
+                accountScope: accountScope
+            ),
+            writeId: writeId
+        )
+        return writeId
+    }
+
+    func discardQueuedWrite(id: UUID) async {
+        await writeQueue?.deleteWrites(ids: [id])
+    }
+
     func enqueueBatch(_ batch: TaskOperationBatch) async throws {
         for operation in batch.operations {
             try await enqueueOperation(operation)

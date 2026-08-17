@@ -60,6 +60,159 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(store.appliedOperationIds, ["create-op"])
     }
 
+    func testExecuteDiscardsAccountBoundWriteAfterAccountGenerationChanges() async throws {
+        let api = TasksSyncAPIStub()
+        let store = TasksWriteQueueStoreSpy()
+        let scopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        let receivingAccountId = UUID()
+        let receivingScope = try XCTUnwrap(
+            scopeCoordinator.activate(accountId: receivingAccountId.uuidString)
+        )
+        scopeCoordinator.invalidate()
+        _ = scopeCoordinator.activate(accountId: UUID().uuidString)
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            accountScopeCoordinator: scopeCoordinator,
+            refreshDebounceNanoseconds: 10_000_000
+        )
+
+        do {
+            try await executor.execute(
+                write: makeAccountBoundWrite(
+                    operationId: "notification-op",
+                    taskId: UUID().uuidString,
+                    scope: receivingScope
+                )
+            )
+            XCTFail("A stale account-bound write must be discarded")
+        } catch WriteQueueError.accountScopeChanged {
+            // Expected: the write is rejected before the API or local store boundary.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(api.syncCallCount, 0)
+        XCTAssertTrue(store.appliedOperationIds.isEmpty)
+        XCTAssertNil(store.lastToken)
+    }
+
+    func testExecuteRejectsAccountBoundWriteWithoutAuthorizationTokenProvider() async throws {
+        let api = TasksSyncAPIStub()
+        let store = TasksWriteQueueStoreSpy()
+        let scopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        let receivingScope = try XCTUnwrap(
+            scopeCoordinator.activate(accountId: UUID().uuidString)
+        )
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            accountScopeCoordinator: scopeCoordinator,
+            refreshDebounceNanoseconds: 10_000_000
+        )
+
+        do {
+            try await executor.execute(
+                write: makeAccountBoundWrite(
+                    operationId: "notification-op",
+                    taskId: UUID().uuidString,
+                    scope: receivingScope
+                )
+            )
+            XCTFail("Account-bound writes must fail closed without captured authorization")
+        } catch WriteQueueError.accountScopeChanged {
+            // Expected: never fall back to the executor's current API session.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(api.syncCallCount, 0)
+        XCTAssertTrue(api.accountBoundAuthorizationTokens.isEmpty)
+        XCTAssertTrue(store.appliedOperationIds.isEmpty)
+        XCTAssertNil(store.lastToken)
+    }
+
+    func testTasksProvidingDefaultFixedAuthorizationSyncFailsClosed() async throws {
+        let api = TasksViewModelAPIStub()
+        let request = TaskSyncRequest(lastSync: nil, operations: [])
+
+        do {
+            _ = try await api.sync(request, authorizationToken: "captured-token")
+            XCTFail("A provider without fixed-authorization support must fail closed")
+        } catch TasksProvidingError.fixedAuthorizationUnsupported {
+            // Expected: do not fall back to sync using the provider's current session.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testExecuteKeepsAccountBoundWriteOnCapturedAuthorizationToken() async throws {
+        let barrier = TasksAccountBoundSyncBarrier()
+        let api = TasksSyncAPIStub(accountBoundSyncBarrier: barrier)
+        let store = TasksWriteQueueStoreSpy()
+        let scopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        let receivingAccountId = UUID()
+        let receivingScope = try XCTUnwrap(
+            scopeCoordinator.activate(accountId: receivingAccountId.uuidString)
+        )
+        let receivingToken = try makeUnsignedJWT(subject: receivingAccountId.uuidString)
+        let nextAccountId = UUID()
+        let nextToken = try makeUnsignedJWT(subject: nextAccountId.uuidString)
+        var currentToken = receivingToken
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            accountScopeCoordinator: scopeCoordinator,
+            authorizationTokenProvider: { currentToken },
+            refreshDebounceNanoseconds: 10_000_000
+        )
+
+        let execution = Task { @MainActor in
+            try await executor.execute(
+                write: makeAccountBoundWrite(
+                    operationId: "notification-op",
+                    taskId: UUID().uuidString,
+                    scope: receivingScope
+                )
+            )
+        }
+        await barrier.waitUntilSuspended()
+
+        scopeCoordinator.invalidate()
+        _ = scopeCoordinator.activate(accountId: nextAccountId.uuidString)
+        currentToken = nextToken
+        await barrier.release()
+
+        do {
+            try await execution.value
+            XCTFail("The completed A response must not update B state")
+        } catch WriteQueueError.accountScopeChanged {
+            // Expected after the fixed-token A request returns in B's generation.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(api.accountBoundAuthorizationTokens, [receivingToken])
+        XCTAssertTrue(store.appliedOperationIds.isEmpty)
+        XCTAssertNil(store.lastToken)
+    }
+
+    private func makeUnsignedJWT(subject: String) throws -> String {
+        let headerData = try JSONSerialization.data(
+            withJSONObject: ["alg": "none", "typ": "JWT"]
+        )
+        let payloadData = try JSONSerialization.data(
+            withJSONObject: ["sub": subject]
+        )
+        func encode(_ data: Data) -> String {
+            data.base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")
+        }
+        return "\(encode(headerData)).\(encode(payloadData))."
+    }
+
     private func makeWrite(operationId: String, taskId: String) throws -> PendingWriteRecord {
         let payload = TaskOperationPayload(
             operationId: operationId,
@@ -93,6 +246,31 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
             operationType: WriteOperation.create.rawValue,
             entityType: WriteEntityType.task.rawValue,
             entityId: nil,
+            payload: encoded,
+            serverSnapshot: nil,
+            attempts: 0
+        )
+    }
+
+    private func makeAccountBoundWrite(
+        operationId: String,
+        taskId: String,
+        scope: TaskNotificationAccountScope
+    ) throws -> PendingWriteRecord {
+        let payload = TaskAccountBoundOperationPayload(
+            operation: TaskOperationPayload(
+                operationId: operationId,
+                op: "complete",
+                id: taskId
+            ),
+            accountScope: scope
+        )
+        let encoded = try JSONEncoder().encode(payload)
+        return PendingWriteRecord(
+            id: UUID(),
+            operationType: WriteOperation.update.rawValue,
+            entityType: WriteEntityType.task.rawValue,
+            entityId: taskId,
             payload: encoded,
             serverSnapshot: nil,
             attempts: 0
@@ -137,10 +315,16 @@ private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
 
 private final class TasksSyncAPIStub: TasksProviding {
     var syncCallCount: Int = 0
+    var accountBoundAuthorizationTokens: [String] = []
     private var queuedSyncResponses: [TaskSyncResponse]
+    private let accountBoundSyncBarrier: TasksAccountBoundSyncBarrier?
 
-    init(syncResponses: [TaskSyncResponse] = []) {
+    init(
+        syncResponses: [TaskSyncResponse] = [],
+        accountBoundSyncBarrier: TasksAccountBoundSyncBarrier? = nil
+    ) {
         self.queuedSyncResponses = syncResponses
+        self.accountBoundSyncBarrier = accountBoundSyncBarrier
     }
 
     func list(scope: String) async throws -> TaskListResponse {
@@ -219,6 +403,45 @@ private final class TasksSyncAPIStub: TasksProviding {
             updates: nil,
             serverUpdatedSince: "token-\(syncCallCount)"
         )
+    }
+
+    func sync(
+        _ payload: TaskSyncRequest,
+        authorizationToken: String
+    ) async throws -> TaskSyncResponse {
+        accountBoundAuthorizationTokens.append(authorizationToken)
+        await accountBoundSyncBarrier?.suspend()
+        return try await sync(payload)
+    }
+}
+
+private actor TasksAccountBoundSyncBarrier {
+    private var suspendedContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+    private var isSuspended = false
+    private var isReleased = false
+
+    func suspend() async {
+        isSuspended = true
+        suspendedContinuation?.resume()
+        suspendedContinuation = nil
+        guard !isReleased else { return }
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func waitUntilSuspended() async {
+        guard !isSuspended else { return }
+        await withCheckedContinuation { continuation in
+            suspendedContinuation = continuation
+        }
+    }
+
+    func release() {
+        isReleased = true
+        releaseContinuation?.resume()
+        releaseContinuation = nil
     }
 }
 

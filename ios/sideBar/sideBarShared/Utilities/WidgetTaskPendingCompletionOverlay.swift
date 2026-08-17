@@ -10,10 +10,10 @@ public enum WidgetTaskPendingCompletionOverlay {
             return snapshot
         }
         return WidgetTaskData(
-            tasks: snapshot.tasks,
-            totalCount: snapshot.totalCount,
+            tasks: [],
+            totalCount: 0,
             progressCompletedCount: 0,
-            progressTotalCount: max(snapshot.totalCount, snapshot.tasks.count),
+            progressTotalCount: 0,
             optimisticallyCompletedTaskIds: [],
             pendingOptimisticCompletionTaskIds: [],
             lastUpdated: now
