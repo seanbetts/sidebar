@@ -4,6 +4,10 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from api.models.task import Task
+from api.models.user_settings import UserSettings
+from api.services.task_reminder_delivery_state_service import (
+    TaskReminderDeliveryStateService,
+)
 from api.services.task_reminder_service import TaskReminderService
 
 
@@ -24,7 +28,7 @@ def _task(
 
 
 def test_configured_user_gets_at_most_one_reminder_batch_per_scheduled_day(test_db):
-    TaskReminderService.clear_emitted_days()
+    test_db.add(UserSettings(user_id="user-123"))
     test_db.add(
         _task(
             user_id="user-123",
@@ -40,11 +44,22 @@ def test_configured_user_gets_at_most_one_reminder_batch_per_scheduled_day(test_
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
-    TaskReminderService.mark_emitted_day(
+    TaskReminderDeliveryStateService.mark_delivery_accepted(
+        test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
-        local_date_iso="2026-01-15",
+        local_date=date(2026, 1, 15),
+        delivery_key=str(first_reminders[0].delivery_key),
+        accepted_at=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
+    assert TaskReminderDeliveryStateService.mark_batch_completed(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        local_date=date(2026, 1, 15),
+        completed_at=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+    test_db.commit()
     second_reminders = TaskReminderService.build_daily_reminders(
         test_db,
         user_id="user-123",
@@ -64,7 +79,6 @@ def test_configured_user_gets_at_most_one_reminder_batch_per_scheduled_day(test_
 
 
 def test_mixed_reminder_returns_ordered_due_tasks_and_one_overdue_summary(test_db):
-    TaskReminderService.clear_emitted_days()
     older = _task(
         user_id="user-123",
         title="First due task",
@@ -108,6 +122,7 @@ def test_mixed_reminder_returns_ordered_due_tasks_and_one_overdue_summary(test_d
     assert evaluation.intents[0].metadata == {
         "task_id": str(older.id),
         "task_title": "First due task",
+        "account_id": "user-123",
         "scope": "today",
     }
     assert evaluation.intents[2].metadata == {
@@ -117,7 +132,6 @@ def test_mixed_reminder_returns_ordered_due_tasks_and_one_overdue_summary(test_d
 
 
 def test_due_today_only_returns_one_actionable_intent_per_task(test_db):
-    TaskReminderService.clear_emitted_days()
     task = _task(
         user_id="user-123",
         title="Quarterly review",
@@ -137,10 +151,11 @@ def test_due_today_only_returns_one_actionable_intent_per_task(test_db):
     assert evaluation.intents[0].native_category == "TASK_REMINDER_ACTIONABLE"
     assert evaluation.intents[0].thread_id == "task-reminders"
     assert evaluation.intents[0].metadata["task_id"] == str(task.id)
+    assert evaluation.intents[0].metadata["account_id"] == "user-123"
+    assert evaluation.intents[0].delivery_key == f"ios:task:{task.id}"
 
 
 def test_overdue_only_returns_navigation_summary_without_task_id(test_db):
-    TaskReminderService.clear_emitted_days()
     test_db.add(
         _task(
             user_id="user-123",
@@ -162,11 +177,11 @@ def test_overdue_only_returns_navigation_summary_without_task_id(test_db):
     assert evaluation.intents[0].native_category == "TASK_REMINDER_SUMMARY"
     assert evaluation.intents[0].thread_id == "task-reminders"
     assert "task_id" not in evaluation.intents[0].metadata
+    assert "account_id" not in evaluation.intents[0].metadata
+    assert evaluation.intents[0].delivery_key == "ios:overdue-summary"
 
 
 def test_empty_reminder_evaluation_returns_no_intents(test_db):
-    TaskReminderService.clear_emitted_days()
-
     evaluation = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",
@@ -179,7 +194,6 @@ def test_empty_reminder_evaluation_returns_no_intents(test_db):
 
 
 def test_ineligible_task_states_and_soft_deletes_are_excluded(test_db):
-    TaskReminderService.clear_emitted_days()
     soft_deleted = _task(
         user_id="user-123",
         title="Deleted task",
@@ -223,7 +237,7 @@ def test_ineligible_task_states_and_soft_deletes_are_excluded(test_db):
 
 
 def test_invalid_timezone_and_emitted_day_return_no_intents(test_db):
-    TaskReminderService.clear_emitted_days()
+    test_db.add(UserSettings(user_id="user-123"))
     test_db.add(
         _task(
             user_id="user-123",
@@ -239,11 +253,22 @@ def test_invalid_timezone_and_emitted_day_return_no_intents(test_db):
         schedule_timezone="Invalid/Timezone",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
-    TaskReminderService.mark_emitted_day(
+    TaskReminderDeliveryStateService.mark_delivery_accepted(
+        test_db,
         user_id="user-123",
         schedule_timezone="Europe/London",
-        local_date_iso="2026-01-15",
+        local_date=date(2026, 1, 15),
+        delivery_key="ios:task:due-task",
+        accepted_at=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
+    assert TaskReminderDeliveryStateService.mark_batch_completed(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        local_date=date(2026, 1, 15),
+        completed_at=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+    test_db.commit()
     emitted = TaskReminderService.inspect_daily_reminder(
         test_db,
         user_id="user-123",

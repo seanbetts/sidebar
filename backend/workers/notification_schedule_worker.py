@@ -30,6 +30,9 @@ from api.services.notification_scheduler_run_service import (
     NotificationSchedulerRunService,
 )
 from api.services.notification_types import NotificationCategory
+from api.services.task_reminder_delivery_state_service import (
+    TaskReminderDeliveryStateService,
+)
 from api.services.task_reminder_service import TaskReminderService
 from api.services.user_settings_service import UserSettingsService
 
@@ -100,7 +103,7 @@ def _record_dispatch_decision(
 
 
 def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
-    """Persist in-process dedupe markers only after a real successful delivery."""
+    """Record the fast in-process marker after durable delivery completion."""
     try:
         local_now = current_time.astimezone(ZoneInfo(recipient.schedule_timezone))
     except ZoneInfoNotFoundError:
@@ -121,18 +124,11 @@ def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
         local_now=local_now,
         scheduled_time=recipient.scheduled_time,
     )
-    local_date_iso = local_now.date().isoformat()
-    if recipient.category == NotificationCategory.TASK_REMINDER:
-        TaskReminderService.mark_emitted_day(
-            user_id=recipient.user_id,
-            schedule_timezone=recipient.schedule_timezone,
-            local_date_iso=local_date_iso,
-        )
-    elif recipient.category == NotificationCategory.MORNING_DIGEST:
+    if recipient.category == NotificationCategory.MORNING_DIGEST:
         MorningDigestService.mark_emitted_day(
             user_id=recipient.user_id,
             schedule_timezone=recipient.schedule_timezone,
-            local_date_iso=local_date_iso,
+            local_date_iso=local_now.date().isoformat(),
         )
 
 
@@ -155,6 +151,31 @@ def _dispatch_task_reminders(
             local_now = None
 
         with user_scoped_session(recipient.user_id) as user_db:
+            if local_now is not None and not (
+                TaskReminderDeliveryStateService.try_acquire_dispatch_lock(
+                    db,
+                    user_id=recipient.user_id,
+                    schedule_timezone=recipient.schedule_timezone,
+                )
+            ):
+                _log_task_dispatch_outcome(
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    decision_reason="dispatch_in_progress",
+                )
+                _record_dispatch_decision(
+                    user_db,
+                    run_started_at=current_time,
+                    user_id=recipient.user_id,
+                    scheduled_time=recipient.scheduled_time,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_now=local_now,
+                    decision_reason="dispatch_in_progress",
+                )
+                user_db.commit()
+                continue
+
             evaluation = TaskReminderService.inspect_daily_reminder(
                 user_db,
                 user_id=recipient.user_id,
@@ -192,36 +213,77 @@ def _dispatch_task_reminders(
                 recipient.user_id,
                 environment=environment,
             )
+            ios_tokens = [token for token in tokens if token.platform == "ios"]
+            macos_tokens = [token for token in tokens if token.platform == "macos"]
+            delivery_targets = [
+                (intent, ios_tokens) for intent in intents if ios_tokens
+            ]
+            if evaluation.macos_intent is not None and macos_tokens:
+                delivery_targets.append((evaluation.macos_intent, macos_tokens))
+            accepted_delivery_keys = set(evaluation.accepted_delivery_keys)
             total_request_count = 0
             total_sent_count = 0
             last_skip_reason = None
-            for intent in intents:
+            for intent, platform_tokens in delivery_targets:
+                if intent.delivery_key in accepted_delivery_keys:
+                    continue
                 decision = NotificationPolicyService.evaluate(
                     intent,
                     settings_record=settings_record,
-                    device_tokens=tokens,
+                    device_tokens=platform_tokens,
                 )
                 if not decision.should_deliver:
                     last_skip_reason = decision.reason
                     continue
                 result = NotificationDeliveryService.deliver_intent(
                     intent,
-                    device_tokens=list(decision.matched_tokens) or tokens,
+                    device_tokens=list(decision.matched_tokens) or platform_tokens,
                     db=user_db,
                 )
                 total_request_count += result.request_count
                 total_sent_count += result.sent_count
-                if result.sent_count == 0:
+                if result.sent_count > 0:
+                    if intent.delivery_key is None:  # pragma: no cover - invariant
+                        raise RuntimeError("Task reminder intent has no delivery key")
+                    if local_now is None:  # pragma: no cover - validated above
+                        raise RuntimeError("Task reminder local date is unavailable")
+                    TaskReminderDeliveryStateService.mark_delivery_accepted(
+                        user_db,
+                        user_id=recipient.user_id,
+                        schedule_timezone=recipient.schedule_timezone,
+                        local_date=local_now.date(),
+                        delivery_key=intent.delivery_key,
+                        accepted_at=current_time,
+                    )
+                    user_db.commit()
+                    accepted_delivery_keys.add(intent.delivery_key)
+                else:
                     last_skip_reason = result.reason
 
+            batch_completed = False
+            if accepted_delivery_keys and local_now is not None:
+                batch_completed = TaskReminderDeliveryStateService.mark_batch_completed(
+                    user_db,
+                    user_id=recipient.user_id,
+                    schedule_timezone=recipient.schedule_timezone,
+                    local_date=local_now.date(),
+                    completed_at=current_time,
+                )
+                user_db.commit()
+                if batch_completed:
+                    _mark_recipient_delivered(recipient, current_time=current_time)
+
             if total_sent_count > 0:
-                _mark_recipient_delivered(recipient, current_time=current_time)
                 decision_reason = "delivered"
                 detail = (
-                    f"intent_count={len(intents)} request_count={total_request_count} "
+                    f"intent_count={len(delivery_targets)} "
+                    f"request_count={total_request_count} "
                     f"sent_count={total_sent_count}"
                 )
                 delivered_count += total_sent_count
+            elif batch_completed:
+                decision_reason = "already_accepted"
+                detail = "all accepted intents were recovered from durable state"
             else:
                 decision_reason = (
                     "policy_blocked" if total_request_count == 0 else "delivery_skipped"

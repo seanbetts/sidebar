@@ -16,6 +16,9 @@ from api.services.notification_scheduler_decision_service import (
 )
 from api.services.notification_types import NotificationCategory
 from api.services.settings_notifications import resolve_notification_preferences
+from api.services.task_reminder_delivery_state_service import (
+    TaskReminderDeliveryStateService,
+)
 
 logger = logging.getLogger("notification_schedule.service")
 
@@ -172,6 +175,26 @@ class NotificationScheduleService:
                     local_now=local_now,
                 )
                 continue
+
+            if category == NotificationCategory.TASK_REMINDER:
+                delivery_progress = TaskReminderDeliveryStateService.get_progress(
+                    db,
+                    user_id=user_id,
+                    schedule_timezone=schedule_timezone,
+                    local_date=local_now.date(),
+                )
+                if delivery_progress.is_complete:
+                    cls._record_internal_decision(
+                        db,
+                        user_id=user_id,
+                        category=category,
+                        run_started_at=current_time,
+                        decision_reason="duplicate_window",
+                        scheduled_time=scheduled_time,
+                        schedule_timezone=schedule_timezone,
+                        local_now=local_now,
+                    )
+                    continue
 
             due_users.append(
                 ScheduledNotificationRecipient(

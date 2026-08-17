@@ -14,6 +14,7 @@ from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
+from api.models.task_reminder_delivery_state import TaskReminderDeliveryState
 from api.models.user_ai_provider_key import UserAIProviderKey
 from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
@@ -44,6 +45,7 @@ class UserDataPurgeService:
     _SUMMARY_TABLES = (
         "website_processing_jobs",
         "task_operation_log",
+        "task_reminder_delivery_states",
         "file_processing_jobs",
         "file_derivatives",
         "tasks",
@@ -79,6 +81,11 @@ class UserDataPurgeService:
         summary.rows_deleted["task_operation_log"] = (
             db.query(TaskOperationLog)
             .filter(TaskOperationLog.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
+        summary.rows_deleted["task_reminder_delivery_states"] = (
+            db.query(TaskReminderDeliveryState)
+            .filter(TaskReminderDeliveryState.user_id == user_id)
             .delete(synchronize_session=False)
         )
 

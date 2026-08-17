@@ -41,6 +41,7 @@ class NotificationIntent:
     metadata: dict[str, Any] = field(default_factory=dict)
     required_capabilities: tuple[str, ...] = ()
     requires_away: bool = False
+    delivery_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

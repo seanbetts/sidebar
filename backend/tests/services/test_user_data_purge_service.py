@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 
 from api.models.conversation import Conversation
 from api.models.device_installation import DeviceInstallation, DeviceInstallationUser
@@ -11,6 +12,7 @@ from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
+from api.models.task_reminder_delivery_state import TaskReminderDeliveryState
 from api.models.user_ai_provider_key import UserAIProviderKey
 from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
@@ -22,6 +24,9 @@ from api.services.file_ingestion_service import FileIngestionService
 from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.task_service import TaskService
+from api.services.task_reminder_delivery_state_service import (
+    TaskReminderDeliveryStateService,
+)
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_data_purge_service import UserDataPurgeService
 from api.services.user_settings_service import UserSettingsService
@@ -134,6 +139,14 @@ def _seed_user_scope(test_db, *, user_id: str, with_profile_image: bool) -> None
         profile_image_path=profile_image_path,
     )
     test_db.flush()
+    TaskReminderDeliveryStateService.mark_delivery_accepted(
+        test_db,
+        user_id=user_id,
+        schedule_timezone="Europe/London",
+        local_date=date(2026, 1, 15),
+        delivery_key="ios:task:purge-task",
+        accepted_at=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
 
     # Seed a second user on the same installation so purge does not delete
     # installations that still belong to another account.
@@ -182,6 +195,7 @@ def test_purge_user_data_removes_all_user_scoped_rows_and_profile_image(
     assert summary.rows_deleted["websites"] == 1
     assert summary.rows_deleted["conversations"] == 1
     assert summary.rows_deleted["user_settings"] == 1
+    assert summary.rows_deleted["task_reminder_delivery_states"] == 1
     assert summary.rows_deleted["file_processing_jobs"] == 1
     assert summary.rows_deleted["file_derivatives"] == 1
     assert summary.rows_deleted["device_installation_users"] == 2
@@ -205,6 +219,10 @@ def test_purge_user_data_removes_all_user_scoped_rows_and_profile_image(
     assert test_db.query(Website).filter_by(user_id="user-1").count() == 0
     assert test_db.query(WebsiteProcessingJob).filter_by(user_id="user-1").count() == 0
     assert test_db.query(TaskOperationLog).filter_by(user_id="user-1").count() == 0
+    assert (
+        test_db.query(TaskReminderDeliveryState).filter_by(user_id="user-1").count()
+        == 0
+    )
 
     assert (
         test_db.query(DeviceInstallationUser).filter_by(user_id="user-2").count() == 1

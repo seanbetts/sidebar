@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import text
 
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
@@ -24,7 +25,6 @@ from api.services.notification_types import (
     PushNotificationSendResult,
 )
 from api.services.push_notification_service import PushNotificationService
-from api.services.task_reminder_service import TaskReminderService
 from workers import notification_schedule_worker
 from workers.notification_schedule_worker import execute_once, process_once
 
@@ -45,9 +45,13 @@ def _task(
     )
 
 
+def _simulate_notification_worker_restart() -> None:
+    """Discard all process-local scheduler markers between worker invocations."""
+    NotificationScheduleService.clear_due_windows()
+
+
 def test_task_reminders_retry_within_same_window_after_unsuccessful_dispatch(test_db):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     test_db.add(
         UserSettings(
@@ -92,12 +96,11 @@ def test_task_reminders_retry_within_same_window_after_unsuccessful_dispatch(tes
     assert dispatched_counts == [1, 1]
 
 
-def test_successful_task_reminders_are_deduped_within_same_window(
+def test_dual_platform_task_reminders_keep_legacy_macos_summary(
     test_db,
     monkeypatch,
 ):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     captured_requests = []
 
@@ -133,6 +136,15 @@ def test_successful_task_reminders_are_deduped_within_same_window(
         environment="dev",
         capabilities={},
     )
+    DeviceTokenService.register_token(
+        test_db,
+        "user-123",
+        installation_id="install-macos",
+        token="token-macos",
+        platform="macos",
+        environment="dev",
+        capabilities={},
+    )
     first_due = _task(
         user_id="user-123",
         title="First due task",
@@ -162,6 +174,7 @@ def test_successful_task_reminders_are_deduped_within_same_window(
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
         digest_dispatcher=lambda db, due_users, *, now=None: 0,
     )
+    _simulate_notification_worker_restart()
     second_stats = process_once(
         now=datetime(2026, 1, 15, 9, 0, 30, tzinfo=UTC),
         digest_dispatcher=lambda db, due_users, *, now=None: 0,
@@ -169,21 +182,51 @@ def test_successful_task_reminders_are_deduped_within_same_window(
 
     assert first_stats["task_reminders_due"] == 1
     assert second_stats["task_reminders_due"] == 0
-    assert first_stats["task_reminders_dispatched"] == 3
+    assert first_stats["task_reminders_dispatched"] == 4
     assert second_stats["task_reminders_dispatched"] == 0
-    assert len(captured_requests) == 3
-    assert [request.payload["aps"]["category"] for request in captured_requests] == [
+    ios_requests = [request for request in captured_requests if request.platform == "ios"]
+    macos_requests = [
+        request for request in captured_requests if request.platform == "macos"
+    ]
+    assert len(ios_requests) == 3
+    assert [request.payload["aps"]["category"] for request in ios_requests] == [
         "TASK_REMINDER_ACTIONABLE",
         "TASK_REMINDER_ACTIONABLE",
         "TASK_REMINDER_SUMMARY",
     ]
     assert {
-        request.payload["aps"]["thread-id"] for request in captured_requests
+        request.payload["aps"]["thread-id"] for request in ios_requests
     } == {"task-reminders"}
-    assert captured_requests[0].payload["notification_metadata"]["task_id"] == str(
+    assert ios_requests[0].payload["notification_metadata"]["task_id"] == str(
         first_due.id
     )
-    assert "task_id" not in captured_requests[0].payload
+    assert ios_requests[0].payload["notification_metadata"]["account_id"] == (
+        "user-123"
+    )
+    assert "task_id" not in ios_requests[0].payload
+    assert "account_id" not in ios_requests[0].payload
+    assert "account_id" not in ios_requests[2].payload["notification_metadata"]
+
+    assert len(macos_requests) == 1
+    macos_payload = macos_requests[0].payload
+    assert macos_payload["aps"] == {
+        "alert": {
+            "title": "2 tasks due today",
+            "body": (
+                "First due task is due today, plus 1 more due today and 1 overdue."
+            ),
+        },
+        "sound": "default",
+        "category": "task_reminder",
+    }
+    assert macos_payload["notification_metadata"] == {
+        "overdue_count": 1,
+        "due_today_count": 2,
+        "focus_task_id": str(first_due.id),
+        "focus_task_title": "First due task",
+        "focus_scope": "today",
+        "scope": "today",
+    }
 
 
 def test_successful_task_reminder_dispatch_logs_delivered_outcome(caplog):
@@ -229,7 +272,6 @@ def test_unsuccessful_task_reminder_dispatch_retains_not_delivered_wording(caplo
 
 def test_partially_successful_task_reminder_batch_is_deduped(test_db, monkeypatch):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     delivery_calls = []
 
@@ -293,6 +335,7 @@ def test_partially_successful_task_reminder_batch_is_deduped(test_db, monkeypatc
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
         digest_dispatcher=lambda db, due_users, *, now=None: 0,
     )
+    _simulate_notification_worker_restart()
     second_stats = process_once(
         now=datetime(2026, 1, 15, 9, 0, 30, tzinfo=UTC),
         digest_dispatcher=lambda db, due_users, *, now=None: 0,
@@ -304,9 +347,116 @@ def test_partially_successful_task_reminder_batch_is_deduped(test_db, monkeypatc
     assert len(delivery_calls) == 3
 
 
+def test_interrupted_batch_resumes_without_replaying_accepted_intents(
+    test_db,
+    monkeypatch,
+):
+    NotificationScheduleService.clear_due_windows()
+    MorningDigestService.clear_emitted_days()
+    delivery_titles: list[str] = []
+
+    def _interrupt_after_first_acceptance(intent, *, device_tokens=None, db=None):
+        _ = device_tokens
+        _ = db
+        delivery_titles.append(str(intent.title))
+        if len(delivery_titles) == 1:
+            return NotificationDeliveryResult(
+                status="sent",
+                request_count=1,
+                sent_count=1,
+            )
+        raise RuntimeError("worker interrupted")
+
+    monkeypatch.setattr(
+        NotificationDeliveryService,
+        "deliver_intent",
+        staticmethod(_interrupt_after_first_acceptance),
+    )
+    test_db.add(
+        UserSettings(
+            user_id="user-123",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    DeviceTokenService.register_token(
+        test_db,
+        "user-123",
+        installation_id="install-123",
+        token="token-123",
+        platform="ios",
+        environment="dev",
+        capabilities={},
+    )
+    first_due = _task(
+        user_id="user-123",
+        title="First due task",
+        deadline=date(2026, 1, 15),
+    )
+    first_due.created_at = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+    second_due = _task(
+        user_id="user-123",
+        title="Second due task",
+        deadline=date(2026, 1, 15),
+    )
+    second_due.created_at = datetime(2026, 1, 2, 9, 0, tzinfo=UTC)
+    test_db.add_all(
+        [
+            second_due,
+            first_due,
+            _task(
+                user_id="user-123",
+                title="Overdue task",
+                deadline=date(2026, 1, 14),
+            ),
+        ]
+    )
+    test_db.commit()
+
+    with pytest.raises(RuntimeError, match="worker interrupted"):
+        process_once(
+            now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+            digest_dispatcher=lambda db, due_users, *, now=None: 0,
+        )
+
+    _simulate_notification_worker_restart()
+
+    def _deliver_remaining(intent, *, device_tokens=None, db=None):
+        _ = device_tokens
+        _ = db
+        delivery_titles.append(str(intent.title))
+        return NotificationDeliveryResult(
+            status="sent",
+            request_count=1,
+            sent_count=1,
+        )
+
+    monkeypatch.setattr(
+        NotificationDeliveryService,
+        "deliver_intent",
+        staticmethod(_deliver_remaining),
+    )
+
+    resumed_stats = process_once(
+        now=datetime(2026, 1, 15, 9, 0, 30, tzinfo=UTC),
+        digest_dispatcher=lambda db, due_users, *, now=None: 0,
+    )
+
+    assert resumed_stats["task_reminders_due"] == 1
+    assert resumed_stats["task_reminders_dispatched"] == 2
+    assert delivery_titles == [
+        "First due task",
+        "Second due task",
+        "Second due task",
+        "1 task overdue",
+    ]
+
+
 def test_zero_success_task_reminder_batch_retries_whole_batch(test_db, monkeypatch):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     delivery_calls = []
 
@@ -386,7 +536,6 @@ def test_scheduled_reminder_dispatch_records_one_audit_row_per_installation(
     monkeypatch,
 ):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
 
     def _fake_send_requests(requests):
@@ -463,7 +612,6 @@ def test_scheduled_reminder_dispatch_records_one_audit_row_per_installation(
 
 def test_execute_once_persists_scheduler_heartbeat_on_success(test_db):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
 
     stats = execute_once(
@@ -529,7 +677,6 @@ def test_execute_once_persists_scheduler_heartbeat_on_failure(test_db):
 
 def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, monkeypatch):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     monkeypatch.setenv("INTERNAL_DIAGNOSTICS_ENABLED", "true")
     monkeypatch.setenv("INTERNAL_DIAGNOSTIC_USER_IDS", "user-123")
@@ -567,7 +714,6 @@ def test_no_reminder_intent_is_logged_for_internal_diagnostics_users(test_db, mo
 
 def test_due_task_reminder_non_delivery_is_logged_for_worker_ops(test_db, caplog):
     NotificationScheduleService.clear_due_windows()
-    TaskReminderService.clear_emitted_days()
     MorningDigestService.clear_emitted_days()
     test_db.add(
         UserSettings(
@@ -850,6 +996,11 @@ def test_task_dispatch_uses_user_scoped_sessions(monkeypatch):
         notification_schedule_worker,
         "_record_dispatch_decision",
         lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        notification_schedule_worker.TaskReminderDeliveryStateService,
+        "try_acquire_dispatch_lock",
+        lambda db, *, user_id, schedule_timezone: True,
     )
     monkeypatch.setattr(
         notification_schedule_worker,
