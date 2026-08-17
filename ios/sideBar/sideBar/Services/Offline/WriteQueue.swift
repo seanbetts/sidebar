@@ -257,9 +257,15 @@ extension WriteQueue {
             return true
         } catch is CancellationError {
             if !didExecuteWrite {
-                await restoreFetchedWriteAfterCancellation(fetchedWrite)
+                await restoreFetchedWriteState(
+                    fetchedWrite,
+                    restoreAttemptState: fetchedWrite.restoresOriginalAttemptState
+                )
             }
             throw CancellationError()
+        } catch WriteQueueError.accountAuthorizationUnavailable {
+            await restoreFetchedWriteState(fetchedWrite, restoreAttemptState: true)
+            return false
         } catch WriteQueueError.accountScopeChanged {
             try await deleteWrite(id: write.id)
             return true
@@ -280,7 +286,10 @@ extension WriteQueue {
                 do {
                     try await retrySleep(delay)
                 } catch is CancellationError {
-                    await restoreFetchedWriteAfterCancellation(fetchedWrite)
+                    await restoreFetchedWriteState(
+                        fetchedWrite,
+                        restoreAttemptState: fetchedWrite.restoresOriginalAttemptState
+                    )
                     throw CancellationError()
                 }
             }
@@ -400,7 +409,7 @@ extension WriteQueue {
         }
     }
 
-    private func restoreFetchedWriteAfterCancellation(_ fetchedWrite: FetchedPendingWrite) async {
+    private func restoreFetchedWriteState(_ fetchedWrite: FetchedPendingWrite, restoreAttemptState: Bool) async {
         do {
             try await performBackgroundTask { context in
                 let request = PendingWrite.fetchRequest()
@@ -411,13 +420,13 @@ extension WriteQueue {
                 write.lastError = fetchedWrite.recoveryState.lastError
                 write.conflictReason = fetchedWrite.recoveryState.conflictReason
                 write.serverSnapshot = fetchedWrite.recoveryState.serverSnapshot
-                if fetchedWrite.restoresOriginalAttemptState {
+                if restoreAttemptState {
                     write.attempts = fetchedWrite.recoveryState.attempts
                     write.lastAttemptAt = fetchedWrite.recoveryState.lastAttemptAt
                 }
             }
         } catch {
-            logger.error("Failed to restore cancelled write: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to restore fetched write state: \(error.localizedDescription, privacy: .public)")
         }
     }
 

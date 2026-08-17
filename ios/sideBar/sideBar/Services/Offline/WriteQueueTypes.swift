@@ -62,6 +62,7 @@ enum WriteQueueError: Error {
     case missingQueue
     case queueFull
     case accountScopeChanged
+    case accountAuthorizationUnavailable
     case unknownEntityType(String)
 }
 

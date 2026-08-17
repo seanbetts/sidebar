@@ -146,6 +146,114 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
         }
     }
 
+    func testExecuteTreatsUnsupportedFixedAuthorizationAsTerminal() async throws {
+        let api = TasksViewModelAPIStub()
+        let store = TasksWriteQueueStoreSpy()
+        let scopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        let accountId = UUID()
+        let accountScope = try XCTUnwrap(
+            scopeCoordinator.activate(accountId: accountId.uuidString)
+        )
+        let authorizationToken = try makeUnsignedJWT(subject: accountId.uuidString)
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            accountScopeCoordinator: scopeCoordinator,
+            authorizationTokenProvider: { authorizationToken }
+        )
+
+        do {
+            try await executor.execute(
+                write: makeAccountBoundWrite(
+                    operationId: "notification-op",
+                    taskId: UUID().uuidString,
+                    scope: accountScope
+                )
+            )
+            XCTFail("Unsupported fixed authorization must be terminal")
+        } catch WriteQueueError.accountScopeChanged {
+            // Expected: WriteQueue will discard this operation instead of retrying it.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertTrue(store.appliedOperationIds.isEmpty)
+        XCTAssertNil(store.lastToken)
+    }
+
+    func testAccountBoundWriteWaitsForSameAccountAuthorizationRecovery() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let api = TasksSyncAPIStub()
+        let store = TasksWriteQueueStoreSpy()
+        let scopeCoordinator = TaskNotificationAccountScopeCoordinator()
+        let accountId = UUID()
+        let accountScope = try XCTUnwrap(
+            scopeCoordinator.activate(accountId: accountId.uuidString)
+        )
+        var authorizationToken: String?
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            accountScopeCoordinator: scopeCoordinator,
+            authorizationTokenProvider: { authorizationToken }
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false,
+            retrySleep: { _ in }
+        )
+        let operationId = "stale-recoverable-notification-op"
+        let taskId = UUID().uuidString
+        let payload = TaskAccountBoundOperationPayload(
+            operation: TaskOperationPayload(
+                operationId: operationId,
+                op: "complete",
+                id: taskId
+            ),
+            accountScope: accountScope
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: taskId,
+            payload: payload
+        )
+
+        await queue.processQueue()
+
+        let pendingRequest = PendingWrite.fetchRequest()
+        let pendingWrites = try persistence.container.viewContext.fetch(pendingRequest)
+        let deferredWrite = try XCTUnwrap(pendingWrites.first)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertEqual(deferredWrite.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertEqual(deferredWrite.attempts, 0)
+        XCTAssertNil(deferredWrite.lastError)
+        XCTAssertEqual(queue.pendingCount, 1)
+        XCTAssertEqual(api.syncCallCount, 0)
+        XCTAssertTrue(api.accountBoundAuthorizationTokens.isEmpty)
+        XCTAssertTrue(store.appliedOperationIds.isEmpty)
+        XCTAssertNil(store.lastToken)
+
+        let recoveredToken = try makeUnsignedJWT(subject: accountId.uuidString)
+        authorizationToken = recoveredToken
+        await queue.processQueue()
+        await queue.processQueue()
+
+        let remainingWrites = try persistence.container.viewContext.fetch(pendingRequest)
+        XCTAssertTrue(remainingWrites.isEmpty)
+        XCTAssertEqual(queue.pendingCount, 0)
+        XCTAssertEqual(api.syncCallCount, 1)
+        XCTAssertEqual(api.accountBoundAuthorizationTokens, [recoveredToken])
+        XCTAssertEqual(store.appliedOperationIds, [operationId])
+        XCTAssertEqual(store.lastToken, "token-1")
+    }
+
     func testExecuteKeepsAccountBoundWriteOnCapturedAuthorizationToken() async throws {
         let barrier = TasksAccountBoundSyncBarrier()
         let api = TasksSyncAPIStub(accountBoundSyncBarrier: barrier)

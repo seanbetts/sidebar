@@ -36,10 +36,14 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
         let request = TaskSyncRequest(lastSync: store.lastSyncToken(), operations: [operation])
         let response: TaskSyncResponse
         if let fixedAuthorizationToken {
-            response = try await api.sync(
-                request,
-                authorizationToken: fixedAuthorizationToken
-            )
+            do {
+                response = try await api.sync(
+                    request,
+                    authorizationToken: fixedAuthorizationToken
+                )
+            } catch TasksProvidingError.fixedAuthorizationUnsupported {
+                throw WriteQueueError.accountScopeChanged
+            }
         } else {
             response = try await api.sync(request)
         }
@@ -70,8 +74,10 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
         guard let authorizationTokenProvider else {
             throw WriteQueueError.accountScopeChanged
         }
-        guard let authorizationToken = authorizationTokenProvider(),
-              let tokenSubject = JWTClaims.subject(from: authorizationToken),
+        guard let authorizationToken = authorizationTokenProvider() else {
+            throw WriteQueueError.accountAuthorizationUnavailable
+        }
+        guard let tokenSubject = JWTClaims.subject(from: authorizationToken),
               let tokenAccountId = UUID(uuidString: tokenSubject),
               tokenAccountId == accountScope.accountId else {
             throw WriteQueueError.accountScopeChanged
