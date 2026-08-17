@@ -25,6 +25,59 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(widgetTask.deadline, "2026-02-10")
     }
 
+    func testTaskCompletionOverlayAccountsForKnownDueTodayOffscreenTaskOnlyOnce() {
+        let taskId = UUID().uuidString
+        let snapshot = WidgetTaskData(
+            tasks: (0..<10).map { WidgetTask(id: "visible-\($0)", title: "Visible \($0)") },
+            totalCount: 11,
+            progressCompletedCount: 0,
+            progressTotalCount: 11,
+            lastUpdated: Date(timeIntervalSince1970: 1_000)
+        )
+        let operation = WidgetPendingOperation(
+            itemId: taskId,
+            action: TaskWidgetAction.complete
+        )
+
+        let once = WidgetTaskPendingCompletionOverlay.apply(
+            to: snapshot,
+            pendingOperations: [operation],
+            knownDueTodayTaskIds: [taskId]
+        )
+        let twice = WidgetTaskPendingCompletionOverlay.apply(
+            to: once,
+            pendingOperations: [operation],
+            knownDueTodayTaskIds: [taskId]
+        )
+
+        XCTAssertEqual(once.tasks.count, 10)
+        XCTAssertEqual(once.totalCount, 10)
+        XCTAssertEqual(once.progressCompletedCount, 1)
+        XCTAssertEqual(once.progressTotalCount, 11)
+        XCTAssertEqual(once.optimisticallyCompletedTaskIds, [taskId])
+        XCTAssertEqual(twice, once)
+    }
+
+    func testTaskCompletionOverlayDoesNotDecrementForUnknownOffscreenTask() {
+        let snapshot = WidgetTaskData(
+            tasks: [WidgetTask(id: "visible", title: "Visible")],
+            totalCount: 2,
+            progressCompletedCount: 0,
+            progressTotalCount: 2
+        )
+        let operation = WidgetPendingOperation(
+            itemId: UUID().uuidString,
+            action: TaskWidgetAction.complete
+        )
+
+        let updated = WidgetTaskPendingCompletionOverlay.apply(
+            to: snapshot,
+            pendingOperations: [operation]
+        )
+
+        XCTAssertEqual(updated, snapshot)
+    }
+
     func testWidgetNoteInitFromFileNodeNormalizesNameAndMapsMetadata() {
         let timestamp: Double = 1_700_000_000
         let node = FileNode(
@@ -157,5 +210,6 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(decoded.totalCount, 3)
         XCTAssertEqual(decoded.progressCompletedCount, 0)
         XCTAssertEqual(decoded.progressTotalCount, 3)
+        XCTAssertTrue(decoded.optimisticallyCompletedTaskIds.isEmpty)
     }
 }

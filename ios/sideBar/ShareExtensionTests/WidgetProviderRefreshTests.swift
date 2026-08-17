@@ -88,6 +88,62 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(refreshed.progressTotalCount, 2)
     }
 
+    func testTasksRefreshPreservesOptimisticCompletionAcrossStaleSameDayResponse() async throws {
+        let taskId = UUID().uuidString
+        let client = makeAPIClient { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/tasks/lists/today")
+            return (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!,
+                Data(
+                    """
+                    {
+                      "scope": "today",
+                      "generatedAt": "2026-03-31T10:00:00Z",
+                      "tasks": [
+                        {
+                          "id": "\(taskId)",
+                          "title": "Stale task",
+                          "status": "open",
+                          "deadline": "2026-03-31",
+                          "notes": null,
+                          "projectId": null,
+                          "groupId": null
+                        }
+                      ],
+                      "projects": [],
+                      "groups": []
+                    }
+                    """.utf8
+                )
+            )
+        }
+        let now = Date(timeIntervalSince1970: 1_000)
+        let previousSnapshot = WidgetTaskData(
+            tasks: [],
+            totalCount: 0,
+            progressCompletedCount: 1,
+            progressTotalCount: 1,
+            optimisticallyCompletedTaskIds: [taskId],
+            lastUpdated: now
+        )
+
+        let refreshed = try await TasksWidgetRefreshClient(apiClient: client).refreshTodayTasks(
+            previousSnapshot: previousSnapshot,
+            now: now.addingTimeInterval(60)
+        )
+
+        XCTAssertTrue(refreshed.tasks.isEmpty)
+        XCTAssertEqual(refreshed.totalCount, 0)
+        XCTAssertEqual(refreshed.progressCompletedCount, 1)
+        XCTAssertEqual(refreshed.progressTotalCount, 1)
+        XCTAssertEqual(refreshed.optimisticallyCompletedTaskIds, [taskId])
+    }
+
     func testTasksRefreshUsesProjectScopeEndpointWhenConfigured() async throws {
         let client = makeAPIClient { request in
             XCTAssertEqual(request.url?.path, "/api/v1/tasks/projects/project-1/tasks")

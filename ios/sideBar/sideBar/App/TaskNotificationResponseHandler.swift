@@ -4,15 +4,21 @@ enum TaskNotificationHandlingResult: Equatable {
     case opened
     case completionQueued
     case completionDeclined
+    case completionFailed(TaskNotificationCompletionFailure)
     case ignored
+}
+
+struct TaskNotificationAuthContext: Equatable {
+    let authState: AuthState
+    let accountId: String
 }
 
 @MainActor
 struct TaskNotificationResponseHandler {
-    let authState: () -> AuthState
+    let authContext: () -> TaskNotificationAuthContext?
     let refresh: ([AnyHashable: Any]) -> Void
     let openRoute: (URL) -> Void
-    let completeTask: (String) async -> Bool
+    let completeTask: (String) async -> TaskNotificationCompletionResult
 
     func handle(
         actionIdentifier: String,
@@ -30,12 +36,21 @@ struct TaskNotificationResponseHandler {
                 openRoute(route.url)
             }
             return .opened
-        case .complete(let taskId):
-            let currentAuthState = authState()
-            guard currentAuthState == .active || currentAuthState == .staleRecoverable else {
+        case .complete(let taskId, let accountId):
+            guard let context = authContext(),
+                  context.authState == .active || context.authState == .staleRecoverable,
+                  TaskNotificationContract.accountIdentifier(
+                    accountId,
+                    matches: context.accountId
+                  ) else {
                 return .completionDeclined
             }
-            return await completeTask(taskId) ? .completionQueued : .completionDeclined
+            switch await completeTask(taskId) {
+            case .queued:
+                return .completionQueued
+            case .failed(let failure):
+                return .completionFailed(failure)
+            }
         case .ignore:
             return .ignored
         }

@@ -1,8 +1,27 @@
 import Foundation
 import sideBarShared
 
+enum TaskNotificationCompletionFailure: Equatable {
+    case queueFull
+    case unavailable
+}
+
+enum TaskNotificationCompletionResult: Equatable {
+    case queued
+    case failed(TaskNotificationCompletionFailure)
+
+    var isQueued: Bool {
+        self == .queued
+    }
+}
+
 extension TasksViewModel {
     private static let recurringScheduleToastDuration: TimeInterval = 4
+
+    private enum MutationFailurePresentation {
+        case foreground
+        case silent
+    }
 
     func taskSelectionKind(_ selection: TaskSelection) -> String {
         switch selection {
@@ -47,32 +66,48 @@ extension TasksViewModel {
 
     @discardableResult
     public func completeTask(task: TaskItem) async -> Bool {
-        await queueTaskCompletion(
+        let result = await queueTaskCompletion(
             taskId: task.id,
-            clientUpdatedAt: task.updatedAt
+            clientUpdatedAt: task.updatedAt,
+            refreshWidget: true,
+            failurePresentation: .foreground
         )
+        return result.isQueued
     }
 
     @discardableResult
-    public func completeTask(taskId: String) async -> Bool {
-        let queued = await queueTaskCompletion(taskId: taskId, clientUpdatedAt: nil)
-        if queued {
+    func completeDueTodayTaskFromNotification(
+        taskId: String
+    ) async -> TaskNotificationCompletionResult {
+        let result = await queueTaskCompletion(
+            taskId: taskId,
+            clientUpdatedAt: nil,
+            refreshWidget: selection != .today,
+            failurePresentation: .silent
+        )
+        if result.isQueued {
             updateTodayWidgetSnapshotAfterCompletion(taskId: taskId)
         }
-        return queued
+        return result
     }
 
     private func queueTaskCompletion(
         taskId: String,
-        clientUpdatedAt: String?
-    ) async -> Bool {
+        clientUpdatedAt: String?,
+        refreshWidget: Bool,
+        failurePresentation: MutationFailurePresentation
+    ) async -> TaskNotificationCompletionResult {
         let operation = TaskOperationPayload(
             operationId: TaskOperationId.make(),
             op: "complete",
             id: taskId,
             clientUpdatedAt: clientUpdatedAt
         )
-        return await queueLocalFirstOperation(operation)
+        return await queueLocalFirstOperationResult(
+            operation,
+            refreshWidget: refreshWidget,
+            failurePresentation: failurePresentation
+        )
     }
 
     private func updateTodayWidgetSnapshotAfterCompletion(taskId: String) {
@@ -83,7 +118,8 @@ extension TasksViewModel {
         )
         let updated = WidgetTaskPendingCompletionOverlay.apply(
             to: snapshot,
-            pendingOperations: [operation]
+            pendingOperations: [operation],
+            knownDueTodayTaskIds: [taskId]
         )
         widgetDataManager.storeTaskData(updated, for: .today)
     }
@@ -233,6 +269,18 @@ extension TasksViewModel {
         _ operation: TaskOperationPayload,
         refreshWidget: Bool = true
     ) async -> Bool {
+        await queueLocalFirstOperationResult(
+            operation,
+            refreshWidget: refreshWidget,
+            failurePresentation: .foreground
+        ).isQueued
+    }
+
+    private func queueLocalFirstOperationResult(
+        _ operation: TaskOperationPayload,
+        refreshWidget: Bool = true,
+        failurePresentation: MutationFailurePresentation
+    ) async -> TaskNotificationCompletionResult {
         do {
             try await store.enqueueOperation(operation)
             store.applyLocalOperation(operation)
@@ -242,13 +290,17 @@ extension TasksViewModel {
                 updateWidgetDataAfterOfflineOperation(operation)
             }
             updateCountsAfterLocalOperation(operation)
-            return true
+            return .queued
         } catch WriteQueueError.queueFull {
-            toastCenter.show(message: "Sync queue full. Review pending changes.")
-            return false
+            if failurePresentation == .foreground {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+            }
+            return .failed(.queueFull)
         } catch {
-            setLocalErrorMessage("Failed to queue task changes")
-            return false
+            if failurePresentation == .foreground {
+                setLocalErrorMessage("Failed to queue task changes")
+            }
+            return .failed(.unavailable)
         }
     }
 

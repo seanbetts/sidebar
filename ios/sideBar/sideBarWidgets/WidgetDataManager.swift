@@ -276,7 +276,8 @@ extension WidgetDataManager {
       tasks: tasks,
       totalCount: totalCount,
       progressCompletedCount: progressCompletedCount ?? existing.progressCompletedCount,
-      progressTotalCount: progressTotalCount ?? max(totalCount, existing.progressTotalCount)
+      progressTotalCount: progressTotalCount ?? max(totalCount, existing.progressTotalCount),
+      optimisticallyCompletedTaskIds: existing.optimisticallyCompletedTaskIds
     )
     storeTaskData(data, for: selection)
   }

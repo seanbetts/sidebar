@@ -73,6 +73,67 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataCleared(environment)
     }
 
+    func testRefreshAuthStateClearsDeliveredTaskActionsWhenUserScopeChanges() {
+        isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
+        var cleanupCalls = 0
+        let environment = makeEnvironment(
+            authState: .active,
+            userId: "user-new",
+            clearDeliveredActionableTaskNotifications: { cleanupCalls += 1 }
+        )
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(cleanupCalls, 1)
+    }
+
+    func testNotificationCompletionDeclinesDuringUnreconciledAccountTransition() async throws {
+        let previousAccountId = UUID().uuidString
+        let nextAccountId = UUID().uuidString
+        isolatedDefaults.defaults.set(previousAccountId, forKey: cacheScopeKey)
+        let environment = makeEnvironment(authState: .active, userId: previousAccountId)
+        let authSession = try XCTUnwrap(environment.container.authSession as? MutableAuthSession)
+        authSession.userId = nextAccountId
+        let initialSnapshot = WidgetTaskData(
+            tasks: [WidgetTask(id: "visible", title: "Visible")],
+            totalCount: 1
+        )
+        environment.storage.widgetDataManager.storeTaskData(initialSnapshot, for: .today)
+        var queuedTaskIds: [String] = []
+        let handler = TaskNotificationResponseHandler(
+            authContext: { environment.taskNotificationAuthContext },
+            refresh: { _ in XCTFail("Account transition must not refresh") },
+            openRoute: { _ in XCTFail("Account transition must not navigate") },
+            completeTask: { taskId in
+                queuedTaskIds.append(taskId)
+                environment.storage.widgetDataManager.storeTaskData(.empty, for: .today)
+                return .queued
+            }
+        )
+
+        let result = await handler.handle(
+            actionIdentifier: "TASK_MARK_COMPLETE",
+            userInfo: [
+                "aps": ["category": "TASK_REMINDER_ACTIONABLE"],
+                "notification_metadata": [
+                    "task_id": UUID().uuidString,
+                    "account_id": nextAccountId
+                ]
+            ],
+            completion: {}
+        )
+
+        XCTAssertEqual(result, .completionDeclined)
+        XCTAssertTrue(queuedTaskIds.isEmpty)
+        let storedSnapshot = environment.storage.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(storedSnapshot.tasks, initialSnapshot.tasks)
+        XCTAssertEqual(storedSnapshot.totalCount, initialSnapshot.totalCount)
+        XCTAssertEqual(
+            storedSnapshot.optimisticallyCompletedTaskIds,
+            initialSnapshot.optimisticallyCompletedTaskIds
+        )
+    }
+
     func testRefreshAuthStatePerformsOneTimeMigrationClearWhenScopeMissingAndActive() {
         let environment = makeEnvironment(authState: .active, userId: "user-migrated")
         primeCachedData(environment)
@@ -154,6 +215,20 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataCleared(environment)
     }
 
+    func testRefreshAuthStateClearsDeliveredTaskActionsOnSignedOutReset() {
+        isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
+        var cleanupCalls = 0
+        let environment = makeEnvironment(
+            authState: .signedOut,
+            userId: nil,
+            clearDeliveredActionableTaskNotifications: { cleanupCalls += 1 }
+        )
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(cleanupCalls, 1)
+    }
+
     func testRefreshAuthStatePreservesCachedDataWhenSignedOutStateIsOfflineRecoverable() {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         isolatedDefaults.defaults.set("person@example.com", forKey: lastSignInEmailKey)
@@ -171,6 +246,21 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         XCTAssertEqual(isolatedDefaults.defaults.string(forKey: lastSignInEmailKey), "person@example.com")
         XCTAssertNotNil(isolatedDefaults.defaults.object(forKey: lastAuthTimestampKey))
         assertCachedDataPresent(environment)
+    }
+
+    func testRefreshAuthStateKeepsDeliveredTaskActionsForOfflineRecoverableSession() {
+        isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
+        var cleanupCalls = 0
+        let environment = makeEnvironment(
+            authState: .signedOut,
+            userId: nil,
+            canRestoreOfflineSession: true,
+            clearDeliveredActionableTaskNotifications: { cleanupCalls += 1 }
+        )
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(cleanupCalls, 0)
     }
 
     func testRefreshAuthStateClearsSettingsViewModelWhenUserScopeChanges() {
@@ -204,7 +294,8 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         userId: String?,
         canRestoreOfflineSession: Bool = false,
         websitesAPI: (any WebsitesProviding)? = nil,
-        deviceTokensAPI: DeviceTokensAPI? = nil
+        deviceTokensAPI: DeviceTokensAPI? = nil,
+        clearDeliveredActionableTaskNotifications: (() -> Void)? = nil
     ) -> AppEnvironment {
         let authSession = MutableAuthSession(
             authState: authState,
@@ -221,7 +312,8 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         let environment = AppEnvironment(
             container: container,
             storage: AppEnvironmentStorage(
-                userDefaults: isolatedDefaults.defaults
+                userDefaults: isolatedDefaults.defaults,
+                clearDeliveredActionableTaskNotifications: clearDeliveredActionableTaskNotifications
             )
         )
         retainedEnvironments.append(environment)

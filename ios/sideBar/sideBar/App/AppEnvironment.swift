@@ -5,35 +5,6 @@ import os
 #if os(iOS)
 import UIKit
 #endif
-// MARK: - AppEnvironment
-public struct AppEnvironmentStorage {
-    public static let shared = AppEnvironmentStorage(
-        userDefaults: .standard,
-        widgetDataManager: .shared,
-        extensionEventStore: .shared,
-        pendingShareStore: .shared,
-        taskBadgeUpdater: LiveTaskBadgeUpdater()
-    )
-    public let userDefaults: UserDefaults
-    public let widgetDataManager: WidgetDataManager
-    public let extensionEventStore: ExtensionEventStore
-    public let pendingShareStore: PendingShareStore
-    public let taskBadgeUpdater: any TaskBadgeUpdating
-
-    public init(
-        userDefaults: UserDefaults = .standard,
-        widgetDataManager: WidgetDataManager? = nil,
-        extensionEventStore: ExtensionEventStore? = nil,
-        pendingShareStore: PendingShareStore? = nil,
-        taskBadgeUpdater: (any TaskBadgeUpdating)? = nil
-    ) {
-        self.userDefaults = userDefaults
-        self.widgetDataManager = widgetDataManager ?? WidgetDataManager(userDefaults: userDefaults)
-        self.extensionEventStore = extensionEventStore ?? ExtensionEventStore(userDefaults: userDefaults)
-        self.pendingShareStore = pendingShareStore ?? PendingShareStore(userDefaults: userDefaults)
-        self.taskBadgeUpdater = taskBadgeUpdater ?? LiveTaskBadgeUpdater()
-    }
-}
 /// Coordinates app-wide stores, view models, and lifecycle wiring for the signed-in experience.
 @MainActor public final class AppEnvironment: ObservableObject {
     #if os(iOS) || os(macOS)

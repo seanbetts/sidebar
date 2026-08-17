@@ -39,6 +39,7 @@ extension AppEnvironment {
             && !hasRecoverableSignedOutSession
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         if requiresSignedOutReset {
+            storage.clearDeliveredActionableTaskNotifications()
             clearStoredCacheScopeUserId()
             resetSignedInData(
                 clearNavigationState: true,
@@ -219,6 +220,9 @@ extension AppEnvironment {
         // Run a one-time migration clear for existing installs with unscoped cache keys.
         let shouldResetSignedInData = storedUserId != nil || authState == .active
         if shouldResetSignedInData {
+            if storedUserId != nil {
+                storage.clearDeliveredActionableTaskNotifications()
+            }
             let previousScope = storedUserId ?? "<none>"
             authLogger.notice(
                 """
@@ -239,6 +243,21 @@ extension AppEnvironment {
         let trimmedUserId = Self.normalizedCacheScopeUserId(rawUserId)
         guard !trimmedUserId.isEmpty else { return nil }
         return trimmedUserId
+    }
+
+    var taskNotificationAuthContext: TaskNotificationAuthContext? {
+        guard authState == .active || authState == .staleRecoverable,
+              let accountId = currentAuthUserId,
+              let cacheScopeAccountId = storage.userDefaults.string(
+                forKey: AppStorageKeys.cacheScopeUserId
+              ),
+              TaskNotificationContract.accountIdentifier(
+                accountId,
+                matches: cacheScopeAccountId
+              ) else {
+            return nil
+        }
+        return TaskNotificationAuthContext(authState: authState, accountId: accountId)
     }
 
     private static func normalizedCacheScopeUserId(_ userId: String) -> String {

@@ -114,7 +114,7 @@ import sideBarShared
         let visibleTasks = TasksUtils.sortByDueDate(
             tasks.filter { $0.status != "completed" && $0.status != "project" }
         )
-        let widgetTasks = visibleTasks.prefix(10).map { task in
+        let widgetTasks = visibleTasks.map { task in
             WidgetTask(
                 from: task,
                 projectName: task.projectId.flatMap { projectTitleById[$0] },
@@ -123,8 +123,7 @@ import sideBarShared
         }
         let data = buildWidgetTaskData(
             for: targetSelection,
-            tasks: Array(widgetTasks),
-            remainingCount: visibleTasks.count
+            tasks: widgetTasks
         )
         widgetDataManager.storeTaskData(data, for: targetSelection)
     }
@@ -142,7 +141,7 @@ import sideBarShared
             let todayTasks = TasksUtils.sortByDueDate(
                 response.tasks.filter { $0.status != "completed" && $0.status != "project" }
             )
-            let widgetTasks = todayTasks.prefix(10).map { task in
+            let widgetTasks = todayTasks.map { task in
                 WidgetTask(
                     from: task,
                     projectName: task.projectId.flatMap { projectTitleById[$0] },
@@ -151,8 +150,8 @@ import sideBarShared
             }
             let data = buildWidgetTaskData(
                 for: .today,
-                tasks: Array(widgetTasks),
-                remainingCount: todayTasks.count
+                tasks: widgetTasks,
+                canConfirmCompletionConvergence: true
             )
             widgetDataManager.store(data, for: .tasks)
         } catch {
@@ -163,33 +162,15 @@ import sideBarShared
     private func buildWidgetTaskData(
         for selection: TaskSelection,
         tasks: [WidgetTask],
-        remainingCount: Int
+        canConfirmCompletionConvergence: Bool = false
     ) -> WidgetTaskData {
         let now = Date()
         let previous = widgetDataManager.loadTaskData(for: selection)
-        let calendar = Calendar.current
-
-        let progressCompletedCount: Int
-        let progressTotalCount: Int
-
-        if calendar.isDate(previous.lastUpdated, inSameDayAs: now) {
-            let persistedCompleted = max(0, previous.progressCompletedCount)
-            let persistedTotal = max(0, previous.progressTotalCount)
-            let nextTotal = max(persistedTotal, remainingCount + persistedCompleted)
-            let inferredCompleted = max(persistedCompleted, nextTotal - remainingCount)
-            progressTotalCount = nextTotal
-            progressCompletedCount = min(inferredCompleted, nextTotal)
-        } else {
-            progressTotalCount = max(0, remainingCount)
-            progressCompletedCount = 0
-        }
-
-        return WidgetTaskData(
+        return WidgetTaskSnapshotRefresh.reconcile(
             tasks: tasks,
-            totalCount: remainingCount,
-            progressCompletedCount: progressCompletedCount,
-            progressTotalCount: progressTotalCount,
-            lastUpdated: now
+            previousSnapshot: previous,
+            canConfirmCompletionConvergence: canConfirmCompletionConvergence,
+            now: now
         )
     }
 

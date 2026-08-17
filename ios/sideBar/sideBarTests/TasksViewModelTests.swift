@@ -337,9 +337,9 @@ final class TasksViewModelTests: XCTestCase {
             for: .today
         )
 
-        let queued = await sut.viewModel.completeTask(taskId: taskId)
+        let result = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
 
-        XCTAssertTrue(queued)
+        XCTAssertEqual(result, .queued)
         XCTAssertEqual(sut.store.counts?.counts.today, 0)
         XCTAssertEqual(api.applyCallCount, 0)
         await eventually { sut.writeQueue.pendingCount == 1 }
@@ -348,6 +348,183 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(widgetSnapshot.totalCount, 0)
         XCTAssertEqual(widgetSnapshot.progressCompletedCount, 1)
         XCTAssertEqual(widgetSnapshot.progressTotalCount, 1)
+    }
+
+    func testNotificationCompletionUpdatesOffscreenDueTodayWidgetOnlyOnce() async {
+        let api = TasksViewModelAPIStub()
+        let taskId = UUID().uuidString
+        let visibleTasks = (0..<10).map {
+            TaskItem(
+                id: "visible-\($0)",
+                title: String(format: "%02d Visible", $0),
+                status: "open",
+                deadline: TasksUtils.formatDateKey(Date())
+            )
+        }
+        let offscreenTask = TaskItem(
+            id: taskId,
+            title: "ZZ Offscreen",
+            status: "open",
+            deadline: TasksUtils.formatDateKey(Date())
+        )
+        api.enqueueListResponse(scope: "today", tasks: visibleTasks + [offscreenTask])
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        let initialSnapshot = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(initialSnapshot.tasks.count, 10)
+        XCTAssertEqual(initialSnapshot.totalCount, 11)
+        XCTAssertFalse(initialSnapshot.tasks.contains { $0.id == taskId })
+
+        let first = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        let second = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+
+        XCTAssertEqual(first, .queued)
+        XCTAssertEqual(second, .queued)
+        let snapshot = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(snapshot.tasks.count, 10)
+        XCTAssertEqual(snapshot.totalCount, 10)
+        XCTAssertEqual(snapshot.progressCompletedCount, 1)
+        XCTAssertEqual(snapshot.progressTotalCount, 11)
+        XCTAssertEqual(snapshot.optimisticallyCompletedTaskIds, [taskId])
+    }
+
+    func testNotificationCompletionSurvivesStaleSameDayWidgetRefresh() async {
+        let api = TasksViewModelAPIStub()
+        let taskId = UUID().uuidString
+        let visibleTasks = (0..<10).map {
+            TaskItem(
+                id: "visible-\($0)",
+                title: String(format: "%02d Visible", $0),
+                status: "open",
+                deadline: TasksUtils.formatDateKey(Date())
+            )
+        }
+        let offscreenTask = TaskItem(
+            id: taskId,
+            title: "ZZ Offscreen",
+            status: "open",
+            deadline: TasksUtils.formatDateKey(Date())
+        )
+        let staleTasks = visibleTasks + [offscreenTask]
+        api.enqueueListResponse(scope: "today", tasks: staleTasks)
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        let firstResult = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        XCTAssertEqual(firstResult, .queued)
+
+        api.enqueueListResponse(scope: "today", tasks: staleTasks)
+        await sut.viewModel.load(selection: .today, force: true)
+        let refreshedSnapshot = sut.widgetDataManager.loadTaskData(for: .today)
+
+        XCTAssertEqual(refreshedSnapshot.totalCount, 10)
+        XCTAssertEqual(refreshedSnapshot.progressCompletedCount, 1)
+        XCTAssertEqual(refreshedSnapshot.progressTotalCount, 11)
+        XCTAssertEqual(refreshedSnapshot.optimisticallyCompletedTaskIds, [taskId])
+
+        let repeatedResult = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+        XCTAssertEqual(repeatedResult, .queued)
+        let repeatedSnapshot = sut.widgetDataManager.loadTaskData(for: .today)
+        XCTAssertEqual(repeatedSnapshot, refreshedSnapshot)
+    }
+
+    func testNotificationCompletionStillUpdatesSelectedProjectWidget() async {
+        let api = TasksViewModelAPIStub()
+        let project = TaskProject(
+            id: "project-1",
+            title: "Project",
+            groupId: nil,
+            status: "active",
+            updatedAt: nil
+        )
+        let task = TaskItem(
+            id: UUID().uuidString,
+            title: "Project task",
+            status: "open",
+            deadline: TasksUtils.formatDateKey(Date()),
+            projectId: project.id
+        )
+        api.projectTasksResponse = TaskListResponse(
+            scope: "project",
+            generatedAt: nil,
+            tasks: [task],
+            projects: [project],
+            groups: []
+        )
+        let sut = makeSUT(api: api, networkAvailable: true)
+        let selection = TaskSelection.project(id: project.id)
+        await sut.viewModel.load(selection: selection)
+        XCTAssertEqual(sut.widgetDataManager.loadTaskData(for: selection).totalCount, 1)
+
+        let result = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: task.id)
+
+        XCTAssertEqual(result, .queued)
+        XCTAssertEqual(sut.widgetDataManager.loadTaskData(for: selection).totalCount, 0)
+    }
+
+    func testNotificationCompletionQueueFullReturnsFailureWithoutPresentingError() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: false,
+            maxPendingWrites: 1
+        )
+        let queuedTask = TaskItem(id: "queued-task", title: "Queued", status: "open")
+        await sut.viewModel.renameTask(task: queuedTask, title: "Already queued")
+        await eventually { sut.writeQueue.pendingCount == 1 }
+        let taskId = UUID().uuidString
+        sut.widgetDataManager.storeTaskData(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: taskId, title: "Notification task")],
+                totalCount: 1,
+                progressCompletedCount: 0,
+                progressTotalCount: 1
+            ),
+            for: .today
+        )
+
+        let result = await sut.viewModel.completeDueTodayTaskFromNotification(taskId: taskId)
+
+        XCTAssertEqual(result, .failed(.queueFull))
+        XCTAssertEqual(sut.writeQueue.pendingCount, 1)
+        XCTAssertNil(sut.viewModel.errorMessage)
+        XCTAssertNil(sut.toastCenter.toast)
+        XCTAssertEqual(sut.widgetDataManager.loadTaskData(for: .today).totalCount, 1)
+    }
+
+    func testNotificationCompletionMissingQueueReturnsFailureWithoutPresentingError() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: false,
+            attachWriteQueue: false
+        )
+
+        let result = await sut.viewModel.completeDueTodayTaskFromNotification(
+            taskId: UUID().uuidString
+        )
+
+        XCTAssertEqual(result, .failed(.unavailable))
+        XCTAssertNil(sut.viewModel.errorMessage)
+        XCTAssertNil(sut.toastCenter.toast)
+    }
+
+    func testForegroundCompletionQueueFullStillPresentsToast() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: false,
+            maxPendingWrites: 1
+        )
+        let queuedTask = TaskItem(id: "queued-task", title: "Queued", status: "open")
+        await sut.viewModel.renameTask(task: queuedTask, title: "Already queued")
+        await eventually { sut.writeQueue.pendingCount == 1 }
+
+        let completed = await sut.viewModel.completeTask(
+            task: TaskItem(id: "foreground-task", title: "Foreground", status: "open")
+        )
+
+        XCTAssertFalse(completed)
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Sync queue full. Review pending changes.")
     }
 
     func testPreferredLoadSelectionDefaultsToTodayWhenSelectionIsNone() async {
@@ -736,7 +913,9 @@ final class TasksViewModelTests: XCTestCase {
         networkAvailable: Bool,
         serverReachable: Bool = true,
         isOffline: Bool = false,
-        searchDebounceNanoseconds: UInt64 = 350_000_000
+        searchDebounceNanoseconds: UInt64 = 350_000_000,
+        maxPendingWrites: Int = 200,
+        attachWriteQueue: Bool = true
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -758,12 +937,15 @@ final class TasksViewModelTests: XCTestCase {
                 baseUrl: URL(string: "http://localhost")!,
                 startMonitoring: false
             ),
-            autoProcessEnabled: false
+            autoProcessEnabled: false,
+            maxPendingWrites: maxPendingWrites
         )
         let defaults = UserDefaults(suiteName: "TasksViewModelTests.widget.\(UUID().uuidString)")!
         let widgetDataManager = WidgetDataManager(userDefaults: defaults)
         let toastCenter = ToastCenter()
-        store.attachWriteQueue(writeQueue)
+        if attachWriteQueue {
+            store.attachWriteQueue(writeQueue)
+        }
         let viewModel = TasksViewModel(
             api: api,
             store: store,

@@ -54,42 +54,10 @@ struct TasksWidgetRefreshClient {
                 }
             )
 
-        return buildSnapshot(
-            tasks: Array(widgetTasks.prefix(10)),
-            remainingCount: activeTasks.count,
+        return WidgetTaskSnapshotRefresh.reconcile(
+            tasks: widgetTasks,
             previousSnapshot: previousSnapshot,
             now: now
-        )
-    }
-
-    private func buildSnapshot(
-        tasks: [WidgetTask],
-        remainingCount: Int,
-        previousSnapshot: WidgetTaskData,
-        now: Date
-    ) -> WidgetTaskData {
-        let calendar = Calendar.current
-        let progressCompletedCount: Int
-        let progressTotalCount: Int
-
-        if calendar.isDate(previousSnapshot.lastUpdated, inSameDayAs: now) {
-            let persistedCompleted = max(0, previousSnapshot.progressCompletedCount)
-            let persistedTotal = max(0, previousSnapshot.progressTotalCount)
-            let nextTotal = max(persistedTotal, remainingCount + persistedCompleted)
-            let inferredCompleted = max(persistedCompleted, nextTotal - remainingCount)
-            progressTotalCount = nextTotal
-            progressCompletedCount = min(inferredCompleted, nextTotal)
-        } else {
-            progressTotalCount = max(0, remainingCount)
-            progressCompletedCount = 0
-        }
-
-        return WidgetTaskData(
-            tasks: tasks,
-            totalCount: remainingCount,
-            progressCompletedCount: progressCompletedCount,
-            progressTotalCount: progressTotalCount,
-            lastUpdated: now
         )
     }
 }

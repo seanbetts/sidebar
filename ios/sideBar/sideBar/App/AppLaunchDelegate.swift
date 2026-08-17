@@ -146,50 +146,6 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotific
         return true
     }
 
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        _ = center
-        AppEnvironment.shared?.handleRemoteNotification(notification.request.content.userInfo)
-        completionHandler([.badge, .banner, .list, .sound])
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        _ = center
-        let userInfo = response.notification.request.content.userInfo
-        let handler = TaskNotificationResponseHandler(
-            authState: {
-                AppEnvironment.shared?.authState ?? .signedOut
-            },
-            refresh: { payload in
-                AppEnvironment.shared?.handleRemoteNotification(payload)
-            },
-            openRoute: { route in
-                AppEnvironment.shared?.handleDeepLink(route)
-            },
-            completeTask: { taskId in
-                guard let environment = AppEnvironment.shared else { return false }
-                return await environment.tasksViewModel.completeTask(taskId: taskId)
-            }
-        )
-        Task { @MainActor [weak self] in
-            let result = await handler.handle(
-                actionIdentifier: response.actionIdentifier,
-                userInfo: userInfo,
-                completion: completionHandler
-            )
-            if result == .completionDeclined {
-                self?.logger.info("Task notification completion was not queued.")
-            }
-        }
-    }
-
     // MARK: - Background Token Refresh
 
     private func handleTokenRefresh(task: BGAppRefreshTask) {

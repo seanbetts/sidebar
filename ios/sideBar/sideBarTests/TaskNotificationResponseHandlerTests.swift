@@ -12,22 +12,28 @@ private struct CompletionAuthCase {
 final class TaskNotificationResponseHandlerTests: XCTestCase {
     func testCompleteQueuesQuietlyAndFinishesOnce() async {
         let taskId = UUID().uuidString
+        let accountId = UUID().uuidString
         var completedTaskIds: [String] = []
         var openedRoutes: [URL] = []
         var completionCount = 0
         let handler = TaskNotificationResponseHandler(
-            authState: { .active },
+            authContext: {
+                TaskNotificationAuthContext(
+                    authState: .active,
+                    accountId: accountId.lowercased()
+                )
+            },
             refresh: { _ in },
             openRoute: { openedRoutes.append($0) },
             completeTask: {
                 completedTaskIds.append($0)
-                return true
+                return .queued
             }
         )
 
         let result = await handler.handle(
             actionIdentifier: "TASK_MARK_COMPLETE",
-            userInfo: ["notification_metadata": ["task_id": taskId]],
+            userInfo: Self.actionablePayload(taskId: taskId, accountId: accountId),
             completion: { completionCount += 1 }
         )
 
@@ -39,6 +45,7 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
 
     func testCompletionAuthGate() async {
         let taskId = UUID().uuidString
+        let accountId = UUID().uuidString
         let cases = [
             CompletionAuthCase(
                 authState: .active,
@@ -66,18 +73,23 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
             var completionCalls = 0
             var callbackCalls = 0
             let handler = TaskNotificationResponseHandler(
-                authState: { testCase.authState },
+                authContext: {
+                    TaskNotificationAuthContext(
+                        authState: testCase.authState,
+                        accountId: accountId
+                    )
+                },
                 refresh: { _ in },
                 openRoute: { _ in },
                 completeTask: { _ in
                     completionCalls += 1
-                    return true
+                    return .queued
                 }
             )
 
             let result = await handler.handle(
                 actionIdentifier: "TASK_MARK_COMPLETE",
-                userInfo: ["notification_metadata": ["task_id": taskId]],
+                userInfo: Self.actionablePayload(taskId: taskId, accountId: accountId),
                 completion: { callbackCalls += 1 }
             )
 
@@ -87,22 +99,98 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
         }
     }
 
-    func testQueueFailureIsDeclinedAndFinishesOnce() async {
+    func testCompletionDeclinesNotificationFromPreviousAccount() async {
+        let previousAccountId = UUID().uuidString
+        let currentAccountId = UUID().uuidString
+        var completionCalls = 0
         var callbackCalls = 0
         let handler = TaskNotificationResponseHandler(
-            authState: { .active },
-            refresh: { _ in },
-            openRoute: { _ in },
-            completeTask: { _ in false }
+            authContext: {
+                TaskNotificationAuthContext(
+                    authState: .active,
+                    accountId: currentAccountId
+                )
+            },
+            refresh: { _ in XCTFail("Account mismatch must not refresh") },
+            openRoute: { _ in XCTFail("Account mismatch must not navigate") },
+            completeTask: { _ in
+                completionCalls += 1
+                return .queued
+            }
         )
 
         let result = await handler.handle(
             actionIdentifier: "TASK_MARK_COMPLETE",
-            userInfo: ["notification_metadata": ["task_id": UUID().uuidString]],
+            userInfo: Self.actionablePayload(
+                taskId: UUID().uuidString,
+                accountId: previousAccountId
+            ),
             completion: { callbackCalls += 1 }
         )
 
         XCTAssertEqual(result, .completionDeclined)
+        XCTAssertEqual(completionCalls, 0)
+        XCTAssertEqual(callbackCalls, 1)
+    }
+
+    func testCompletionDeclinesMissingOrMalformedCurrentAccount() async {
+        let notificationAccountId = UUID().uuidString
+        let invalidCurrentAccountIds: [String?] = [nil, "", "  \n", "not-a-uuid"]
+
+        for currentAccountId in invalidCurrentAccountIds {
+            var completionCalls = 0
+            var callbackCalls = 0
+            let handler = TaskNotificationResponseHandler(
+                authContext: {
+                    currentAccountId.map {
+                        TaskNotificationAuthContext(
+                            authState: .staleRecoverable,
+                            accountId: $0
+                        )
+                    }
+                },
+                refresh: { _ in XCTFail("Invalid account must not refresh") },
+                openRoute: { _ in XCTFail("Invalid account must not navigate") },
+                completeTask: { _ in
+                    completionCalls += 1
+                    return .queued
+                }
+            )
+
+            let result = await handler.handle(
+                actionIdentifier: "TASK_MARK_COMPLETE",
+                userInfo: Self.actionablePayload(
+                    taskId: UUID().uuidString,
+                    accountId: notificationAccountId
+                ),
+                completion: { callbackCalls += 1 }
+            )
+
+            XCTAssertEqual(result, .completionDeclined)
+            XCTAssertEqual(completionCalls, 0)
+            XCTAssertEqual(callbackCalls, 1)
+        }
+    }
+
+    func testQueueFailureReturnsStructuredOutcomeAndFinishesOnce() async {
+        let accountId = UUID().uuidString
+        var callbackCalls = 0
+        let handler = TaskNotificationResponseHandler(
+            authContext: {
+                TaskNotificationAuthContext(authState: .active, accountId: accountId)
+            },
+            refresh: { _ in XCTFail("Queue failure must not refresh") },
+            openRoute: { _ in XCTFail("Queue failure must not navigate") },
+            completeTask: { _ in .failed(.queueFull) }
+        )
+
+        let result = await handler.handle(
+            actionIdentifier: "TASK_MARK_COMPLETE",
+            userInfo: Self.actionablePayload(taskId: UUID().uuidString, accountId: accountId),
+            completion: { callbackCalls += 1 }
+        )
+
+        XCTAssertEqual(result, .completionFailed(.queueFull))
         XCTAssertEqual(callbackCalls, 1)
     }
 
@@ -112,12 +200,12 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
         var completionCalls = 0
         var callbackCalls = 0
         let handler = TaskNotificationResponseHandler(
-            authState: { .active },
+            authContext: { nil },
             refresh: { refreshedPayloads.append($0) },
             openRoute: { openedRoutes.append($0) },
             completeTask: { _ in
                 completionCalls += 1
-                return true
+                return .queued
             }
         )
         let userInfo: [AnyHashable: Any] = ["sidebar_route": "sidebar://tasks/today"]
@@ -142,12 +230,12 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
     func testSummaryCompletionIsIgnoredAndFinishesOnce() async {
         var callbackCalls = 0
         let handler = TaskNotificationResponseHandler(
-            authState: { .active },
+            authContext: { nil },
             refresh: { _ in XCTFail("Summary completion must not refresh") },
             openRoute: { _ in XCTFail("Summary completion must not navigate") },
             completeTask: { _ in
                 XCTFail("Summary completion must not complete")
-                return false
+                return .failed(.unavailable)
             }
         )
 
@@ -155,7 +243,10 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
             actionIdentifier: "TASK_MARK_COMPLETE",
             userInfo: [
                 "aps": ["category": "TASK_REMINDER_SUMMARY"],
-                "notification_metadata": ["task_id": UUID().uuidString]
+                "notification_metadata": [
+                    "task_id": UUID().uuidString,
+                    "account_id": UUID().uuidString
+                ]
             ],
             completion: { callbackCalls += 1 }
         )
@@ -167,12 +258,12 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
     func testUnknownActionIsIgnoredAndFinishesOnce() async {
         var callbackCalls = 0
         let handler = TaskNotificationResponseHandler(
-            authState: { .active },
+            authContext: { nil },
             refresh: { _ in XCTFail("Unknown action must not refresh") },
             openRoute: { _ in XCTFail("Unknown action must not navigate") },
             completeTask: { _ in
                 XCTFail("Unknown action must not complete")
-                return false
+                return .failed(.unavailable)
             }
         )
 
@@ -184,5 +275,19 @@ final class TaskNotificationResponseHandlerTests: XCTestCase {
 
         XCTAssertEqual(result, .ignored)
         XCTAssertEqual(callbackCalls, 1)
+    }
+
+    private static func actionablePayload(
+        taskId: String,
+        accountId: String
+    ) -> [AnyHashable: Any] {
+        [
+            "aps": ["category": "TASK_REMINDER_ACTIONABLE"],
+            "notification_metadata": [
+                "task_id": taskId,
+                "account_id": accountId
+            ],
+            "sidebar_route": "sidebar://tasks/today"
+        ]
     }
 }
