@@ -116,3 +116,12 @@ def test_fly_preserves_existing_runtime_defaults() -> None:
     assert config["env"]["APNS_ENV"] == "prod"
     assert config["env"]["WEBSITE_WORKER_CONCURRENCY"] == "2"
     assert config["http_service"]["checks"][0]["grace_period"] == "60s"
+
+
+def test_fly_runs_schema_migrations_before_machine_rollout() -> None:
+    """A failed production schema upgrade must prevent the new image rolling out."""
+    config = _fly_config()
+
+    assert config["deploy"]["release_command"] == (
+        "python -m scripts.run_production_migrations"
+    )

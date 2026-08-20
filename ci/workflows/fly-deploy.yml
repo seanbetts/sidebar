@@ -103,10 +103,13 @@ jobs:
         working-directory: backend
         run: DATABASE_URL_DIRECT="${DATABASE_URL}" uv run alembic -c api/alembic.ini upgrade head
 
-      - name: Run ingestion regression tests
+      - name: Run deployment regression tests
         working-directory: backend
         run: |
           uv run pytest \
+            tests/api/test_alembic_migration_lineage.py \
+            tests/scripts/test_run_production_migrations.py \
+            tests/scripts/test_fly_toml.py \
             tests/skills/test_youtube_download.py \
             tests/api/test_skill_file_ops_ingestion.py
 

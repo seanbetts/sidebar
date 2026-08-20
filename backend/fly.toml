@@ -10,6 +10,9 @@ primary_region = "lhr"
 [build]
   dockerfile = "docker/Dockerfile.skills-api"
 
+[deploy]
+  release_command = "python -m scripts.run_production_migrations"
+
 [env]
   PORT = "8001"
   APNS_ENV = "prod"

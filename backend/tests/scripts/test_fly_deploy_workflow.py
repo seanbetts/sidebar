@@ -40,6 +40,24 @@ def _deploy_step(name: str) -> dict[str, Any]:
     return matching[0]
 
 
+def _verify_step(name: str) -> dict[str, Any]:
+    """Return one named verification step from the committed workflow."""
+    steps = _workflow()["jobs"]["verify"]["steps"]
+    matching = [step for step in steps if step.get("name") == name]
+    assert len(matching) == 1, f"Expected one verify step named {name!r}"
+    return matching[0]
+
+
+def test_fly_verifies_production_migration_paths_before_deploying() -> None:
+    """Fly deployment must wait for migration-lineage and runner regressions."""
+    step = _verify_step("Run deployment regression tests")
+    command = step["run"]
+
+    assert "tests/api/test_alembic_migration_lineage.py" in command
+    assert "tests/scripts/test_run_production_migrations.py" in command
+    assert "tests/scripts/test_fly_toml.py" in command
+
+
 def _machine(
     machine_id: object,
     process_group: str,
