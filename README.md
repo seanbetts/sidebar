@@ -1,8 +1,16 @@
 # sideBar
 
+> sideBar is being retired. This repository documents the Apple apps, web app, backend, and marketing site. Running a copy requires your own service configuration and, for signed Apple builds, your own Apple development team.
+
 A cross-platform personal AI workspace for iPhone, iPad, Mac, and web. sideBar combines streaming chat, notes, tasks, saved websites, files, and persistent memories with an extensible skills system, backed by Supabase and Cloudflare R2.
 
 > **For AI Agents:** See [AGENTS.md](./AGENTS.md) for detailed development instructions.
+
+## Development history
+
+I built sideBar across the Apple apps, web app, and backend. The commit history
+shows how the project developed. I removed private material from that history
+before publishing, which changed the commit hashes.
 
 ## Features
 
@@ -28,7 +36,7 @@ sideBar is built as a modern, containerized full-stack application:
 - **Containerization**: Docker Compose orchestrating all services
 - **API Versioning**: `/api/v1` for stable client integrations (legacy `/api` remains during migration)
 
-> **Deep Dive:** See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for design decisions, patterns, and learnings from building sideBar.
+> **Deep Dive:** See [docs/ARCHITECTURE.md](./docs/engineering/ARCHITECTURE.md) for design decisions, patterns, and learnings from building sideBar.
 
 ## Prerequisites
 
@@ -124,11 +132,11 @@ For rapid iteration without Docker (secrets loaded via Doppler):
 cp .env.example .env.local
 # Edit .env.local with your credentials
 ./scripts/health-check.sh
-ALLOW_PROD_MIGRATIONS=true ./scripts/migrate.sh upgrade
+./scripts/migrate.sh upgrade
 ./dev.sh start
 ```
 
-See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide and safety notes when using production Supabase/R2.
+See [docs/LOCAL_DEVELOPMENT.md](./docs/engineering/LOCAL_DEVELOPMENT.md) for the full guide and safety notes when using production Supabase/R2.
 
 `./dev.sh start` now launches both Mintlify previews:
 - product docs at `http://localhost:3001`
@@ -357,11 +365,9 @@ sideBar implements multiple security layers:
 
 **Documentation:**
 - [Product Documentation](./docs/product/)
-- [Architecture & Design Decisions](./docs/ARCHITECTURE.md)
-- [API Migration Guide](./docs/API_MIGRATION_GUIDE.md)
-- [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md)
-- [Testing Philosophy](./docs/TESTING.md)
-- [Contributing Guide](./docs/CONTRIBUTING.md)
+- [Architecture & Design Decisions](./docs/engineering/ARCHITECTURE.md)
+- [Local Development Guide](./docs/engineering/LOCAL_DEVELOPMENT.md)
+- [Testing Philosophy](./docs/engineering/TESTING.md)
 - [AI Agent Instructions](./AGENTS.md)
 
 **Frameworks:**
@@ -372,10 +378,13 @@ sideBar implements multiple security layers:
 - [skills-ref Validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
 - [Example Skills](https://github.com/anthropics/skills)
 
-## License
+## Deployment files
 
-See [LICENSE](./LICENSE) for details.
+Historical GitHub Actions definitions are in [ci/workflows](./ci/workflows).
+They are reference files. The product docs and marketing copy reflect the
+original service.
 
-## Contributing
+## Licensing
 
-Contributions are welcome! Please see our contribution guidelines in [AGENTS.md](./AGENTS.md).
+This snapshot does not include a license for sideBar's own code. The bundled
+[Sentry SDK](./ios/sideBar/Vendor/Sentry/LICENSE.md) has its own license.

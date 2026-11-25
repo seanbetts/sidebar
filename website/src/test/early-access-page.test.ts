@@ -13,7 +13,9 @@ describe('early access page', () => {
     expect(
       screen.getByText(/priority is people who can try sidebar on iphone, ipad, and mac/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/selected people receive beta invites/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/a small number of people will be invited into beta before launch/i)
+    ).toBeInTheDocument();
   });
 
   it('lets people complete a form before sending the request', async () => {

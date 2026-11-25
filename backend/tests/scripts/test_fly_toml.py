@@ -57,7 +57,7 @@ def test_fly_enables_safe_demand_lifecycle_defaults() -> None:
     assert env["WEBSITE_WORKER_IDLE_EXIT_SECONDS"] == "30"
     assert env["INGESTION_WORKER_IDLE_EXIT_SECONDS"] == "30"
     assert env["NOTIFICATION_SCHEDULE_INTERVAL_SECONDS"] == "300"
-    assert env["FLY_WORKER_CONTROL_APP"] == "sidebar-api"
+    assert env["FLY_WORKER_CONTROL_APP"] == "your-sidebar-api"
 
 
 def test_fly_api_scales_to_zero_with_proxy_autostart() -> None:

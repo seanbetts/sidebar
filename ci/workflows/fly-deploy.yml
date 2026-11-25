@@ -123,7 +123,7 @@ jobs:
 
       - name: Set image reference
         id: image
-        run: echo "ref=registry.fly.io/sidebar-api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        run: echo "ref=registry.fly.io/your-sidebar-api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

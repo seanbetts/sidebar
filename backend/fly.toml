@@ -1,4 +1,4 @@
-app = "sidebar-api"
+app = "your-sidebar-api"
 primary_region = "lhr"
 
 [processes]
@@ -20,7 +20,7 @@ primary_region = "lhr"
   SKILLS_DIR = "/app/skills"
   SUPABASE_PROJECT_ID = "your-supabase-project-ref"
   SUPABASE_USE_POOLER = "true"
-  SUPABASE_POOLER_HOST = "aws-1-eu-central-1.pooler.supabase.com"
+  SUPABASE_POOLER_HOST = "your-supabase-pooler-host"
   SUPABASE_POOLER_USER = "sidebar_app.your-supabase-project-ref"
   SUPABASE_DB_NAME = "postgres"
   SUPABASE_DB_PORT = "5432"
@@ -38,7 +38,7 @@ primary_region = "lhr"
   WEBSITE_WORKER_IDLE_EXIT_SECONDS = "30"
   INGESTION_WORKER_IDLE_EXIT_SECONDS = "30"
   NOTIFICATION_SCHEDULE_INTERVAL_SECONDS = "300"
-  FLY_WORKER_CONTROL_APP = "sidebar-api"
+  FLY_WORKER_CONTROL_APP = "your-sidebar-api"
 
 [http_service]
   internal_port = 8001

@@ -32,6 +32,8 @@ This is the canonical iOS/macOS engineering document for sideBar.
 
 ## Local Setup
 
+For a signed build, select your own Apple development team. If you deploy the web app, replace `YOURTEAMID` in both Apple App Site Association files under `frontend/static` and configure the matching associated domains in Xcode.
+
 1. Copy `ios/sideBar/Config/SideBar.local.xcconfig.example` to `ios/sideBar/Config/SideBar.local.xcconfig`.
 2. Fill in all required runtime keys.
 3. Open `ios/sideBar/sideBar.xcodeproj` in Xcode.
@@ -129,7 +131,7 @@ xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 ```
 
-CI workflow (`.github/workflows/ios-ci.yml`):
+CI workflow (`ci/workflows/ios-ci.yml`):
 
 - Runs on a self-hosted Mac runner.
 - `dev` branch: SwiftLint + doc comments + AppleFast logic tests on macOS (no simulator).
@@ -213,7 +215,6 @@ Use this handbook as primary reference.
 - Quick project orientation: `ios/README.md`
 - Environment key detail: `ios/ENVIRONMENT.md`
 - Legacy architecture page (deprecated pointer): `docs/IOS_ARCHITECTURE.md`
-- Active/historical iOS implementation plans: `docs/superpowers/plans/`
 
 ## Maintenance Rule
 

@@ -8,7 +8,5 @@
 	<string>mac-application</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
-	<key>teamID</key>
-	<string>YOURTEAMID</string>
 </dict>
 </plist>

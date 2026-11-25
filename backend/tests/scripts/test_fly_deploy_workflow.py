@@ -15,7 +15,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = REPO_ROOT / "backend"
-FLY_DEPLOY_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "fly-deploy.yml"
+FLY_DEPLOY_WORKFLOW_PATH = REPO_ROOT / "ci" / "workflows" / "fly-deploy.yml"
 APP_MACHINE_ID = "d8d9510a295118"
 NOTIFICATION_MACHINE_ID = "178114dc276891"
 WEBSITE_MACHINE_ID = "e784079b707483"

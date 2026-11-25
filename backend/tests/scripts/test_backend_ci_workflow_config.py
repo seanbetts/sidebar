@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-BACKEND_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "backend-ci.yml"
+BACKEND_WORKFLOW_PATH = REPO_ROOT / "ci" / "workflows" / "backend-ci.yml"
 
 
 def _workflow() -> dict[str, object]:
